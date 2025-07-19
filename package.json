@@ -1,7 +1,8 @@
 {
-	"name": "@mengxi/uni-router",
+	"name": "@meng-xi/uni-router",
 	"version": "0.1.0",
 	"description": "为 uni-app 提供类似 vue-router 风格的路由，并提供 utils 工具函数",
+	"readme": "README.md",
 	"keywords": [
 		"uni-app",
 		"vue-router",
@@ -15,32 +16,35 @@
 		"url": "https://github.com/MengXi-Studio/uni-router/issues"
 	},
 	"license": "MIT",
-	"author": "PedroQue99",
+	"author": {
+		"name": "PedroQue99",
+		"email": "ksmengfang@163.com"
+	},
 	"contributors": [],
 	"funding": {},
 	"files": [
 		"dist",
 		"types"
 	],
-	"main": "./dist/index.cjs",
-	"browser": "./dist/index.js",
-	"module": "./dist/index.js",
+	"main": "./dist/index.cjs.js",
+	"browser": "./dist/index.es.js",
+	"module": "./dist/index.es.js",
 	"types": "./types/index.d.ts",
 	"exports": {
 		".": {
 			"types": "./types/index.d.ts",
 			"import": "./dist/index.es.js",
-			"require": "./dist/index.cjs"
+			"require": "./dist/index.cjs.js"
 		},
 		"./router": {
 			"types": "./types/router.d.ts",
 			"import": "./dist/router.es.js",
-			"require": "./dist/router.cjs"
+			"require": "./dist/router.cjs.js"
 		},
 		"./utils": {
 			"types": "./types/utils.d.ts",
 			"import": "./dist/utils.es.js",
-			"require": "./dist/utils.cjs"
+			"require": "./dist/utils.cjs.js"
 		}
 	},
 	"type": "module",
