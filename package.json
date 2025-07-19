@@ -1,8 +1,8 @@
 {
 	"name": "@mengxi/uni-router",
-	"version": "1.0.0",
+	"version": "0.1.0",
 	"description": "为 uni-app 提供类似 vue-router 风格的路由，并提供 utils 工具函数",
-	"main": "./dist/index.umd.cjs",
+	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"types": "./types/index.d.ts",
 	"type": "module",
@@ -10,17 +10,17 @@
 		".": {
 			"types": "./types/index.d.ts",
 			"import": "./dist/index.es.js",
-			"require": "./dist/index.umd.cjs"
+			"require": "./dist/index.cjs"
 		},
 		"./router": {
-			"types": "./types/router/index.d.ts",
+			"types": "./types/router.d.ts",
 			"import": "./dist/router.es.js",
-			"require": "./dist/router.umd.cjs"
+			"require": "./dist/router.cjs"
 		},
 		"./utils": {
-			"types": "./types/utils/index.d.ts",
+			"types": "./types/utils.d.ts",
 			"import": "./dist/utils.es.js",
-			"require": "./dist/utils.umd.cjs"
+			"require": "./dist/utils.cjs"
 		}
 	},
 	"files": [
@@ -32,6 +32,7 @@
 		"build": "rimraf dist types && vite build"
 	},
 	"devDependencies": {
+		"@types/node": "^24.0.15",
 		"rimraf": "^6.0.1",
 		"typescript": "~5.8.3",
 		"vite": "^7.0.0",
