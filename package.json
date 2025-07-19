@@ -2,10 +2,30 @@
 	"name": "@mengxi/uni-router",
 	"version": "0.1.0",
 	"description": "为 uni-app 提供类似 vue-router 风格的路由，并提供 utils 工具函数",
+	"keywords": [
+		"uni-app",
+		"vue-router",
+		"router",
+		"navigation",
+		"routing",
+		"utils"
+	],
+	"homepage": "https://github.com/MengXi-Studio/uni-router#readme",
+	"bugs": {
+		"url": "https://github.com/MengXi-Studio/uni-router/issues"
+	},
+	"license": "MIT",
+	"author": "PedroQue99",
+	"contributors": [],
+	"funding": {},
+	"files": [
+		"dist",
+		"types"
+	],
 	"main": "./dist/index.cjs",
+	"browser": "./dist/index.js",
 	"module": "./dist/index.js",
 	"types": "./types/index.d.ts",
-	"type": "module",
 	"exports": {
 		".": {
 			"types": "./types/index.d.ts",
@@ -23,19 +43,34 @@
 			"require": "./dist/utils.cjs"
 		}
 	},
-	"files": [
-		"dist",
-		"types"
-	],
+	"type": "module",
 	"scripts": {
+		"reset": "rimraf node_modules pnpm-lock.yaml && pnpm install",
 		"dev": "vite",
 		"build": "rimraf dist types && vite build"
 	},
+	"config": {},
+	"dependencies": {},
 	"devDependencies": {
+		"@dcloudio/types": "^3.4.16",
 		"@types/node": "^24.0.15",
 		"rimraf": "^6.0.1",
 		"typescript": "~5.8.3",
 		"vite": "^7.0.0",
 		"vite-plugin-dts": "^4.5.4"
+	},
+	"peerDependencies": {},
+	"peerDependenciesMeta": {},
+	"optionalDependencies": {},
+	"bundledDependencies": [],
+	"engines": {},
+	"os": [],
+	"cpu": [],
+	"preferGlobal": false,
+	"private": false,
+	"publishConfig": {},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MengXi-Studio/uni-router.git"
 	}
 }
