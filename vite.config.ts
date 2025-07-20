@@ -10,8 +10,8 @@ export default defineConfig({
 	// 配置路径别名，方便在代码中使用简洁的路径导入模块
 	resolve: {
 		alias: {
-			// 将 @ 指向项目的 lib 目录，可根据实际情况调整
-			'@': resolve(__dirname, 'lib')
+			// 将 @ 指向项目的 src 目录，可根据实际情况调整
+			'@': resolve(__dirname, 'src')
 		}
 	},
 
@@ -27,7 +27,7 @@ export default defineConfig({
 			// 生成后删除 src 目录下的类型声明文件
 			copyDtsFiles: true,
 			// 指定需要生成类型声明的文件
-			include: ['lib/**/*.ts'],
+			include: ['src/**/*.ts'],
 			// 自动生成入口文件
 			insertTypesEntry: true,
 			// 移除 lib 目录结构
@@ -41,9 +41,9 @@ export default defineConfig({
 		lib: {
 			// 入口文件配置，可指定多个入口生成不同的构建产物
 			entry: {
-				index: resolve(__dirname, 'lib/index.ts'),
-				router: resolve(__dirname, 'lib/router/index.ts'),
-				utils: resolve(__dirname, 'lib/utils/index.ts')
+				index: resolve(__dirname, 'src/index.ts'),
+				router: resolve(__dirname, 'src/router/index.ts'),
+				utils: resolve(__dirname, 'src/utils/index.ts')
 			},
 			// 输出文件名格式，根据不同的构建格式和入口名称生成对应的文件名
 			fileName: (format, entryName) => `${entryName}.${format}.js`

@@ -1,6 +1,6 @@
 {
 	"name": "@meng-xi/uni-router",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "为 uni-app 提供类似 vue-router 风格的路由，并提供 utils 工具函数",
 	"readme": "README.md",
 	"keywords": [

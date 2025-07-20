@@ -1,6 +1,9 @@
-# @mengxi/uni-router
+# @meng-xi/uni-router
 
-`@mengxi/uni-router` 是一款为 uni-app 量身打造的路由库，提供与 `vue-router` 高度相似的路由风格，同时附带实用工具函数，助力开发者高效实现多平台路由管理。
+![npm](https://img.shields.io/npm/v/@meng-xi/uni-router?color=blue&style=flat-square) ![npm](https://img.shields.io/npm/dt/@meng-xi/uni-router?color=green&style=flat-square)
+![GitHub](https://img.shields.io/github/license/MengXi-Studio/uni-router?color=orange&style=flat-square) ![GitHub Repo stars](https://img.shields.io/github/stars/MengXi-Studio/uni-router?style=social)
+
+`@meng-xi/uni-router` 是一款为 uni-app 量身打造的路由库，提供与 `vue-router` 高度相似的路由风格，同时附带实用工具函数，助力开发者高效实现多平台路由管理。
 
 ## 目录
 
@@ -32,7 +35,7 @@
 使用 `pnpm` 进行安装：
 
 ```bash
-pnpm install @mengxi/uni-router
+pnpm install @meng-xi/uni-router
 ```
 
 ## 快速开始
@@ -40,7 +43,7 @@ pnpm install @mengxi/uni-router
 ### 初始化路由实例
 
 ```typescript
-import { MxRouter } from '@mengxi/uni-router'
+import { MxRouter } from '@meng-xi/uni-router'
 
 // 初始化路由实例，可传入路由配置
 const router = new MxRouter({
@@ -232,7 +235,7 @@ static invalidMethod(method: string): MxRouterError
 
 ## 贡献指南
 
-欢迎为 `@mengxi/uni-router` 贡献代码，步骤如下：
+欢迎为 `@meng-xi/uni-router` 贡献代码，步骤如下：
 
 1. Fork 仓库：在 GitHub 上 Fork 本项目。
 2. 克隆代码：将 Fork 后的项目克隆到本地。
