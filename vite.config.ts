@@ -26,7 +26,7 @@ export default defineConfig({
 			entry: resolve(__dirname, 'src/index.ts'),
 			formats: ['es', 'cjs', 'umd'],
 			name: 'MxRouter',
-			fileName: 'index'
+			fileName: (format, entryName) => `${entryName}.${format}.js`
 		}
 	}
 })
