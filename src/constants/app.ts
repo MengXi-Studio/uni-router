@@ -1,5 +1,5 @@
 /** 路由错误类型 */
-export enum MxRouterErrorType {
+export enum RouterErrorType {
 	/** 导航中止 */
 	NAVIGATION_ABORTED = 'NAVIGATION_ABORTED',
 	/** 导航重定向 */

@@ -1,10 +1,10 @@
-import type { AfterEachHook, MxRouterInterface, MxRouterMethod, MxRouterOptions, NavigationGuard, NavigationGuardNextCallback, RouteConfig, RouteLocationRaw } from '@/type'
-import { MxRouterErrorType } from '@/constants'
-import { MxRouterError } from './error'
+import type { AfterEachHook, RouterInterface, RouterMethod, RouterOptions, NavigationGuard, NavigationGuardNextCallback, RouteConfig, RouteLocationRaw } from '@/type'
+import { RouterErrorType } from '@/constants'
+import { RouterError } from './error'
 import { parseLocation, buildUrl, getCurrentRoute as getCurrentRouteUtil } from '@/utils'
 
-/** uni-app 路由实现类，实现了 MxRouterInterface 接口，提供了一系列路由操作方法和守卫机制 */
-export class MxRouter implements MxRouterInterface {
+/** uni-app 路由实现类，实现了 RouterInterface 接口，提供了一系列路由操作方法和守卫机制 */
+export class Router implements RouterInterface {
 	/**
 	 * 路由配置列表，存储路由相关的配置信息
 	 * 目前该属性未被使用，使用 @ts-ignore 忽略 TypeScript 未使用变量的警告
@@ -23,10 +23,10 @@ export class MxRouter implements MxRouterInterface {
 	private afterEachHooks: AfterEachHook[]
 
 	/**
-	 * 构造函数，初始化 MxRouter 实例
+	 * 构造函数，初始化 Router 实例
 	 * @param options 路由配置选项，包含路由配置列表等信息，默认为空对象
 	 */
-	constructor(options: MxRouterOptions = {}) {
+	constructor(options: RouterOptions = {}) {
 		this.routes = options.routes || []
 		this.beforeEachHooks = []
 		this.afterEachHooks = []
@@ -120,7 +120,7 @@ export class MxRouter implements MxRouterInterface {
 	 * @param method 导航方法，如 'navigateTo'、'redirectTo' 等
 	 * @returns 一个 Promise，导航成功时 resolve，失败时 reject
 	 */
-	private async navigate(location: RouteLocationRaw, method: MxRouterMethod): Promise<void> {
+	private async navigate(location: RouteLocationRaw, method: RouterMethod): Promise<void> {
 		const { path, query } = parseLocation(location)
 		const from = this.getCurrentRoute()
 		const to = {
@@ -134,7 +134,7 @@ export class MxRouter implements MxRouterInterface {
 			try {
 				await this.runGuard(hook, to, from)
 			} catch (err) {
-				if (err instanceof MxRouterError && err.type === MxRouterErrorType.NAVIGATION_REDIRECT && err.location) {
+				if (err instanceof RouterError && err.type === RouterErrorType.NAVIGATION_REDIRECT && err.location) {
 					return this.push(err.location as RouteLocationRaw)
 				}
 				return Promise.reject(err)
@@ -153,7 +153,7 @@ export class MxRouter implements MxRouterInterface {
 				hook(to, from)
 			}
 		} catch (err) {
-			return Promise.reject(MxRouterError.navigationFailed(err instanceof Error ? err.message : String(err)))
+			return Promise.reject(RouterError.navigationFailed(err instanceof Error ? err.message : String(err)))
 		}
 	}
 
@@ -168,9 +168,9 @@ export class MxRouter implements MxRouterInterface {
 		return new Promise((resolve, reject) => {
 			const next: NavigationGuardNextCallback = valid => {
 				if (valid === false) {
-					reject(MxRouterError.navigationAborted())
+					reject(RouterError.navigationAborted())
 				} else if (typeof valid === 'string' || (typeof valid === 'object' && valid !== null && !(valid instanceof Error))) {
-					reject(MxRouterError.navigationRedirect(valid))
+					reject(RouterError.navigationRedirect(valid))
 				} else {
 					resolve()
 				}
@@ -182,9 +182,9 @@ export class MxRouter implements MxRouterInterface {
 					Promise.resolve(guardResult)
 						.then(resolvedValue => {
 							if (resolvedValue === false) {
-								reject(MxRouterError.navigationAborted())
+								reject(RouterError.navigationAborted())
 							} else if (typeof resolvedValue === 'string' || (typeof resolvedValue === 'object' && resolvedValue !== null)) {
-								reject(MxRouterError.navigationRedirect(resolvedValue))
+								reject(RouterError.navigationRedirect(resolvedValue))
 							} else {
 								resolve()
 							}
@@ -203,15 +203,15 @@ export class MxRouter implements MxRouterInterface {
 	 * @param url 导航的目标 URL
 	 * @returns 一个 Promise，导航成功时 resolve，失败时 reject
 	 */
-	private callMxMethod(method: MxRouterMethod, url: string): Promise<void> {
+	private callMxMethod(method: RouterMethod, url: string): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const uniNav = uni[method]
 			if (typeof uniNav === 'function') {
 				;(uniNav as (options: { url: string }) => Promise<void>)({ url })
 					.then(resolve)
-					.catch(err => reject(MxRouterError.navigationFailed(err instanceof Error ? err.message : String(err))))
+					.catch(err => reject(RouterError.navigationFailed(err instanceof Error ? err.message : String(err))))
 			} else {
-				reject(MxRouterError.invalidMethod(method))
+				reject(RouterError.invalidMethod(method))
 			}
 		})
 	}

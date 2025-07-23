@@ -20,7 +20,7 @@ export interface RouteLocation {
 export type RouteLocationRaw = string | RouteLocation
 
 /** uni-app路由跳转方法类型 */
-export type MxRouterMethod = 'navigateTo' | 'redirectTo' | 'reLaunch' | 'switchTab' | 'navigateBack'
+export type RouterMethod = 'navigateTo' | 'redirectTo' | 'reLaunch' | 'switchTab' | 'navigateBack'
 
 /** 当前路由信息 */
 export interface Route {
@@ -100,13 +100,13 @@ export type NavigationGuard = (to: Route, from: Route | null, next: NavigationGu
 export type AfterEachHook = (to: Route, from: Route | null) => void
 
 /** 路由构造器选项 */
-export interface MxRouterOptions {
+export interface RouterOptions {
 	/** 路由配置数组 */
 	routes?: RouteConfig[]
 }
 
 /** uni-app路由类接口 */
-export interface MxRouterInterface {
+export interface RouterInterface {
 	/** 跳转到指定页面（保留当前页面） */
 	push(location: RouteLocationRaw): Promise<void>
 

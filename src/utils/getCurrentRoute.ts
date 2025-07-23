@@ -16,7 +16,6 @@ export function getCurrentRoute(currentPage: CurrentPage | null): Route | null {
 	let options: Record<string, string> = {}
 
 	// 在微信小程序、支付宝小程序、百度小程序、头条小程序、QQ 小程序平台下，获取页面参数
-	// #ifdef 是 uni-app 提供的条件编译指令，用于在不同平台下执行不同的代码
 	// 这里表示在指定的小程序平台下，从当前页面实例的 options 属性获取查询参数
 	// 若 options 不存在，则使用空对象
 	// #ifdef MP-WEIXIN || MP-ALIPAY || MP-BAIDU || MP-TOUTIAO || MP-QQ
