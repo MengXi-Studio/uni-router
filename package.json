@@ -1,7 +1,7 @@
 {
 	"name": "@meng-xi/uni-router",
 	"version": "0.1.1",
-	"description": "为 uni-app 提供类似 vue-router 风格的路由，并提供 utils 工具函数",
+	"description": "为 uni-app 提供类似 vue-router 风格的路由",
 	"readme": "README.md",
 	"keywords": [
 		"uni-app",
@@ -21,39 +21,28 @@
 		"email": "ksmengfang@163.com"
 	},
 	"contributors": [],
-	"funding": {},
 	"files": [
-		"dist",
-		"types"
+		"dist"
 	],
 	"main": "./dist/index.cjs.js",
 	"browser": "./dist/index.es.js",
 	"module": "./dist/index.es.js",
-	"types": "./types/index.d.ts",
+	"unpkg": "./dist/index.umd.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"types": "./types/index.d.ts",
+			"types": "./dist/index.d.ts",
 			"import": "./dist/index.es.js",
-			"require": "./dist/index.cjs.js"
-		},
-		"./router": {
-			"types": "./types/router.d.ts",
-			"import": "./dist/router.es.js",
-			"require": "./dist/router.cjs.js"
-		},
-		"./utils": {
-			"types": "./types/utils.d.ts",
-			"import": "./dist/utils.es.js",
-			"require": "./dist/utils.cjs.js"
+			"require": "./dist/index.cjs.js",
+			"browser": "./dist/index.umd.js"
 		}
 	},
 	"type": "module",
 	"scripts": {
 		"reset": "rimraf node_modules pnpm-lock.yaml && pnpm install",
 		"dev": "vite",
-		"build": "rimraf dist types && vite build"
+		"build": "vite build"
 	},
-	"config": {},
 	"dependencies": {},
 	"devDependencies": {
 		"@dcloudio/types": "^3.4.16",
@@ -63,16 +52,8 @@
 		"vite": "^7.0.0",
 		"vite-plugin-dts": "^4.5.4"
 	},
-	"peerDependencies": {},
-	"peerDependenciesMeta": {},
-	"optionalDependencies": {},
-	"bundledDependencies": [],
-	"engines": {},
-	"os": [],
-	"cpu": [],
 	"preferGlobal": false,
 	"private": false,
-	"publishConfig": {},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/MengXi-Studio/uni-router.git"

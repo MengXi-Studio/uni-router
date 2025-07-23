@@ -1,48 +1,20 @@
-/** TypeScript 配置文件，用于定义编译器的行为和编译范围 */
 {
-	/** 编译器选项，控制 TypeScript 编译器如何将 TypeScript 代码转换为 JavaScript 代码 */
 	"compilerOptions": {
-		// 项目基础路径，用于解析路径映射
 		"baseUrl": ".",
-		// 启用所有严格类型检查选项，增强代码的类型安全性
 		"strict": true,
-		// 禁止存在未使用的局部变量，减少代码冗余
-		"noUnusedLocals": true,
-		// 禁止存在未使用的函数参数，保持函数参数简洁
-		"noUnusedParameters": true,
-		// 禁止 switch 语句中出现没有 break 或 return 的 fallthrough 情况，避免逻辑错误
-		"noFallthroughCasesInSwitch": true,
-		// 禁止没有类型信息的副作用导入，确保导入模块有明确的类型定义
-		"noUncheckedSideEffectImports": true,
-		// 跳过对类型声明文件（.d.ts）的类型检查，以提高编译速度
-		"skipLibCheck": true,
-		// 项目根目录，用于解析非相对模块导入
-		"rootDir": ".",
-		// 编译输出目录
 		"outDir": "./dist",
-		// 指定编译输出的 JavaScript 版本为 ES2022
 		"target": "es2022",
-		// 指定生成的模块系统类型为最新的 ECMAScript 模块系统
 		"module": "esnext",
-		// 指定编译时要包含的内置库，包含 ES2022 标准库、DOM 库和 DOM 可迭代对象库
 		"lib": ["ES2022", "DOM", "DOM.Iterable"],
-		// 指定模块解析策略为 bundler 模式，适用于 Vite、Webpack 等打包工具
 		"moduleResolution": "bundler",
-		// 将每个文件作为单独的模块进行编译，便于与 Babel 等工具集成
 		"isolatedModules": true,
-		// 强制将所有文件视为 ES 模块，无论是否包含导入/导出语句
 		"moduleDetection": "force",
-		// 使用 ECMAScript 2022 标准的类字段定义语法
 		"useDefineForClassFields": true,
-		// 路径映射，方便模块导入
 		"paths": {
 			"@/*": ["src/*"]
 		},
-		// 指定要包含的类型声明文件
 		"types": ["vite/client", "@dcloudio/types"]
 	},
-	/** 指定要包含在编译过程中的文件或目录，这里包含 src 目录下的所有文件 */
 	"include": ["src/**/*"],
-	// 指定要从编译过程中排除的文件或目录
 	"exclude": ["node_modules"]
 }
