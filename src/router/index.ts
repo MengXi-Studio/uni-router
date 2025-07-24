@@ -24,7 +24,7 @@ export class Router implements RouterInterface {
 	 * 私有构造函数，防止外部直接实例化，保证单例模式的实现
 	 * @param options 路由配置选项，包含路由配置列表等信息，默认为空对象
 	 */
-	private constructor(options: RouterOptions = {}) {
+	constructor(options: RouterOptions = {}) {
 		// 初始化路由配置列表，若未传入则为空数组
 		this.routes = options.routes || []
 		// 初始化全局前置守卫列表为空数组
