@@ -17,7 +17,7 @@ export class Router implements RouterInterface {
 	// 全局后置钩子列表，在每次导航成功后依次执行
 	private afterEachHooks: AfterEachHook[]
 	// 存储用户自定义的 getCurrentRoute 函数
-	private static customGetCurrentRoute: (() => ReturnType<typeof getCurrentRouteUtil>) | undefined
+	private customGetCurrentRoute: (() => ReturnType<typeof getCurrentRouteUtil>) | undefined
 
 	/**
 	 * 构造函数，初始化 Router 实例
@@ -31,6 +31,8 @@ export class Router implements RouterInterface {
 		this.beforeEachHooks = []
 		// 初始化全局后置钩子列表为空数组
 		this.afterEachHooks = []
+		// 初始化用户自定义的 getCurrentRoute 函数，若未传入则为 undefined
+		this.customGetCurrentRoute = options.customGetCurrentRoute || void 0
 	}
 
 	/**
@@ -204,7 +206,15 @@ export class Router implements RouterInterface {
 	 * @param customFunction 自定义的 getCurrentRoute 函数
 	 */
 	static setCustomGetCurrentRoute(customFunction: () => ReturnType<typeof getCurrentRouteUtil>) {
-		Router.customGetCurrentRoute = customFunction
+		return Router.getInstance().setCustomGetCurrentRoute(customFunction)
+	}
+
+	/**
+	 * 设置自定义的 getCurrentRoute 函数
+	 * @param customFunction 自定义的 getCurrentRoute 函数
+	 */
+	setCustomGetCurrentRoute(customFunction: () => ReturnType<typeof getCurrentRouteUtil>) {
+		this.customGetCurrentRoute = customFunction
 	}
 
 	/**
@@ -222,8 +232,8 @@ export class Router implements RouterInterface {
 	 * @returns 当前页面的路由信息对象，如果获取失败则返回 null
 	 */
 	getCurrentRoute() {
-		if (Router.customGetCurrentRoute) {
-			return Router.customGetCurrentRoute()
+		if (this.customGetCurrentRoute) {
+			return this.customGetCurrentRoute()
 		}
 		const pages = getCurrentPages()
 		return getCurrentRouteUtil(pages[pages.length - 1])

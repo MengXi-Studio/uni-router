@@ -103,6 +103,11 @@ export type AfterEachHook = (to: Route, from: Route | null) => void
 export interface RouterOptions {
 	/** 路由配置数组 */
 	routes?: RouteConfig[]
+	/**
+	 * 自定义获取当前路由的函数
+	 * @returns 当前路由信息对象，如果获取失败则返回 null
+	 */
+	customGetCurrentRoute?: () => Route | null
 }
 
 /** uni-app路由类接口 */
