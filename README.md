@@ -10,11 +10,10 @@
 - [功能特性](#功能特性)
 - [安装](#安装)
 - [快速开始](#快速开始)
-  - [初始化路由实例](#初始化路由实例)
-  - [添加全局守卫](#添加全局守卫)
-  - [路由导航示例](#路由导航示例)
+  - [实例化使用](#实例化使用)
+  - [类使用](#类使用)
 - [API 文档](#api-文档)
-  - [MxRouter 类](#mxrouter-类)
+  - [Router 类](#router-类)
   - [工具函数](#工具函数)
 - [错误处理](#错误处理)
 - [贡献指南](#贡献指南)
@@ -40,13 +39,15 @@ pnpm install @meng-xi/uni-router
 
 ## 快速开始
 
-### 初始化路由实例
+### 实例化使用
+
+#### 初始化路由实例
 
 ```typescript
-import { MxRouter } from '@meng-xi/uni-router'
+import { Router } from '@meng-xi/uni-router'
 
 // 初始化路由实例，可传入路由配置
-const router = new MxRouter({
+const router = new Router({
 	routes: [
 		{
 			path: '/home',
@@ -60,7 +61,7 @@ const router = new MxRouter({
 })
 ```
 
-### 添加全局守卫
+#### 添加全局守卫
 
 ```typescript
 // 模拟用户认证状态
@@ -84,7 +85,7 @@ router.afterEach((to, from) => {
 })
 ```
 
-### 路由导航示例
+#### 路由导航示例
 
 ```typescript
 // 跳转到新页面（保留当前页面）
@@ -112,20 +113,92 @@ router.back()
 router.go(-2)
 ```
 
+### 类使用
+
+#### 设置路由单例
+
+```typescript
+import { Router } from '@meng-xi/uni-router'
+
+// 设置路由单例，可传入路由配置
+Router.getInstance({
+	routes: [
+		{
+			path: '/home',
+			meta: { title: '首页' }
+		},
+		{
+			path: '/admin',
+			meta: { requiresAuth: true }
+		}
+	]
+})
+```
+
+```typescript
+// 模拟用户认证状态
+const isAuthenticated = () => {
+	// 这里可实现实际的认证逻辑
+	return localStorage.getItem('token') !== null
+}
+
+// 全局前置守卫
+Router.beforeEach((to, from, next) => {
+	if (to.meta?.requiresAuth && !isAuthenticated()) {
+		next({ path: '/login', query: { redirect: to.fullPath } })
+	} else {
+		next()
+	}
+})
+
+// 全局后置钩子
+Router.afterEach((to, from) => {
+	console.log(`成功从 ${from?.path || '初始页面'} 导航到 ${to.path}`)
+})
+```
+
+#### 路由导航示例
+
+```typescript
+// 跳转到新页面（保留当前页面）
+Router.push('/products')
+
+// 带查询参数跳转
+Router.push({
+	path: '/search',
+	query: { keyword: '手机' }
+})
+
+// 替换当前页面
+Router.replace('/profile')
+
+// 重新启动应用并跳转
+Router.launch('/dashboard')
+
+// 切换到 tabBar 页面
+Router.tab('/tabBar/cart')
+
+// 返回上一页
+Router.back()
+
+// 返回指定页面数
+Router.go(-2)
+```
+
 ## API 文档
 
-### MxRouter 类
+### Router 类
 
-实现 `MxRouterInterface` 接口，提供以下核心方法：
+实现 `RouterInterface` 接口，提供以下核心方法：
 
 #### 构造函数
 
 ```typescript
-constructor(options: MxRouterOptions = {})
+constructor(options: RouterOptions = {})
 ```
 
 - **参数**：
-  - `options`（可选）：包含 `routes` 路由配置数组的对象。
+  - `options`（可选）：包含 `routes` 路由配置数组和 `customGetCurrentRoute` 自定义获取当前路由的函数的对象。
 
 #### 导航方法
 
@@ -147,9 +220,10 @@ constructor(options: MxRouterOptions = {})
 
 #### 其他方法
 
-| 方法名              | 描述                   | 参数 | 返回值                                           |
-| ------------------- | ---------------------- | ---- | ------------------------------------------------ |
-| **getCurrentRoute** | 获取当前页面的路由信息 | 无   | `Route \| null`（当前路由对象，失败返回 `null`） |
+| 方法名                       | 描述                         | 参数                                                              | 返回值                                           |
+| ---------------------------- | ---------------------------- | ----------------------------------------------------------------- | ------------------------------------------------ |
+| **getCurrentRoute**          | 获取当前页面的路由信息       | 无                                                                | `Route \| null`（当前路由对象，失败返回 `null`） |
+| **setCustomGetCurrentRoute** | 设置自定义获取当前路由的函数 | `customFunction: () => Route \| null`（自定义获取当前路由的函数） | `void`                                           |
 
 ### 工具函数
 
