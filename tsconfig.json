@@ -14,7 +14,7 @@
 		"paths": {
 			"@/*": ["src/*"]
 		},
-		"types": ["vite/client", "@dcloudio/types"]
+		"types": ["vite/client", "@types/node", "@dcloudio/types"]
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules"]

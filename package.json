@@ -5,8 +5,9 @@
 	"readme": "README.md",
 	"keywords": [
 		"uni-app",
-		"vue-router",
 		"router",
+		"uni-router",
+		"vue-router",
 		"navigation",
 		"routing",
 		"utils"
@@ -42,9 +43,9 @@
 	},
 	"type": "module",
 	"scripts": {
-		"reset": "rimraf node_modules pnpm-lock.yaml",
 		"dev": "vite",
-		"build": "vite build"
+		"build": "npm run clean && vite build",
+		"clean": "rimraf dist"
 	},
 	"dependencies": {},
 	"devDependencies": {
