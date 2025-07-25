@@ -1,21 +1,19 @@
 {
 	"compilerOptions": {
-		"baseUrl": ".",
-		"strict": true,
-		"outDir": "./dist",
-		"target": "es2022",
+		"target": "es2018",
+		"lib": ["ESNext"],
 		"module": "esnext",
-		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"moduleResolution": "bundler",
-		"skipLibCheck": true,
-		"isolatedModules": true,
-		"moduleDetection": "force",
-		"useDefineForClassFields": true,
 		"paths": {
-			"@/*": ["src/*"]
+			"@meng-xi/uni-router": ["./packages/lib/src/index.ts"]
 		},
-		"types": ["vite/client", "@types/node", "@dcloudio/types"]
+		"resolveJsonModule": true,
+		"types": ["@types/node", "@dcloudio/types"],
+		"strict": true,
+		"strictNullChecks": true,
+		"esModuleInterop": true,
+		"skipDefaultLibCheck": true,
+		"skipLibCheck": true
 	},
-	"include": ["src/**/*"],
-	"exclude": ["node_modules"]
+	"exclude": ["**/dist/**", "**/node_modules/**", "**/website/**"]
 }

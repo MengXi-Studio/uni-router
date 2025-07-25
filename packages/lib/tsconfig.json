@@ -1,0 +1,15 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"outDir": "./dist",
+		"isolatedModules": true,
+		"moduleDetection": "force",
+		"useDefineForClassFields": true,
+		"paths": {
+			"@/*": ["src/*"]
+		},
+		"types": ["vite/client"]
+	},
+	"include": ["src/**/*"]
+}
