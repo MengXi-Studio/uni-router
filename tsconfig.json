@@ -8,12 +8,11 @@
 			"@meng-xi/uni-router": ["./packages/lib/src/index.ts"]
 		},
 		"resolveJsonModule": true,
-		"types": ["@types/node", "@dcloudio/types"],
 		"strict": true,
 		"strictNullChecks": true,
 		"esModuleInterop": true,
 		"skipDefaultLibCheck": true,
 		"skipLibCheck": true
 	},
-	"exclude": ["**/dist/**", "**/node_modules/**", "**/website/**"]
+	"exclude": ["**/dist/**", "**/node_modules/**"]
 }

@@ -1,0 +1,15 @@
+root = true
+
+[*]
+# 设置为制表符或空格
+indent_style = tab
+# 定义每个缩进级别的列数以及软制表符的宽度
+indent_size = 2
+# 控制行尾符的表示方式
+end_of_line = lf
+# 控制字符集
+charset = utf-8
+# 设置为 true 以删除新行字符前的所有空白字符，设置为 false 以确保不会删除
+trim_trailing_whitespace = true
+# 设置为 true 以确保保存文件时以新行字符结尾，设置为 false 以确保不会以新行字符结尾
+insert_final_newline = true
