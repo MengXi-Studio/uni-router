@@ -11,9 +11,7 @@
 		:hover-start-time="hoverStartTime"
 		:hover-stay-time="hoverStayTime"
 		:target="target">
-		<template #default v-if="slots.default">
-			<slot></slot>
-		</template>
+		<slot></slot>
 	</navigator>
 </template>
 
