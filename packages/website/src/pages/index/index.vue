@@ -4,11 +4,18 @@
 		<view class="text-area" @click="toTest">
 			<text class="title">{{ title }}</text>
 		</view>
+
+		<view>111</view>
+
+		<RouterLink to="/pages/test/index">
+			<text>测试</text>
+		</RouterLink>
 	</view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { RouterLink } from '@meng-xi/uni-router'
 import router from '@/router'
 
 const title = ref('Hello')

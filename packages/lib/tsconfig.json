@@ -1,21 +1,21 @@
 {
 	"compilerOptions": {
 		"baseUrl": ".",
+		"target": "es2018",
+		"lib": ["ESNext"],
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"paths": {
+			"@/*": ["src/*"]
+		},
 		"strict": true,
 		"outDir": "./dist",
-		"target": "es2022",
-		"module": "esnext",
-		"lib": ["ES2022", "DOM", "DOM.Iterable"],
-		"moduleResolution": "bundler",
 		"skipLibCheck": true,
 		"isolatedModules": true,
 		"moduleDetection": "force",
 		"useDefineForClassFields": true,
-		"paths": {
-			"@/*": ["src/*"]
-		},
-		"types": ["vite/client", "@types/node", "@dcloudio/types"]
+		"types": ["vite/client", "@types/node", "@dcloudio/types", "vue"]
 	},
-	"include": ["src/**/*"],
+	"include": ["src/**/*.ts", "src/**/*.vue"],
 	"exclude": ["node_modules"]
 }

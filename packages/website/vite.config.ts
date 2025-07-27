@@ -2,13 +2,12 @@ import { defineConfig } from 'vite'
 import uni from '@dcloudio/vite-plugin-uni'
 import AutoImport from 'unplugin-auto-import/vite'
 import path from 'path'
-import { injectIco } from './plugins'
+import { injectIco, copyFile } from './plugins'
 
 function resolve(dir: string) {
 	return path.resolve(__dirname, dir)
 }
 
-// https://vitejs.dev/config/
 export default defineConfig(config => {
 	return {
 		define: {},
@@ -28,7 +27,12 @@ export default defineConfig(config => {
 				vueTemplate: true
 			}),
 
-			injectIco('/static/')
+			injectIco('/static/'),
+
+			copyFile({
+				sourceDir: resolve('dist/build/h5'),
+				targetDir: resolve('../../website')
+			})
 		],
 
 		resolve: {
