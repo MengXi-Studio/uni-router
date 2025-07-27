@@ -1,4 +1,4 @@
-import type { AfterEachHook, RouterInterface, RouterMethod, RouterOptions, NavigationGuard, NavigationGuardNextCallback, RouteConfig, RouteLocationRaw } from '@/type'
+import type { AfterEachHook, RouterInterface, RouterMethod, RouterOptions, NavigationGuard, NavigationGuardNextCallback, RouteConfig, RouteLocationRaw } from '@/types'
 import { RouterErrorType } from '@/constants'
 import { RouterError } from './error'
 import { parseLocation, buildUrl, getCurrentRoute as getCurrentRouteUtil } from '@/utils'

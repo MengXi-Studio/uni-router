@@ -11,7 +11,13 @@ export default defineConfig({
 	},
 
 	plugins: [
-		vue(),
+		vue({
+			template: {
+				compilerOptions: {
+					isCustomElement: tag => ['navigator'].includes(tag)
+				}
+			}
+		}),
 
 		dts({
 			outDir: 'dist',

@@ -1,4 +1,4 @@
-import { CurrentPage, Route } from '@/type'
+import { CurrentPage, Route } from '@/types'
 import { buildUrl } from './buildUrl'
 
 /**

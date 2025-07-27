@@ -1,4 +1,4 @@
-import { RouteLocationRaw } from '@/type'
+import { RouteLocationRaw } from '@/types'
 
 /**
  * 解析路由位置，将传入的路由位置信息转换为统一的路径和查询参数格式
@@ -16,7 +16,8 @@ export function parseLocation(location: RouteLocationRaw): { path: string; query
 	// 若是，则使用 Object.entries 将其转换为键值对数组，再通过 map 方法将每个值转换为字符串
 	// 最后使用 Object.fromEntries 将处理后的键值对数组转换回对象
 	// 若不满足条件，则 query 为 undefined
-	const query = typeof location.query === 'object' && location.query !== null ? Object.fromEntries(Object.entries(location.query).map(([key, value]) => [key, String(value)])) : undefined
+	const query =
+		typeof location.query === 'object' && location.query !== null ? Object.fromEntries(Object.entries(location.query).map(([key, value]) => [key, String(value)])) : undefined
 
 	// 返回解析后的路径和查询参数对象
 	return {

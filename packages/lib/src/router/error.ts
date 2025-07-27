@@ -1,5 +1,5 @@
 import { RouterErrorType } from '@/constants'
-import type { RouteLocationRaw } from '@/type'
+import type { RouteLocationRaw } from '@/types'
 
 /**
  * 路由错误类，继承自 JavaScript 的原生 Error 类，用于表示在路由过程中出现的各类错误
