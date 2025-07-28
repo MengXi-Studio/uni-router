@@ -7,11 +7,13 @@
 
 		<view>111</view>
 
-		<router-link to="/pages/test/index">
-			<text>测试</text>
-		</router-link>
+		<navigator url="/pages/test/index">
+			<text>原生组件测试</text>
+		</navigator>
 
-		<mx-router-link>1</mx-router-link>
+		<mx-router-link to="/pages/test/index">
+			<text>MX组件测试</text>
+		</mx-router-link>
 	</view>
 </template>
 

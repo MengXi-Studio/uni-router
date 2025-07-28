@@ -45,6 +45,7 @@ export default {
 			default: 'push'
 		},
 		delta: Number,
+		// #ifdef APP
 		animationType: {
 			type: String,
 			default: 'none'
@@ -53,18 +54,23 @@ export default {
 			type: Number,
 			default: 300
 		},
+		// #endif
+		// #ifdef WEB || APP-NVUE
 		renderLink: {
 			type: Boolean,
 			default: true
 		},
+		// #endif
 		hoverClass: {
 			type: String,
 			default: 'none'
 		},
+		// #ifdef MP-WEIXIN
 		hoverStopPropagation: {
 			type: Boolean,
 			default: false
 		},
+		// #endif
 		hoverStartTime: {
 			type: Number,
 			default: 50
@@ -73,10 +79,12 @@ export default {
 			type: Number,
 			default: 600
 		},
+		// #ifdef MP-WEIXIN || MP-BAIDU || MP-QQ
 		target: {
 			type: String,
 			default: 'self'
 		}
+		// #endif
 	},
 	emits: ['register'],
 	data() {
@@ -92,13 +100,14 @@ export default {
 	computed: {
 		/** 合并后的 props */
 		getProps() {
-			return { ...this.props, ...this.propsRef }
+			return { ...this.$props, ...this.propsRef }
 		}
 	},
 	watch: {
 		getProps: {
-			handler(newProps) {
-				const { to, method } = newProps
+			immediate: true,
+			handler(val) {
+				const { to, method } = val
 
 				// 解析目标路由位置信息，获取路径和查询参数
 				const { path, query } = parseLocation(to || '')
@@ -146,12 +155,17 @@ export default {
 		},
 
 		/**
-		 * 设置 props 的异步函数
+		 * 设置组件的 props，合并传入的 props 并过滤掉组件定义中不存在的属性
 		 *
-		 * @param routerLinkProps 要设置的 RouterLink props
+		 * @param {Object} routerLinkProps - 要设置的 RouterLink props 对象
 		 */
 		setProps(routerLinkProps) {
-			this.propsRef = deepMerge(this.propsRef || {}, routerLinkProps)
+			// 合并props
+			const props = deepMerge(this.propsRef || {}, routerLinkProps)
+			// 获取组件定义的 props 键名
+			const validProps = Object.keys(this.$props)
+			// 过滤props上不存在的属性
+			this.propsRef = Object.fromEntries(Object.entries(props).filter(([key]) => validProps.includes(key)))
 		}
 	}
 }

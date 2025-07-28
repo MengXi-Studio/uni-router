@@ -43,7 +43,7 @@
 			"import": "./dist/index.es.js",
 			"require": "./dist/index.cjs.js"
 		},
-		"./dist/components/*": "./dist/components/*"
+		"./components/*": "./dist/components/*"
 	},
 	"scripts": {
 		"build": "vite build",

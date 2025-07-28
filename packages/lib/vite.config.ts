@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
 import { resolve } from 'path'
+import { copyFile } from './plugins'
 
 export default defineConfig({
 	resolve: {
@@ -18,6 +19,11 @@ export default defineConfig({
 			include: ['src/**/*.ts', 'src/**/*.vue'],
 			insertTypesEntry: true,
 			rollupTypes: true
+		}),
+
+		copyFile({
+			sourceDir: resolve('src/components'),
+			targetDir: resolve('dist/components')
 		})
 	],
 
