@@ -36,10 +36,7 @@ import { parseLocation, buildUrl, deepMerge } from './utils.js'
 export default {
 	name: 'RouterLink',
 	props: {
-		to: {
-			type: [String, Object],
-			required: true
-		},
+		to: [String, Object],
 		method: {
 			type: String,
 			default: 'push'

@@ -1,3 +1,3 @@
-import { Link } from './link/link.vue'
+import Router from './router/router.vue'
 
-export { Link }
+export { Router }

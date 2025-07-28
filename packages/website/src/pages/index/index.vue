@@ -11,15 +11,20 @@
 			<text>原生组件测试</text>
 		</navigator>
 
-		<mx-link to="/pages/test/index">
+		<mx-router @register="register">
 			<text>MX组件测试</text>
-		</mx-link>
+		</mx-router>
 	</view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import router from '@/router'
+import { useMxRouter } from '@meng-xi/uni-router'
+
+const [register] = useMxRouter({
+	to: '/pages/test/index'
+})
 
 const title = ref('Hello')
 

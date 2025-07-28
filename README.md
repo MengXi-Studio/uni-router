@@ -15,6 +15,10 @@
 - [API 参考](#api-参考)
   - [Router 类](#router-类)
   - [实用工具](#实用工具)
+- [Hooks](#hooks)
+- [组件](#组件)
+  - [配置](#配置)
+  - [Router 组件](#router组件)
 - [错误处理](#错误处理)
 - [贡献指南](#贡献指南)
 - [许可证](#许可证)
@@ -38,6 +42,10 @@
   - `parseLocation`：解析路由位置
   - `buildUrl`：构建完整 URL
   - `getCurrentRoute`：获取当前路由
+- **Hooks**：
+  - `useMxRouter`：获取 Router 实例
+- **组件**：
+  - `Router`：路由组件
 - **全平台适配**：完美支持 H5、小程序和 App
 
 ## 安装指南
@@ -229,6 +237,140 @@ getCurrentRoute(currentPage: CurrentPage | null): Route | null
 - **参数**：
   - `currentPage`：当前页面实例（可为 null）
 - **返回**：当前路由对象或 null（获取失败时）
+
+## Hooks
+
+### `useMxRouter` 用于管理 `Router` 组件实例并提供操作方法
+
+注意：该 `Hook` 只支持 `vue3` 版本
+
+```vue
+<template>
+	<mx-router @register="register">首页</mx-router>
+</template>
+
+<script setup lang="ts">
+import { useMxRouter } from '@meng-xi/uni-router'
+
+const [register, methods] = useMxRouter({
+	to: '/pages/index/index'
+})
+</script>
+```
+
+#### 参数
+
+| 属性                 | 描述                                              | 类型                                                                                    | 默认值     |
+| -------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------- |
+| to                   | 路由地址                                          | RouterLinkProps                                                                         | -          |
+| method               | 跳转方式                                          | 'push' \| 'replace' \| 'tab' \| 'launch' \| 'back' \| 'exit'                            | 'push'     |
+| delta                | 回退层数                                          | number                                                                                  | -          |
+| animationType        | 窗口动画类型                                      | UniApp.NavigateToOptions['animationType'] & UniApp.NavigateBackOptions['animationType'] | pop-in/out |
+| animationDuration    | 动画持续时间                                      | number                                                                                  | 300        |
+| renderLink           | 是否给 navigator 组件加一层 a 标签控制 ssr 渲染   | boolean                                                                                 | true       |
+| hoverClass           | 自定义悬停样式类名                                | string                                                                                  | 'none'     |
+| hoverStopPropagation | 指定是否阻止本节点的祖先节点出现点击态            | boolean                                                                                 | false      |
+| hoverStartTime       | 按住后多久出现点击态，单位毫秒                    | number                                                                                  | 50         |
+| hoverStayTime        | 手指松开后点击态保留时间，单位毫秒                | number                                                                                  | 600        |
+| target               | 在哪个小程序目标上发生跳转，值域 self/miniProgram | string                                                                                  | 'self'     |
+
+## 组件
+
+### 配置
+
+建议使用 `easycom` 来简化组件的引入和注册
+
+#### NPM
+
+```json
+// pages.json
+{
+	"easycom": {
+		"custom": {
+			"^mx-(.*)": "@meng-xi/uni-router/components/$1/$1.vue"
+		}
+	}
+}
+```
+
+#### HBuilderX
+
+如果你是通过插件市场导入到 [`HBuilderX`](https://ext.dcloud.net.cn/plugin?id=24456) 的，需要修改一下组件路径
+
+```json
+// pages.json
+{
+	"easycom": {
+		"custom": {
+			"^mx-(.*)": "@/js_sdk/PedroQue99-router/PedroQue99-router/components/$1/$1.vue"
+		}
+	}
+}
+```
+
+#### 配置全局组件类型
+
+在 `vscode` 中使用时，为了有组件的类型提示和自动填充，需要配置全局组件类型声明。
+
+```json
+// tsconfig.json
+{
+	"compilerOptions": {
+		"types": ["@meng-xi/uni-router/components/global"]
+	}
+}
+```
+
+如果是使用 `WebStorm`，可能需要在 main.ts 文件中导入 global.d.ts 文件。
+
+```typescript
+// main.ts
+import '@meng-xi/uni-router/components/index.d.ts'
+```
+
+### Router 组件
+
+#### 介绍
+
+`Router` 组件用于在应用中进行路由导航。它提供了一种声明式的方式来定义路由链接和导航行为。
+
+#### 引入
+
+```typescript
+import Router from '@meng-xi/uni-router/components/router/router.vue'
+```
+
+#### 基础用法
+
+```vue
+<template>
+	<mx-router to="/pages/index/index">首页</mx-router>
+</template>
+```
+
+#### API
+
+##### RouterProps
+
+| 属性                 | 描述                                              | 类型                                                                                    | 默认值     |
+| -------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------- |
+| to                   | 路由地址                                          | RouterLinkProps                                                                         | -          |
+| method               | 跳转方式                                          | 'push' \| 'replace' \| 'tab' \| 'launch' \| 'back' \| 'exit'                            | 'push'     |
+| delta                | 回退层数                                          | number                                                                                  | -          |
+| animationType        | 窗口动画类型                                      | UniApp.NavigateToOptions['animationType'] & UniApp.NavigateBackOptions['animationType'] | pop-in/out |
+| animationDuration    | 动画持续时间                                      | number                                                                                  | 300        |
+| renderLink           | 是否给 navigator 组件加一层 a 标签控制 ssr 渲染   | boolean                                                                                 | true       |
+| hoverClass           | 自定义悬停样式类名                                | string                                                                                  | 'none'     |
+| hoverStopPropagation | 指定是否阻止本节点的祖先节点出现点击态            | boolean                                                                                 | false      |
+| hoverStartTime       | 按住后多久出现点击态，单位毫秒                    | number                                                                                  | 50         |
+| hoverStayTime        | 手指松开后点击态保留时间，单位毫秒                | number                                                                                  | 600        |
+| target               | 在哪个小程序目标上发生跳转，值域 self/miniProgram | string                                                                                  | 'self'     |
+
+##### RouterSlots
+
+| 插槽    | 描述           | 属性 |
+| ------- | -------------- | ---- |
+| default | 自定义默认内容 | -    |
 
 ## 错误处理
 

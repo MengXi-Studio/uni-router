@@ -1,7 +1,7 @@
 import { RouteLocationRaw } from '@/types'
 
 /** 路由链接组件 Props */
-export interface RouterLinkProps {
+export interface MxRouterProps {
 	/** 路由地址 */
 	to: RouteLocationRaw
 	/** 跳转方式 */
@@ -9,7 +9,7 @@ export interface RouterLinkProps {
 	/** 回退层数 */
 	delta?: number
 	/** 窗口动画类型 */
-	animationType?: 'slide-in-right' | 'slide-in-left' | 'slide-in-top' | 'slide-in-bottom' | 'pop-in' | 'fade-in' | 'zoom-out' | 'zoom-fade-out' | 'none'
+	animationType?: UniApp.NavigateToOptions['animationType'] & UniApp.NavigateBackOptions['animationType']
 	/** 动画持续时间 */
 	animationDuration?: number
 	/** 是否给 navigator 组件加一层 a 标签控制 ssr 渲染 */
@@ -27,11 +27,11 @@ export interface RouterLinkProps {
 }
 
 /** 路由链接组件的方法 */
-export interface RouterLinkActionType {
-	setProps: (routerLinkProps: RouterLinkProps) => Promise<void>
+export interface MxRouterActionType {
+	setProps: (mxRouterProps: MxRouterProps) => Promise<void>
 }
 
 /** 路由链接组件的 emit 类型 */
-export type RouterLinkEmits = {
-	(e: 'register', instance: RouterLinkActionType): void
+export type MxRouterEmits = {
+	(e: 'register', instance: MxRouterActionType): void
 }

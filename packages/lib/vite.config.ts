@@ -17,6 +17,7 @@ export default defineConfig({
 			staticImport: true,
 			copyDtsFiles: true,
 			include: ['src/**/*.ts', 'src/**/*.vue'],
+			exclude: ['src/types/shime-uni.d.ts', 'src/types/env.d.ts', 'src/components/index.d.ts'],
 			insertTypesEntry: true,
 			rollupTypes: true
 		}),
