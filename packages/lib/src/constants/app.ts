@@ -9,3 +9,6 @@ export enum RouterErrorType {
 	/** 无效方法 */
 	INVALID_METHOD = 'INVALID_METHOD'
 }
+
+/** 支持动画的平台列表 */
+export const ANIMATION_SUPPORTED_PLATFORMS: string[] = ['app', 'app-plus', 'app-plus-nvue', 'app-nvue', 'app-android', 'app-ios', 'app-harmony']

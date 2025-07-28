@@ -19,6 +19,22 @@ export interface RouteLocation {
 /** 路由位置描述，可以是字符串路径或RouteLocation对象 */
 export type RouteLocationRaw = string | RouteLocation
 
+/** 窗口显示动画配置 */
+export interface RouterOpenAnimation {
+	/** 动画类型 */
+	type?: UniApp.NavigateToOptions['animationType']
+	/** 动画持续时间 */
+	duration?: number
+}
+
+/** 窗口关闭动画配置 */
+export interface RouterCloseAnimation {
+	/** 动画类型 */
+	type?: UniApp.NavigateBackOptions['animationType']
+	/** 动画持续时间 */
+	duration?: number
+}
+
 /** uni-app路由跳转方法类型 */
 export type RouterMethod = 'navigateTo' | 'redirectTo' | 'reLaunch' | 'switchTab' | 'navigateBack'
 
