@@ -27,6 +27,16 @@ export default defineConfig({
 			formats: ['es', 'cjs', 'umd'],
 			name: 'MxRouter',
 			fileName: (format, entryName) => `${entryName}.${format}.js`
+		},
+
+		rollupOptions: {
+			external: ['vue', 'uni'],
+			output: {
+				globals: {
+					vue: 'Vue',
+					uni: 'uni'
+				}
+			}
 		}
 	}
 })
