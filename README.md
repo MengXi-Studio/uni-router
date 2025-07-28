@@ -316,12 +316,12 @@ const [register, methods] = useMxRouter({
 // tsconfig.json
 {
 	"compilerOptions": {
-		"types": ["@meng-xi/uni-router/components/global"]
+		"types": ["@meng-xi/uni-router/components/index"]
 	}
 }
 ```
 
-如果是使用 `WebStorm`，可能需要在 main.ts 文件中导入 global.d.ts 文件。
+如果是使用 `WebStorm`，可能需要在 main.ts 文件中导入 index.d.ts 文件。
 
 ```typescript
 // main.ts

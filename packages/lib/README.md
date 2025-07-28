@@ -1,7 +1,8 @@
 # @meng-xi/uni-router
 
 ![npm](https://img.shields.io/npm/v/@meng-xi/uni-router?color=blue&style=flat-square) ![npm](https://img.shields.io/npm/dt/@meng-xi/uni-router?color=green&style=flat-square)
-![GitHub](https://img.shields.io/github/license/MengXi-Studio/uni-router?color=orange&style=flat-square) ![GitHub Repo stars](https://img.shields.io/github/stars/MengXi-Studio/uni-router?style=social)
+![GitHub](https://img.shields.io/github/license/MengXi-Studio/uni-router?color=orange&style=flat-square)
+![GitHub Repo stars](https://img.shields.io/github/stars/MengXi-Studio/uni-router?style=social)
 
 `@meng-xi/uni-router` 是一个专为 uni-app 开发的路由管理库，采用类似 `vue-router` 的设计风格，并提供丰富的工具函数，帮助开发者轻松实现跨平台路由管理。
 
@@ -10,15 +11,15 @@
 - [核心功能](#核心功能)
 - [安装指南](#安装指南)
 - [快速入门](#快速入门)
-	- [实例化使用](#实例化使用)
-	- [类使用](#类使用)
+  - [实例化使用](#实例化使用)
+  - [类使用](#类使用)
 - [API 参考](#api-参考)
-	- [Router 类](#router-类)
-	- [实用工具](#实用工具)
+  - [Router 类](#router-类)
+  - [实用工具](#实用工具)
 - [Hooks](#hooks)
 - [组件](#组件)
-	- [配置](#配置)
-	- [Router 组件](#router组件)
+  - [配置](#配置)
+  - [Router 组件](#router组件)
 - [错误处理](#错误处理)
 - [贡献指南](#贡献指南)
 - [许可证](#许可证)
@@ -27,25 +28,25 @@
 
 - **类 `vue-router` API**：与 `vue-router` 相似的 API 设计，学习成本低，迁移简单
 - **多种导航方式**：
-	- `push`：保留当前页面的跳转
-	- `replace`：替换当前页面
-	- `launch`：重启应用并跳转
-	- `tab`：切换 tabBar 页面
-	- `go`/`back`：页面返回控制
+  - `push`：保留当前页面的跳转
+  - `replace`：替换当前页面
+  - `launch`：重启应用并跳转
+  - `tab`：切换 tabBar 页面
+  - `go`/`back`：页面返回控制
 - **路由守卫**：
-	- `beforeEach`：导航前执行（适合权限验证）
-	- `afterEach`：导航后执行（适合埋点统计）
+  - `beforeEach`：导航前执行（适合权限验证）
+  - `afterEach`：导航后执行（适合埋点统计）
 - **实用方法**:
-	- `getCurrentRoute`: 获取当前路由信息
-	- `setCustomGetCurrentRoute`: 设置自定义获取当前路由的函数
+  - `getCurrentRoute`: 获取当前路由信息
+  - `setCustomGetCurrentRoute`: 设置自定义获取当前路由的函数
 - **实用工具**：
-	- `parseLocation`：解析路由位置
-	- `buildUrl`：构建完整 URL
-	- `getCurrentRoute`：获取当前路由
+  - `parseLocation`：解析路由位置
+  - `buildUrl`：构建完整 URL
+  - `getCurrentRoute`：获取当前路由
 - **Hooks**：
-	- `useMxRouter`：获取 Router 实例
+  - `useMxRouter`：获取 Router 实例
 - **组件**：
-	- `Router`：路由组件
+  - `Router`：路由组件
 - **全平台适配**：完美支持 H5、小程序和 App
 
 ## 安装指南
@@ -212,7 +213,7 @@ parseLocation(location: RouteLocationRaw): { path: string; query?: Record<string
 
 - **功能**：将路由位置信息统一解析为路径和查询参数对象
 - **参数**：
-	- `location`：支持字符串或对象格式的路由位置信息
+  - `location`：支持字符串或对象格式的路由位置信息
 - **返回**：包含路径字符串和可选查询参数的对象
 
 #### `buildUrl`
@@ -223,8 +224,8 @@ buildUrl(path: string, query?: Record<string, string | number | boolean>): strin
 
 - **功能**：根据路径和查询参数构建完整 URL
 - **参数**：
-	- `path`：目标路径字符串
-	- `query`（可选）：查询参数对象
+  - `path`：目标路径字符串
+  - `query`（可选）：查询参数对象
 - **返回**：完整的 URL 字符串
 
 #### `getCurrentRoute`
@@ -235,7 +236,7 @@ getCurrentRoute(currentPage: CurrentPage | null): Route | null
 
 - **功能**：获取当前页面的路由信息（支持多平台差异处理）
 - **参数**：
-	- `currentPage`：当前页面实例（可为 null）
+  - `currentPage`：当前页面实例（可为 null）
 - **返回**：当前路由对象或 null（获取失败时）
 
 ## Hooks
@@ -316,12 +317,12 @@ const [register, methods] = useMxRouter({
 // tsconfig.json
 {
 	"compilerOptions": {
-		"types": ["@meng-xi/uni-router/components/global"]
+		"types": ["@meng-xi/uni-router/components/index"]
 	}
 }
 ```
 
-如果是使用 `WebStorm`，可能需要在 main.ts 文件中导入 global.d.ts 文件。
+如果是使用 `WebStorm`，可能需要在 main.ts 文件中导入 index.d.ts 文件。
 
 ```typescript
 // main.ts
@@ -393,7 +394,7 @@ static navigationRedirect(location: string | RouteLocationRaw): MxRouterError
 
 - **用途**：创建导航重定向错误（用于路由重定向场景）
 - **参数**：
-	- `location`：重定向目标位置
+  - `location`：重定向目标位置
 - **返回**：导航重定向错误实例
 
 #### `navigationFailed`
@@ -404,7 +405,7 @@ static navigationFailed(message: string): MxRouterError
 
 - **用途**：创建导航失败错误（用于导航异常场景）
 - **参数**：
-	- `message`：错误描述信息
+  - `message`：错误描述信息
 - **返回**：导航失败错误实例
 
 #### `invalidMethod`
@@ -415,7 +416,7 @@ static invalidMethod(method: string): MxRouterError
 
 - **用途**：创建无效方法错误（用于调用非法导航方法场景）
 - **参数**：
-	- `method`：无效的方法名称
+  - `method`：无效的方法名称
 - **返回**：无效方法错误实例
 
 ## 贡献指南
