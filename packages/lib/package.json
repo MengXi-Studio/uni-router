@@ -51,14 +51,15 @@
 		"prepublishOnly": "pnpm build"
 	},
 	"peerDependencies": {
-		"@dcloudio/types": "^3.4.8"
+		"@dcloudio/types": "^3.4.8",
+		"vue": "^3.4.21"
 	},
-	"dependencies": {},
 	"devDependencies": {
 		"@dcloudio/types": "^3.4.16",
 		"@types/node": "^24.0.15",
 		"vite": "^7.0.0",
 		"vite-plugin-dts": "^4.5.4",
-		"vue": "^3.4.21"
+		"vue": "^3.4.21",
+		"vue-tsc": "^2.2.12"
 	}
 }
