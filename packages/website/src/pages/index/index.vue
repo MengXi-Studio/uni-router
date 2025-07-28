@@ -11,9 +11,9 @@
 			<text>原生组件测试</text>
 		</navigator>
 
-		<mx-router-link to="/pages/test/index">
+		<mx-link to="/pages/test/index">
 			<text>MX组件测试</text>
-		</mx-router-link>
+		</mx-link>
 	</view>
 </template>
 
