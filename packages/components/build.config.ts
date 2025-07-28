@@ -10,7 +10,7 @@ export default defineBuildConfig({
 	clean: true,
 	externals: [/\.vue$/],
 	rollup: {
-		emitCJS: true,
-		inlineDependencies: true
+		emitCJS: false,
+		inlineDependencies: false
 	}
 })
