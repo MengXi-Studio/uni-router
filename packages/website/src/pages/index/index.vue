@@ -7,15 +7,16 @@
 
 		<view>111</view>
 
-		<RouterLink to="/pages/test/index">
+		<router-link to="/pages/test/index">
 			<text>测试</text>
-		</RouterLink>
+		</router-link>
+
+		<mx-router-link>1</mx-router-link>
 	</view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RouterLink } from '@meng-xi/uni-router'
 import router from '@/router'
 
 const title = ref('Hello')

@@ -42,7 +42,8 @@
 			"browser": "./dist/index.umd.js",
 			"import": "./dist/index.es.js",
 			"require": "./dist/index.cjs.js"
-		}
+		},
+		"./dist/components/*": "./dist/components/*"
 	},
 	"scripts": {
 		"build": "vite build",
