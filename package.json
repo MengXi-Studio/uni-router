@@ -4,19 +4,13 @@
 	"version": "0.1.4",
 	"private": true,
 	"packageManager": "pnpm@10.11.0",
+	"engines": {
+		"node": ">=22.14.0"
+	},
 	"description": "为 uni-app 提供类似 vue-router 风格的路由",
-	"author": {
-		"name": "PedroQue99",
-		"email": "ksmengfang@163.com"
-	},
-	"license": "MIT",
-	"homepage": "https://github.com/MengXi-Studio/uni-router#readme",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/MengXi-Studio/uni-router.git"
-	},
-	"bugs": "https://github.com/MengXi-Studio/uni-router/issues",
-	"sideEffects": false,
+	"workspaces": [
+		"packages/*"
+	],
 	"scripts": {
 		"stub": "pnpm -r --filter=./packages/* --parallel run stub",
 		"dev": "pnpm stub",

@@ -50,10 +50,6 @@
 		"stub": "vite build",
 		"prepublishOnly": "pnpm build"
 	},
-	"peerDependencies": {
-		"@dcloudio/types": "^3.4.8",
-		"vue": "^3.4.21"
-	},
 	"devDependencies": {
 		"@dcloudio/types": "^3.4.16",
 		"@types/node": "^24.0.15",
