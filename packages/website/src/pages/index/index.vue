@@ -20,7 +20,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import router from '@/router'
-import { useMxRouter } from '@meng-xi/uni-router'
+import { useMxRouter } from '../../../../router/src'
 
 const [register] = useMxRouter({
 	to: '/pages/test/index'

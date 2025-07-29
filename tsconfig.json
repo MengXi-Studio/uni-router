@@ -5,7 +5,7 @@
 		"module": "esnext",
 		"moduleResolution": "bundler",
 		"paths": {
-			"@meng-xi/uni-router": ["./packages/lib/src/index.ts"]
+			"@meng-xi/uni-router": ["packages/router/src/index.ts"]
 		},
 		"resolveJsonModule": true,
 		"strict": true,

@@ -1,4 +1,4 @@
-import { Router } from '@meng-xi/uni-router'
+import { Router } from '../../../router/src'
 
 const router = new Router()
 

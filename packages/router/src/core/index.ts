@@ -13,7 +13,7 @@ import type {
 import { RouterErrorType } from '@/constants'
 import { RouterError } from './error'
 import { parseLocation, buildUrl, getCurrentRoute as getCurrentRouteUtil } from '@/utils'
-import { isAnimationSupported } from '@/utils/router/isAnimationSupported'
+import { isAnimationSupported } from '@/utils/core/isAnimationSupported'
 
 /**
  * uni-app 路由实现类，实现了 RouterInterface 接口，提供了一系列路由操作方法和守卫机制
