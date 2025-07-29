@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"target": "es2018",
-		"lib": ["ESNext"],
+		"lib": ["ESNext", "DOM"],
 		"module": "esnext",
 		"moduleResolution": "bundler",
 		"paths": {
@@ -17,5 +17,5 @@
 		"types": ["vite/client", "@types/node", "@dcloudio/types", "vue"]
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue"],
-	"exclude": ["node_modules"]
+	"exclude": ["node_modules", "dist"]
 }

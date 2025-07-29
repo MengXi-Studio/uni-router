@@ -7,7 +7,7 @@
 		"module": "esnext",
 		"moduleResolution": "node",
 		"resolveJsonModule": true,
-		"types": ["@dcloudio/types"],
+		"types": ["@dcloudio/types", "vue", "vite/client"],
 		"strict": true,
 		"sourceMap": true,
 		"esModuleInterop": true,
