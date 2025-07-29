@@ -13,7 +13,7 @@ Get started with the [documentation]().
 
 ## Quickstart
 
-- Install it by importing HBuilderX from the [plugin market](https://ext.dcloud.net.cn/)
+- Install it by importing HBuilderX from the [plugin market](https://ext.dcloud.net.cn/plugin?id=24548)
 - Add it to an existing Uni-App Project:
 
 ```bash
