@@ -1,13 +1,13 @@
-# 介绍
+# Introduction
 
-uni-router 是基于 [uni-app](https://uniapp.dcloud.net.cn/) 的官方路由 API 进行封装，它与 uni-app 核心深度集成。功能包括：
+uni-router is a wrapper around the official routing API of [uni-app](https://uniapp.dcloud.net.cn/), which is deeply integrated with the uni-app core. The features include:
 
-- 类 `vue-router` API
-- 多种导航方式
-- 路由守卫
-- 实用方法
-- 实用工具
+- Class `vue-router` API
+- Multiple Navigation Methods
+- Route Guards
+- Utility Methods
+- Utility Tools
 - Hooks
-- 组件
+- Components
 
-[入门](./guide/)或使用 [playground](https://github.com/MengXi-Studio/uni-router/tree/master/packages/playground) (详见[`README.md`](https://github.com/MengXi-Studio/uni-router)来运行它们)。
+[Get Started](./guide/) or use [playground](https://github.com/MengXi-Studio/uni-router/tree/master/packages/playground) (see [`README.md`](https://github.com/MengXi-Studio/uni-router) for details on running them)。

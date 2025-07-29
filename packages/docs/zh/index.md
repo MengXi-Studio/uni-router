@@ -2,12 +2,12 @@
 layout: home
 
 title: uni-router
-titleTemplate: 基于 Uni-App 的官方路由 API 进行封装
+titleTemplate: Uni-App 路由 API 封装
 
 hero:
   name: uni-router
-  text: 基于 Uni-App 的官方路由 API 进行封装
-  tagline: 为 Uni-App 提供富有表现力、可配置的、方便的路由
+  text: Uni-App 路由 API 封装
+  tagline: 为 Uni-App 提供丰富的路由功能
   image:
     src: /logo.svg
     alt: uni-router

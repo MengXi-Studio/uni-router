@@ -5,9 +5,6 @@
 		"outDir": "dist",
 		"sourceMap": false,
 		"noEmit": true,
-		"paths": {
-			"uni-router": ["../router/src"]
-		},
 
 		"target": "esnext",
 		"module": "esnext",

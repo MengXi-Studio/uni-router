@@ -26,7 +26,6 @@ export const slugify = (str: string): string =>
 
 export const sharedConfig = defineConfig({
 	title: 'uni-router',
-	appearance: 'dark',
 
 	markdown: {
 		theme: {

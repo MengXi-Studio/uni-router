@@ -1,10 +1,10 @@
-# 安装
+# Installation
 
-uni-router 支持通过命令行以及插件市场导入 HBuilderX 的方式安装。
+uni-router supports installation by importing HBuilderX through the command line and the plugin market.
 
-## 包管理器
+## Package Manager
 
-对于一个现有的使用 JavaScript 包管理器的项目，你可以从 npm registry 中安装 uni-router：
+For an existing project that uses a JavaScript package manager, you can install uni-router from the npm registry:
 
 ::: code-group
 
@@ -24,21 +24,21 @@ pnpm add @meng-xi/uni-router
 
 ## HBuilderX
 
-使用 HBuilderX 开发的用户，可以在 uni-app 插件市场通过 js_sdk 的形式进行安装 js 库，通过 uni_modules 的形式进行安装组件。
+Users developed with HBuilderX can install components in the uni-app plugin market in the form of uni_modules.
 
-在 uni-app 插件市场右上角点击 下载插件并导入 HBuilderX 按钮，导入到对应的项目中即可。
+Click the "Download Plugin and Import HBuilderX" button in the upper right corner of the uni-app plugin market, and import it into the corresponding project.
 
-插件地址：<a href="https://ext.dcloud.net.cn/plugin?id=24548" target="_blank">https://ext.dcloud.net.cn/plugin?id=24548</a>
+Plugin Address: https://ext.dcloud.net.cn/plugin?id=24548
 
-::: danger STOP
+::: danger Attention
 
-通过 HBuilderX 创建的项目，不要通过命令行方式下载 uni-router，而是应该通过插件市场下载。
+For projects created through HBuilderX, do not download uni-router via the command line, but rather through the plugin market.
 
 :::
 
-# 配置
+# Configuration
 
-建议使用 easycom 来简化组件的引入和注册
+It is recommended to use easycom to simplify the introduction and registration of components.
 
 ## NPM
 
@@ -55,7 +55,7 @@ pnpm add @meng-xi/uni-router
 
 ## HBuilderX
 
-如果你是通过插件市场导入到 [`HBuilderX`](https://ext.dcloud.net.cn/plugin?id=24548) 的，需要修改一下组件路径
+If you are importing through the plugin market to [`HBuilderX`](https://ext.dcloud.net.cn/plugin?id=24548), you need to modify the component path.
 
 ```json
 // pages.json
@@ -66,24 +66,4 @@ pnpm add @meng-xi/uni-router
 		}
 	}
 }
-```
-
-## 配置全局组件类型
-
-在 vscode 中使用时，为了有组件的类型提示和自动填充，需要配置全局组件类型声明。
-
-```json
-// tsconfig.json
-{
-	"compilerOptions": {
-		"types": ["@meng-xi/uni-router/components/index"]
-	}
-}
-```
-
-如果是使用 WebStorm，可能需要在 main.ts 文件中导入 index.d.ts 文件。
-
-```typescript
-// main.ts
-import '@meng-xi/uni-router/components/index.d.ts'
 ```

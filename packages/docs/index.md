@@ -2,12 +2,12 @@
 layout: home
 
 title: uni-router
-titleTemplate: Encapsulated based on the official routing API of Uni-App
+titleTemplate: Uni-App Routing API encapsulation
 
 hero:
   name: uni-router
-  text: Encapsulated based on the official routing API of Uni-App
-  tagline: Expressive, configurable and convenient routing for Uni-App
+  text: Uni-App Routing API encapsulation
+  tagline: Provide rich routing functions for Uni-App
   image:
     src: /logo.svg
     alt: uni-router

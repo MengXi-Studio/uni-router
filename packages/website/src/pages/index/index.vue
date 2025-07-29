@@ -1,6 +1,7 @@
 <template>
 	<view class="container">
 		<image class="logo" src="/static/logo.png" />
+
 		<view class="text-area" @click="toTest">
 			<text class="title">{{ title }}</text>
 		</view>
@@ -14,13 +15,18 @@
 		<mx-router @register="register">
 			<text>MX组件测试</text>
 		</mx-router>
+
+		<router-link to="/pages/test/index">
+			<text>MX组件测试1</text>
+		</router-link>
 	</view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import router from '@/router'
-import { useMxRouter } from '../../../../router/src'
+import { useMxRouter } from '@meng-xi/uni-router'
+import RouterLink from '@meng-xi/uni-router/components/router/router.vue'
 
 const [register] = useMxRouter({
 	to: '/pages/test/index'

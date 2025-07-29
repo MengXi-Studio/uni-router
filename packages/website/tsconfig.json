@@ -1,5 +1,6 @@
 {
 	"compilerOptions": {
+		"baseUrl": ".",
 		"target": "esnext",
 		"jsx": "preserve",
 		"lib": ["esnext", "dom"],
@@ -7,7 +8,7 @@
 		"module": "esnext",
 		"moduleResolution": "node",
 		"resolveJsonModule": true,
-		"types": ["@dcloudio/types", "vue", "vite/client"],
+		"types": ["@dcloudio/types", "vue", "vite/client", "@meng-xi/uni-router"],
 		"strict": true,
 		"sourceMap": true,
 		"esModuleInterop": true,
