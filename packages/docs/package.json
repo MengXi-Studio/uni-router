@@ -1,0 +1,21 @@
+{
+	"name": "docs",
+	"version": "0.1.4",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"docs:dev": "vitepress dev",
+		"docs:build": "vitepress build",
+		"docs:preview": "vitepress preview"
+	},
+	"description": "",
+	"devDependencies": {
+		"@meng-xi/uni-router": "workspace:*",
+		"@types/markdown-it": "^14.1.2",
+		"@types/node": "^24.1.0",
+		"typedoc": "^0.28.8",
+		"typescript": "~5.8.3",
+		"vitepress": "^1.6.3",
+		"vue": "^3.5.18"
+	}
+}
