@@ -30,52 +30,66 @@ concurrency:
 
 # 工作流任务定义
 jobs:
-  # 任务名称：deploy（部署）
-  deploy:
+  # 构建工作
+  build:
     # 运行环境：使用 Ubuntu 最新版
     runs-on: ubuntu-latest
     # 任务步骤：按顺序执行的操作列表
     steps:
       # 步骤1：检出代码到工作目录
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           # 拉取完整历史记录（某些构建工具需要）
           fetch-depth: 0
 
-      # 步骤2：设置 Node.js 环境
-      - name: Set up Node.js
+      # 步骤2：安装 pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          # 安装 pnpm 版本
+          version: 10.11.0
+
+      # 步骤3：设置 Node.js 环境
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          # 指定 Node.js 版本
           node-version: 22.14.0
+          cache: pnpm
 
-      # 步骤3：安装 pnpm
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          # 可指定 pnpm 版本，如不指定则使用最新版
-          version: 10.11.0
-          # 缓存 pnpm 依赖以加速构建
-          cache: true
+      # 步骤4：设置 GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
 
-      # 步骤4：安装项目依赖
+      # 步骤5：安装依赖
       - name: Install dependencies
-        # 使用 pnpm 安装依赖
         run: pnpm install
 
-      # 步骤5：构建文档（生成静态 HTML/CSS/JS 文件）
+      # 步骤6：构建文档
       - name: Build docs
-        # 执行文档构建命令（对应 package.json 中的脚本）
         run: pnpm run docs:build
 
-      # 步骤6：部署到 GitHub Pages
-      - name: Deploy to GitHub Pages
-        # 使用第三方部署插件
-        uses: peaceiris/actions-gh-pages@v4
+      # 步骤7：上传构建产物
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          # 自动获取的 GitHub 认证令牌
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # 文档构建产物目录
-          publish_dir: ./packages/docs/.vitepress/dist
-          # 部署目标分支（GitHub Pages 专用分支）
-          publish_branch: gh-pages
+          path: ./packages/docs/.vitepress/dist
+
+  # 部署工作
+  deploy:
+    # 环境配置：定义部署目标
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # 依赖关系：确保在构建完成后再部署
+    needs: build
+    # 运行环境：使用 Ubuntu 最新版
+    runs-on: ubuntu-latest
+    # 任务名称：部署
+    name: Deploy
+    # 任务步骤：按顺序执行的操作列表
+    steps:
+      # 步骤1：部署到 GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
