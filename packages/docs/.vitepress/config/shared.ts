@@ -44,9 +44,9 @@ export const sharedConfig = defineConfig({
 	},
 
 	head: [
-		['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
-		['link', { rel: 'icon', type: 'image/png', href: '/logo.png' }],
-		['link', { rel: 'icon', href: '/favicon.ico' }],
+		['link', { rel: 'icon', type: 'image/svg+xml', href: '/uni-router/logo.svg' }],
+		['link', { rel: 'icon', type: 'image/png', href: '/uni-router/logo.png' }],
+		['link', { rel: 'icon', href: '/uni-router/favicon.ico' }],
 
 		[
 			'meta',
