@@ -13,6 +13,15 @@ on:
       # 工作流文件本身变更
       - '.github/workflows/deploy-docs.yml'
 
+  # 允许你从 Actions 选项卡手动运行此工作流程
+  workflow_dispatch:
+
+# 只允许同时进行一次部署，跳过正在运行和最新队列之间的运行队列
+# 但是，不要取消正在进行的运行，因为我们希望允许这些生产部署完成
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 # 工作流任务定义
 jobs:
   # 任务名称：deploy（部署）
@@ -33,8 +42,6 @@ jobs:
         with:
           # 指定 Node.js 版本
           node-version: 22.14.0
-          # 缓存 pnpm 依赖以加速构建
-          cache: 'pnpm'
 
       # 步骤3：安装 pnpm
       - name: Install pnpm
@@ -42,6 +49,8 @@ jobs:
         with:
           # 可指定 pnpm 版本，如不指定则使用最新版
           version: 10.11.0
+          # 缓存 pnpm 依赖以加速构建
+          cache: true
 
       # 步骤4：安装项目依赖
       - name: Install dependencies
