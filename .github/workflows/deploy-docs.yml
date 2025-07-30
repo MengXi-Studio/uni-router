@@ -36,17 +36,24 @@ jobs:
           # 缓存 pnpm 依赖以加速构建
           cache: 'pnpm'
 
-      # 步骤3：安装项目依赖
+      # 步骤3：安装 pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          # 可指定 pnpm 版本，如不指定则使用最新版
+          version: 10.11.0
+
+      # 步骤4：安装项目依赖
       - name: Install dependencies
         # 使用 pnpm 安装依赖
         run: pnpm install
 
-      # 步骤4：构建文档（生成静态 HTML/CSS/JS 文件）
+      # 步骤5：构建文档（生成静态 HTML/CSS/JS 文件）
       - name: Build docs
         # 执行文档构建命令（对应 package.json 中的脚本）
         run: pnpm run docs:build
 
-      # 步骤5：部署到 GitHub Pages
+      # 步骤6：部署到 GitHub Pages
       - name: Deploy to GitHub Pages
         # 使用第三方部署插件
         uses: peaceiris/actions-gh-pages@v4
