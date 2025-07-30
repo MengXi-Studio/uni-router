@@ -1,6 +1,6 @@
 import type { DefaultTheme, LocaleSpecificConfig } from 'vitepress'
 
-export const META_URL = 'https://router.vuejs.org'
+export const META_URL = 'https://mengxi-studio.github.io/uni-router/'
 export const META_TITLE = 'Uni Router'
 export const META_DESCRIPTION = 'Encapsulated based on the official routing API of Uni-App'
 

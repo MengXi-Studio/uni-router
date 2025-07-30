@@ -46,6 +46,7 @@ export const sharedConfig = defineConfig({
 	head: [
 		['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
 		['link', { rel: 'icon', type: 'image/png', href: '/logo.png' }],
+		['link', { rel: 'icon', href: '/favicon.ico' }],
 
 		[
 			'meta',

@@ -9,7 +9,7 @@
 
 ---
 
-Get started with the [documentation]().
+Get started with the [documentation](https://mengxi-studio.github.io/uni-router/).
 
 ## Quickstart
 
