@@ -27,7 +27,5 @@
 		"jsx": "preserve",
 		"lib": ["esnext", "dom"],
 		"types": ["node"]
-	},
-	"include": ["../router/**/*.d.ts", "../router/**/*.ts"],
-	"exclude": ["../*/__tests__/**/*.ts", "**/*.spec.ts"]
+	}
 }

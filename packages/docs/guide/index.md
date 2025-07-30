@@ -102,7 +102,7 @@ export default {
 }
 ```
 
-Here we call `push()`, which is a method used for [programmatic navigation](./essentials/navigation). We will learn more about it in detail later.
+Here we call `push()`, which is a method used for [programmatic navigation](). We will learn more about it in detail later.
 
 For the Composition API, we cannot access the component instance through `this`, so we directly use the created router instance:
 

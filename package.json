@@ -22,6 +22,7 @@
 		"docs:dev": "pnpm -C packages/docs run docs:dev",
 		"docs:build": "pnpm -C packages/docs run docs:build",
 		"docs:preview": "pnpm -C packages/docs run docs:preview",
+		"docs:deploy": "pnpm -C packages/docs run docs:deploy",
 		"lint": "eslint .",
 		"lint:fix": "pnpm lint --fix"
 	},

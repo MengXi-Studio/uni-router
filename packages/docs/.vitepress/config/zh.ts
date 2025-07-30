@@ -29,11 +29,6 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 				activeMatch: '^/zh/guide/'
 			},
 			{
-				text: 'API 参考',
-				link: '/zh/api/',
-				activeMatch: '^/zh/api/'
-			},
-			{
 				text: '相关链接',
 				items: [
 					{
@@ -69,120 +64,8 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: '入门',
 							link: '/zh/guide/'
-						},
-						{
-							text: '动态路由匹配',
-							link: '/zh/guide/essentials/dynamic-matching.html'
-						},
-						{
-							text: '路由的匹配语法',
-							link: '/zh/guide/essentials/route-matching-syntax.html'
-						},
-						{
-							text: '嵌套路由',
-							link: '/zh/guide/essentials/nested-routes.html'
-						},
-						{
-							text: '命名路由',
-							link: '/zh/guide/essentials/named-routes.html'
-						},
-						{
-							text: '编程式导航',
-							link: '/zh/guide/essentials/navigation.html'
-						},
-						{
-							text: '命名视图',
-							link: '/zh/guide/essentials/named-views.html'
-						},
-						{
-							text: '重定向和别名',
-							link: '/zh/guide/essentials/redirect-and-alias.html'
-						},
-						{
-							text: '路由组件传参',
-							link: '/zh/guide/essentials/passing-props.html'
-						},
-						{
-							text: '匹配当前路由的链接',
-							link: '/zh/guide/essentials/active-links.html'
-						},
-						{
-							text: '不同的历史记录模式',
-							link: '/zh/guide/essentials/history-mode.html'
 						}
 					]
-				},
-				{
-					text: '进阶',
-					items: [
-						{
-							text: '导航守卫',
-							link: '/zh/guide/advanced/navigation-guards.html'
-						},
-						{
-							text: '路由元信息',
-							link: '/zh/guide/advanced/meta.html'
-						},
-						{
-							text: '数据获取',
-							link: '/zh/guide/advanced/data-fetching.html'
-						},
-						{
-							text: '组合式 API',
-							link: '/zh/guide/advanced/composition-api.html'
-						},
-						{
-							text: 'RouterView 插槽',
-							link: '/zh/guide/advanced/router-view-slot.html'
-						},
-						{
-							text: '过渡动效',
-							link: '/zh/guide/advanced/transitions.html'
-						},
-						{
-							text: '滚动行为',
-							link: '/zh/guide/advanced/scroll-behavior.html'
-						},
-						{
-							text: '路由懒加载',
-							link: '/zh/guide/advanced/lazy-loading.html'
-						},
-						{
-							text: '类型化路由',
-							link: '/zh/guide/advanced/typed-routes.html'
-						},
-						{
-							text: '扩展 RouterLink',
-							link: '/zh/guide/advanced/extending-router-link.html'
-						},
-						{
-							text: '导航故障',
-							link: '/zh/guide/advanced/navigation-failures.html'
-						},
-						{
-							text: '动态路由',
-							link: '/zh/guide/advanced/dynamic-routing.html'
-						}
-					]
-				},
-				{
-					items: [
-						{
-							text: '从 Vue2 迁移',
-							link: '/zh/guide/migration/index.html'
-						},
-						{
-							text: '关于中文翻译',
-							link: '/zh/about-translation.html'
-						}
-					]
-				}
-			],
-
-			'/zh/api/': [
-				{
-					text: 'packages',
-					items: [{ text: 'vue-router', link: '/zh/api/' }]
 				}
 			]
 		}
