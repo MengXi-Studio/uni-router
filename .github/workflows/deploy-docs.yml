@@ -3,13 +3,15 @@ name: Deploy Docs to GitHub Pages
 
 # 触发条件：指定什么情况下运行此工作流
 on:
-  # 当代码推送到 main 分支时触发
+  # 当代码推送到 master 分支时触发
   push:
-    branches: [main]
+    branches: [master]
     # 仅当以下路径的文件发生变更时触发（避免不必要的重复运行）
     paths:
-      - 'packages/docs/**' # 文档源文件变更
-      - '.github/workflows/deploy-docs.yml' # 工作流文件本身变更
+      # 文档源文件变更
+      - 'packages/docs/**'
+      # 工作流文件本身变更
+      - '.github/workflows/deploy-docs.yml'
 
 # 工作流任务定义
 jobs:
@@ -22,27 +24,36 @@ jobs:
       # 步骤1：检出代码到工作目录
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 拉取完整历史记录（某些构建工具需要）
+          # 拉取完整历史记录（某些构建工具需要）
+          fetch-depth: 0
 
       # 步骤2：设置 Node.js 环境
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # 指定 Node.js 版本
-          cache: 'pnpm' # 缓存 pnpm 依赖以加速构建
+          # 指定 Node.js 版本
+          node-version: 22.14.0
+          # 缓存 pnpm 依赖以加速构建
+          cache: 'pnpm'
 
       # 步骤3：安装项目依赖
       - name: Install dependencies
-        run: pnpm install # 使用 pnpm 安装依赖
+        # 使用 pnpm 安装依赖
+        run: pnpm install
 
       # 步骤4：构建文档（生成静态 HTML/CSS/JS 文件）
       - name: Build docs
-        run: pnpm run docs:build # 执行文档构建命令（对应 package.json 中的脚本）
+        # 执行文档构建命令（对应 package.json 中的脚本）
+        run: pnpm run docs:build
 
       # 步骤5：部署到 GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4 # 使用第三方部署插件
+        # 使用第三方部署插件
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }} # 自动获取的 GitHub 认证令牌
-          publish_dir: ./packages/docs/.vitepress/dist # 文档构建产物目录
-          publish_branch: gh-pages # 部署目标分支（GitHub Pages 专用分支）
+          # 自动获取的 GitHub 认证令牌
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # 文档构建产物目录
+          publish_dir: ./packages/docs/.vitepress/dist
+          # 部署目标分支（GitHub Pages 专用分支）
+          publish_branch: gh-pages
