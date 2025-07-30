@@ -1,7 +1,7 @@
 import type { DefaultTheme, LocaleSpecificConfig } from 'vitepress'
 
 export const META_URL = 'https://router.vuejs.org'
-export const META_TITLE = 'uni-router'
+export const META_TITLE = 'Uni Router'
 export const META_DESCRIPTION = 'Encapsulated based on the official routing API of Uni-App'
 
 export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
@@ -16,9 +16,11 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 
 	themeConfig: {
 		editLink: {
-			pattern: 'https://github.com/MengXi-Studio/uni-router/tree/master/packages/docs/:path',
+			pattern: 'https://github.com/MengXi-Studio/Uni Router/tree/master/packages/docs/:path',
 			text: 'Suggest changes to this page'
 		},
+
+		outlineTitle: 'Contents of this page',
 
 		nav: [
 			{
@@ -28,30 +30,21 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 			},
 			{ text: 'API', link: '/api/', activeMatch: '^/api/' },
 			{
-				text: 'v4.x',
-				items: [{ text: 'v3.x', link: 'https://v3.router.vuejs.org' }]
-			},
-			{
 				text: 'Links',
 				items: [
 					{
 						text: 'Discussions',
-						link: 'https://github.com/vuejs/router/discussions'
+						link: 'https://github.com/MengXi-Studio/Uni Router/discussions'
 					},
 					{
 						text: 'Changelog',
-						link: 'https://github.com/vuejs/router/blob/main/packages/router/CHANGELOG.md'
-					},
-					{
-						text: 'Vue.js Certification',
-						link: 'https://certificates.dev/vuejs/?friend=VUEROUTER&utm_source=router_vuejs&utm_medium=link&utm_campaign=router_vuejs_links&utm_content=navbar'
+						link: 'https://github.com/MengXi-Studio/Uni Router/releases'
 					}
 				]
 			}
 		],
 
 		sidebar: {
-			// catch-all fallback
 			'/': [
 				{
 					text: 'Setup',

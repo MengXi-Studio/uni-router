@@ -1,23 +1,23 @@
 # 安装
 
-uni-router 支持通过命令行以及插件市场导入 HBuilderX 的方式安装。
+Uni Router 支持通过命令行以及插件市场导入 HBuilderX 的方式安装。
 
 ## 包管理器
 
-对于一个现有的使用 JavaScript 包管理器的项目，你可以从 npm registry 中安装 uni-router：
+对于一个现有的使用 JavaScript 包管理器的项目，你可以从 npm registry 中安装 Uni Router：
 
 ::: code-group
 
 ```bash [npm]
-npm install @meng-xi/uni-router
+npm install @meng-xi/Uni Router
 ```
 
 ```bash [yarn]
-yarn add @meng-xi/uni-router
+yarn add @meng-xi/Uni Router
 ```
 
 ```bash [pnpm]
-pnpm add @meng-xi/uni-router
+pnpm add @meng-xi/Uni Router
 ```
 
 :::
@@ -32,7 +32,7 @@ pnpm add @meng-xi/uni-router
 
 ::: danger 注意
 
-通过 HBuilderX 创建的项目，不要通过命令行方式下载 uni-router，而是应该通过插件市场下载。
+通过 HBuilderX 创建的项目，不要通过命令行方式下载 Uni Router，而是应该通过插件市场下载。
 
 :::
 
@@ -47,7 +47,7 @@ pnpm add @meng-xi/uni-router
 {
 	"easycom": {
 		"custom": {
-			"^mx-(.*)": "@meng-xi/uni-router/components/$1/$1.vue"
+			"^mx-(.*)": "@meng-xi/Uni Router/components/$1/$1.vue"
 		}
 	}
 }

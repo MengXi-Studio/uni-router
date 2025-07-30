@@ -10,7 +10,6 @@
 	},
 	"description": "",
 	"devDependencies": {
-		"@meng-xi/uni-router": "workspace:*",
 		"@types/markdown-it": "^14.1.2",
 		"@types/node": "^24.1.0",
 		"typedoc": "^0.28.8",

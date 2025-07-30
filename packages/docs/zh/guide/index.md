@@ -1,6 +1,6 @@
 # 入门
 
-uni-router 基于 Uni-App 的路由 API 进行封装。它为 Uni-App 应用程序提供了一个简单易用的路由系统。
+Uni Router 基于 Uni-App 的路由 API 进行封装。它为 Uni-App 应用程序提供了一个简单易用的路由系统。
 
 采用类似 [`vue-router`](https://router.vuejs.org/) 的设计风格，并提供丰富的工具函数，帮助开发者轻松实现跨平台路由管理。
 
@@ -14,7 +14,7 @@ uni-router 基于 Uni-App 的路由 API 进行封装。它为 Uni-App 应用程�
 
 为了引入一些核心概念，我们将使用如下的示例：
 
-- [uni-router 的示例](https://github.com/MengXi-Studio/uni-router/tree/master/packages/playground)
+- [Uni Router 的示例](https://github.com/MengXi-Studio/Uni Router/tree/master/packages/playground)
 
 让我们首先来看目录 `src/pages/index` 下的组件, `index.vue`。
 
@@ -29,7 +29,7 @@ uni-router 基于 Uni-App 的路由 API 进行封装。它为 Uni-App 应用程�
 </template>
 ```
 
-在这个 `template` 中使用了一个由 uni-router 提供的组件: `Router`。
+在这个 `template` 中使用了一个由 Uni Router 提供的组件: `Router`。
 
 不同于 Uni-App 的 [`<navigator>`](https://uniapp.dcloud.net.cn/component/navigator.html) 标签，我们使用组件 `Router` 来创建链接。使用 `Router` 组件的属性 `to` 可以传递路由地址或者路由对象，而不是局限于只能使用路由地址。
 我们将会在之后的部分深入了解 `Router` 组件。
@@ -39,7 +39,7 @@ uni-router 基于 Uni-App 的路由 API 进行封装。它为 Uni-App 应用程�
 路由器实例是通过 `Router` 类创建的:
 
 ```ts
-import { Router } from '@meng-xi/uni-router'
+import { Router } from '@meng-xi/Uni Router'
 
 const router = new Router({
 	routes: [
@@ -52,7 +52,7 @@ const router = new Router({
 或者使用单例模式创建:
 
 ```ts
-import { Router } from '@meng-xi/uni-router'
+import { Router } from '@meng-xi/Uni Router'
 
 Router.getInstance({
 	routes: [
@@ -125,17 +125,17 @@ function toTest() {
 
 ### 单文件组件
 
-uni-router 只适用于 Uni-App 项目中的打包工具 (如 Vite/Webpack) 和[Uni-App 组件](https://uniapp.dcloud.net.cn/tutorial/vue3-components.html) (即 `.vue` 文件) 的应用中使用。
+Uni Router 只适用于 Uni-App 项目中的打包工具 (如 Vite/Webpack) 和[Uni-App 组件](https://uniapp.dcloud.net.cn/tutorial/vue3-components.html) (即 `.vue` 文件) 的应用中使用。
 
 ::: danger 注意
 
-`uni-router` 不支持除 `Uni-App` 外的项目中使用。
+`Uni Router` 不支持除 `Uni-App` 外的项目中使用。
 
 :::
 
 ### 组件 API 风格
 
-uni-router 可以使用组合式 API 或选项式 API 。在必要时，示例将会同时使用两种风格，组合式 API 示例通常会使用 `<script setup>`，而不是显式的 `setup` 函数。
+Uni Router 可以使用组合式 API 或选项式 API 。在必要时，示例将会同时使用两种风格，组合式 API 示例通常会使用 `<script setup>`，而不是显式的 `setup` 函数。
 
 如果你对于这两种风格不熟悉，可以参考 [Vue - API 风格](https://cn.vuejs.org/guide/introduction.html#api-styles)。
 
@@ -148,6 +148,6 @@ uni-router 可以使用组合式 API 或选项式 API 。在必要时，示例�
 
 ### `Router`
 
-组件 `Router` 不会自动注册为全局组件，但是可以通过 `Uni-App` 的 `easycom` 来简化组件的引入和注册。但你也可以通过局部导入它们，例如 `import RouterLink from '@meng-xi/uni-router/components/router/router.vue'`。
+组件 `Router` 不会自动注册为全局组件，但是可以通过 `Uni-App` 的 `easycom` 来简化组件的引入和注册。但你也可以通过局部导入它们，例如 `import RouterLink from '@meng-xi/Uni Router/components/router/router.vue'`。
 
 在模板中，组件的名字可以是 PascalCase 风格或 kebab-case 风格的。Uni-App 支持两种格式，因此 `<RouterLink>` 和 `<router-link>` 通常是等效的。此时应该遵循你自己项目中使用的约定。

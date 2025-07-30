@@ -25,7 +25,7 @@ export const slugify = (str: string): string =>
 		.replace(/^(\d)/, '_$1')
 
 export const sharedConfig = defineConfig({
-	title: 'uni-router',
+	title: 'Uni Router',
 
 	markdown: {
 		theme: {
@@ -69,8 +69,8 @@ export const sharedConfig = defineConfig({
 		outline: [2, 3],
 
 		socialLinks: [
-			{ icon: 'github', link: 'https://github.com/MengXi-Studio/uni-router' },
-			{ icon: 'npm', link: 'https://www.npmjs.com/package/@meng-xi/uni-router' }
+			{ icon: 'github', link: 'https://github.com/MengXi-Studio/Uni Router' },
+			{ icon: 'npm', link: 'https://www.npmjs.com/package/@meng-xi/Uni Router' }
 		],
 
 		footer: {
@@ -79,7 +79,7 @@ export const sharedConfig = defineConfig({
 		},
 
 		editLink: {
-			pattern: 'https://github.com/MengXi-Studio/uni-router/tree/master/packages/docs/:path',
+			pattern: 'https://github.com/MengXi-Studio/Uni Router/tree/master/packages/docs/:path',
 			text: 'Suggest changes'
 		},
 
@@ -88,7 +88,7 @@ export const sharedConfig = defineConfig({
 			options: {
 				appId: '6CHPKYO393',
 				apiKey: '17d8a3d4523d64f450cce8b36f30485c',
-				indexName: 'uni-router',
+				indexName: 'Uni Router',
 				locales: { ...zhSearch }
 			}
 		}

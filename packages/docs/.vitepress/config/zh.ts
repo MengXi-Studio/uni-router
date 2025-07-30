@@ -1,7 +1,7 @@
 import type { DefaultTheme, LocaleSpecificConfig } from 'vitepress'
 
 export const META_URL = 'https://router.vuejs.org'
-export const META_TITLE = 'uni-router'
+export const META_TITLE = 'Uni Router'
 export const META_DESCRIPTION = '基于 Uni-App 的官方路由 API 进行封装'
 
 export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
@@ -16,7 +16,7 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 
 	themeConfig: {
 		editLink: {
-			pattern: 'https://github.com/MengXi-Studio/uni-router/tree/master/packages/docs/:path',
+			pattern: 'https://github.com/MengXi-Studio/Uni Router/tree/master/packages/docs/:path',
 			text: '对本页提出修改建议'
 		},
 
@@ -34,23 +34,15 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 				activeMatch: '^/zh/api/'
 			},
 			{
-				text: 'v4.x',
-				items: [{ text: 'v3.x', link: 'https://v3.router.vuejs.org/zh' }]
-			},
-			{
 				text: '相关链接',
 				items: [
 					{
 						text: 'Discussions',
-						link: 'https://github.com/vuejs/router/discussions'
+						link: 'https://github.com/MengXi-Studio/Uni Router/discussions'
 					},
 					{
 						text: '更新日志',
-						link: 'https://github.com/vuejs/router/blob/main/packages/router/CHANGELOG.md'
-					},
-					{
-						text: 'Vue.js 认证',
-						link: 'https://certificates.dev/vuejs/?friend=VUEROUTER&utm_source=router_vuejs&utm_medium=link&utm_campaign=router_vuejs_links&utm_content=navbar'
+						link: 'https://github.com/MengXi-Studio/Uni Router/releases'
 					}
 				]
 			}

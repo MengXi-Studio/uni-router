@@ -1,23 +1,23 @@
 # Installation
 
-uni-router supports installation by importing HBuilderX through the command line and the plugin market.
+Uni Router supports installation by importing HBuilderX through the command line and the plugin market.
 
 ## Package Manager
 
-For an existing project that uses a JavaScript package manager, you can install uni-router from the npm registry:
+For an existing project that uses a JavaScript package manager, you can install Uni Router from the npm registry:
 
 ::: code-group
 
 ```bash [npm]
-npm install @meng-xi/uni-router
+npm install @meng-xi/Uni Router
 ```
 
 ```bash [yarn]
-yarn add @meng-xi/uni-router
+yarn add @meng-xi/Uni Router
 ```
 
 ```bash [pnpm]
-pnpm add @meng-xi/uni-router
+pnpm add @meng-xi/Uni Router
 ```
 
 :::
@@ -32,7 +32,7 @@ Plugin Address: https://ext.dcloud.net.cn/plugin?id=24548
 
 ::: danger Attention
 
-For projects created through HBuilderX, do not download uni-router via the command line, but rather through the plugin market.
+For projects created through HBuilderX, do not download Uni Router via the command line, but rather through the plugin market.
 
 :::
 
@@ -47,7 +47,7 @@ It is recommended to use easycom to simplify the introduction and registration o
 {
 	"easycom": {
 		"custom": {
-			"^mx-(.*)": "@meng-xi/uni-router/components/$1/$1.vue"
+			"^mx-(.*)": "@meng-xi/Uni Router/components/$1/$1.vue"
 		}
 	}
 }
