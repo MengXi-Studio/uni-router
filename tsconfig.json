@@ -1,19 +1,19 @@
 {
 	"compilerOptions": {
-		"baseUrl": ".",
 		"target": "es2018",
 		"lib": ["ESNext"],
-		"module": "esnext",
-		"moduleResolution": "bundler",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
 		"paths": {
-			"@meng-xi/uni-router": ["packages/router/src/index.ts"]
+			"@meng-xi/uni-router": ["./packages/core/src/index.ts"]
 		},
 		"resolveJsonModule": true,
+		"types": ["@types/node"],
 		"strict": true,
 		"strictNullChecks": true,
 		"esModuleInterop": true,
 		"skipDefaultLibCheck": true,
 		"skipLibCheck": true
 	},
-	"exclude": ["**/dist/**", "**/node_modules/**"]
+	"exclude": ["**/dist/**", "**/node_modules/**", "**/playground/**"]
 }

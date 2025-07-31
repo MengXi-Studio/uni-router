@@ -7,7 +7,26 @@
 	"engines": {
 		"node": ">=22.14.0"
 	},
-	"description": "为 uni-app 提供类似 vue-router 风格的路由",
+	"description": "为uni-app量身定制的路由插件。其提供了与uni-app无缝集成的特性，使得路由管理变得简单而高效。",
+	"author": {
+		"name": "PedroQue99",
+		"email": "ksmengfang@163.com"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/MengXi-Studio/uni-router#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MengXi-Studio/uni-router.git"
+	},
+	"bugs": "https://github.com/MengXi-Studio/uni-router/issues",
+	"keywords": [
+		"uni-app",
+		"router",
+		"uni-router",
+		"plugin",
+		"navigation",
+		"routing"
+	],
 	"workspaces": [
 		"packages/*"
 	],
@@ -28,9 +47,11 @@
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^5.0.0",
+		"@types/node": "^24.1.0",
 		"bumpp": "^10.2.0",
 		"eslint": "^9.32.0",
 		"rimraf": "^6.0.1",
-		"typescript": "~5.8.3"
+		"typescript": "~5.8.3",
+		"unbuild": "^3.6.0"
 	}
 }
