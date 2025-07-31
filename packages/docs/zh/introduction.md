@@ -10,4 +10,4 @@ Uni Router 是基于 [uni-app](https://uniapp.dcloud.net.cn/) 的官方路由 AP
 - Hooks
 - 组件
 
-[入门](./guide/)或使用 [playground](https://github.com/MengXi-Studio/Uni Router/tree/master/packages/playground) (详见[`README.md`](https://github.com/MengXi-Studio/Uni Router)来运行它们)。
+[入门](./guide/)或使用 [playground](https://github.com/MengXi-Studio/uni-router/tree/master/packages/playground) (详见[`README.md`](https://github.com/MengXi-Studio/uni-router)来运行它们)。

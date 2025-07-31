@@ -9,15 +9,15 @@ For an existing project that uses a JavaScript package manager, you can install 
 ::: code-group
 
 ```bash [npm]
-npm install @meng-xi/Uni Router
+npm install @meng-xi/uni-router
 ```
 
 ```bash [yarn]
-yarn add @meng-xi/Uni Router
+yarn add @meng-xi/uni-router
 ```
 
 ```bash [pnpm]
-pnpm add @meng-xi/Uni Router
+pnpm add @meng-xi/uni-router
 ```
 
 :::
@@ -47,7 +47,7 @@ It is recommended to use easycom to simplify the introduction and registration o
 {
 	"easycom": {
 		"custom": {
-			"^mx-(.*)": "@meng-xi/Uni Router/components/$1/$1.vue"
+			"^mx-(.*)": "@meng-xi/uni-router/components/$1/$1.vue"
 		}
 	}
 }

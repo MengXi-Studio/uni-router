@@ -9,15 +9,15 @@ Uni Router 支持通过命令行以及插件市场导入 HBuilderX 的方式安�
 ::: code-group
 
 ```bash [npm]
-npm install @meng-xi/Uni Router
+npm install @meng-xi/uni-router
 ```
 
 ```bash [yarn]
-yarn add @meng-xi/Uni Router
+yarn add @meng-xi/uni-router
 ```
 
 ```bash [pnpm]
-pnpm add @meng-xi/Uni Router
+pnpm add @meng-xi/uni-router
 ```
 
 :::
@@ -47,7 +47,7 @@ pnpm add @meng-xi/Uni Router
 {
 	"easycom": {
 		"custom": {
-			"^mx-(.*)": "@meng-xi/Uni Router/components/$1/$1.vue"
+			"^mx-(.*)": "@meng-xi/uni-router/components/$1/$1.vue"
 		}
 	}
 }

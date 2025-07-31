@@ -16,7 +16,7 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 
 	themeConfig: {
 		editLink: {
-			pattern: 'https://github.com/MengXi-Studio/Uni Router/tree/master/packages/docs/:path',
+			pattern: 'https://github.com/MengXi-Studio/uni-router/tree/master/packages/docs/:path',
 			text: '对本页提出修改建议'
 		},
 
@@ -33,11 +33,11 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 				items: [
 					{
 						text: 'Discussions',
-						link: 'https://github.com/MengXi-Studio/Uni Router/discussions'
+						link: 'https://github.com/MengXi-Studio/uni-router/discussions'
 					},
 					{
 						text: '更新日志',
-						link: 'https://github.com/MengXi-Studio/Uni Router/releases'
+						link: 'https://github.com/MengXi-Studio/uni-router/releases'
 					}
 				]
 			}

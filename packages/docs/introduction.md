@@ -10,4 +10,4 @@ Uni Router is a wrapper around the official routing API of [uni-app](https://uni
 - Hooks
 - Components
 
-[Get Started](./guide/) or use [playground](https://github.com/MengXi-Studio/Uni Router/tree/master/packages/playground) (see [`README.md`](https://github.com/MengXi-Studio/Uni Router) for details on running them)。
+[Get Started](./guide/) or use [playground](https://github.com/MengXi-Studio/uni-router/tree/master/packages/playground) (see [`README.md`](https://github.com/MengXi-Studio/uni-router) for details on running them)。
