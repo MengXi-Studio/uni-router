@@ -48,21 +48,14 @@ export const sharedConfig = defineConfig({
 		['link', { rel: 'icon', type: 'image/png', href: '/uni-router/logo.png' }],
 		['link', { rel: 'icon', href: '/uni-router/favicon.ico' }],
 
-		[
-			'meta',
-			{
-				property: 'og:type',
-				content: 'website'
-			}
-		],
+		['meta', { property: 'og:type', content: 'website' }],
+		['meta', { property: 'og:title', content: 'Uni Router' }],
 
-		[
-			'meta',
-			{
-				property: 'twitter:card',
-				content: 'summary_large_image'
-			}
-		]
+		['meta', { property: 'twitter:title', content: 'Uni Router' }],
+		['meta', { property: 'twitter:card', content: 'summary_large_image' }],
+		['meta', { property: 'twitter:description', content: 'A powerful and flexible routing library for uni-app' }],
+
+		['meta', { name: 'algolia-site-verification', content: 'E1DF0100DF17E451' }]
 	],
 
 	themeConfig: {
