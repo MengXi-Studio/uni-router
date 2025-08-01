@@ -15,7 +15,7 @@ understand certain features.
 
 To introduce some core concepts, we will use the following example:
 
-- [Examples of Uni Router](https://github.com/MengXi-Studio/Uni Router/tree/master/packages/playground)
+- [Examples of Uni Router](https://github.com/MengXi-Studio/uni-router/tree/master/packages/playground)
 
 Let's first look at the component `index.vue` in the directory `src/pages/index`.
 
@@ -40,7 +40,7 @@ route object, instead of being limited to only using route addresses. We will le
 A router instance is created by the `Router` class:
 
 ```ts
-import { Router } from '@meng-xi/Uni Router'
+import { Router } from '@meng-xi/uni-router'
 
 const router = new Router({
 	routes: [
@@ -53,7 +53,7 @@ const router = new Router({
 Or create a router instance using the singleton pattern:
 
 ```ts
-import { Router } from '@meng-xi/Uni Router'
+import { Router } from '@meng-xi/uni-router'
 
 Router.getInstance({
 	routes: [
@@ -151,7 +151,7 @@ Composition API, it can be accessed by importing the created object. In the Opti
 ### `Router`
 
 Component `Router` will not be automatically registered as a global component. However, you can simplify the introduction and registration of components by using `Uni-App`'s `easycom`. But you can also import them
-locally, for example `import RouterLink from '@meng-xi/Uni Router/components/router/router.vue'`.
+locally, for example `import RouterLink from '@meng-xi/uni-router/components/router/router.vue'`.
 
 In the template, the name of the component can be in PascalCase style or kebab-case style. Uni-App supports both formats, so `<RouterLink>` and `<router-link>` are typically equivalent. At this point, you should follow
 the conventions used in your own project.

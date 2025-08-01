@@ -14,7 +14,7 @@ Uni Router 基于 Uni-App 的路由 API 进行封装。它为 Uni-App 应用程�
 
 为了引入一些核心概念，我们将使用如下的示例：
 
-- [Uni Router 的示例](https://github.com/MengXi-Studio/Uni Router/tree/master/packages/playground)
+- [Uni Router 的示例](https://github.com/MengXi-Studio/uni-router/tree/master/packages/playground)
 
 让我们首先来看目录 `src/pages/index` 下的组件, `index.vue`。
 
@@ -39,7 +39,7 @@ Uni Router 基于 Uni-App 的路由 API 进行封装。它为 Uni-App 应用程�
 路由器实例是通过 `Router` 类创建的:
 
 ```ts
-import { Router } from '@meng-xi/Uni Router'
+import { Router } from '@meng-xi/uni-router'
 
 const router = new Router({
 	routes: [
@@ -52,7 +52,7 @@ const router = new Router({
 或者使用单例模式创建:
 
 ```ts
-import { Router } from '@meng-xi/Uni Router'
+import { Router } from '@meng-xi/uni-router'
 
 Router.getInstance({
 	routes: [
@@ -148,6 +148,6 @@ Uni Router 可以使用组合式 API 或选项式 API 。在必要时，示例�
 
 ### `Router`
 
-组件 `Router` 不会自动注册为全局组件，但是可以通过 `Uni-App` 的 `easycom` 来简化组件的引入和注册。但你也可以通过局部导入它们，例如 `import RouterLink from '@meng-xi/Uni Router/components/router/router.vue'`。
+组件 `Router` 不会自动注册为全局组件，但是可以通过 `Uni-App` 的 `easycom` 来简化组件的引入和注册。但你也可以通过局部导入它们，例如 `import RouterLink from '@meng-xi/uni-router/components/router/router.vue'`。
 
 在模板中，组件的名字可以是 PascalCase 风格或 kebab-case 风格的。Uni-App 支持两种格式，因此 `<RouterLink>` 和 `<router-link>` 通常是等效的。此时应该遵循你自己项目中使用的约定。

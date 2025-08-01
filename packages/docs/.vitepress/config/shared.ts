@@ -63,8 +63,8 @@ export const sharedConfig = defineConfig({
 		outline: [2, 3],
 
 		socialLinks: [
-			{ icon: 'github', link: 'https://github.com/MengXi-Studio/Uni Router' },
-			{ icon: 'npm', link: 'https://www.npmjs.com/package/@meng-xi/Uni Router' }
+			{ icon: 'github', link: 'https://github.com/MengXi-Studio/uni-router' },
+			{ icon: 'npm', link: 'https://www.npmjs.com/package/@meng-xi/uni-router' }
 		],
 
 		footer: {

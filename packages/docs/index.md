@@ -20,7 +20,7 @@ hero:
       link: /installation
     - theme: alt
       text: GitHub
-      link: https://github.com/MengXi-Studio/Uni Router
+      link: https://github.com/MengXi-Studio/uni-router
 
 features:
   - icon: 📝
