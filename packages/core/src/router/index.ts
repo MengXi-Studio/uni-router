@@ -1,0 +1,408 @@
+import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, Router, RouterOnError, RouterOptions } from '@/types'
+import { RouterErrorCode } from '@/types/error'
+import { NavigationFailure, RouterError } from '@/errors'
+import { createGuardManager, type GuardResult } from '@/guard'
+import { navigateTo, replaceTo, goBack, isUniApiError } from '@/navigation'
+import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/navigation/context'
+import { createRouteState } from '@/state'
+import { createRouteMatcher } from '@/matcher'
+
+/**
+ * 最大重定向深度，超过此值将取消导航以防止无限循环
+ */
+const MAX_REDIRECT_DEPTH = 10
+
+/**
+ * uni-app 路由器实现类
+ *
+ * 提供路由导航、守卫注册、状态查询和 Vue 插件安装能力。
+ * 基于 uni-app 原生导航 API（navigateTo / redirectTo / switchTab / navigateBack）实现，
+ * 遵循 uni-app 的静态页面模型（pages.json）。
+ */
+class UniRouter implements Router {
+	private routeState = createRouteState()
+	private guardManager = createGuardManager()
+	private matcher = createRouteMatcher([], true)
+	private errorHandlers: RouterOnError[] = []
+	private pendingNavigation: Promise<RouteLocation> | null = null
+
+	/**
+	 * @param options - 路由器初始化选项
+	 */
+	constructor(options: RouterOptions) {
+		this.matcher = createRouteMatcher(options.routes, options.strict ?? true)
+		this.initRoute()
+	}
+
+	/**
+	 * 获取当前路由位置
+	 */
+	get currentRoute(): RouteLocation {
+		return this.routeState.getCurrentRoute()
+	}
+
+	/**
+	 * 导航到新页面
+	 *
+	 * 对应 uni.navigateTo（普通页面）或 uni.switchTab（TabBar 页面）。
+	 * 若目标与当前位置相同，将拒绝导航并抛出 NAVIGATION_DUPLICATED 错误。
+	 * 并发导航将排队执行，前一次导航完成后再开始下一次。
+	 *
+	 * @param location - 目标路由位置
+	 * @returns 解析后的目标路由位置
+	 * @throws {NavigationFailure} 导航被守卫中止、重复或 API 调用失败时抛出
+	 */
+	push(location: RouteLocationRaw): Promise<RouteLocation> {
+		return this.performNavigation(location, 'push')
+	}
+
+	/**
+	 * 替换当前页面
+	 *
+	 * 对应 uni.redirectTo（普通页面）或 uni.switchTab（TabBar 页面）。
+	 * 替换 TabBar 页面时将关闭所有非 Tab 页面。
+	 *
+	 * @param location - 目标路由位置
+	 * @returns 解析后的目标路由位置
+	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
+	 */
+	replace(location: RouteLocationRaw): Promise<RouteLocation> {
+		return this.performNavigation(location, 'replace')
+	}
+
+	/**
+	 * 返回上一页或多级页面
+	 *
+	 * 对应 uni.navigateBack。若页面栈中不足 delta 个页面，将输出警告并立即 resolve。
+	 *
+	 * @param delta - 返回的页面数，默认为 1
+	 * @returns 导航完成或页面栈不足时立即 resolve 的 Promise
+	 */
+	back(delta: number = 1): Promise<void> {
+		return goBack(delta)
+	}
+
+	/**
+	 * 注册全局前置守卫，在每次导航前执行
+	 * @param guard - 前置守卫函数
+	 * @returns 用于移除此守卫的函数
+	 */
+	beforeEach(guard: Parameters<Router['beforeEach']>[0]): () => void {
+		return this.guardManager.beforeEach(guard)
+	}
+
+	/**
+	 * 注册全局解析守卫，在所有前置守卫和路由独享守卫完成后执行
+	 * @param guard - 解析守卫函数
+	 * @returns 用于移除此守卫的函数
+	 */
+	beforeResolve(guard: Parameters<Router['beforeResolve']>[0]): () => void {
+		return this.guardManager.beforeResolve(guard)
+	}
+
+	/**
+	 * 注册全局后置钩子，在导航完成后执行
+	 * @param guard - 后置钩子函数
+	 * @returns 用于移除此钩子的函数
+	 */
+	afterEach(guard: Parameters<Router['afterEach']>[0]): () => void {
+		return this.guardManager.afterEach(guard)
+	}
+
+	/**
+	 * 获取所有已注册的路由配置列表
+	 * @returns 路由配置数组的浅拷贝
+	 */
+	getRoutes(): RouteConfig[] {
+		return this.matcher.getRoutes()
+	}
+
+	/**
+	 * 检查是否存在指定名称的路由
+	 * @param name - 路由名称
+	 * @returns 存在时返回 true
+	 */
+	hasRoute(name: string): boolean {
+		return this.matcher.hasRoute(name)
+	}
+
+	/**
+	 * 解析路由位置为完整的 RouteLocation 对象，不执行导航
+	 * @param location - 原始路由位置
+	 * @returns 解析后的路由位置
+	 * @throws {RouterError} 严格模式下未找到路由时抛出
+	 */
+	resolve(location: RouteLocationRaw): RouteLocation {
+		return this.matcher.resolve(location)
+	}
+
+	/**
+	 * 等待路由器初始化完成
+	 * @returns 路由器就绪后 resolve 的 Promise
+	 */
+	isReady(): Promise<void> {
+		return this.routeState.onReady()
+	}
+
+	/**
+	 * 注册路由错误处理回调
+	 *
+	 * 当导航过程中发生错误时，所有已注册的错误处理器将被依次调用。
+	 * 处理器中的异常不会影响其他处理器的执行。
+	 *
+	 * @param handler - 错误处理函数
+	 * @returns 用于移除此处理器的函数
+	 */
+	onError(handler: RouterOnError): () => void {
+		this.errorHandlers.push(handler)
+		return () => {
+			const index = this.errorHandlers.indexOf(handler)
+			if (index > -1) this.errorHandlers.splice(index, 1)
+		}
+	}
+
+	/**
+	 * 安装路由器到 Vue 应用实例
+	 *
+	 * 注册全局属性 `$router` 和 `$route`，并通过 provide/inject 机制
+	 * 使组件可以通过 `useRouter()` / `useRoute()` 访问路由器。
+	 *
+	 * @param app - Vue 应用实例
+	 */
+	install(app: unknown): void {
+		if (!app || typeof app !== 'object' || !('provide' in app)) return
+
+		const vueApp = app as unknown as {
+			provide: (key: symbol, value: unknown) => void
+			config: { globalProperties: Record<string, unknown> }
+		}
+
+		vueApp.provide(ROUTER_SYMBOL, this)
+		vueApp.config.globalProperties.$router = this
+		Object.defineProperty(vueApp.config.globalProperties, '$route', {
+			enumerable: true,
+			get: () => this.currentRoute
+		})
+	}
+
+	/**
+	 * 根据当前页面栈初始化路由状态
+	 *
+	 * 若页面栈为空（如首次启动），将路由初始化为根路径 `/`。
+	 * 否则从当前页面获取路径、元信息和查询参数。
+	 */
+	private initRoute(): void {
+		if (getPageStackLength() === 0) {
+			this.routeState.initCurrentRoute('/', {}, {})
+			return
+		}
+		const currentPath = getCurrentPagePath()
+		const config = this.matcher.getRouteConfig(currentPath)
+		const meta: RouteMeta = config?.meta ?? {}
+		const query = getCurrentPageQuery()
+
+		this.routeState.initCurrentRoute(currentPath, meta, query)
+	}
+
+	/**
+	 * 执行导航流程
+	 *
+	 * 处理并发导航排队、重复导航检测，并委托 executeNavigation 执行完整的守卫链和导航操作。
+	 *
+	 * @param location - 目标路由位置
+	 * @param mode - 导航模式，push 或 replace
+	 * @returns 解析后的目标路由位置
+	 * @throws {NavigationFailure} 导航失败时抛出
+	 */
+	private async performNavigation(location: RouteLocationRaw, mode: 'push' | 'replace'): Promise<RouteLocation> {
+		if (this.pendingNavigation) {
+			await this.pendingNavigation.catch(() => {})
+		}
+
+		const to = this.matcher.resolve(location)
+		const from = this.routeState.getCurrentRoute()
+
+		if (mode === 'push' && this.isSameRouteLocation(to, from)) {
+			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_DUPLICATED, `Avoided redundant navigation to current location: "${to.fullPath}"`)
+			this.triggerErrorHandlers(failure, to, from)
+			return Promise.reject(failure)
+		}
+
+		const navigationPromise = this.executeNavigation(to, from, mode, 0)
+		this.pendingNavigation = navigationPromise
+
+		try {
+			const result = await navigationPromise
+			return result
+		} finally {
+			if (this.pendingNavigation === navigationPromise) {
+				this.pendingNavigation = null
+			}
+		}
+	}
+
+	/**
+	 * 执行完整的导航流程，包括守卫链和 uni API 调用
+	 *
+	 * 依次执行：全局前置守卫 → 路由独享守卫 → 全局解析守卫 → uni 导航 API → 全局后置钩子。
+	 * 支持守卫重定向，但重定向深度超过 {@link MAX_REDIRECT_DEPTH} 时将取消导航。
+	 *
+	 * @param to - 目标路由
+	 * @param from - 来源路由
+	 * @param mode - 导航模式
+	 * @param redirectDepth - 当前重定向深度
+	 * @returns 解析后的目标路由位置
+	 * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
+	 */
+	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace', redirectDepth: number): Promise<RouteLocation> {
+		if (redirectDepth > MAX_REDIRECT_DEPTH) {
+			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
+			this.triggerErrorHandlers(failure, to, from)
+			return Promise.reject(failure)
+		}
+
+		const config = this.matcher.getRouteConfig(to.path)
+
+		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
+		const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth)
+		if (handled) return handled
+
+		const beforeEnterResult = config ? await this.guardManager.runBeforeEnterGuards(to, from, config) : { type: 'next' as const }
+		const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth)
+		if (handledEnter) return handledEnter
+
+		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
+		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth)
+		if (handledResolve) return handledResolve
+
+		try {
+			const navOptions = {
+				path: to.path,
+				meta: to.meta,
+				query: to.query
+			}
+
+			if (mode === 'push') {
+				await navigateTo(navOptions)
+			} else {
+				await replaceTo(navOptions)
+			}
+
+			this.routeState.setCurrentRoute(to)
+			this.guardManager.runAfterGuards(to, from)
+
+			return to
+		} catch (error) {
+			const code = RouterErrorCode.NAVIGATION_API_ERROR
+			const cause = isUniApiError(error) ? error : undefined
+			const failure = new NavigationFailure(to, from, code, undefined, cause)
+			this.triggerErrorHandlers(failure, to, from)
+			return Promise.reject(failure)
+		}
+	}
+
+	/**
+	 * 处理守卫执行结果
+	 *
+	 * 根据守卫返回的结果决定后续行为：
+	 * - abort: 中止导航并抛出 NavigationFailure
+	 * - next + redirect: 递归执行重定向导航
+	 * - next: 继续执行后续守卫
+	 *
+	 * @param result - 守卫执行结果
+	 * @param to - 目标路由
+	 * @param from - 来源路由
+	 * @param mode - 导航模式
+	 * @param redirectDepth - 当前重定向深度
+	 * @returns 中止或重定向时返回 Promise\<RouteLocation\>，放行时返回 null
+	 */
+	private handleGuardResult(result: GuardResult, to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace', redirectDepth: number): Promise<RouteLocation> | null {
+		if (result.type === 'abort') {
+			const failure = new NavigationFailure(to, from, result.code)
+			this.triggerErrorHandlers(failure, to, from)
+			return Promise.reject(failure)
+		}
+
+		if (result.redirect) {
+			const redirectTarget = this.matcher.resolve(result.redirect)
+			return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1)
+		}
+
+		return null
+	}
+
+	/**
+	 * 触发所有已注册的错误处理器
+	 * @param error - 路由错误对象
+	 * @param to - 目标路由
+	 * @param from - 来源路由
+	 */
+	private triggerErrorHandlers(error: RouterError, to: RouteLocation, from: RouteLocation): void {
+		for (const handler of this.errorHandlers) {
+			try {
+				handler(error, to, from)
+			} catch {
+				// error handlers should not throw
+			}
+		}
+	}
+
+	/**
+	 * 判断两个路由位置是否相同
+	 * @param a - 第一个路由位置
+	 * @param b - 第二个路由位置
+	 * @returns 路径和查询参数均相同时返回 true
+	 */
+	private isSameRouteLocation(a: RouteLocation, b: RouteLocation): boolean {
+		if (a.path !== b.path) return false
+		return this.isSameQuery(a.query, b.query)
+	}
+
+	/**
+	 * 判断两组查询参数是否相同
+	 * @param a - 第一组查询参数
+	 * @param b - 第二组查询参数
+	 * @returns 键值对完全一致时返回 true
+	 */
+	private isSameQuery(a: Record<string, string>, b: Record<string, string>): boolean {
+		const keysA = Object.keys(a)
+		const keysB = Object.keys(b)
+		if (keysA.length !== keysB.length) return false
+		return keysA.every(key => a[key] === b[key])
+	}
+}
+
+/**
+ * 路由器注入键，用于 Vue 的 provide/inject 机制
+ */
+export const ROUTER_SYMBOL = Symbol('uni-router')
+
+/**
+ * 创建 uni-app 路由器实例
+ *
+ * @param options - 路由器初始化选项
+ * @returns 路由器实例
+ *
+ * @example
+ * ```ts
+ * const router = createRouter({
+ *   routes: [
+ *     { path: 'pages/index/index', name: 'home', meta: { title: '首页' } },
+ *     { path: 'pages/about/about', name: 'about', meta: { requireAuth: true } },
+ *     { path: 'pages/user/user', name: 'user', meta: { isTab: true } }
+ *   ],
+ *   strict: true
+ * })
+ *
+ * // 注册到 Vue 应用
+ * app.use(router)
+ *
+ * // 导航
+ * await router.push('/pages/about/about')
+ * await router.push({ name: 'about', query: { id: '1' } })
+ * await router.back()
+ * ```
+ */
+export function createRouter(options: RouterOptions): Router {
+	return new UniRouter(options)
+}

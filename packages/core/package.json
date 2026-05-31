@@ -1,0 +1,62 @@
+{
+	"name": "@meng-xi/uni-router",
+	"type": "module",
+	"version": "0.2.0",
+	"private": false,
+	"description": "为 uni-app 提供类似 vue-router 风格的路由管理系统",
+	"keywords": [
+		"@meng-xi/uni-router",
+		"meng-xi",
+		"uni-router",
+		"uni-app",
+		"router"
+	],
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./components/*": "./components/*"
+	},
+	"files": [
+		"dist",
+		"components",
+		"README.md",
+		"README-en.md"
+	],
+	"scripts": {
+		"dev": "tsup --watch",
+		"build": "tsup",
+		"lint": "eslint src/",
+		"typecheck": "tsc --noEmit"
+	},
+	"peerDependencies": {
+		"vue": ">=3.0.0"
+	},
+	"peerDependenciesMeta": {
+		"vue": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@types/node": "^25.9.1",
+		"tsup": "^8.5.0",
+		"typescript": "^5.9.3",
+		"vue": "^3.5.0"
+	},
+	"author": {
+		"name": "PedroQue99",
+		"email": "ksmengfang@163.com"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/MengXi-Studio/uni-router#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MengXi-Studio/uni-router.git"
+	},
+	"bugs": "https://github.com/MengXi-Studio/uni-router/issues"
+}

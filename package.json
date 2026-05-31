@@ -1,36 +1,47 @@
 {
-	"name": "@uni-router/monorepo",
+	"name": "uni-router",
 	"type": "module",
 	"version": "0.1.4",
-	"private": true,
-	"packageManager": "pnpm@10.11.0",
-	"engines": {
-		"node": ">=22.14.0"
-	},
+	"private": false,
 	"description": "为 uni-app 提供类似 vue-router 风格的路由",
+	"packageManager": "pnpm@10.30.0",
 	"workspaces": [
 		"packages/*"
 	],
 	"scripts": {
-		"stub": "pnpm -r --filter=./packages/* --parallel run stub",
-		"dev": "pnpm stub",
-		"build": "rimraf --glob packages/*/dist && pnpm -r --filter=./packages/* run build",
-		"play:h5": "pnpm dev && pnpm -C packages/playground run dev:h5",
-		"build:h5": "pnpm build && pnpm -C packages/playground run build:h5",
-		"prepublishOnly": "pnpm build",
+		"dev:core": "pnpm --filter @meng-xi/uni-router dev",
+		"build:core": "pnpm --filter @meng-xi/uni-router build",
+		"dev:docs": "pnpm --filter @meng-xi/uni-router-docs dev",
+		"build:docs": "pnpm --filter @meng-xi/uni-router-docs build",
+		"dev:playground": "pnpm --filter @meng-xi/uni-router-playground dev",
+		"build:playground": "pnpm --filter @meng-xi/uni-router-playground build",
 		"release": "bumpp",
-		"docs:dev": "pnpm -C packages/docs run docs:dev",
-		"docs:build": "pnpm -C packages/docs run docs:build",
-		"docs:preview": "pnpm -C packages/docs run docs:preview",
-		"docs:deploy": "pnpm -C packages/docs run docs:deploy",
 		"lint": "eslint .",
-		"lint:fix": "pnpm lint --fix"
+		"lint:fix": "pnpm lint --fix",
+		"clean": "rimraf --glob node_modules pnpm-lock.yaml packages/**/node_modules packages/**/pnpm-lock.yaml"
 	},
 	"devDependencies": {
-		"@antfu/eslint-config": "^5.0.0",
-		"bumpp": "^10.2.0",
-		"eslint": "^9.32.0",
-		"rimraf": "^6.0.1",
-		"typescript": "~5.8.3"
-	}
+		"@eslint/js": "^9.38.0",
+		"bumpp": "^10.4.1",
+		"eslint": "^9.38.0",
+		"eslint-config-prettier": "^10.1.0",
+		"eslint-plugin-prettier": "^5.5.0",
+		"globals": "^16.2.0",
+		"prettier": "^3.8.1",
+		"rimraf": "^6.1.0",
+		"tsx": "^4.22.3",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.56.0"
+	},
+	"author": {
+		"name": "PedroQue99",
+		"email": "ksmengfang@163.com"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/MengXi-Studio/uni-router#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/MengXi-Studio/uni-router.git"
+	},
+	"bugs": "https://github.com/MengXi-Studio/uni-router/issues"
 }

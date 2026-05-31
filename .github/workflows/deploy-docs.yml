@@ -1,95 +1,73 @@
-# 工作流名称：用于在 GitHub Actions 界面标识此工作流的用途
+# 文档部署到 GitHub Pages（自动 + 手动触发）
 name: Deploy Docs to GitHub Pages
 
-# 触发条件：指定什么情况下运行此工作流
 on:
-  # 当代码推送到 master 分支时触发
   push:
     branches: [master]
-    # 仅当以下路径的文件发生变更时触发（避免不必要的重复运行）
     paths:
-      # 文档源文件变更
       - 'packages/docs/**'
-      # 工作流文件本身变更
-      - '.github/workflows/deploy-docs.yml'
-
-  # 允许你从 Actions 选项卡手动运行此工作流程
+      - .github/workflows/deploy-docs.yml
   workflow_dispatch:
 
-# 设置 GITHUB_TOKEN 的权限，以允许部署到 GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 只允许同时进行一次部署，跳过正在运行和最新队列之间的运行队列
-# 但是，不要取消正在进行的运行，因为我们希望允许这些生产部署完成
 concurrency:
   group: pages
   cancel-in-progress: false
 
-# 工作流任务定义
 jobs:
-  # 构建工作
   build:
-    # 运行环境：使用 Ubuntu 最新版
     runs-on: ubuntu-latest
-    # 任务步骤：按顺序执行的操作列表
     steps:
-      # 步骤1：检出代码到工作目录
+      # 检出代码（拉取完整历史）
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          # 拉取完整历史记录（某些构建工具需要）
           fetch-depth: 0
 
-      # 步骤2：安装 pnpm
+      # 安装 pnpm
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v6
         with:
-          # 安装 pnpm 版本
-          version: 10.11.0
+          version: 10.30.0
 
-      # 步骤3：设置 Node.js 环境
+      # 设置 Node.js 环境，启用 pnpm 缓存
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22.14.0
+          node-version: 24.14.0
           cache: pnpm
 
-      # 步骤4：设置 GitHub Pages
+      # 配置 GitHub Pages
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
-      # 步骤5：安装依赖
+      # 安装依赖
       - name: Install dependencies
         run: pnpm install
 
-      # 步骤6：构建文档
+      # 构建文档
       - name: Build docs
-        run: pnpm run docs:build
+        run: pnpm run build:docs
 
-      # 步骤7：上传构建产物
+      # 上传构建产物
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ./packages/docs/.vitepress/dist
 
-  # 部署工作
   deploy:
-    # 环境配置：定义部署目标
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    # 依赖关系：确保在构建完成后再部署
     needs: build
-    # 运行环境：使用 Ubuntu 最新版
     runs-on: ubuntu-latest
-    # 任务名称：部署
     name: Deploy
-    # 任务步骤：按顺序执行的操作列表
     steps:
-      # 步骤1：部署到 GitHub Pages
+      # 部署到 GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

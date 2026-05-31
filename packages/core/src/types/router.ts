@@ -1,0 +1,113 @@
+import type { RouteConfig, RouteLocation, RouteLocationRaw } from './route'
+import type { NavigationGuard, PostNavigationGuard } from './guard'
+import type { RouterError } from './error'
+
+/**
+ * 路由错误处理回调
+ * @param error - 错误对象
+ * @param to - 目标路由
+ * @param from - 来源路由
+ */
+export type RouterOnError = (error: RouterError, to: RouteLocation, from: RouteLocation) => void
+
+/**
+ * 路由器初始化选项
+ */
+export interface RouterOptions {
+	/** 路由配置列表，需与 pages.json 中的页面声明保持一致 */
+	routes: RouteConfig[]
+	/** 是否启用严格模式，启用后未匹配的命名路由将抛出异常 */
+	strict?: boolean
+}
+
+/**
+ * 路由器实例接口，提供路由导航、守卫注册和状态查询能力
+ */
+export interface Router {
+	/** 当前路由位置（只读） */
+	readonly currentRoute: RouteLocation
+
+	/**
+	 * 导航到新页面，对应 uni.navigateTo / uni.switchTab
+	 * @param location - 目标路由位置
+	 * @returns 解析后的目标路由位置
+	 * @throws {NavigationFailure} 导航被中止、重复或 API 调用失败时抛出
+	 */
+	push(location: RouteLocationRaw): Promise<RouteLocation>
+
+	/**
+	 * 替换当前页面，对应 uni.redirectTo / uni.switchTab
+	 * @param location - 目标路由位置
+	 * @returns 解析后的目标路由位置
+	 * @throws {NavigationFailure} 导航被中止、重复或 API 调用失败时抛出
+	 */
+	replace(location: RouteLocationRaw): Promise<RouteLocation>
+
+	/**
+	 * 返回上一页或多级页面，对应 uni.navigateBack
+	 * @param delta - 返回的页面数，默认为 1
+	 * @returns 导航完成或页面栈不足时立即 resolve 的 Promise
+	 */
+	back(delta?: number): Promise<void>
+
+	/**
+	 * 注册全局前置守卫，在每次导航前执行
+	 * @param guard - 前置守卫函数
+	 * @returns 用于移除此守卫的函数
+	 */
+	beforeEach(guard: NavigationGuard): () => void
+
+	/**
+	 * 注册全局解析守卫，在所有前置守卫和路由独享守卫完成后执行
+	 * @param guard - 解析守卫函数
+	 * @returns 用于移除此守卫的函数
+	 */
+	beforeResolve(guard: NavigationGuard): () => void
+
+	/**
+	 * 注册全局后置钩子，在导航完成后执行
+	 * @param guard - 后置钩子函数
+	 * @returns 用于移除此钩子的函数
+	 */
+	afterEach(guard: PostNavigationGuard): () => void
+
+	/**
+	 * 获取所有已注册的路由配置列表
+	 * @returns 路由配置数组的浅拷贝
+	 */
+	getRoutes(): RouteConfig[]
+
+	/**
+	 * 检查是否存在指定名称的路由
+	 * @param name - 路由名称
+	 * @returns 存在时返回 true
+	 */
+	hasRoute(name: string): boolean
+
+	/**
+	 * 解析路由位置为完整的 RouteLocation 对象，不执行导航
+	 * @param location - 原始路由位置
+	 * @returns 解析后的路由位置
+	 * @throws {RouterError} 严格模式下未找到路由时抛出
+	 */
+	resolve(location: RouteLocationRaw): RouteLocation
+
+	/**
+	 * 等待路由器初始化完成
+	 * @returns 路由器就绪后 resolve 的 Promise
+	 */
+	isReady(): Promise<void>
+
+	/**
+	 * 注册路由错误处理回调
+	 * @param handler - 错误处理函数
+	 * @returns 用于移除此处理器的函数
+	 */
+	onError(handler: RouterOnError): () => void
+
+	/**
+	 * 安装路由器到 Vue 应用实例，注册全局属性和 provide
+	 * @param app - Vue 应用实例
+	 */
+	install(app: unknown): void
+}

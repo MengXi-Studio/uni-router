@@ -1,0 +1,118 @@
+# 工作流名称，显示在 GitHub Actions 页面
+name: Publish to npm
+
+# 触发条件
+on:
+  # 手动触发，仅在 Actions 页面点击 Run workflow 时执行
+  workflow_dispatch:
+    inputs:
+      # 自定义输入参数：是否跳过发布（仅构建）
+      skip_publish:
+        description: 'Skip publish (build only)' # 参数描述
+        required: false # 非必填
+        default: false # 默认不跳过
+        type: boolean # 布尔类型
+
+# 全局环境变量，所有步骤均可使用
+env:
+  NODE_VERSION: '24.14.0' # Node.js 版本
+  PNPM_VERSION: '10.30.0' # pnpm 版本
+  NPM_REGISTRY: 'https://registry.npmjs.org' # npm 官方注册表地址
+
+# GITHUB_TOKEN 权限声明（最小权限原则）
+permissions:
+  id-token: write # 允许生成 OIDC 令牌，Provenance 签名必需
+  contents: read # 允许读取仓库代码，检出步骤必需
+
+jobs:
+  publish:
+    name: Build & Publish # Job 显示名称
+    runs-on: ubuntu-latest # 运行环境：最新版 Ubuntu
+    # 关联 GitHub Environment，必须与 npm Trusted Publisher 配置的 Environment 名称一致
+    environment: uni-router
+
+    steps:
+      # 步骤1：检出仓库代码
+      - name: Checkout
+        uses: actions/checkout@v6 # 使用官方 checkout action
+
+      # 步骤2：安装 pnpm 包管理器
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6 # 使用官方 pnpm 安装 action
+        with:
+          version: ${{ env.PNPM_VERSION }} # 指定 pnpm 版本
+
+      # 步骤3：设置 Node.js 环境
+      - name: Setup Node
+        uses: actions/setup-node@v6 # 使用官方 Node.js 环境配置 action
+        with:
+          node-version: ${{ env.NODE_VERSION }} # 指定 Node.js 版本
+          registry-url: ${{ env.NPM_REGISTRY }} # 设置 npm 注册表地址，自动生成 .npmrc 文件
+          cache: pnpm # 启用 pnpm 依赖缓存，加速后续安装
+
+      # 步骤4：安装项目依赖
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile # 严格按 lockfile 安装，确保依赖一致性
+
+      # 步骤5：构建 @meng-xi/vite-plugin 核心包
+      - name: Build core package
+        run: pnpm run build:core # 执行构建脚本
+
+      # 步骤6：验证构建产物是否存在
+      - name: Verify build output
+        run: |
+          if [ ! -d "packages/core/dist" ]; then # 检查 dist 目录是否存在
+            echo "::error::Build output not found: packages/core/dist" # 输出 GitHub Actions 错误注解
+            exit 1 # 以非零状态退出，标记步骤失败
+          fi
+
+      # 步骤7：检查版本号是否与 npm 已发布版本重复
+      - name: Check version
+        if: ${{ !inputs.skip_publish }} # 仅在不跳过发布时执行
+        id: version # 步骤 ID，后续步骤通过 steps.version.outputs 引用输出
+        run: |
+          # 从 package.json 读取当前版本号
+          CURRENT_VERSION=$(node -p "require('./packages/core/package.json').version")
+          # 将当前版本号写入步骤输出
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          # 查询 npm 注册表中已发布的最新版本，查询失败则返回 "none"
+          PUBLISHED_VERSION=$(npm view @meng-xi/vite-plugin version --registry ${{ env.NPM_REGISTRY }} 2>/dev/null || echo "none")
+          # 将已发布版本号写入步骤输出
+          echo "published_version=$PUBLISHED_VERSION" >> $GITHUB_OUTPUT
+
+          # 比较版本号，决定是否需要发布
+          if [ "$CURRENT_VERSION" = "$PUBLISHED_VERSION" ]; then
+            echo "should_publish=false" >> $GITHUB_OUTPUT # 版本已存在，跳过发布
+          else
+            echo "should_publish=true" >> $GITHUB_OUTPUT # 版本不存在，执行发布
+          fi
+
+      # 步骤8：发布到 npm（OIDC 受信任发布者 + Provenance 签名）
+      - name: Publish to npm
+        if: ${{ !inputs.skip_publish && steps.version.outputs.should_publish == 'true' }} # 不跳过且版本未发布时执行
+        run: npm publish --provenance --access public # --provenance 附加 Sigstore 签名，--access public 公开访问
+        working-directory: packages/core # 在核心包目录下执行
+
+      # 步骤9：发布成功摘要，写入 GitHub Actions Summary 页面
+      - name: Publish summary
+        if: ${{ !inputs.skip_publish && steps.version.outputs.should_publish == 'true' }} # 发布成功时执行
+        run: |
+          echo "## 📦 Published @meng-xi/vite-plugin@${{ steps.version.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY # 标题
+          echo "" >> $GITHUB_STEP_SUMMARY # 空行
+          echo "- **Version**: \`${{ steps.version.outputs.current_version }}\`" >> $GITHUB_STEP_SUMMARY # 版本号
+          echo "- **Auth**: OIDC Trusted Publisher (tokenless)" >> $GITHUB_STEP_SUMMARY # 认证方式
+          echo "- **Provenance**: ✅ Signed with Sigstore" >> $GITHUB_STEP_SUMMARY # 签名状态
+          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY # 关联的 commit SHA
+          echo "- **Environment**: \`vite-plugin\`" >> $GITHUB_STEP_SUMMARY # 关联的 GitHub Environment
+
+      # 步骤10：跳过发布摘要，写入 GitHub Actions Summary 页面
+      - name: Skip publish summary
+        if: ${{ inputs.skip_publish || steps.version.outputs.should_publish != 'true' }} # 跳过发布时执行
+        run: |
+          echo "## ⏭️ Publish Skipped" >> $GITHUB_STEP_SUMMARY # 标题
+          if [ "${{ inputs.skip_publish }}" = "true" ]; then # 判断跳过原因
+            echo "- Reason: skip_publish enabled" >> $GITHUB_STEP_SUMMARY # 手动跳过
+          else
+            echo "- Reason: version ${{ steps.version.outputs.current_version }} already published" >> $GITHUB_STEP_SUMMARY # 版本已存在
+          fi
