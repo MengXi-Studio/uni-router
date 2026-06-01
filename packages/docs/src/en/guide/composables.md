@@ -1,6 +1,6 @@
 # Composables
 
-MengXi UniRouter provides two composable functions for accessing the router instance and current route information in Vue 3's `<script setup>`.
+Uni Router provides two composable functions for accessing the router instance and current route information in Vue 3's `<script setup>`.
 
 ## useRouter()
 
@@ -17,10 +17,10 @@ await router.back()
 
 ### Error Cases
 
-| Scenario | Error Code | Description |
-|----------|-----------|-------------|
+| Scenario             | Error Code    | Description                            |
+| -------------------- | ------------- | -------------------------------------- |
 | Called outside setup | `SETUP_ERROR` | `inject` can only be used inside setup |
-| Router not installed | `SETUP_ERROR` | Need to call `app.use(router)` first |
+| Router not installed | `SETUP_ERROR` | Need to call `app.use(router)` first   |
 
 ## useRoute()
 
@@ -35,9 +35,7 @@ console.log(route.query)
 console.log(route.meta)
 ```
 
-::: warning
-`useRoute()` returns a snapshot of the route location at the time of the call. It does not automatically react to subsequent route changes. For reactive route information, listen to `router.currentRoute`.
-:::
+::: warning `useRoute()` returns a snapshot of the route location at the time of the call. It does not automatically react to subsequent route changes. For reactive route information, listen to `router.currentRoute`. :::
 
 ## Using with Options API
 
@@ -46,16 +44,16 @@ If using the Options API, access via `this.$router` and `this.$route`:
 ```vue
 <script>
 export default {
-  computed: {
-    currentPath() {
-      return this.$route.path
-    }
-  },
-  methods: {
-    navigate() {
-      this.$router.push({ name: 'about' })
-    }
-  }
+	computed: {
+		currentPath() {
+			return this.$route.path
+		}
+	},
+	methods: {
+		navigate() {
+			this.$router.push({ name: 'about' })
+		}
+	}
 }
 </script>
 ```
@@ -64,14 +62,14 @@ export default {
 
 ```vue
 <template>
-  <view class="container">
-    <text>Current path: {{ route.path }}</text>
-    <text>Page title: {{ route.meta.title }}</text>
-    <text>Query params: {{ JSON.stringify(route.query) }}</text>
+	<view class="container">
+		<text>Current path: {{ route.path }}</text>
+		<text>Page title: {{ route.meta.title }}</text>
+		<text>Query params: {{ JSON.stringify(route.query) }}</text>
 
-    <button @click="goAbout">Go to About</button>
-    <button @click="goBack">Go Back</button>
-  </view>
+		<button @click="goAbout">Go to About</button>
+		<button @click="goBack">Go Back</button>
+	</view>
 </template>
 
 <script setup lang="ts">
@@ -81,15 +79,15 @@ const router = useRouter()
 const route = useRoute()
 
 async function goAbout() {
-  try {
-    await router.push({ name: 'about', query: { from: 'home' } })
-  } catch (error) {
-    console.error('Navigation failed', error)
-  }
+	try {
+		await router.push({ name: 'about', query: { from: 'home' } })
+	} catch (error) {
+		console.error('Navigation failed', error)
+	}
 }
 
 function goBack() {
-  router.back()
+	router.back()
 }
 </script>
 ```

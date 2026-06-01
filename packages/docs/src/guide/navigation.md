@@ -1,6 +1,6 @@
 # 路由导航
 
-MengXi UniRouter 提供三种导航方式，分别对应 uni-app 的原生导航 API。
+Uni Router 提供三种导航方式，分别对应 uni-app 的原生导航 API。
 
 ## push()
 
@@ -23,17 +23,15 @@ router.push({ name: 'about', query: { id: '1' } })
 
 ```ts
 try {
-  await router.push('/pages/index/index')
+	await router.push('/pages/index/index')
 } catch (error) {
-  if (error.code === 'NAVIGATION_DUPLICATED') {
-    console.log('已在当前页面')
-  }
+	if (error.code === 'NAVIGATION_DUPLICATED') {
+		console.log('已在当前页面')
+	}
 }
 ```
 
-::: tip
-可通过 `router.onError()` 全局捕获此类错误，避免每次调用都需要 try-catch。
-:::
+::: tip可通过 `router.onError()` 全局捕获此类错误，避免每次调用都需要 try-catch。:::
 
 ### TabBar 页面注意事项
 
@@ -57,17 +55,15 @@ router.replace({ name: 'login' })
 router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
 ```
 
-::: warning
-替换到 TabBar 页面时，`uni.switchTab` 会关闭所有非 Tab 页面，而非仅替换当前页面。此行为由 uni-app 框架决定。
-:::
+::: warning 替换到 TabBar 页面时，`uni.switchTab` 会关闭所有非 Tab 页面，而非仅替换当前页面。此行为由 uni-app 框架决定。:::
 
 ## back()
 
 返回上一页或多级页面，对应 `uni.navigateBack`：
 
 ```ts
-router.back()       // 返回上一页
-router.back(2)      // 返回上两页
+router.back() // 返回上一页
+router.back(2) // 返回上两页
 ```
 
 如果页面栈中不足 `delta` 个页面，会输出警告并立即 resolve，不会抛出错误：

@@ -1,6 +1,6 @@
 # Introduction
 
-MengXi UniRouter is a routing management library designed specifically for [uni-app](https://uniapp.dcloud.net.cn/), providing a [vue-router](https://router.vuejs.org/)-style API experience.
+Uni Router is a routing management library designed specifically for [uni-app](https://uniapp.dcloud.net.cn/), providing a [vue-router](https://router.vuejs.org/)-style API experience.
 
 ## Why Do You Need It?
 
@@ -12,7 +12,7 @@ uni-app natively uses `uni.navigateTo`, `uni.redirectTo`, `uni.switchTab` and ot
 - **No composables**: Cannot easily access router instance and current route info in `<script setup>`
 - **Inconsistent error handling**: Lack of structured error information and error codes when navigation fails
 
-MengXi UniRouter wraps a layer on top of uni-app's native routing APIs, solving the above problems while maintaining compatibility with uni-app's static page model (pages.json).
+Uni Router wraps a layer on top of uni-app's native routing APIs, solving the above problems while maintaining compatibility with uni-app's static page model (pages.json).
 
 ## Core Features
 
@@ -27,7 +27,7 @@ MengXi UniRouter wraps a layer on top of uni-app's native routing APIs, solving 
 
 ## What It Is Not
 
-MengXi UniRouter is **not** a complete port of vue-router. Due to uni-app's static page model (pages.json declares pages), the following vue-router features are **not supported**:
+Uni Router is **not** a complete port of vue-router. Due to uni-app's static page model (pages.json declares pages), the following vue-router features are **not supported**:
 
 - Dynamic route registration (`router.addRoute()` / `router.removeRoute()`)
 - Nested routes (nested `<router-view>`)

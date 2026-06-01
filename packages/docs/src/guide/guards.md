@@ -1,15 +1,15 @@
 # 路由守卫
 
-MengXi UniRouter 提供完整的路由守卫机制，允许在导航过程中进行拦截、校验和重定向。
+Uni Router 提供完整的路由守卫机制，允许在导航过程中进行拦截、校验和重定向。
 
 ## 守卫类型
 
-| 守卫 | 注册方式 | 执行时机 | 可否中止 | 可否重定向 |
-|------|---------|---------|---------|-----------|
-| `beforeEach` | `router.beforeEach()` | 导航前 | ✅ | ✅ |
-| `beforeEnter` | RouteConfig 中定义 | beforeEach 之后 | ✅ | ✅ |
-| `beforeResolve` | `router.beforeResolve()` | 所有前置守卫之后 | ✅ | ✅ |
-| `afterEach` | `router.afterEach()` | 导航完成后 | ❌ | ❌ |
+| 守卫            | 注册方式                 | 执行时机         | 可否中止 | 可否重定向 |
+| --------------- | ------------------------ | ---------------- | -------- | ---------- |
+| `beforeEach`    | `router.beforeEach()`    | 导航前           | ✅       | ✅         |
+| `beforeEnter`   | RouteConfig 中定义       | beforeEach 之后  | ✅       | ✅         |
+| `beforeResolve` | `router.beforeResolve()` | 所有前置守卫之后 | ✅       | ✅         |
+| `afterEach`     | `router.afterEach()`     | 导航完成后       | ❌       | ❌         |
 
 ## beforeEach
 
@@ -17,11 +17,11 @@ MengXi UniRouter 提供完整的路由守卫机制，允许在导航过程中进
 
 ```ts
 const removeGuard = router.beforeEach((to, from, next) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
-  } else {
-    next()
-  }
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		next({ name: 'login' })
+	} else {
+		next()
+	}
 })
 
 // 移除守卫
@@ -34,9 +34,7 @@ removeGuard()
 - `next(false)` — 中止导航
 - `next(location)` — 重定向到新位置
 
-::: warning
-每个守卫必须且只能调用一次 `next()`。多次调用或未调用都会导致导航挂起。
-:::
+::: warning每个守卫必须且只能调用一次 `next()`。多次调用或未调用都会导致导航挂起。:::
 
 ### 异步守卫
 
@@ -44,12 +42,12 @@ removeGuard()
 
 ```ts
 router.beforeEach(async (to, from, next) => {
-  const isAuth = await checkAuthStatus()
-  if (to.meta.requireAuth && !isAuth) {
-    next({ name: 'login' })
-  } else {
-    next()
-  }
+	const isAuth = await checkAuthStatus()
+	if (to.meta.requireAuth && !isAuth) {
+		next({ name: 'login' })
+	} else {
+		next()
+	}
 })
 ```
 
@@ -61,17 +59,17 @@ router.beforeEach(async (to, from, next) => {
 
 ```ts
 const routes = [
-  {
-    path: 'pages/admin/admin',
-    name: 'admin',
-    beforeEnter: (to, from, next) => {
-      if (isAdmin()) {
-        next()
-      } else {
-        next(false)
-      }
-    }
-  }
+	{
+		path: 'pages/admin/admin',
+		name: 'admin',
+		beforeEnter: (to, from, next) => {
+			if (isAdmin()) {
+				next()
+			} else {
+				next(false)
+			}
+		}
+	}
 ]
 ```
 
@@ -79,14 +77,11 @@ const routes = [
 
 ```ts
 const routes = [
-  {
-    path: 'pages/admin/admin',
-    name: 'admin',
-    beforeEnter: [
-      checkAuthGuard,
-      checkAdminGuard
-    ]
-  }
+	{
+		path: 'pages/admin/admin',
+		name: 'admin',
+		beforeEnter: [checkAuthGuard, checkAdminGuard]
+	}
 ]
 ```
 
@@ -98,8 +93,8 @@ const routes = [
 
 ```ts
 router.beforeResolve((to, from, next) => {
-  // 所有前置守卫已通过，导航即将执行
-  next()
+	// 所有前置守卫已通过，导航即将执行
+	next()
 })
 ```
 
@@ -109,15 +104,13 @@ router.beforeResolve((to, from, next) => {
 
 ```ts
 router.afterEach((to, from) => {
-  if (to.meta.title) {
-    uni.setNavigationBarTitle({ title: to.meta.title as string })
-  }
+	if (to.meta.title) {
+		uni.setNavigationBarTitle({ title: to.meta.title as string })
+	}
 })
 ```
 
-::: tip
-`afterEach` 中的异常不会影响导航结果，但应避免在钩子中抛出错误。
-:::
+::: tip `afterEach` 中的异常不会影响导航结果，但应避免在钩子中抛出错误。:::
 
 ## 守卫执行顺序
 
@@ -149,17 +142,15 @@ push('/about')
 
 ```ts
 router.beforeEach((to, from, next) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login', query: { redirect: to.fullPath } })
-  } else {
-    next()
-  }
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		next({ name: 'login', query: { redirect: to.fullPath } })
+	} else {
+		next()
+	}
 })
 ```
 
-::: warning
-重定向会触发新的导航流程，包括重新执行所有守卫。为防止无限循环，最大重定向深度为 10 次。超过限制时导航将被取消并抛出 `NAVIGATION_CANCELLED` 错误。
-:::
+::: warning 重定向会触发新的导航流程，包括重新执行所有守卫。为防止无限循环，最大重定向深度为 10 次。超过限制时导航将被取消并抛出 `NAVIGATION_CANCELLED` 错误。:::
 
 ## 中止导航
 
@@ -167,11 +158,11 @@ router.beforeEach((to, from, next) => {
 
 ```ts
 router.beforeEach((to, from, next) => {
-  if (isMaintenanceMode()) {
-    next(false)
-  } else {
-    next()
-  }
+	if (isMaintenanceMode()) {
+		next(false)
+	} else {
+		next()
+	}
 })
 ```
 
@@ -183,12 +174,12 @@ router.beforeEach((to, from, next) => {
 
 ```ts
 router.beforeEach(async (to, from, next) => {
-  try {
-    await someAsyncOperation()
-    next()
-  } catch (error) {
-    // 异常会导致导航被取消（NAVIGATION_CANCELLED）
-    next(false)
-  }
+	try {
+		await someAsyncOperation()
+		next()
+	} catch (error) {
+		// 异常会导致导航被取消（NAVIGATION_CANCELLED）
+		next(false)
+	}
 })
 ```

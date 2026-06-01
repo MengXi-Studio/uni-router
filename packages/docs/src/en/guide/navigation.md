@@ -1,6 +1,6 @@
 # Navigation
 
-MengXi UniRouter provides three navigation methods, corresponding to uni-app's native navigation APIs.
+Uni Router provides three navigation methods, corresponding to uni-app's native navigation APIs.
 
 ## push()
 
@@ -23,17 +23,15 @@ When `push()` navigates to the same path as the current page, a `NAVIGATION_DUPL
 
 ```ts
 try {
-  await router.push('/pages/index/index')
+	await router.push('/pages/index/index')
 } catch (error) {
-  if (error.code === 'NAVIGATION_DUPLICATED') {
-    console.log('Already on this page')
-  }
+	if (error.code === 'NAVIGATION_DUPLICATED') {
+		console.log('Already on this page')
+	}
 }
 ```
 
-::: tip
-You can use `router.onError()` to globally catch such errors, avoiding the need for try-catch on every call.
-:::
+::: tip You can use `router.onError()` to globally catch such errors, avoiding the need for try-catch on every call. :::
 
 ### TabBar Page Notes
 
@@ -57,17 +55,15 @@ router.replace({ name: 'login' })
 router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
 ```
 
-::: warning
-When replacing to a TabBar page, `uni.switchTab` closes all non-tab pages instead of just replacing the current page. This behavior is determined by the uni-app framework.
-:::
+::: warning When replacing to a TabBar page, `uni.switchTab` closes all non-tab pages instead of just replacing the current page. This behavior is determined by the uni-app framework. :::
 
 ## back()
 
 Go back to the previous page or multiple pages, corresponding to `uni.navigateBack`:
 
 ```ts
-router.back()       // Go back one page
-router.back(2)      // Go back two pages
+router.back() // Go back one page
+router.back(2) // Go back two pages
 ```
 
 If there are not enough pages in the stack for `delta`, a warning is output and the promise resolves immediately without throwing an error:

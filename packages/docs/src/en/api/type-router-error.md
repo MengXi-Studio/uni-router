@@ -60,7 +60,7 @@ class NavigationFailure extends RouterError {
 
 - **to**: Target route
 - **from**: Source route
-- **cause**: Original error cause (only present for `NAVIGATION_API_ERROR`)
+- **cause**: Original error cause, typically carries the raw uni API error when `NAVIGATION_API_ERROR`
 
 ## RouterOnError
 

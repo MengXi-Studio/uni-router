@@ -1,6 +1,6 @@
 # 快速开始
 
-本节将帮助你在 uni-app 项目中快速集成 MengXi UniRouter。
+本节将帮助你在 uni-app 项目中快速集成 Uni Router。
 
 ## 安装
 
@@ -32,26 +32,26 @@ import { createRouter } from '@meng-xi/uni-router'
 import type { RouteConfig } from '@meng-xi/uni-router'
 
 const routes: RouteConfig[] = [
-  {
-    path: 'pages/index/index',
-    name: 'home',
-    meta: { title: '首页' }
-  },
-  {
-    path: 'pages/about/about',
-    name: 'about',
-    meta: { title: '关于', requireAuth: true }
-  },
-  {
-    path: 'pages/user/user',
-    name: 'user',
-    meta: { title: '我的', isTab: true }
-  }
+	{
+		path: 'pages/index/index',
+		name: 'home',
+		meta: { title: '首页' }
+	},
+	{
+		path: 'pages/about/about',
+		name: 'about',
+		meta: { title: '关于', requireAuth: true }
+	},
+	{
+		path: 'pages/user/user',
+		name: 'user',
+		meta: { title: '我的', isTab: true }
+	}
 ]
 
 const router = createRouter({
-  routes,
-  strict: true
+	routes,
+	strict: true
 })
 
 export default router
@@ -68,9 +68,9 @@ import App from './App.vue'
 import router from './router'
 
 export function createApp() {
-  const app = createSSRApp(App)
-  app.use(router)
-  return { app }
+	const app = createSSRApp(App)
+	app.use(router)
+	return { app }
 }
 ```
 
@@ -82,23 +82,23 @@ export function createApp() {
 
 ```vue
 <template>
-  <view>
-    <text>当前路径：{{ $route.path }}</text>
-    <button @click="goAbout">前往关于页</button>
-    <button @click="goBack">返回</button>
-  </view>
+	<view>
+		<text>当前路径：{{ $route.path }}</text>
+		<button @click="goAbout">前往关于页</button>
+		<button @click="goBack">返回</button>
+	</view>
 </template>
 
 <script>
 export default {
-  methods: {
-    goAbout() {
-      this.$router.push({ name: 'about', query: { id: '1' } })
-    },
-    goBack() {
-      this.$router.back()
-    }
-  }
+	methods: {
+		goAbout() {
+			this.$router.push({ name: 'about', query: { id: '1' } })
+		},
+		goBack() {
+			this.$router.back()
+		}
+	}
 }
 </script>
 ```
@@ -109,10 +109,10 @@ export default {
 
 ```vue
 <template>
-  <view>
-    <text>当前路径：{{ route.path }}</text>
-    <button @click="goAbout">前往关于页</button>
-  </view>
+	<view>
+		<text>当前路径：{{ route.path }}</text>
+		<button @click="goAbout">前往关于页</button>
+	</view>
 </template>
 
 <script setup lang="ts">
@@ -122,11 +122,11 @@ const router = useRouter()
 const route = useRoute()
 
 async function goAbout() {
-  try {
-    await router.push({ name: 'about', query: { id: '1' } })
-  } catch (error) {
-    console.error('导航失败', error)
-  }
+	try {
+		await router.push({ name: 'about', query: { id: '1' } })
+	} catch (error) {
+		console.error('导航失败', error)
+	}
 }
 </script>
 ```
@@ -136,17 +136,17 @@ async function goAbout() {
 ```ts
 // router/index.ts
 router.beforeEach((to, from, next) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'home' })
-  } else {
-    next()
-  }
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		next({ name: 'home' })
+	} else {
+		next()
+	}
 })
 
 router.afterEach((to, from) => {
-  if (to.meta.title) {
-    uni.setNavigationBarTitle({ title: to.meta.title as string })
-  }
+	if (to.meta.title) {
+		uni.setNavigationBarTitle({ title: to.meta.title as string })
+	}
 })
 ```
 

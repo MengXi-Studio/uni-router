@@ -169,3 +169,9 @@ Install the router to a Vue app instance (called internally by `app.use(router)`
 ```ts
 install(app: unknown): void
 ```
+
+The installation registers the following:
+
+- **`$router`** — Global property, accessible via `this.$router`
+- **`$route`** — Global property (computed), accessible via `this.$route` for current route location
+- **provide** — Injects the router instance via `provide(ROUTER_SYMBOL, router)`, enabling `useRouter()` / `useRoute()`

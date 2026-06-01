@@ -1,15 +1,15 @@
 # Route Guards
 
-MengXi UniRouter provides a complete route guard mechanism, allowing you to intercept, validate, and redirect during navigation.
+Uni Router provides a complete route guard mechanism, allowing you to intercept, validate, and redirect during navigation.
 
 ## Guard Types
 
-| Guard | Registration | Timing | Can Abort | Can Redirect |
-|-------|-------------|--------|-----------|-------------|
-| `beforeEach` | `router.beforeEach()` | Before navigation | ✅ | ✅ |
-| `beforeEnter` | Defined in RouteConfig | After beforeEach | ✅ | ✅ |
-| `beforeResolve` | `router.beforeResolve()` | After all before guards | ✅ | ✅ |
-| `afterEach` | `router.afterEach()` | After navigation completes | ❌ | ❌ |
+| Guard           | Registration             | Timing                     | Can Abort | Can Redirect |
+| --------------- | ------------------------ | -------------------------- | --------- | ------------ |
+| `beforeEach`    | `router.beforeEach()`    | Before navigation          | ✅        | ✅           |
+| `beforeEnter`   | Defined in RouteConfig   | After beforeEach           | ✅        | ✅           |
+| `beforeResolve` | `router.beforeResolve()` | After all before guards    | ✅        | ✅           |
+| `afterEach`     | `router.afterEach()`     | After navigation completes | ❌        | ❌           |
 
 ## beforeEach
 
@@ -17,11 +17,11 @@ Global before guard, executed before each navigation. Commonly used for permissi
 
 ```ts
 const removeGuard = router.beforeEach((to, from, next) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
-  } else {
-    next()
-  }
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		next({ name: 'login' })
+	} else {
+		next()
+	}
 })
 
 // Remove the guard
@@ -34,9 +34,7 @@ removeGuard()
 - `next(false)` — Abort navigation
 - `next(location)` — Redirect to a new location
 
-::: warning
-Each guard must call `next()` exactly once. Multiple calls or no call will cause navigation to hang.
-:::
+::: warning Each guard must call `next()` exactly once. Multiple calls or no call will cause navigation to hang. :::
 
 ### Async Guards
 
@@ -44,12 +42,12 @@ Guard functions support async operations:
 
 ```ts
 router.beforeEach(async (to, from, next) => {
-  const isAuth = await checkAuthStatus()
-  if (to.meta.requireAuth && !isAuth) {
-    next({ name: 'login' })
-  } else {
-    next()
-  }
+	const isAuth = await checkAuthStatus()
+	if (to.meta.requireAuth && !isAuth) {
+		next({ name: 'login' })
+	} else {
+		next()
+	}
 })
 ```
 
@@ -61,17 +59,17 @@ Per-route guard, defined in `RouteConfig`, triggered only when entering that rou
 
 ```ts
 const routes = [
-  {
-    path: 'pages/admin/admin',
-    name: 'admin',
-    beforeEnter: (to, from, next) => {
-      if (isAdmin()) {
-        next()
-      } else {
-        next(false)
-      }
-    }
-  }
+	{
+		path: 'pages/admin/admin',
+		name: 'admin',
+		beforeEnter: (to, from, next) => {
+			if (isAdmin()) {
+				next()
+			} else {
+				next(false)
+			}
+		}
+	}
 ]
 ```
 
@@ -79,14 +77,11 @@ const routes = [
 
 ```ts
 const routes = [
-  {
-    path: 'pages/admin/admin',
-    name: 'admin',
-    beforeEnter: [
-      checkAuthGuard,
-      checkAdminGuard
-    ]
-  }
+	{
+		path: 'pages/admin/admin',
+		name: 'admin',
+		beforeEnter: [checkAuthGuard, checkAdminGuard]
+	}
 ]
 ```
 
@@ -98,8 +93,8 @@ Global resolve guard, executed after all before guards and per-route guards have
 
 ```ts
 router.beforeResolve((to, from, next) => {
-  // All before guards have passed, navigation is about to execute
-  next()
+	// All before guards have passed, navigation is about to execute
+	next()
 })
 ```
 
@@ -109,15 +104,13 @@ Global after hook, executed after navigation completes. Cannot abort navigation.
 
 ```ts
 router.afterEach((to, from) => {
-  if (to.meta.title) {
-    uni.setNavigationBarTitle({ title: to.meta.title as string })
-  }
+	if (to.meta.title) {
+		uni.setNavigationBarTitle({ title: to.meta.title as string })
+	}
 })
 ```
 
-::: tip
-Exceptions in `afterEach` do not affect navigation results, but you should avoid throwing errors in hooks.
-:::
+::: tip Exceptions in `afterEach` do not affect navigation results, but you should avoid throwing errors in hooks. :::
 
 ## Guard Execution Order
 
@@ -149,17 +142,16 @@ Calling `next(location)` in a guard redirects to a new location, triggering a ne
 
 ```ts
 router.beforeEach((to, from, next) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login', query: { redirect: to.fullPath } })
-  } else {
-    next()
-  }
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		next({ name: 'login', query: { redirect: to.fullPath } })
+	} else {
+		next()
+	}
 })
 ```
 
-::: warning
-Redirects trigger a new navigation flow, including re-executing all guards. To prevent infinite loops, the maximum redirect depth is 10. Exceeding this limit cancels the navigation and throws a `NAVIGATION_CANCELLED` error.
-:::
+::: warning Redirects trigger a new navigation flow, including re-executing all guards. To prevent infinite loops, the maximum redirect depth is 10. Exceeding this limit cancels the navigation and throws a
+`NAVIGATION_CANCELLED` error. :::
 
 ## Aborting Navigation
 
@@ -167,11 +159,11 @@ Calling `next(false)` in a guard aborts the current navigation:
 
 ```ts
 router.beforeEach((to, from, next) => {
-  if (isMaintenanceMode()) {
-    next(false)
-  } else {
-    next()
-  }
+	if (isMaintenanceMode()) {
+		next(false)
+	} else {
+		next()
+	}
 })
 ```
 
@@ -183,12 +175,12 @@ If a guard function throws an exception or returns a rejected Promise, the navig
 
 ```ts
 router.beforeEach(async (to, from, next) => {
-  try {
-    await someAsyncOperation()
-    next()
-  } catch (error) {
-    // Exception causes navigation to be cancelled (NAVIGATION_CANCELLED)
-    next(false)
-  }
+	try {
+		await someAsyncOperation()
+		next()
+	} catch (error) {
+		// Exception causes navigation to be cancelled (NAVIGATION_CANCELLED)
+		next(false)
+	}
 })
 ```

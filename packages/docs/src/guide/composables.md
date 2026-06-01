@@ -1,6 +1,6 @@
 # 组合式 API
 
-MengXi UniRouter 提供两个组合式函数，用于在 Vue 3 的 `<script setup>` 中访问路由器实例和当前路由信息。
+Uni Router 提供两个组合式函数，用于在 Vue 3 的 `<script setup>` 中访问路由器实例和当前路由信息。
 
 ## useRouter()
 
@@ -17,10 +17,10 @@ await router.back()
 
 ### 错误情况
 
-| 场景 | 错误码 | 说明 |
-|------|--------|------|
+| 场景            | 错误码        | 说明                         |
+| --------------- | ------------- | ---------------------------- |
 | 在 setup 外调用 | `SETUP_ERROR` | `inject` 只能在 setup 中使用 |
-| 未安装路由器 | `SETUP_ERROR` | 需先调用 `app.use(router)` |
+| 未安装路由器    | `SETUP_ERROR` | 需先调用 `app.use(router)`   |
 
 ## useRoute()
 
@@ -35,9 +35,7 @@ console.log(route.query)
 console.log(route.meta)
 ```
 
-::: warning
-`useRoute()` 返回的是调用时刻的路由位置快照，不会自动响应后续路由变化。如需响应式路由信息，请监听 `router.currentRoute`。
-:::
+::: warning `useRoute()` 返回的是调用时刻的路由位置快照，不会自动响应后续路由变化。如需响应式路由信息，请监听 `router.currentRoute`。:::
 
 ## 在选项式 API 中使用
 
@@ -46,16 +44,16 @@ console.log(route.meta)
 ```vue
 <script>
 export default {
-  computed: {
-    currentPath() {
-      return this.$route.path
-    }
-  },
-  methods: {
-    navigate() {
-      this.$router.push({ name: 'about' })
-    }
-  }
+	computed: {
+		currentPath() {
+			return this.$route.path
+		}
+	},
+	methods: {
+		navigate() {
+			this.$router.push({ name: 'about' })
+		}
+	}
 }
 </script>
 ```
@@ -64,14 +62,14 @@ export default {
 
 ```vue
 <template>
-  <view class="container">
-    <text>当前路径：{{ route.path }}</text>
-    <text>页面标题：{{ route.meta.title }}</text>
-    <text>查询参数：{{ JSON.stringify(route.query) }}</text>
+	<view class="container">
+		<text>当前路径：{{ route.path }}</text>
+		<text>页面标题：{{ route.meta.title }}</text>
+		<text>查询参数：{{ JSON.stringify(route.query) }}</text>
 
-    <button @click="goAbout">前往关于页</button>
-    <button @click="goBack">返回</button>
-  </view>
+		<button @click="goAbout">前往关于页</button>
+		<button @click="goBack">返回</button>
+	</view>
 </template>
 
 <script setup lang="ts">
@@ -81,15 +79,15 @@ const router = useRouter()
 const route = useRoute()
 
 async function goAbout() {
-  try {
-    await router.push({ name: 'about', query: { from: 'home' } })
-  } catch (error) {
-    console.error('导航失败', error)
-  }
+	try {
+		await router.push({ name: 'about', query: { from: 'home' } })
+	} catch (error) {
+		console.error('导航失败', error)
+	}
 }
 
 function goBack() {
-  router.back()
+	router.back()
 }
 </script>
 ```

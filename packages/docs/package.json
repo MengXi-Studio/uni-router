@@ -1,7 +1,8 @@
 {
 	"name": "@meng-xi/uni-router-docs",
 	"version": "0.0.1",
-	"private": true,
+	"private": false,
+	"description": "@meng-xi/uni-router 使用文档",
 	"type": "module",
 	"scripts": {
 		"dev": "vitepress dev",

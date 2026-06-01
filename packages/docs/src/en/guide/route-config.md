@@ -1,6 +1,6 @@
 # Route Configuration
 
-MengXi UniRouter's route configuration must be consistent with uni-app's `pages.json`. This section covers how to define route configurations and meta information.
+Uni Router's route configuration must be consistent with uni-app's `pages.json`. This section covers how to define route configurations and meta information.
 
 ## RouteConfig
 
@@ -8,10 +8,10 @@ Each route configuration item corresponds to a page declaration in `pages.json`:
 
 ```ts
 interface RouteConfig {
-  path: string
-  name?: string
-  meta?: RouteMeta
-  beforeEnter?: NavigationGuard | NavigationGuard[]
+	path: string
+	name?: string
+	meta?: RouteMeta
+	beforeEnter?: NavigationGuard | NavigationGuard[]
 }
 ```
 
@@ -21,15 +21,13 @@ Page path, must match the path in `pages.json` (without leading `/`):
 
 ```ts
 const routes = [
-  { path: 'pages/index/index', name: 'home' },
-  { path: 'pages/about/about', name: 'about' },
-  { path: 'pages/user/user', name: 'user' }
+	{ path: 'pages/index/index', name: 'home' },
+	{ path: 'pages/about/about', name: 'about' },
+	{ path: 'pages/user/user', name: 'user' }
 ]
 ```
 
-::: warning
-The `path` field must exactly match the page path declared in `pages.json`, otherwise route matching will fail.
-:::
+::: warning The `path` field must exactly match the page path declared in `pages.json`, otherwise route matching will fail. :::
 
 ### name
 
@@ -57,24 +55,24 @@ Use `createRouter()` to create a router instance:
 import { createRouter } from '@meng-xi/uni-router'
 
 const router = createRouter({
-  routes: [
-    {
-      path: 'pages/index/index',
-      name: 'home',
-      meta: { title: 'Home' }
-    },
-    {
-      path: 'pages/about/about',
-      name: 'about',
-      meta: { title: 'About', requireAuth: true }
-    },
-    {
-      path: 'pages/user/user',
-      name: 'user',
-      meta: { isTab: true }
-    }
-  ],
-  strict: true
+	routes: [
+		{
+			path: 'pages/index/index',
+			name: 'home',
+			meta: { title: 'Home' }
+		},
+		{
+			path: 'pages/about/about',
+			name: 'about',
+			meta: { title: 'About', requireAuth: true }
+		},
+		{
+			path: 'pages/user/user',
+			name: 'user',
+			meta: { isTab: true }
+		}
+	],
+	strict: true
 })
 ```
 
@@ -85,14 +83,14 @@ const router = createRouter({
 
 ```ts
 const router = createRouter({
-  routes,
-  strict: false
+	routes,
+	strict: false
 })
 ```
 
 ## Route Matching
 
-MengXi UniRouter supports both path and name matching:
+Uni Router supports both path and name matching:
 
 ### Path Matching
 
@@ -126,16 +124,14 @@ The query string is automatically parsed into a `query` object.
 
 ## Relationship with pages.json
 
-MengXi UniRouter does **not replace** `pages.json`, but works alongside it:
+Uni Router does **not replace** `pages.json`, but works alongside it:
 
-| Responsibility | pages.json | MengXi UniRouter |
-|---------------|-----------|-----------------|
-| Page registration | ✅ Required | ❌ Not responsible |
-| Route navigation | uni.navigateTo etc. | ✅ push / replace / back |
-| Route guards | ❌ Not supported | ✅ beforeEach etc. |
-| Route meta | ❌ Not supported | ✅ meta field |
-| Named routes | ❌ Not supported | ✅ name field |
+| Responsibility    | pages.json          | Uni Router               |
+| ----------------- | ------------------- | ------------------------ |
+| Page registration | ✅ Required         | ❌ Not responsible       |
+| Route navigation  | uni.navigateTo etc. | ✅ push / replace / back |
+| Route guards      | ❌ Not supported    | ✅ beforeEach etc.       |
+| Route meta        | ❌ Not supported    | ✅ meta field            |
+| Named routes      | ❌ Not supported    | ✅ name field            |
 
-::: important
-Page declarations in `pages.json` are the foundation of the uni-app framework. MengXi UniRouter's route configurations must be consistent with them. Pages not declared in `pages.json` cannot be navigated to.
-:::
+::: important Page declarations in `pages.json` are the foundation of the uni-app framework. Uni Router's route configurations must be consistent with them. Pages not declared in `pages.json` cannot be navigated to. :::

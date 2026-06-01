@@ -60,7 +60,7 @@ class NavigationFailure extends RouterError {
 
 - **to**: 目标路由
 - **from**: 来源路由
-- **cause**: 原始错误原因（仅 `NAVIGATION_API_ERROR` 时存在）
+- **cause**: 原始错误原因，通常在 `NAVIGATION_API_ERROR` 时携带 uni API 调用失败的原始错误
 
 ## RouterOnError
 

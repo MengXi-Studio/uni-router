@@ -169,3 +169,9 @@ router.onError((error, to, from) => {
 ```ts
 install(app: unknown): void
 ```
+
+安装时会注册以下内容：
+
+- **`$router`** — 全局属性，可通过 `this.$router` 访问路由器实例
+- **`$route`** — 全局属性（计算属性），可通过 `this.$route` 访问当前路由位置
+- **provide** — 通过 `provide(ROUTER_SYMBOL, router)` 注入路由器实例，使 `useRouter()` / `useRoute()` 可用

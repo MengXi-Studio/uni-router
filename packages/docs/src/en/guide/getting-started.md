@@ -1,6 +1,6 @@
 # Quick Start
 
-This section will help you quickly integrate MengXi UniRouter into your uni-app project.
+This section will help you quickly integrate Uni Router into your uni-app project.
 
 ## Installation
 
@@ -32,26 +32,26 @@ import { createRouter } from '@meng-xi/uni-router'
 import type { RouteConfig } from '@meng-xi/uni-router'
 
 const routes: RouteConfig[] = [
-  {
-    path: 'pages/index/index',
-    name: 'home',
-    meta: { title: 'Home' }
-  },
-  {
-    path: 'pages/about/about',
-    name: 'about',
-    meta: { title: 'About', requireAuth: true }
-  },
-  {
-    path: 'pages/user/user',
-    name: 'user',
-    meta: { title: 'Profile', isTab: true }
-  }
+	{
+		path: 'pages/index/index',
+		name: 'home',
+		meta: { title: 'Home' }
+	},
+	{
+		path: 'pages/about/about',
+		name: 'about',
+		meta: { title: 'About', requireAuth: true }
+	},
+	{
+		path: 'pages/user/user',
+		name: 'user',
+		meta: { title: 'Profile', isTab: true }
+	}
 ]
 
 const router = createRouter({
-  routes,
-  strict: true
+	routes,
+	strict: true
 })
 
 export default router
@@ -68,9 +68,9 @@ import App from './App.vue'
 import router from './router'
 
 export function createApp() {
-  const app = createSSRApp(App)
-  app.use(router)
-  return { app }
+	const app = createSSRApp(App)
+	app.use(router)
+	return { app }
 }
 ```
 
@@ -82,23 +82,23 @@ Access via `this.$router` and `this.$route`:
 
 ```vue
 <template>
-  <view>
-    <text>Current path: {{ $route.path }}</text>
-    <button @click="goAbout">Go to About</button>
-    <button @click="goBack">Go Back</button>
-  </view>
+	<view>
+		<text>Current path: {{ $route.path }}</text>
+		<button @click="goAbout">Go to About</button>
+		<button @click="goBack">Go Back</button>
+	</view>
 </template>
 
 <script>
 export default {
-  methods: {
-    goAbout() {
-      this.$router.push({ name: 'about', query: { id: '1' } })
-    },
-    goBack() {
-      this.$router.back()
-    }
-  }
+	methods: {
+		goAbout() {
+			this.$router.push({ name: 'about', query: { id: '1' } })
+		},
+		goBack() {
+			this.$router.back()
+		}
+	}
 }
 </script>
 ```
@@ -109,10 +109,10 @@ Use `useRouter()` and `useRoute()` composable functions:
 
 ```vue
 <template>
-  <view>
-    <text>Current path: {{ route.path }}</text>
-    <button @click="goAbout">Go to About</button>
-  </view>
+	<view>
+		<text>Current path: {{ route.path }}</text>
+		<button @click="goAbout">Go to About</button>
+	</view>
 </template>
 
 <script setup lang="ts">
@@ -122,11 +122,11 @@ const router = useRouter()
 const route = useRoute()
 
 async function goAbout() {
-  try {
-    await router.push({ name: 'about', query: { id: '1' } })
-  } catch (error) {
-    console.error('Navigation failed', error)
-  }
+	try {
+		await router.push({ name: 'about', query: { id: '1' } })
+	} catch (error) {
+		console.error('Navigation failed', error)
+	}
 }
 </script>
 ```
@@ -136,17 +136,17 @@ async function goAbout() {
 ```ts
 // router/index.ts
 router.beforeEach((to, from, next) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'home' })
-  } else {
-    next()
-  }
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		next({ name: 'home' })
+	} else {
+		next()
+	}
 })
 
 router.afterEach((to, from) => {
-  if (to.meta.title) {
-    uni.setNavigationBarTitle({ title: to.meta.title as string })
-  }
+	if (to.meta.title) {
+		uni.setNavigationBarTitle({ title: to.meta.title as string })
+	}
 })
 ```
 

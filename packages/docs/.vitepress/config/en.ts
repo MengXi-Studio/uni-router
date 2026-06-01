@@ -1,7 +1,7 @@
 import type { DefaultTheme, LocaleSpecificConfig } from 'vitepress'
 
 export const META_URL = 'https://mengxi-studio.github.io/uni-router/en/'
-export const META_TITLE = 'MengXi UniRouter'
+export const META_TITLE = 'Uni Router'
 export const META_DESCRIPTION = 'Provide a routing management system for uni-app that is similar to the style of vue-router'
 
 export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
@@ -134,6 +134,10 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: 'useRoute()',
 							link: '/en/api/use-route'
+						},
+						{
+							text: 'RouterLink',
+							link: '/en/api/router-link'
 						}
 					]
 				},

@@ -128,6 +128,10 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: 'useRoute()',
 							link: '/api/use-route'
+						},
+						{
+							text: 'RouterLink',
+							link: '/api/router-link'
 						}
 					]
 				},

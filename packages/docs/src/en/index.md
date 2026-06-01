@@ -1,10 +1,13 @@
 ---
 layout: home
 
+title: '@meng-xi/uni-router'
+titleTemplate: Uni Router Router Management
+
 hero:
-  name: MengXi UniRouter
+  name: Uni Router
   text: uni-app Router Management
-  tagline: vue-router-style routing system for uni-app
+  tagline: Provide a routing management system for uni-app that is similar to the style of vue-router
   actions:
     - theme: brand
       text: Quick Start
