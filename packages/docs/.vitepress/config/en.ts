@@ -1,15 +1,15 @@
 import type { DefaultTheme, LocaleSpecificConfig } from 'vitepress'
 
-export const META_URL = 'https://mengxi-studio.github.io/uni-router/'
-export const META_TITLE = 'Uni Router'
-export const META_DESCRIPTION = 'Route management system based on Vue Router'
+export const META_URL = 'https://mengxi-studio.github.io/uni-router/en/'
+export const META_TITLE = 'MengXi UniRouter'
+export const META_DESCRIPTION = 'Provide a routing management system for uni-app that is similar to the style of vue-router'
 
 export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 	/** 网站配置 描述 */
 	description: META_DESCRIPTION,
 
-	/** 网站配置 头信息 */
 	head: [
+		/** 网站配置 头信息 */
 		['meta', { property: 'og:url', content: META_URL }],
 		['meta', { property: 'og:description', content: META_DESCRIPTION }],
 		['meta', { property: 'twitter:url', content: META_URL }],
@@ -21,7 +21,7 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 	themeConfig: {
 		/** 网站主题配置 编辑链接 */
 		editLink: {
-			pattern: 'https://github.com/MengXi-Studio/uni-router/tree/master/packages/docs/:path',
+			pattern: 'https://github.com/MengXi-Studio/uni-router/edit/main/packages/docs/:path',
 			text: 'Suggest changes to this page'
 		},
 
@@ -31,20 +31,12 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 		/** 网站主题配置 导航栏 */
 		nav: [
 			{
-				text: 'Common Utils',
-				link: '/en/common/index.html'
+				text: 'Guide',
+				link: '/en/guide/getting-started'
 			},
 			{
-				text: 'Plugin Factory',
-				link: '/en/factory/index.html'
-			},
-			{
-				text: 'Logger',
-				link: '/en/logger/index.html'
-			},
-			{
-				text: 'Plugins',
-				link: '/en/plugins/index.html'
+				text: 'API',
+				link: '/en/api/create-router'
 			},
 			{
 				text: 'Links',
@@ -61,152 +53,116 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 			}
 		],
 
-		/** 网站主题配置 侧边栏 */
 		sidebar: {
-			'/en/': [
+			'/en/guide/': [
 				{
-					text: 'Setup',
+					text: 'Getting Started',
 					items: [
 						{
 							text: 'Introduction',
-							link: '/en/introduction.html'
+							link: '/en/guide/introduction'
+						},
+						{
+							text: 'Quick Start',
+							link: '/en/guide/getting-started'
 						},
 						{
 							text: 'Installation',
-							link: '/en/installation.html'
-						}
-					]
-				},
-
-				{
-					text: 'Common Utils',
-					items: [
-						{
-							text: 'Overview',
-							link: '/en/common/index.html'
-						},
-						{
-							text: 'Compress',
-							link: '/en/common/compress.html'
-						},
-						{
-							text: 'File System',
-							link: '/en/common/fs.html'
-						},
-						{
-							text: 'Format',
-							link: '/en/common/format.html'
-						},
-						{
-							text: 'HTML',
-							link: '/en/common/html.html'
-						},
-						{
-							text: 'Object',
-							link: '/en/common/object.html'
-						},
-						{
-							text: 'Path',
-							link: '/en/common/path.html'
-						},
-						{
-							text: 'Script',
-							link: '/en/common/script.html'
-						},
-						{
-							text: 'Validation',
-							link: '/en/common/validation.html'
+							link: '/en/guide/installation'
 						}
 					]
 				},
 				{
-					text: 'Plugin Factory',
+					text: 'Core Features',
 					items: [
 						{
-							text: 'Overview',
-							link: '/en/factory/index.html'
+							text: 'Route Configuration',
+							link: '/en/guide/route-config'
 						},
 						{
-							text: 'BasePlugin',
-							link: '/en/factory/base-plugin.html'
+							text: 'Navigation',
+							link: '/en/guide/navigation'
 						},
 						{
-							text: 'createPluginFactory',
-							link: '/en/factory/create-plugin-factory.html'
+							text: 'Route Guards',
+							link: '/en/guide/guards'
 						},
 						{
-							text: 'BasePluginOptions',
-							link: '/en/factory/base-plugin-options.html'
+							text: 'Route Meta',
+							link: '/en/guide/meta'
+						},
+						{
+							text: 'Composables',
+							link: '/en/guide/composables'
 						}
 					]
 				},
 				{
-					text: 'Logger',
+					text: 'Advanced',
 					items: [
 						{
-							text: 'Overview',
-							link: '/en/logger/index.html'
+							text: 'Error Handling',
+							link: '/en/guide/error-handling'
 						},
 						{
-							text: 'Logger',
-							link: '/en/logger/logger-class.html'
+							text: 'Platform Compatibility',
+							link: '/en/guide/compatibility'
 						},
 						{
-							text: 'PluginLogger',
-							link: '/en/logger/plugin-logger.html'
+							text: 'Differences from vue-router',
+							link: '/en/guide/differences'
+						}
+					]
+				}
+			],
+			'/en/api/': [
+				{
+					text: 'Core API',
+					items: [
+						{
+							text: 'createRouter()',
+							link: '/en/api/create-router'
 						},
 						{
-							text: 'LoggerOptions',
-							link: '/en/logger/logger-options.html'
+							text: 'Router Instance',
+							link: '/en/api/router-instance'
+						},
+						{
+							text: 'useRouter()',
+							link: '/en/api/use-router'
+						},
+						{
+							text: 'useRoute()',
+							link: '/en/api/use-route'
 						}
 					]
 				},
 				{
-					text: 'Plugins',
+					text: 'Types',
 					items: [
 						{
-							text: 'Overview',
-							link: '/en/plugins/index.html'
+							text: 'RouterOptions',
+							link: '/en/api/type-router-options'
 						},
 						{
-							text: 'buildProgress',
-							link: '/en/plugins/build-progress.html'
+							text: 'RouteConfig',
+							link: '/en/api/type-route-config'
 						},
 						{
-							text: 'bundleAnalyzer',
-							link: '/en/plugins/bundle-analyzer.html'
+							text: 'RouteLocation',
+							link: '/en/api/type-route-location'
 						},
 						{
-							text: 'compressAssets',
-							link: '/en/plugins/compress-assets.html'
+							text: 'RouteMeta',
+							link: '/en/api/type-route-meta'
 						},
 						{
-							text: 'copyFile',
-							link: '/en/plugins/copy-file.html'
+							text: 'NavigationGuard',
+							link: '/en/api/type-navigation-guard'
 						},
 						{
-							text: 'faviconManager',
-							link: '/en/plugins/favicon-manager.html'
-						},
-						{
-							text: 'generateRouter',
-							link: '/en/plugins/generate-router.html'
-						},
-						{
-							text: 'generateVersion',
-							link: '/en/plugins/generate-version.html'
-						},
-						{
-							text: 'htmlInject',
-							link: '/en/plugins/html-inject.html'
-						},
-						{
-							text: 'loadingManager',
-							link: '/en/plugins/loading-manager.html'
-						},
-						{
-							text: 'versionUpdateChecker',
-							link: '/en/plugins/version-update-checker.html'
+							text: 'RouterErrorCode',
+							link: '/en/api/type-router-error'
 						}
 					]
 				}

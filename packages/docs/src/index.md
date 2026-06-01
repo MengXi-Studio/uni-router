@@ -1,8 +1,11 @@
 ---
 layout: home
 
+title: '@meng-xi/uni-router'
+titleTemplate: Uni Router 路由管理
+
 hero:
-  name: Uni Router
+  name: '@meng-xi/uni-router'
   text: uni-app 路由管理
   tagline: 为 uni-app 提供类似 vue-router 风格的路由管理系统
   actions:
@@ -10,8 +13,8 @@ hero:
       text: 快速开始
       link: /guide/getting-started
     - theme: alt
-      text: API 参考
-      link: /api/create-router
+      text: 了解更多
+      link: /guide/introduction
     - theme: alt
       text: GitHub
       link: https://github.com/MengXi-Studio/uni-router

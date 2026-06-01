@@ -1,8 +1,8 @@
 import type { DefaultTheme, LocaleSpecificConfig } from 'vitepress'
 
-export const META_URL = 'https://mengxi-studio.github.io/uni-router/zh/'
+export const META_URL = 'https://mengxi-studio.github.io/uni-router/'
 export const META_TITLE = 'Uni Router'
-export const META_DESCRIPTION = '基于 Vue Router 的路由管理系统'
+export const META_DESCRIPTION = '为 uni-app 提供类似 vue-router 风格的路由管理系统'
 
 export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 	/** 网站配置 描述 */
@@ -21,7 +21,7 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 	themeConfig: {
 		/** 网站主题配置 编辑链接 */
 		editLink: {
-			pattern: 'https://github.com/MengXi-Studio/uni-router/tree/master/packages/docs/:path',
+			pattern: 'https://github.com/MengXi-Studio/uni-router/edit/main/packages/docs/:path',
 			text: '对本页提出修改建议'
 		},
 
@@ -30,28 +30,14 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 
 		/** 网站主题配置 导航栏 */
 		nav: [
-			{
-				text: '公共工具',
-				link: '/common/index.html'
-			},
-			{
-				text: '插件工厂',
-				link: '/factory/index.html'
-			},
-			{
-				text: '日志模块',
-				link: '/logger/index.html'
-			},
-			{
-				text: '插件模块',
-				link: '/plugins/index.html'
-			},
+			{ text: '指南', link: '/guide/getting-started' },
+			{ text: 'API', link: '/api/create-router' },
 			{
 				text: '相关链接',
 				items: [
 					{
 						text: 'Discussions',
-						link: 'https://github.com/MengXi-Studio/vite-plugin/discussions'
+						link: 'https://github.com/MengXi-Studio/uni-router/discussions'
 					},
 					{
 						text: '更新日志',
@@ -61,152 +47,116 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 			}
 		],
 
-		/** 网站主题配置 侧边栏 */
 		sidebar: {
-			'/': [
+			'/guide/': [
 				{
-					text: '设置',
+					text: '入门',
 					items: [
 						{
 							text: '介绍',
-							link: '/introduction.html'
+							link: '/guide/introduction'
+						},
+						{
+							text: '快速开始',
+							link: '/guide/getting-started'
 						},
 						{
 							text: '安装',
-							link: '/installation.html'
-						}
-					]
-				},
-
-				{
-					text: '公共工具',
-					items: [
-						{
-							text: '概览',
-							link: '/common/index.html'
-						},
-						{
-							text: '压缩算法',
-							link: '/common/compress.html'
-						},
-						{
-							text: '文件系统',
-							link: '/common/fs.html'
-						},
-						{
-							text: '格式化',
-							link: '/common/format.html'
-						},
-						{
-							text: 'HTML 注入',
-							link: '/common/html.html'
-						},
-						{
-							text: '对象操作',
-							link: '/common/object.html'
-						},
-						{
-							text: '路径处理',
-							link: '/common/path.html'
-						},
-						{
-							text: '脚本工具',
-							link: '/common/script.html'
-						},
-						{
-							text: '验证器',
-							link: '/common/validation.html'
+							link: '/guide/installation'
 						}
 					]
 				},
 				{
-					text: '插件工厂',
+					text: '核心功能',
 					items: [
 						{
-							text: '概览',
-							link: '/factory/index.html'
+							text: '路由配置',
+							link: '/guide/route-config'
 						},
 						{
-							text: 'BasePlugin',
-							link: '/factory/base-plugin.html'
+							text: '路由导航',
+							link: '/guide/navigation'
 						},
 						{
-							text: 'createPluginFactory',
-							link: '/factory/create-plugin-factory.html'
+							text: '路由守卫',
+							link: '/guide/guards'
 						},
 						{
-							text: 'BasePluginOptions',
-							link: '/factory/base-plugin-options.html'
+							text: '路由元信息',
+							link: '/guide/meta'
+						},
+						{
+							text: '组合式 API',
+							link: '/guide/composables'
 						}
 					]
 				},
 				{
-					text: '日志模块',
+					text: '进阶',
 					items: [
 						{
-							text: '概览',
-							link: '/logger/index.html'
+							text: '错误处理',
+							link: '/guide/error-handling'
 						},
 						{
-							text: 'Logger',
-							link: '/logger/logger-class.html'
+							text: '平台兼容性',
+							link: '/guide/compatibility'
 						},
 						{
-							text: 'PluginLogger',
-							link: '/logger/plugin-logger.html'
+							text: '与 vue-router 的差异',
+							link: '/guide/differences'
+						}
+					]
+				}
+			],
+			'/api/': [
+				{
+					text: '核心 API',
+					items: [
+						{
+							text: 'createRouter()',
+							link: '/api/create-router'
 						},
 						{
-							text: 'LoggerOptions',
-							link: '/logger/logger-options.html'
+							text: 'Router 实例',
+							link: '/api/router-instance'
+						},
+						{
+							text: 'useRouter()',
+							link: '/api/use-router'
+						},
+						{
+							text: 'useRoute()',
+							link: '/api/use-route'
 						}
 					]
 				},
 				{
-					text: '插件模块',
+					text: '类型',
 					items: [
 						{
-							text: '概览',
-							link: '/plugins/index.html'
+							text: 'RouterOptions',
+							link: '/api/type-router-options'
 						},
 						{
-							text: 'buildProgress',
-							link: '/plugins/build-progress.html'
+							text: 'RouteConfig',
+							link: '/api/type-route-config'
 						},
 						{
-							text: 'bundleAnalyzer',
-							link: '/plugins/bundle-analyzer.html'
+							text: 'RouteLocation',
+							link: '/api/type-route-location'
 						},
 						{
-							text: 'compressAssets',
-							link: '/plugins/compress-assets.html'
+							text: 'RouteMeta',
+							link: '/api/type-route-meta'
 						},
 						{
-							text: 'copyFile',
-							link: '/plugins/copy-file.html'
+							text: 'NavigationGuard',
+							link: '/api/type-navigation-guard'
 						},
 						{
-							text: 'faviconManager',
-							link: '/plugins/favicon-manager.html'
-						},
-						{
-							text: 'generateRouter',
-							link: '/plugins/generate-router.html'
-						},
-						{
-							text: 'generateVersion',
-							link: '/plugins/generate-version.html'
-						},
-						{
-							text: 'htmlInject',
-							link: '/plugins/html-inject.html'
-						},
-						{
-							text: 'loadingManager',
-							link: '/plugins/loading-manager.html'
-						},
-						{
-							text: 'versionUpdateChecker',
-							link: '/plugins/version-update-checker.html'
+							text: 'RouterErrorCode',
+							link: '/api/type-router-error'
 						}
 					]
 				}
