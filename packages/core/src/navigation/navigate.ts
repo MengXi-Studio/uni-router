@@ -1,6 +1,7 @@
 import type { RouteMeta } from '@/types/route'
 import { buildFullPath } from '@/utils/path'
 import { warn } from '@/utils/general'
+import { markRouterCall } from '@/interceptor'
 
 /**
  * uni 导航 API 的统一选项
@@ -55,6 +56,7 @@ function promisifyUniApi(api: string, executor: (resolve: () => void, reject: (e
 function uniNavigateTo(path: string, query?: Record<string, string>): Promise<void> {
 	const url = buildFullPath(path, query ?? {})
 	return promisifyUniApi('navigateTo', (resolve, reject) => {
+		markRouterCall()
 		uni.navigateTo({ url, success: resolve, fail: reject })
 	})
 }
@@ -65,6 +67,7 @@ function uniNavigateTo(path: string, query?: Record<string, string>): Promise<vo
  */
 function uniSwitchTab(path: string): Promise<void> {
 	return promisifyUniApi('switchTab', (resolve, reject) => {
+		markRouterCall()
 		uni.switchTab({ url: path, success: resolve, fail: reject })
 	})
 }
@@ -77,6 +80,7 @@ function uniSwitchTab(path: string): Promise<void> {
 function uniRedirectTo(path: string, query?: Record<string, string>): Promise<void> {
 	const url = buildFullPath(path, query ?? {})
 	return promisifyUniApi('redirectTo', (resolve, reject) => {
+		markRouterCall()
 		uni.redirectTo({ url, success: resolve, fail: reject })
 	})
 }
@@ -87,6 +91,7 @@ function uniRedirectTo(path: string, query?: Record<string, string>): Promise<vo
  */
 function uniNavigateBack(delta: number = 1): Promise<void> {
 	return promisifyUniApi('navigateBack', (resolve, reject) => {
+		markRouterCall()
 		uni.navigateBack({ delta, success: resolve, fail: reject })
 	})
 }

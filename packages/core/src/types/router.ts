@@ -18,6 +18,15 @@ export interface RouterOptions {
 	routes: RouteConfig[]
 	/** 是否启用严格模式，启用后未匹配的命名路由将抛出异常 */
 	strict?: boolean
+	/**
+	 * 是否拦截 uni 原生导航 API（navigateTo / redirectTo / switchTab / navigateBack）
+	 *
+	 * 启用后，直接调用 uni.navigateTo 等方法将被拦截并转由路由器处理，
+	 * 确保路由守卫（beforeEach / beforeResolve / afterEach）始终生效。
+	 *
+	 * @default false
+	 */
+	interceptUniApi?: boolean
 }
 
 /**

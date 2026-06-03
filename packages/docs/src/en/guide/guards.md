@@ -169,6 +169,36 @@ router.beforeEach((to, from, next) => {
 
 When navigation is aborted, a `NAVIGATION_ABORTED` error is thrown, which can be caught via `router.onError()`.
 
+## Intercepting uni Native Navigation APIs
+
+By default, directly calling `uni.navigateTo()`, `uni.redirectTo()`, and other native APIs bypasses route guards. By enabling the `interceptUniApi` option, these calls are intercepted and redirected through the router:
+
+```ts
+const router = createRouter({
+  routes: [...],
+  interceptUniApi: true
+})
+```
+
+When enabled, the following calls will be intercepted and go through the full guard chain:
+
+```ts
+// Intercepted, converted to router.push({ path: '/pages/about/about', query: { id: '1' } })
+uni.navigateTo({ url: '/pages/about/about?id=1' })
+
+// Intercepted, converted to router.replace({ path: '/pages/about/about' })
+uni.redirectTo({ url: '/pages/about/about' })
+
+// Intercepted, converted to router.push('/pages/user/user')
+uni.switchTab({ url: '/pages/user/user' })
+
+// Intercepted, converted to router.back(1)
+uni.navigateBack({ delta: 1 })
+```
+
+::: warning When interception is enabled, `success` / `fail` callbacks of direct uni native API calls will not be triggered. It is recommended to use `router.push()` / `router.replace()` / `router.back()` for navigation
+consistently. :::
+
 ## Guard Error Handling
 
 If a guard function throws an exception or returns a rejected Promise, the navigation is cancelled:

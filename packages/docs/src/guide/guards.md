@@ -168,6 +168,35 @@ router.beforeEach((to, from, next) => {
 
 中止导航时会抛出 `NAVIGATION_ABORTED` 错误，可通过 `router.onError()` 捕获。
 
+## 拦截 uni 原生导航 API
+
+默认情况下，直接调用 `uni.navigateTo()`、`uni.redirectTo()` 等原生 API 会绕过路由守卫。通过启用 `interceptUniApi` 选项，可以拦截这些调用并转由路由器处理：
+
+```ts
+const router = createRouter({
+  routes: [...],
+  interceptUniApi: true
+})
+```
+
+启用后，以下调用将被拦截并走完整的守卫链：
+
+```ts
+// 以下调用会被拦截，自动转为 router.push({ path: '/pages/about/about', query: { id: '1' } })
+uni.navigateTo({ url: '/pages/about/about?id=1' })
+
+// 以下调用会被拦截，自动转为 router.replace({ path: '/pages/about/about' })
+uni.redirectTo({ url: '/pages/about/about' })
+
+// 以下调用会被拦截，自动转为 router.push('/pages/user/user')
+uni.switchTab({ url: '/pages/user/user' })
+
+// 以下调用会被拦截，自动转为 router.back(1)
+uni.navigateBack({ delta: 1 })
+```
+
+::: warning 启用拦截后，直接调用 uni 原生 API 的 `success` / `fail` 回调将不会被触发。建议统一使用 `router.push()` / `router.replace()` / `router.back()` 进行导航。:::
+
 ## 守卫异常处理
 
 如果守卫函数抛出异常或返回 rejected Promise，导航将被取消：

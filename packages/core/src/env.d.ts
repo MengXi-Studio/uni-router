@@ -43,6 +43,28 @@ interface UniNavigateBackOptions {
 declare function getCurrentPages(): UniPage[]
 
 /**
+ * uni 拦截器回调对象
+ */
+interface UniInterceptorInvokeResult {
+	/** 返回修改后的参数以继续调用，返回 false 以阻止调用 */
+	(args: Record<string, any>): Record<string, any> | false | void
+}
+
+/**
+ * uni 拦截器回调集合
+ */
+interface UniInterceptorCallbacks {
+	/** 拦截调用，在 API 调用前触发 */
+	invoke?: UniInterceptorInvokeResult
+	/** 拦截成功回调 */
+	success?: (res: any) => void
+	/** 拦截失败回调 */
+	fail?: (err: any) => void
+	/** 拦截完成回调 */
+	complete?: (res: any) => void
+}
+
+/**
  * uni-app 全局 API 声明
  */
 declare const uni: {
@@ -56,4 +78,8 @@ declare const uni: {
 	navigateBack(options: UniNavigateBackOptions): void
 	/** 动态设置当前页面的标题 */
 	setNavigationBarTitle(options: { title: string }): void
+	/** 添加 API 拦截器 */
+	addInterceptor(api: string, callbacks: UniInterceptorCallbacks): void
+	/** 移除 API 拦截器 */
+	removeInterceptor(api: string): void
 }

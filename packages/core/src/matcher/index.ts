@@ -33,7 +33,11 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean): Rout
 		if (route.name && nameMap.has(route.name)) {
 			warn(`Duplicate route name "${route.name}" detected. The later one will overwrite the previous.`)
 		}
-		pathMap.set(route.path, route)
+		const normalizedPath = normalizePath(route.path)
+		if (pathMap.has(normalizedPath)) {
+			warn(`Duplicate route path "${normalizedPath}" detected. The later one will overwrite the previous.`)
+		}
+		pathMap.set(normalizedPath, route)
 		if (route.name) {
 			nameMap.set(route.name, route)
 		}
@@ -60,7 +64,7 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean): Rout
 	 * @param path - 页面路径
 	 */
 	function getRouteConfig(path: string): RouteConfig | undefined {
-		return pathMap.get(path)
+		return pathMap.get(normalizePath(path))
 	}
 
 	/**
@@ -147,12 +151,13 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean): Rout
 		}
 
 		const query = location.query ?? {}
+		const resolvedPath = normalizePath(config.path)
 		return {
-			path: config.path,
+			path: resolvedPath,
 			name: config.name,
 			meta: config.meta ?? {},
 			query,
-			fullPath: buildFullPath(config.path, query)
+			fullPath: buildFullPath(resolvedPath, query)
 		}
 	}
 

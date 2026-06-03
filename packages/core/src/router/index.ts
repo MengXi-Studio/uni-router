@@ -6,6 +6,7 @@ import { navigateTo, replaceTo, goBack, isUniApiError } from '@/navigation'
 import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/navigation/context'
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
+import { installInterceptors, removeInterceptors } from '@/interceptor'
 
 /**
  * 最大重定向深度，超过此值将取消导航以防止无限循环
@@ -25,13 +26,18 @@ class UniRouter implements Router {
 	private matcher = createRouteMatcher([], true)
 	private errorHandlers: RouterOnError[] = []
 	private pendingNavigation: Promise<RouteLocation> | null = null
+	private _interceptUniApi: boolean
 
 	/**
 	 * @param options - 路由器初始化选项
 	 */
 	constructor(options: RouterOptions) {
 		this.matcher = createRouteMatcher(options.routes, options.strict ?? true)
+		this._interceptUniApi = options.interceptUniApi ?? false
 		this.initRoute()
+		if (this._interceptUniApi) {
+			installInterceptors(this)
+		}
 	}
 
 	/**
@@ -175,6 +181,8 @@ class UniRouter implements Router {
 		const vueApp = app as unknown as {
 			provide: (key: symbol, value: unknown) => void
 			config: { globalProperties: Record<string, unknown> }
+			unmount: () => void
+			onUnmount: (fn: () => void) => void
 		}
 
 		vueApp.provide(ROUTER_SYMBOL, this)
@@ -183,6 +191,10 @@ class UniRouter implements Router {
 			enumerable: true,
 			get: () => this.currentRoute
 		})
+
+		if (this._interceptUniApi && typeof vueApp.onUnmount === 'function') {
+			vueApp.onUnmount(() => removeInterceptors())
+		}
 	}
 
 	/**
