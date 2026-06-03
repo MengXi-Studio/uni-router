@@ -1,6 +1,6 @@
 # RouterLink
 
-Navigation component that triggers route navigation on click. Built on uni-app's `<view>` component.
+Navigation component that triggers route navigation on click. Built on uni-app's `<navigator>` component with native touch feedback support.
 
 ## Import
 
@@ -14,9 +14,12 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 
 ### to
 
-- **Type**: `string`
+- **Type**: `RouteLocationRaw`
 - **Required**: Yes
-- **Description**: Target page path, must match the `path` in route configuration
+- **Description**: Target route location, supports the following forms:
+  - Path string: `'pages/about/about'`
+  - Path object: `{ path: 'pages/about/about', query: { id: '1' } }`
+  - Named object: `{ name: 'about', query: { id: '1' } }`
 
 ### replace
 
@@ -25,6 +28,30 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 - **Description**: Whether to use replace mode for navigation
   - `false` → calls `router.push(to)`
   - `true` → calls `router.replace(to)`
+
+### hoverClass
+
+- **Type**: `string`
+- **Default**: `'navigator-hover'`
+- **Description**: Style class applied when pressed, corresponds to `<navigator>`'s `hover-class` attribute. Set to `'none'` to disable hover effect
+
+### hoverStopPropagation
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Whether to prevent ancestor nodes from showing hover effect
+
+### hoverStartTime
+
+- **Type**: `number`
+- **Default**: `50`
+- **Description**: Duration after press before hover effect appears, in ms
+
+### hoverStayTime
+
+- **Type**: `number`
+- **Default**: `600`
+- **Description**: Duration hover effect remains after release, in ms
 
 ## Events
 
@@ -74,17 +101,33 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 </RouterLink>
 ```
 
+### Named Route
+
+```vue
+<RouterLink :to="{ name: 'about', query: { id: '1' } }">
+  <text>Article Detail</text>
+</RouterLink>
+```
+
+### Path Object
+
+```vue
+<RouterLink :to="{ path: 'pages/about/about', query: { id: '1' } }">
+  <text>Article Detail</text>
+</RouterLink>
+```
+
 ## Differences from vue-router RouterLink
 
-| Feature              | vue-router         | Uni Router                  |
-| -------------------- | ------------------ | --------------------------- |
-| Host element         | `<a>`              | `<view>`                    |
-| `to` type            | `string \| object` | `string` (path string only) |
-| `replace`            | ✅                 | ✅                          |
-| `custom`             | ✅                 | ❌                          |
-| `active-class`       | ✅                 | ❌                          |
-| `exact-active-class` | ✅                 | ❌                          |
-| `v-slot` scoped slot | ✅                 | ❌                          |
-| `aria-current`       | ✅                 | ❌                          |
+| Feature              | vue-router         | Uni Router         |
+| -------------------- | ------------------ | ------------------ |
+| Host element         | `<a>`              | `<navigator>`      |
+| `to` type            | `string \| object` | `string \| object` |
+| `replace`            | ✅                 | ✅                 |
+| `custom`             | ✅                 | ❌                 |
+| `active-class`       | ✅                 | ❌                 |
+| `exact-active-class` | ✅                 | ❌                 |
+| `v-slot` scoped slot | ✅                 | ❌                 |
+| `hover-class`        | ❌                 | ✅                 |
 
-::: warning The `to` prop of `RouterLink` only supports path strings. Named route objects like `{ name: 'about' }` are not supported. For named route navigation, use `router.push({ name: 'about' })` directly. :::
+::: warning When passing an object to the `to` prop, use `:to` binding (`v-bind:to`) instead of the string attribute `to`. :::

@@ -1,6 +1,6 @@
 # RouterLink
 
-导航组件，点击时触发路由跳转。基于 uni-app 的 `<view>` 组件实现。
+导航组件，点击时触发路由跳转。基于 uni-app 的 `<navigator>` 组件封装，支持原生触摸反馈。
 
 ## 引入
 
@@ -14,9 +14,12 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 
 ### to
 
-- **类型**: `string`
+- **类型**: `RouteLocationRaw`
 - **必填**: 是
-- **说明**: 目标页面路径，需与路由配置中的 `path` 一致
+- **说明**: 目标路由位置，支持以下形式：
+  - 路径字符串：`'pages/about/about'`
+  - 路径对象：`{ path: 'pages/about/about', query: { id: '1' } }`
+  - 命名对象：`{ name: 'about', query: { id: '1' } }`
 
 ### replace
 
@@ -25,6 +28,30 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 - **说明**: 是否使用替换模式导航
   - `false` → 调用 `router.push(to)`
   - `true` → 调用 `router.replace(to)`
+
+### hoverClass
+
+- **类型**: `string`
+- **默认值**: `'navigator-hover'`
+- **说明**: 按下时的样式类，对应 `<navigator>` 的 `hover-class` 属性。设置为 `'none'` 可禁用点击态
+
+### hoverStopPropagation
+
+- **类型**: `boolean`
+- **默认值**: `false`
+- **说明**: 是否阻止祖先节点的点击态
+
+### hoverStartTime
+
+- **类型**: `number`
+- **默认值**: `50`
+- **说明**: 按住后多久出现点击态，单位 ms
+
+### hoverStayTime
+
+- **类型**: `number`
+- **默认值**: `600`
+- **说明**: 手指松开后点击态保留时间，单位 ms
 
 ## 事件
 
@@ -74,17 +101,33 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 </RouterLink>
 ```
 
+### 命名路由
+
+```vue
+<RouterLink :to="{ name: 'about', query: { id: '1' } }">
+  <text>文章详情</text>
+</RouterLink>
+```
+
+### 路径对象
+
+```vue
+<RouterLink :to="{ path: 'pages/about/about', query: { id: '1' } }">
+  <text>文章详情</text>
+</RouterLink>
+```
+
 ## 与 vue-router RouterLink 的差异
 
-| 特性                 | vue-router         | Uni Router               |
-| -------------------- | ------------------ | ------------------------ |
-| 宿主元素             | `<a>`              | `<view>`                 |
-| `to` 类型            | `string \| object` | `string`（仅路径字符串） |
-| `replace`            | ✅                 | ✅                       |
-| `custom`             | ✅                 | ❌                       |
-| `active-class`       | ✅                 | ❌                       |
-| `exact-active-class` | ✅                 | ❌                       |
-| `v-slot` 作用域插槽  | ✅                 | ❌                       |
-| `aria-current`       | ✅                 | ❌                       |
+| 特性                 | vue-router         | Uni Router         |
+| -------------------- | ------------------ | ------------------ |
+| 宿主元素             | `<a>`              | `<navigator>`      |
+| `to` 类型            | `string \| object` | `string \| object` |
+| `replace`            | ✅                 | ✅                 |
+| `custom`             | ✅                 | ❌                 |
+| `active-class`       | ✅                 | ❌                 |
+| `exact-active-class` | ✅                 | ❌                 |
+| `v-slot` 作用域插槽  | ✅                 | ❌                 |
+| `hover-class`        | ❌                 | ✅                 |
 
-::: warning `RouterLink` 的 `to` 属性仅支持路径字符串，不支持 `{ name: 'about' }` 形式的命名路由对象。如需使用命名路由导航，请直接调用 `router.push({ name: 'about' })`。:::
+::: warning `RouterLink` 的 `to` 属性传入对象时需使用 `:to` 绑定（`v-bind:to`），而非字符串属性 `to`。:::
