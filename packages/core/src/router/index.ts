@@ -185,12 +185,21 @@ class UniRouter implements Router {
 			onUnmount: (fn: () => void) => void
 		}
 
+		// 通过 provide/inject 机制提供路由器，使 useRouter()/useRoute() 可用
 		vueApp.provide(ROUTER_SYMBOL, this)
-		vueApp.config.globalProperties.$router = this
-		Object.defineProperty(vueApp.config.globalProperties, '$route', {
-			enumerable: true,
-			get: () => this.currentRoute
-		})
+
+		// 仅在 $router 和 $route 未被定义时设置全局属性
+		// 避免与 uni-app H5 内置的 vue-router 冲突
+		if (!('$router' in vueApp.config.globalProperties)) {
+			vueApp.config.globalProperties.$router = this
+		}
+		if (!('$route' in vueApp.config.globalProperties)) {
+			Object.defineProperty(vueApp.config.globalProperties, '$route', {
+				enumerable: true,
+				configurable: true,
+				get: () => this.currentRoute
+			})
+		}
 
 		if (this._interceptUniApi && typeof vueApp.onUnmount === 'function') {
 			vueApp.onUnmount(() => removeInterceptors())

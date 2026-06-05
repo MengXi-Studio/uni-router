@@ -1,6 +1,9 @@
 export { createRouter, ROUTER_SYMBOL } from '@/router'
 export { useRouter, useRoute } from '@/composables'
 export type {
+	RouteNameMap,
+	RouteName,
+	RoutePath,
 	RouteMeta,
 	RouteConfig,
 	RouteLocation,

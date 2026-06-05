@@ -1,0 +1,14 @@
+{
+	"name": "uni-router-playground",
+	"appid": "",
+	"description": "uni-router 核心模块功能演示应用",
+	"versionName": "0.1.0",
+	"versionCode": "100",
+	"transformPx": false,
+	"h5": {
+		"title": "uni-router Playground",
+		"router": {
+			"mode": "hash"
+		}
+	}
+}

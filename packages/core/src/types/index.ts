@@ -1,4 +1,4 @@
-export type { RouteMeta, RouteConfig, RouteLocation, RouteLocationPathRaw, RouteLocationNamedRaw, RouteLocationRaw } from './route'
+export type { RouteNameMap, RouteName, RoutePath, RouteMeta, RouteConfig, RouteLocation, RouteLocationPathRaw, RouteLocationNamedRaw, RouteLocationRaw } from './route'
 
 export type { NavigationGuardNext, NavigationGuard, PostNavigationGuard } from './guard'
 
