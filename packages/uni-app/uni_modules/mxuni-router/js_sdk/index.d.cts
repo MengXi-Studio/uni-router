@@ -235,6 +235,16 @@ interface Router {
      */
     onError(handler: RouterOnError): () => void;
     /**
+     * 同步路由状态与实际页面栈
+     *
+     * 当页面通过浏览器后退、物理返回键等非路由器方式切换时，
+     * 路由器的 currentRoute 可能与实际页面不同步。
+     * 调用此方法将从 uni-app 页面栈中读取当前页面信息并更新路由状态。
+     *
+     * 建议在每个页面的 onShow 生命周期中调用此方法。
+     */
+    syncRoute(): void;
+    /**
      * 安装路由器到 Vue 应用实例，注册全局属性和 provide
      * @param app - Vue 应用实例
      */

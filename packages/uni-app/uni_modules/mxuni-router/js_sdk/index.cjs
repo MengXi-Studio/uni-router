@@ -603,12 +603,15 @@ var UniRouter = class {
    * 返回上一页或多级页面
    *
    * 对应 uni.navigateBack。若页面栈中不足 delta 个页面，将输出警告并立即 resolve。
+   * 导航完成后会根据实际页面栈同步 currentRoute 状态。
    *
    * @param delta - 返回的页面数，默认为 1
    * @returns 导航完成或页面栈不足时立即 resolve 的 Promise
    */
-  back(delta = 1) {
-    return goBack(delta);
+  async back(delta = 1) {
+    const from = this.routeState.getCurrentRoute();
+    await goBack(delta);
+    this.syncCurrentRoute(from);
   }
   /**
    * 注册全局前置守卫，在每次导航前执行
@@ -680,6 +683,21 @@ var UniRouter = class {
       const index = this.errorHandlers.indexOf(handler);
       if (index > -1) this.errorHandlers.splice(index, 1);
     };
+  }
+  /**
+   * 同步路由状态与实际页面栈
+   *
+   * 当页面通过浏览器后退、物理返回键等非路由器方式切换时，
+   * 路由器的 currentRoute 可能与实际页面不同步。
+   * 调用此方法将从 uni-app 页面栈中读取当前页面信息并更新路由状态。
+   *
+   * 建议在每个页面的 onShow 生命周期中调用此方法。
+   */
+  syncRoute() {
+    const from = this.routeState.getCurrentRoute();
+    const currentPath = getCurrentPagePath();
+    if (currentPath === from.path) return;
+    this.syncCurrentRoute(from);
   }
   /**
    * 安装路由器到 Vue 应用实例
@@ -870,6 +888,24 @@ var UniRouter = class {
     const keysB = Object.keys(b);
     if (keysA.length !== keysB.length) return false;
     return keysA.every((key) => a[key] === b[key]);
+  }
+  /**
+   * 根据 uni-app 实际页面栈同步 currentRoute 状态
+   *
+   * 当通过 back() 或浏览器后退等非 push/replace 方式改变页面后，
+   * 需要从页面栈中读取当前页面信息来更新路由状态，并触发后置钩子。
+   *
+   * @param from - 导航前的路由位置
+   */
+  syncCurrentRoute(from) {
+    const currentPath = getCurrentPagePath();
+    const config = this.matcher.getRouteConfig(currentPath);
+    const meta = config?.meta ?? {};
+    const query = getCurrentPageQuery();
+    const fullPath = buildFullPath(currentPath, query);
+    const to = { path: currentPath, meta, query, fullPath };
+    this.routeState.setCurrentRoute(to);
+    this.guardManager.runAfterGuards(to, from);
   }
 };
 var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");

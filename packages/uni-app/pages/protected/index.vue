@@ -1,39 +1,31 @@
 <template>
 	<view class="content">
 		<view class="card">
-			<text class="card-title">关于</text>
-			<text class="desc">本项目演示 @meng-xi/uni-router 在 uni-app 中的路由管理功能。</text>
+			<text class="card-title">受保护页面</text>
+			<text class="desc">此页面需要登录才能访问，未登录时会被路由守卫拦截并重定向到登录页。</text>
 		</view>
 
 		<!-- 路由信息 -->
 		<view class="card">
-			<text class="card-title">当前路由信息</text>
+			<text class="card-title">路由元信息</text>
 			<view class="info-row">
 				<text class="info-label">path</text>
 				<text class="info-value">{{ currentRoute.path }}</text>
 			</view>
 			<view class="info-row">
-				<text class="info-label">name</text>
-				<text class="info-value">{{ currentRoute.name || '-' }}</text>
-			</view>
-			<view class="info-row">
 				<text class="info-label">meta.title</text>
 				<text class="info-value">{{ currentRoute.meta?.title || '-' }}</text>
 			</view>
-			<view class="info-row" v-if="currentRoute.query">
-				<text class="info-label">query</text>
-				<text class="info-value">{{ queryStr }}</text>
+			<view class="info-row">
+				<text class="info-label">meta.requireAuth</text>
+				<text class="info-value active">true</text>
 			</view>
 		</view>
 
-		<!-- 导航方式 -->
 		<view class="card">
-			<text class="card-title">导航方式</text>
-			<view class="btn" @click="goBack">
-				<text class="btn-text">router.back() 返回</text>
-			</view>
-			<view class="btn btn-secondary" @click="goHome">
-				<text class="btn-text-secondary">router.push('/') 回首页</text>
+			<text class="desc">你能看到此页面，说明 beforeEach 守卫已验证登录状态并放行。</text>
+			<view class="btn btn-secondary" @click="goBack">
+				<text class="btn-text-secondary">返回</text>
 			</view>
 		</view>
 	</view>
@@ -46,13 +38,6 @@ export default {
 	data() {
 		return {
 			currentRoute: {}
-		}
-	},
-	computed: {
-		queryStr() {
-			const q = this.currentRoute.query
-			if (!q || !Object.keys(q).length) return '-'
-			return JSON.stringify(q)
 		}
 	},
 	onLoad() {
@@ -68,16 +53,11 @@ export default {
 			this.currentRoute = {
 				path: route.path || '',
 				name: route.name || '',
-				meta: route.meta || {},
-				query: route.query || {},
-				fullPath: route.fullPath || ''
+				meta: route.meta || {}
 			}
 		},
 		goBack() {
 			router.back()
-		},
-		goHome() {
-			router.push('/pages/index/index')
 		}
 	}
 }
@@ -130,28 +110,19 @@ export default {
 	font-size: 26rpx;
 	color: #333;
 	font-weight: 500;
-	word-break: break-all;
-	max-width: 60%;
-	text-align: right;
 }
 
-.btn {
-	background: #007aff;
-	border-radius: 12rpx;
-	padding: 20rpx;
-	margin-top: 16rpx;
-	text-align: center;
+.info-value.active {
+	color: #07c160;
 }
 
 .btn-secondary {
 	background: #fff;
 	border: 2rpx solid #007aff;
-}
-
-.btn-text {
-	color: #fff;
-	font-size: 28rpx;
-	font-weight: 500;
+	border-radius: 12rpx;
+	padding: 20rpx;
+	margin-top: 16rpx;
+	text-align: center;
 }
 
 .btn-text-secondary {

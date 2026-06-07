@@ -1,16 +1,10 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
 		"target": "ESNext",
-		"module": "ESNext",
-		"moduleResolution": "bundler",
-		"strict": true,
-		"jsx": "preserve",
-		"resolveJsonModule": true,
-		"isolatedModules": true,
-		"esModuleInterop": true,
 		"lib": ["ESNext", "DOM"],
-		"skipLibCheck": true,
-		"noEmit": true,
+		"jsx": "preserve",
+		"esModuleInterop": true,
 		"paths": {
 			"@/*": ["./src/*"]
 		},

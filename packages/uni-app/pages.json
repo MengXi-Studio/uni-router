@@ -3,7 +3,13 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "插件功能验证"
+				"navigationBarTitleText": "首页"
+			}
+		},
+		{
+			"path": "pages/guards/index",
+			"style": {
+				"navigationBarTitleText": "路由守卫"
 			}
 		},
 		{
@@ -11,11 +17,24 @@
 			"style": {
 				"navigationBarTitleText": "关于"
 			}
+		},
+		{
+			"path": "pages/protected/index",
+			"style": {
+				"navigationBarTitleText": "受保护页面",
+				"requireAuth": true
+			}
+		},
+		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationBarTitleText": "登录"
+			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "Vite Plugin Demo",
+		"navigationBarTitleText": "Uni Router Demo",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8"
 	}

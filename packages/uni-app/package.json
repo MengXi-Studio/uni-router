@@ -1,19 +1,23 @@
 {
-	"name": "@meng-xi/uni-app",
-	"version": "0.1.6",
-	"description": "在 uni-app 项目中使用 @meng-xi/vite-plugin 插件功能",
+	"name": "@meng-xi/uni-app-demo",
+	"version": "0.1.4",
+	"description": "在 uni-app 项目中使用 @meng-xi/uni-router 路由管理功能",
 	"main": "main.js",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/MengXi-Studio/vite-plugin.git"
+		"url": "git+https://github.com/MengXi-Studio/uni-router.git"
 	},
-	"keywords": [],
+	"keywords": [
+		"uni-router",
+		"uni-app",
+		"router"
+	],
 	"author": "PedroQue99",
-	"license": "ISC",
+	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/MengXi-Studio/vite-plugin/issues"
+		"url": "https://github.com/MengXi-Studio/uni-router/issues"
 	},
-	"homepage": "https://github.com/MengXi-Studio/vite-plugin#readme",
+	"homepage": "https://github.com/MengXi-Studio/uni-router#readme",
 	"dependencies": {
 		"@dcloudio/uni-app": "3.0.0-4080720251210001",
 		"@dcloudio/uni-app-harmony": "3.0.0-4080720251210001",
@@ -40,6 +44,7 @@
 		"@dcloudio/uni-cli-shared": "3.0.0-4080720251210001",
 		"@dcloudio/uni-stacktracey": "3.0.0-4080720251210001",
 		"@dcloudio/vite-plugin-uni": "3.0.0-4080720251210001",
+		"@meng-xi/vite-plugin": "^0.1.6",
 		"@vue/runtime-core": "^3.5.29",
 		"vite": "5.2.8"
 	}

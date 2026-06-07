@@ -38,10 +38,32 @@ export const routes: RouteConfig[] = [
 		}
 	},
 	{
+		path: '/pages/guards/index',
+		name: 'pagesGuardsIndex',
+		meta: {
+			title: '路由守卫'
+		}
+	},
+	{
 		path: '/pages/about/index',
 		name: 'pagesAboutIndex',
 		meta: {
 			title: '关于'
+		}
+	},
+	{
+		path: '/pages/protected/index',
+		name: 'pagesProtectedIndex',
+		meta: {
+			title: '受保护页面',
+			requireAuth: true
+		}
+	},
+	{
+		path: '/pages/login/index',
+		name: 'pagesLoginIndex',
+		meta: {
+			title: '登录'
 		}
 	}
 ]

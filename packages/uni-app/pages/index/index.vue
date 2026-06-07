@@ -2,311 +2,200 @@
 	<view class="content">
 		<view class="header">
 			<image class="logo" src="/static/logo.png"></image>
-			<text class="title">Vite Plugin Demo</text>
-			<text class="subtitle">@meng-xi/vite-plugin 插件功能验证</text>
+			<text class="title">Uni Router Demo</text>
+			<text class="subtitle">@meng-xi/uni-router 路由管理功能演示</text>
 		</view>
 
-		<!-- 版本信息 -->
+		<!-- 路由导航 -->
 		<view class="card">
-			<text class="card-title">版本信息</text>
-			<text class="version-text">{{ appVersion }}</text>
-			<view class="info-row">
-				<text class="info-label">构建时间</text>
-				<text class="info-value">{{ versionInfo.buildTime || '-' }}</text>
+			<text class="card-title">路由导航</text>
+			<text class="hint">使用 router.push / replace / back 进行导航</text>
+			<view class="btn" @click="pushByPath">
+				<text class="btn-text">push (路径)</text>
 			</view>
-			<view class="info-row">
-				<text class="info-label">环境</text>
-				<text class="info-value">{{ versionInfo.environment || '-' }}</text>
+			<view class="btn" @click="pushByName">
+				<text class="btn-text">push (命名路由)</text>
+			</view>
+			<view class="btn" @click="pushWithQuery">
+				<text class="btn-text">push (带查询参数)</text>
+			</view>
+			<view class="btn btn-secondary" @click="replacePage">
+				<text class="btn-text-secondary">replace 替换当前页</text>
 			</view>
 		</view>
 
-		<!-- autoImport 验证 -->
+		<!-- 路由守卫 -->
 		<view class="card">
-			<text class="card-title">autoImport - 自动导入</text>
-			<text class="hint">使用 vue: ['*'] 通配符，自动导入 Vue 全部 API</text>
-			<view class="info-row">
-				<text class="info-label">ref</text>
-				<text :class="['info-value', autoImportResult.ref ? 'active' : '']">
-					{{ autoImportResult.ref ? '可用' : '不可用' }}
-				</text>
+			<text class="card-title">路由守卫</text>
+			<text class="hint">beforeEach 守卫拦截未登录访问受保护页面</text>
+			<view class="btn" @click="goToProtected">
+				<text class="btn-text">访问受保护页面</text>
+			</view>
+			<view class="btn btn-secondary" @click="goToGuards">
+				<text class="btn-text-secondary">守卫演示页面</text>
 			</view>
 			<view class="info-row">
-				<text class="info-label">reactive</text>
-				<text :class="['info-value', autoImportResult.reactive ? 'active' : '']">
-					{{ autoImportResult.reactive ? '可用' : '不可用' }}
-				</text>
-			</view>
-			<view class="info-row">
-				<text class="info-label">computed</text>
-				<text :class="['info-value', autoImportResult.computed ? 'active' : '']">
-					{{ autoImportResult.computed ? '可用' : '不可用' }}
-				</text>
-			</view>
-			<view class="info-row">
-				<text class="info-label">watch</text>
-				<text :class="['info-value', autoImportResult.watch ? 'active' : '']">
-					{{ autoImportResult.watch ? '可用' : '不可用' }}
-				</text>
-			</view>
-			<view class="info-row">
-				<text class="info-label">onMounted</text>
-				<text :class="['info-value', autoImportResult.onMounted ? 'active' : '']">
-					{{ autoImportResult.onMounted ? '可用' : '不可用' }}
+				<text class="info-label">登录状态</text>
+				<text :class="['info-value', loginStatus ? 'active' : 'inactive']">
+					{{ loginStatus ? '已登录' : '未登录' }}
 				</text>
 			</view>
 		</view>
 
-		<!-- 插件验证 -->
+		<!-- 路由信息 -->
 		<view class="card">
-			<text class="card-title">插件验证</text>
-			<view class="test-row" v-for="item in testList" :key="item.name">
-				<text :class="['test-icon', item.passed ? 'pass' : 'pending']">
-					{{ item.passed ? '✓' : '○' }}
-				</text>
-				<text class="test-name">{{ item.name }}</text>
+			<text class="card-title">当前路由信息</text>
+			<view class="info-row">
+				<text class="info-label">path</text>
+				<text class="info-value">{{ currentRoute.path }}</text>
 			</view>
-			<view class="btn" @click="runTests">
-				<text class="btn-text">运行验证</text>
+			<view class="info-row">
+				<text class="info-label">name</text>
+				<text class="info-value">{{ currentRoute.name || '-' }}</text>
+			</view>
+			<view class="info-row">
+				<text class="info-label">meta.title</text>
+				<text class="info-value">{{ currentRoute.meta?.title || '-' }}</text>
+			</view>
+			<view class="info-row">
+				<text class="info-label">meta.requireAuth</text>
+				<text class="info-value">{{ currentRoute.meta?.requireAuth ? '是' : '否' }}</text>
+			</view>
+			<view class="info-row">
+				<text class="info-label">fullPath</text>
+				<text class="info-value">{{ currentRoute.fullPath || '-' }}</text>
 			</view>
 		</view>
 
-		<!-- Loading 演示 -->
+		<!-- 登录状态管理 -->
 		<view class="card">
-			<text class="card-title">loadingManager - 全局 Loading</text>
-			<text class="hint">autoBind: 'all' 已开启，请求自动触发 Loading</text>
+			<text class="card-title">登录状态管理</text>
+			<text class="hint">模拟登录/退出，配合守卫验证权限控制</text>
 			<view class="btn-group">
-				<view class="btn btn-sm" @click="showLoading">
-					<text class="btn-text">显示</text>
+				<view class="btn btn-sm" @click="doLogin">
+					<text class="btn-text">登录</text>
 				</view>
-				<view class="btn btn-sm" @click="hideLoading">
-					<text class="btn-text">隐藏</text>
+				<view class="btn btn-sm btn-secondary" @click="doLogout">
+					<text class="btn-text-secondary">退出</text>
 				</view>
-				<view class="btn btn-sm" @click="updateLoadingText">
-					<text class="btn-text">更新文本</text>
-				</view>
-				<view class="btn btn-sm" @click="fetchWithLoading">
-					<text class="btn-text">请求</text>
-				</view>
-			</view>
-			<view class="info-row">
-				<text class="info-label">状态</text>
-				<text :class="['info-value', loadingVisible ? 'active' : '']">
-					{{ loadingVisible ? '显示中' : '已隐藏' }}
-				</text>
-			</view>
-			<view class="info-row">
-				<text class="info-label">挂起请求</text>
-				<text class="info-value">{{ pendingCount }}</text>
 			</view>
 		</view>
 
-		<!-- 压缩验证 -->
+		<!-- 错误处理 -->
 		<view class="card">
-			<text class="card-title">compressAssets - 构建产物压缩</text>
-			<text class="hint">生产构建后生成 .gz / .br 文件</text>
-			<view class="info-row">
-				<text class="info-label">算法</text>
-				<text class="info-value">gzip + brotli (both)</text>
+			<text class="card-title">错误处理</text>
+			<text class="hint">导航到不存在的路由或重复导航</text>
+			<view class="btn btn-warning" @click="goToNotFound">
+				<text class="btn-text">导航到不存在的路由</text>
 			</view>
-			<view class="info-row">
-				<text class="info-label">阈值</text>
-				<text class="info-value">1024 字节</text>
+			<view class="btn btn-warning" @click="goToDuplicate">
+				<text class="btn-text">重复导航当前页面</text>
 			</view>
-			<view class="btn" @click="checkCompressedFiles">
-				<text class="btn-text">检查压缩文件</text>
-			</view>
-			<view v-if="compressResult" class="info-row">
-				<text class="info-label">结果</text>
-				<text :class="['info-value', compressResult.passed ? 'active' : '']">
-					{{ compressResult.message }}
-				</text>
-			</view>
-		</view>
-
-		<!-- 导航到其他页面 -->
-		<view class="card">
-			<text class="card-title">更多演示</text>
-			<view class="btn" @click="navigateTo('/pages/about/index')">
-				<text class="btn-text">关于页面（路由导航）</text>
+			<view v-if="lastError" class="error-box">
+				<text class="error-text">{{ lastError }}</text>
 			</view>
 		</view>
 	</view>
 </template>
 
 <script>
+import router, { auth } from '../../router'
+
 export default {
 	data() {
 		return {
-			appVersion: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev',
-			versionInfo: typeof __APP_VERSION___INFO !== 'undefined' ? __APP_VERSION___INFO : {},
-			loadingVisible: false,
-			pendingCount: 0,
-			compressResult: null,
-			autoImportResult: {
-				ref: false,
-				reactive: false,
-				computed: false,
-				watch: false,
-				onMounted: false
-			},
-			testList: [
-				{ name: 'autoImport - 自动导入', passed: false },
-				{ name: 'buildProgress - 构建进度条', passed: false },
-				{ name: 'bundleAnalyzer - 构建产物体积分析', passed: false },
-				{ name: 'generateRouter - 路由生成', passed: false },
-				{ name: 'generateVersion - 版本生成', passed: false },
-				{ name: 'htmlInject - HTML 注入', passed: false },
-				{ name: 'faviconManager - 网站图标管理', passed: false },
-				{ name: 'copyFile - 文件复制', passed: false },
-				{ name: 'compressAssets - 构建产物压缩', passed: false },
-				{ name: 'envGuard - 环境变量校验', passed: false },
-				{ name: 'loadingManager - 全局 Loading', passed: false },
-				{ name: 'versionUpdateChecker - 版本更新检查', passed: false }
-			]
+			loginStatus: false,
+			currentRoute: {},
+			lastError: ''
 		}
 	},
 	onLoad() {
-		this.checkAutoImport()
-		this.startStatusPolling()
+		this.updateRouteInfo()
+		this.updateLoginStatus()
 	},
-	onUnload() {
-		this.stopStatusPolling()
+	onShow() {
+		router.syncRoute()
+		this.updateRouteInfo()
+		this.updateLoginStatus()
 	},
 	methods: {
-		checkAutoImport() {
-			// #ifdef H5
-			this.autoImportResult.ref = typeof ref === 'function'
-			this.autoImportResult.reactive = typeof reactive === 'function'
-			this.autoImportResult.computed = typeof computed === 'function'
-			this.autoImportResult.watch = typeof watch === 'function'
-			this.autoImportResult.onMounted = typeof onMounted === 'function'
-			// #endif
-		},
-		startStatusPolling() {
-			this._statusTimer = setInterval(() => {
-				// #ifdef H5
-				const manager = window.__LOADING_MANAGER__
-				if (manager) {
-					this.loadingVisible = manager.isVisible()
-					this.pendingCount = manager.getPendingCount()
-				}
-				// #endif
-			}, 300)
-		},
-		stopStatusPolling() {
-			if (this._statusTimer) {
-				clearInterval(this._statusTimer)
-				this._statusTimer = null
+		updateRouteInfo() {
+			const route = router.currentRoute?.value || router.currentRoute || {}
+			this.currentRoute = {
+				path: route.path || '',
+				name: route.name || '',
+				meta: route.meta || {},
+				fullPath: route.fullPath || ''
 			}
 		},
-		runTests() {
-			// #ifdef H5
-			// autoImport: 验证 Vue API 已自动注入
-			this.testList[0].passed = typeof ref === 'function' && typeof reactive === 'function'
-
-			this.testList[1].passed = true
-
-			// bundleAnalyzer: 验证分析报告已生成
-			fetch('/bundle-analysis.json', { method: 'HEAD' })
-				.then(res => {
-					this.testList[2].passed = res.ok
-				})
-				.catch(() => {
-					this.testList[2].passed = false
-				})
-
-			// generateRouter: 验证路由配置已生成
-			this.testList[3].passed = true
-
-			this.testList[4].passed = !!this.appVersion && this.appVersion !== 'dev'
-
-			// htmlInject: 验证 meta 标签已注入
-			const metaDesc = document.querySelector('meta[name="description"]')
-			this.testList[5].passed = !!metaDesc
-
-			// faviconManager: 验证 favicon 已注入
-			const linkEl = document.querySelector('link[rel="icon"]')
-			this.testList[6].passed = !!linkEl
-
-			// copyFile: 验证文件已复制
-			fetch('/static/logo.png', { method: 'HEAD' })
-				.then(res => {
-					this.testList[7].passed = res.ok
-				})
-				.catch(() => {
-					this.testList[7].passed = false
-				})
-
-			// compressAssets: 验证压缩文件已生成
-			fetch('/index.js.gz', { method: 'HEAD' })
-				.then(res => {
-					this.testList[8].passed = res.ok || res.status === 200
-				})
-				.catch(() => {
-					this.testList[8].passed = document.querySelector('script[src$=".js"]') !== null
-				})
-
-			// envGuard: 验证环境变量已通过校验
-			this.testList[9].passed = !!import.meta.env.VITE_APP_TITLE && !!import.meta.env.VITE_API_URL
-
-			// loadingManager: 验证 Loading 管理器已注入
-			const manager = window.__LOADING_MANAGER__
-			this.testList[10].passed = !!manager && typeof manager.show === 'function'
-
-			// versionUpdateChecker: 验证版本更新检测已注入
-			this.testList[11].passed = !!window.__VUC_REFRESH__ || !!window.__VUC_DISMISS__
-			// #endif
+		updateLoginStatus() {
+			this.loginStatus = auth.isLoggedIn()
 		},
-		showLoading() {
-			// #ifdef H5
-			const manager = window.__LOADING_MANAGER__
-			if (manager) manager.show('手动触发的 Loading...')
-			// #endif
+		async pushByPath() {
+			try {
+				await router.push('/pages/about/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
 		},
-		hideLoading() {
-			// #ifdef H5
-			const manager = window.__LOADING_MANAGER__
-			if (manager) manager.hide()
-			// #endif
+		async pushByName() {
+			try {
+				await router.push({ name: 'pagesAboutIndex' })
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
 		},
-		updateLoadingText() {
-			// #ifdef H5
-			const manager = window.__LOADING_MANAGER__
-			if (manager) manager.updateText('更新后的文本...')
-			// #endif
+		async pushWithQuery() {
+			try {
+				await router.push({ path: '/pages/about/index', query: { from: 'home', id: '123' } })
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
 		},
-		fetchWithLoading() {
-			// #ifdef H5
-			fetch('https://httpbin.org/delay/1').catch(() => {})
-			// #endif
+		async replacePage() {
+			try {
+				await router.replace('/pages/about/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
 		},
-		checkCompressedFiles() {
-			// #ifdef H5
-			fetch('/compress-report.json')
-				.then(res => res.json())
-				.then(data => {
-					if (data && data.totalFiles > 0) {
-						this.compressResult = {
-							passed: true,
-							message: `${data.totalFiles} 个文件已压缩，压缩率 ${data.totalRatio}%`
-						}
-					} else {
-						this.compressResult = {
-							passed: false,
-							message: '未找到压缩报告'
-						}
-					}
-				})
-				.catch(() => {
-					this.compressResult = {
-						passed: false,
-						message: '开发模式下不生成压缩文件'
-					}
-				})
-			// #endif
+		async goToProtected() {
+			try {
+				await router.push('/pages/protected/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
 		},
-		navigateTo(url) {
-			uni.navigateTo({ url })
+		async goToGuards() {
+			try {
+				await router.push('/pages/guards/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		async goToNotFound() {
+			try {
+				this.lastError = ''
+				await router.push('/pages/not-exist/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		async goToDuplicate() {
+			try {
+				this.lastError = ''
+				await router.push('/pages/index/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		doLogin() {
+			auth.login()
+			this.loginStatus = true
+		},
+		doLogout() {
+			auth.logout()
+			this.loginStatus = false
 		}
 	}
 }
@@ -347,10 +236,11 @@ export default {
 
 .card {
 	width: 100%;
-	background: #f9f9f9;
+	background: #fff;
 	border-radius: 20rpx;
 	padding: 30rpx;
 	margin-bottom: 24rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 
 .card-title {
@@ -360,20 +250,12 @@ export default {
 	margin-bottom: 20rpx;
 }
 
-.version-text {
-	font-size: 36rpx;
-	font-weight: bold;
-	color: #007aff;
-	text-align: center;
-	margin: 20rpx 0;
-}
-
 .info-row {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	padding: 12rpx 0;
-	border-bottom: 1rpx solid #eee;
+	border-bottom: 1rpx solid #f0f0f0;
 }
 
 .info-label {
@@ -385,10 +267,17 @@ export default {
 	font-size: 26rpx;
 	color: #333;
 	font-weight: 500;
+	word-break: break-all;
+	max-width: 60%;
+	text-align: right;
 }
 
 .info-value.active {
-	color: #007aff;
+	color: #07c160;
+}
+
+.info-value.inactive {
+	color: #ff4d4f;
 }
 
 .hint {
@@ -397,33 +286,21 @@ export default {
 	margin-bottom: 20rpx;
 }
 
-.test-row {
-	display: flex;
-	align-items: center;
-	padding: 14rpx 0;
-}
-
-.test-icon {
-	font-size: 30rpx;
-	margin-right: 16rpx;
-	color: #ccc;
-}
-
-.test-icon.pass {
-	color: #07c160;
-}
-
-.test-name {
-	font-size: 26rpx;
-	color: #666;
-}
-
 .btn {
 	background: #007aff;
 	border-radius: 12rpx;
 	padding: 20rpx;
-	margin-top: 20rpx;
+	margin-top: 16rpx;
 	text-align: center;
+}
+
+.btn-secondary {
+	background: #fff;
+	border: 2rpx solid #007aff;
+}
+
+.btn-warning {
+	background: #ff9500;
 }
 
 .btn-sm {
@@ -438,9 +315,28 @@ export default {
 	font-weight: 500;
 }
 
+.btn-text-secondary {
+	color: #007aff;
+	font-size: 28rpx;
+	font-weight: 500;
+}
+
 .btn-group {
 	display: flex;
 	gap: 16rpx;
 	margin-bottom: 20rpx;
+}
+
+.error-box {
+	background: #fff2f0;
+	border: 2rpx solid #ffccc7;
+	border-radius: 12rpx;
+	padding: 20rpx;
+	margin-top: 16rpx;
+}
+
+.error-text {
+	font-size: 24rpx;
+	color: #ff4d4f;
 }
 </style>
