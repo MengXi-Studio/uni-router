@@ -1,0 +1,214 @@
+[中文](./README.md) | **English**
+
+<div align="center">
+	<a href="https://github.com/MengXi-Studio/uni-router">
+		<img alt="MengXi Studio Logo" width="215" src="https://github.com/MengXi-Studio/uni-router/blob/master/packages/docs/src/public/logo.png">
+	</a>
+	<br>
+	<h1>@meng-xi/uni-router</h1>
+	<p>A vue-router-style routing management system for uni-app</p>
+
+[![license](https://img.shields.io/github/license/MengXi-Studio/uni-router.svg)](LICENSE) [![npm](https://img.shields.io/npm/v/@meng-xi/uni-router?color=blue)](https://www.npmjs.com/package/@meng-xi/uni-router)
+![npm](https://img.shields.io/npm/dt/@meng-xi/uni-router?color=green)
+
+</div>
+
+## Features
+
+- **vue-router-style API** - Familiar `push` / `replace` / `back` navigation, zero learning curve
+- **Route Guards** - Global `beforeEach`, `beforeResolve`, `afterEach`, and per-route `beforeEnter`
+- **Named Routes** - Navigate by `name` instead of hardcoded path strings
+- **Route Meta** - `meta` field for page titles, auth flags, TabBar indicators, and custom data
+- **TypeScript Type Hints** - Autocompletion and type checking for route names and paths via module augmentation
+- **Error Handling** - Complete `RouterError` / `NavigationFailure` system with `onError` global capture
+- **Composables** - `useRouter()` / `useRoute()` for convenient router access in components
+- **RouterLink Component** - Declarative navigation component based on uni-app `navigator`
+- **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
+
+📖 **Full Documentation: [https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
+
+## Installation
+
+```bash
+# npm
+npm install @meng-xi/uni-router
+
+# yarn
+yarn add @meng-xi/uni-router
+
+# pnpm
+pnpm add @meng-xi/uni-router
+```
+
+Optionally use [`@meng-xi/vite-plugin`](https://github.com/MengXi-Studio/vite-plugin) to auto-generate route config and type declarations:
+
+```bash
+pnpm add @meng-xi/vite-plugin -D
+```
+
+## Quick Start
+
+### 1. Configure vite.config.ts
+
+Use the `generateRouter` plugin to auto-generate route config from `pages.json`:
+
+```typescript
+import { defineConfig } from 'vite'
+import uni from '@dcloudio/vite-plugin-uni'
+import { generateRouter } from '@meng-xi/vite-plugin'
+
+export default defineConfig({
+	plugins: [
+		uni(),
+		generateRouter({
+			pagesJsonPath: 'src/pages.json',
+			outputPath: 'src/router.config.ts',
+			dts: true, // Auto-generate type declarations for name/path hints
+			metaMapping: {
+				navigationBarTitleText: 'title',
+				requireAuth: 'requireAuth'
+			}
+		})
+	]
+})
+```
+
+### 2. Create Router
+
+```typescript
+// src/main.ts
+import { createSSRApp } from 'vue'
+import { createRouter } from '@meng-xi/uni-router'
+import routes from './router.config'
+import App from './App.vue'
+
+const router = createRouter({
+	routes,
+	strict: true
+})
+
+export function createApp() {
+	const app = createSSRApp(App)
+	app.use(router)
+	return { app }
+}
+```
+
+### 3. Route Navigation
+
+```typescript
+import { useRouter, useRoute } from '@meng-xi/uni-router'
+
+// Use in component setup
+const router = useRouter()
+const route = useRoute()
+
+// Path navigation
+await router.push('/pages/about/about')
+await router.push({ path: '/pages/about/about', query: { id: '1' } })
+
+// Named navigation
+await router.push({ name: 'about' })
+
+// Go back
+await router.back()
+await router.back(2) // Go back two levels
+```
+
+### 4. Route Guards
+
+```typescript
+// Global before guard - auth check
+router.beforeEach((to, from, next) => {
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		next({ name: 'login', query: { redirect: to.fullPath } })
+	} else {
+		next()
+	}
+})
+
+// Global after hook
+router.afterEach((to, from) => {
+	console.log(`Navigation complete: ${from.path} → ${to.path}`)
+})
+```
+
+### 5. Declarative Navigation
+
+```vue
+<template>
+	<RouterLink to="/pages/about/about">About Page</RouterLink>
+	<RouterLink :to="{ name: 'about' }" replace>Replace Navigation</RouterLink>
+</template>
+
+<script setup>
+import { RouterLink } from '@meng-xi/uni-router/components/RouterLink.vue'
+</script>
+```
+
+## API Overview
+
+### Core
+
+| API                     | Description                             |
+| ----------------------- | --------------------------------------- |
+| `createRouter(options)` | Create a router instance                |
+| `useRouter()`           | Get router instance (composable)        |
+| `useRoute()`            | Get current route location (composable) |
+| `RouterLink`            | Declarative navigation component        |
+
+### Router Instance Methods
+
+| Method                        | Description                            |
+| ----------------------------- | -------------------------------------- |
+| `router.push(location)`       | Navigate to a new page                 |
+| `router.replace(location)`    | Replace the current page               |
+| `router.back(delta?)`         | Go back one or more pages              |
+| `router.beforeEach(guard)`    | Register global before guard           |
+| `router.beforeResolve(guard)` | Register global resolve guard          |
+| `router.afterEach(guard)`     | Register global after hook             |
+| `router.onError(handler)`     | Register error handler                 |
+| `router.resolve(location)`    | Resolve route location (no navigation) |
+| `router.getRoutes()`          | Get all route configs                  |
+| `router.hasRoute(name)`       | Check if a route exists                |
+
+### Error Codes
+
+| Code                    | Description                                                       |
+| ----------------------- | ----------------------------------------------------------------- |
+| `NAVIGATION_ABORTED`    | Navigation aborted by guard                                       |
+| `NAVIGATION_CANCELLED`  | Navigation cancelled (guard exception or redirect limit exceeded) |
+| `NAVIGATION_DUPLICATED` | Redundant navigation to current location                          |
+| `ROUTE_NOT_FOUND`       | No matching route found                                           |
+| `NAVIGATION_API_ERROR`  | uni navigation API call failed                                    |
+| `SETUP_ERROR`           | Router initialization or usage error                              |
+
+## TypeScript Type Hints
+
+With `dts: true` enabled, the plugin auto-generates type declarations for type-safe route navigation:
+
+```typescript
+// Route name autocompletion
+router.push({ name: 'pagesIndexIndex' }) // ✅ Autocompletes
+router.push({ name: 'invalidName' }) // ❌ Type error
+
+// Path autocompletion
+router.push({ path: '/pages/index/index' }) // ✅ Autocompletes
+router.push({ path: '/invalid/path' }) // ❌ Type error
+```
+
+## Relationship with pages.json
+
+Uni Router does **not replace** `pages.json`, but works alongside it:
+
+| Responsibility    | pages.json          | Uni Router            |
+| ----------------- | ------------------- | --------------------- |
+| Page registration | Required            | Not responsible       |
+| Route navigation  | uni.navigateTo etc. | push / replace / back |
+| Route guards      | Not supported       | beforeEach etc.       |
+| Route meta        | Not supported       | meta field            |
+| Named routes      | Not supported       | name field            |
+
+## License
+
+[MIT](LICENSE)

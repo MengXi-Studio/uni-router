@@ -18,7 +18,8 @@ export default defineConfig({
 			metaMapping: {
 				navigationBarTitleText: 'title',
 				requireAuth: 'requireAuth'
-			}
+			},
+			dts: true
 		})
 	]
 })

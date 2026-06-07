@@ -1,6 +1,6 @@
 {
 	"name": "@meng-xi/uni-router-docs",
-	"version": "0.0.1",
+	"version": "0.1.4",
 	"private": false,
 	"description": "@meng-xi/uni-router 使用文档",
 	"type": "module",

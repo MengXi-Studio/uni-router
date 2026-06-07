@@ -77,7 +77,7 @@ jobs:
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
           # 查询 npm 注册表中已发布的最新版本，查询失败则返回 "none"
-          PUBLISHED_VERSION=$(npm view @meng-xi/vite-plugin version --registry ${{ env.NPM_REGISTRY }} 2>/dev/null || echo "none")
+          PUBLISHED_VERSION=$(npm view @meng-xi/uni-router version --registry ${{ env.NPM_REGISTRY }} 2>/dev/null || echo "none")
           # 将已发布版本号写入步骤输出
           echo "published_version=$PUBLISHED_VERSION" >> $GITHUB_OUTPUT
 
@@ -98,13 +98,13 @@ jobs:
       - name: Publish summary
         if: ${{ !inputs.skip_publish && steps.version.outputs.should_publish == 'true' }} # 发布成功时执行
         run: |
-          echo "## 📦 Published @meng-xi/vite-plugin@${{ steps.version.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY # 标题
+          echo "## 📦 Published @meng-xi/uni-router@${{ steps.version.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY # 标题
           echo "" >> $GITHUB_STEP_SUMMARY # 空行
           echo "- **Version**: \`${{ steps.version.outputs.current_version }}\`" >> $GITHUB_STEP_SUMMARY # 版本号
           echo "- **Auth**: OIDC Trusted Publisher (tokenless)" >> $GITHUB_STEP_SUMMARY # 认证方式
           echo "- **Provenance**: ✅ Signed with Sigstore" >> $GITHUB_STEP_SUMMARY # 签名状态
           echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY # 关联的 commit SHA
-          echo "- **Environment**: \`vite-plugin\`" >> $GITHUB_STEP_SUMMARY # 关联的 GitHub Environment
+          echo "- **Environment**: \`uni-router\`" >> $GITHUB_STEP_SUMMARY # 关联的 GitHub Environment
 
       # 步骤10：跳过发布摘要，写入 GitHub Actions Summary 页面
       - name: Skip publish summary
