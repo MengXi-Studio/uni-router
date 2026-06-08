@@ -8,6 +8,8 @@ export function buildFullPath(path: string, query: Record<string, string>): stri
 	const keys = Object.keys(query)
 	if (keys.length === 0) return path
 
+	// 确保参数顺序确定性，避免相同 query 生成不同的 fullPath
+	keys.sort()
 	const qs = keys.map(key => `${encodeURIComponent(key)}=${encodeURIComponent(query[key])}`).join('&')
 
 	return `${path}?${qs}`

@@ -12,22 +12,76 @@ import { normalizePath, parseQuery } from '@/utils/path'
  * - 外部直接调用：阻止原始调用，转由 router.push / replace / back 执行完整守卫链
  */
 
-/** 标记当前 uni API 调用由路由器内部发起 */
-let _isRouterCall = false
-
-/** 路由器实例引用 */
-let _router: Router | null = null
-
 /** 需要拦截的 uni 导航 API 列表 */
 const INTERCEPTED_APIS = ['navigateTo', 'redirectTo', 'switchTab', 'navigateBack'] as const
 
 /**
+ * 拦截器管理器
+ *
+ * 封装拦截器的状态（路由器引用、调用计数器），
+ * 支持多路由器实例各自持有独立的拦截器状态。
+ */
+class InterceptorManager {
+	/** 路由器内部发起的 uni API 调用计数器，用于区分路由器调用和外部调用 */
+	private routerCallCount = 0
+	/** 路由器实例引用 */
+	private router: Router | null = null
+
+	/**
+	 * 标记下一次 uni API 调用由路由器内部发起
+	 *
+	 * 在调用 uni.navigateTo 等方法前调用，拦截器检测到此标记后放行。
+	 * 使用计数器而非布尔值，避免并发导航时标记被错误消费。
+	 */
+	markRouterCall(): void {
+		this.routerCallCount++
+	}
+
+	/**
+	 * 检查当前调用是否由路由器内部发起，若是则消费计数并放行
+	 */
+	isRouterCall(): boolean {
+		if (this.routerCallCount > 0) {
+			this.routerCallCount--
+			return true
+		}
+		return false
+	}
+
+	/**
+	 * 获取路由器实例
+	 */
+	getRouter(): Router | null {
+		return this.router
+	}
+
+	/**
+	 * 设置路由器实例
+	 */
+	setRouter(router: Router | null): void {
+		this.router = router
+	}
+
+	/**
+	 * 重置所有状态
+	 */
+	reset(): void {
+		this.router = null
+		this.routerCallCount = 0
+	}
+}
+
+/** 当前活跃的拦截器管理器实例 */
+let activeManager: InterceptorManager | null = null
+
+/**
  * 标记下一次 uni API 调用由路由器内部发起
  *
- * 在调用 uni.navigateTo 等方法前调用，拦截器检测到此标记后放行
+ * 在调用 uni.navigateTo 等方法前调用，拦截器检测到此标记后放行。
+ * 使用计数器而非布尔值，避免并发导航时标记被错误消费。
  */
 export function markRouterCall(): void {
-	_isRouterCall = true
+	activeManager?.markRouterCall()
 }
 
 /**
@@ -59,14 +113,15 @@ function parseUniUrl(url: string): { path: string; query: Record<string, string>
  * @returns 始终返回 false 以阻止原始 API 调用
  */
 function handleInterceptedNavigation(api: string, args: Record<string, any>): false {
-	if (!_router) return false
+	const router = activeManager?.getRouter()
+	if (!router) return false
 
 	switch (api) {
 		case 'navigateTo': {
 			const { path, query } = parseUniUrl(args.url || '')
 			if (path) {
 				const hasQuery = query && Object.keys(query).length > 0
-				_router.push(hasQuery ? { path, query } : path)
+				router.push(hasQuery ? { path, query } : path)
 			}
 			break
 		}
@@ -74,19 +129,19 @@ function handleInterceptedNavigation(api: string, args: Record<string, any>): fa
 			const { path, query } = parseUniUrl(args.url || '')
 			if (path) {
 				const hasQuery = query && Object.keys(query).length > 0
-				_router.replace(hasQuery ? { path, query } : path)
+				router.replace(hasQuery ? { path, query } : path)
 			}
 			break
 		}
 		case 'switchTab': {
 			const { path } = parseUniUrl(args.url || '')
 			if (path) {
-				_router.push(path)
+				router.push(path)
 			}
 			break
 		}
 		case 'navigateBack': {
-			_router.back(args.delta || 1)
+			router.back(args.delta || 1)
 			break
 		}
 	}
@@ -108,13 +163,18 @@ export function installInterceptors(router: Router): void {
 		return
 	}
 
-	_router = router
+	// 如果已有活跃管理器，先清理
+	if (activeManager) {
+		removeInterceptors()
+	}
+
+	activeManager = new InterceptorManager()
+	activeManager.setRouter(router)
 
 	for (const api of INTERCEPTED_APIS) {
 		uni.addInterceptor(api, {
 			invoke(args: Record<string, any>) {
-				if (_isRouterCall) {
-					_isRouterCall = false
+				if (activeManager?.isRouterCall()) {
 					return args
 				}
 				return handleInterceptedNavigation(api, args)
@@ -134,5 +194,8 @@ export function removeInterceptors(): void {
 			uni.removeInterceptor(api)
 		}
 	}
-	_router = null
+	if (activeManager) {
+		activeManager.reset()
+		activeManager = null
+	}
 }

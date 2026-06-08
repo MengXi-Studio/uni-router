@@ -1,6 +1,7 @@
 import type { RouteConfig, RouteLocation, RouteLocationRaw } from './route'
 import type { NavigationGuard, PostNavigationGuard } from './guard'
 import type { RouterError } from './error'
+import type { App } from 'vue'
 
 /**
  * 路由错误处理回调
@@ -16,8 +17,10 @@ export type RouterOnError = (error: RouterError, to: RouteLocation, from: RouteL
 export interface RouterOptions {
 	/** 路由配置列表，需与 pages.json 中的页面声明保持一致 */
 	routes: RouteConfig[]
+
 	/** 是否启用严格模式，启用后未匹配的命名路由将抛出异常 */
 	strict?: boolean
+
 	/**
 	 * 是否拦截 uni 原生导航 API（navigateTo / redirectTo / switchTab / navigateBack）
 	 *
@@ -27,6 +30,19 @@ export interface RouterOptions {
 	 * @default false
 	 */
 	interceptUniApi?: boolean
+
+	/**
+	 * 守卫超时时间（毫秒）
+	 *
+	 * 当守卫函数在此时间内既未调用 next() 也未返回 rejected Promise 时，
+	 * 将输出警告并自动中止导航以防止永久挂起。
+	 * 适用于守卫中包含耗时异步操作（如网络请求）的场景。
+	 *
+	 * 设为 0 可禁用超时保护（不推荐）。
+	 *
+	 * @default 10000
+	 */
+	guardTimeout?: number
 }
 
 /**
@@ -54,8 +70,12 @@ export interface Router {
 
 	/**
 	 * 返回上一页或多级页面，对应 uni.navigateBack
+	 *
+	 * 执行完整的导航守卫链（beforeEach → beforeResolve），守卫可中止或重定向返回操作。
+	 * 注意：物理返回键和浏览器后退不经过路由器，无法被守卫拦截。
+	 *
 	 * @param delta - 返回的页面数，默认为 1
-	 * @returns 导航完成或页面栈不足时立即 resolve 的 Promise
+	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
 	back(delta?: number): Promise<void>
 
@@ -108,6 +128,17 @@ export interface Router {
 	isReady(): Promise<void>
 
 	/**
+	 * 注册路由变化监听器
+	 *
+	 * 当路由状态发生变化时（包括导航完成和状态同步），监听器将被调用。
+	 * 与 afterEach 不同，此方法用于订阅路由状态变化，不参与导航流程控制。
+	 *
+	 * @param listener - 路由变化回调函数
+	 * @returns 用于移除此监听器的函数
+	 */
+	onRouteChange(listener: (to: RouteLocation, from: RouteLocation) => void): () => void
+
+	/**
 	 * 注册路由错误处理回调
 	 * @param handler - 错误处理函数
 	 * @returns 用于移除此处理器的函数
@@ -129,5 +160,5 @@ export interface Router {
 	 * 安装路由器到 Vue 应用实例，注册全局属性和 provide
 	 * @param app - Vue 应用实例
 	 */
-	install(app: unknown): void
+	install(app: App): void
 }

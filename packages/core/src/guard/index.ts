@@ -1,10 +1,20 @@
 import type { NavigationGuard, NavigationGuardNext, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw } from '@/types'
 import { RouterErrorCode } from '@/types/error'
+import { warn } from '@/utils/general'
 
 /**
  * 守卫执行结果，表示导航是被放行、重定向还是中止
  */
 export type GuardResult = { type: 'next'; redirect?: RouteLocationRaw } | { type: 'abort'; code: RouterErrorCode }
+
+/**
+ * 守卫默认超时时间（毫秒）
+ *
+ * 当守卫函数在此时间内既未调用 next() 也未返回 rejected Promise 时，
+ * 将输出警告提示开发者检查守卫逻辑，并自动中止导航以防止永久挂起。
+ * 可通过 RouterOptions.guardTimeout 覆盖此默认值。
+ */
+const DEFAULT_GUARD_TIMEOUT = 10000
 
 /**
  * 守卫管理器接口，提供全局守卫的注册与执行能力
@@ -78,13 +88,15 @@ export interface GuardManager {
  * @param from - 来源路由
  * @returns 守卫执行结果
  */
-function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation): Promise<GuardResult> {
+function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation, timeout: number): Promise<GuardResult> {
 	return new Promise(resolve => {
 		let resolved = false
+		let timer: ReturnType<typeof setTimeout> | undefined
 
 		const next: NavigationGuardNext = (location?: RouteLocationRaw | false) => {
 			if (resolved) return
 			resolved = true
+			if (timer) clearTimeout(timer)
 
 			if (location === false) {
 				resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_ABORTED })
@@ -95,6 +107,18 @@ function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation
 			}
 		}
 
+		// 超时保护：守卫未在指定时间内调用 next() 时，输出警告并中止导航
+		// timeout 为 0 时禁用超时保护
+		if (timeout > 0) {
+			timer = setTimeout(() => {
+				if (!resolved) {
+					resolved = true
+					warn(`Navigation guard "${guard.name || 'anonymous'}" did not resolve within ${timeout / 1000}s. ` + 'Make sure to call next() in your guard function.')
+					resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED })
+				}
+			}, timeout)
+		}
+
 		let promiseResult: Promise<void> | undefined
 
 		try {
@@ -102,18 +126,29 @@ function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation
 		} catch {
 			if (!resolved) {
 				resolved = true
+				if (timer) clearTimeout(timer)
 				resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED })
 			}
 			return
 		}
 
 		if (promiseResult) {
-			promiseResult.catch(() => {
-				if (!resolved) {
-					resolved = true
-					resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED })
-				}
-			})
+			promiseResult
+				.then(() => {
+					// Promise 守卫 resolve 时，若未调用 next() 则自动放行
+					if (!resolved) {
+						resolved = true
+						if (timer) clearTimeout(timer)
+						resolve({ type: 'next' })
+					}
+				})
+				.catch(() => {
+					if (!resolved) {
+						resolved = true
+						if (timer) clearTimeout(timer)
+						resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED })
+					}
+				})
 		}
 	})
 }
@@ -125,9 +160,9 @@ function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation
  * @param from - 来源路由
  * @returns 队列中首个中止或重定向结果，全部通过时返回放行
  */
-async function runGuardQueue(guards: NavigationGuard[], to: RouteLocation, from: RouteLocation): Promise<GuardResult> {
+async function runGuardQueue(guards: NavigationGuard[], to: RouteLocation, from: RouteLocation, timeout: number): Promise<GuardResult> {
 	for (const guard of guards) {
-		const result = await runGuard(guard, to, from)
+		const result = await runGuard(guard, to, from, timeout)
 		if (result.type === 'abort') return result
 		if (result.redirect) return result
 	}
@@ -136,9 +171,10 @@ async function runGuardQueue(guards: NavigationGuard[], to: RouteLocation, from:
 
 /**
  * 创建守卫管理器实例
+ * @param guardTimeout - 守卫超时时间（毫秒），0 表示禁用超时保护
  * @returns 守卫管理器
  */
-export function createGuardManager(): GuardManager {
+export function createGuardManager(guardTimeout: number = DEFAULT_GUARD_TIMEOUT): GuardManager {
 	const beforeGuards: NavigationGuard[] = []
 	const beforeResolveGuards: NavigationGuard[] = []
 	const afterGuards: PostNavigationGuard[] = []
@@ -188,7 +224,7 @@ export function createGuardManager(): GuardManager {
 	 * @param from - 来源路由
 	 */
 	function runBeforeGuards(to: RouteLocation, from: RouteLocation): Promise<GuardResult> {
-		return runGuardQueue(beforeGuards, to, from)
+		return runGuardQueue(beforeGuards, to, from, guardTimeout)
 	}
 
 	/**
@@ -197,7 +233,7 @@ export function createGuardManager(): GuardManager {
 	 * @param from - 来源路由
 	 */
 	function runBeforeResolveGuards(to: RouteLocation, from: RouteLocation): Promise<GuardResult> {
-		return runGuardQueue(beforeResolveGuards, to, from)
+		return runGuardQueue(beforeResolveGuards, to, from, guardTimeout)
 	}
 
 	/**
@@ -211,7 +247,7 @@ export function createGuardManager(): GuardManager {
 
 		const guards = Array.isArray(route.beforeEnter) ? route.beforeEnter : [route.beforeEnter]
 
-		return runGuardQueue(guards, to, from)
+		return runGuardQueue(guards, to, from, guardTimeout)
 	}
 
 	/**

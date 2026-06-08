@@ -37,10 +37,13 @@ export type RoutePath = keyof RouteNameMap extends never ? string : RouteNameMap
 export interface RouteMeta {
 	/** 页面标题 */
 	title?: string
+
 	/** 是否为 TabBar 页面 */
 	isTab?: boolean
+
 	/** 是否需要登录认证 */
 	requireAuth?: boolean
+
 	/** 自定义扩展字段 */
 	[key: string]: unknown
 }
@@ -51,10 +54,13 @@ export interface RouteMeta {
 export interface RouteConfig {
 	/** 页面路径，需与 pages.json 中的路径一致 */
 	path: string
+
 	/** 路由名称，用于命名路由导航 */
 	name?: string
+
 	/** 路由元信息 */
 	meta?: RouteMeta
+
 	/** 路由独享守卫，进入该路由时触发 */
 	beforeEnter?: NavigationGuard | NavigationGuard[]
 }
@@ -65,14 +71,29 @@ export interface RouteConfig {
 export interface RouteLocation {
 	/** 规范化后的路径 */
 	path: string
+
 	/** 路由名称 */
 	name?: string
+
 	/** 路由元信息 */
 	meta: RouteMeta
+
 	/** 查询参数 */
 	query: Record<string, string>
+
 	/** 完整路径（含查询参数） */
 	fullPath: string
+
+	/**
+	 * 是否为状态同步（非完整导航）
+	 *
+	 * 当路由状态通过 syncRoute() / syncCurrentRoute() 从页面栈同步时设为 true。
+	 * 状态同步不是一次完整的导航（未经过前置守卫），afterEach 不会触发。
+	 * 正常导航完成时此字段为 undefined 或 false。
+	 *
+	 * @internal 内部标记，不应在应用代码中依赖此字段
+	 */
+	_synced?: boolean
 }
 
 /**
@@ -81,6 +102,7 @@ export interface RouteLocation {
 export interface RouteLocationPathRaw {
 	/** 目标路径 */
 	path: RoutePath
+
 	/** 查询参数 */
 	query?: Record<string, string>
 }
@@ -91,6 +113,7 @@ export interface RouteLocationPathRaw {
 export interface RouteLocationNamedRaw {
 	/** 目标路由名称 */
 	name: RouteName
+
 	/** 查询参数 */
 	query?: Record<string, string>
 }

@@ -1,4 +1,5 @@
 import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, Router, RouterOnError, RouterOptions } from '@/types'
+import type { App } from 'vue'
 import { RouterErrorCode } from '@/types/error'
 import { NavigationFailure, RouterError } from '@/errors'
 import { createGuardManager, type GuardResult } from '@/guard'
@@ -33,6 +34,7 @@ class UniRouter implements Router {
 	 * @param options - 路由器初始化选项
 	 */
 	constructor(options: RouterOptions) {
+		this.guardManager = createGuardManager(options.guardTimeout)
 		this.matcher = createRouteMatcher(options.routes, options.strict ?? true)
 		this._interceptUniApi = options.interceptUniApi ?? false
 		this.initRoute()
@@ -80,17 +82,57 @@ class UniRouter implements Router {
 	/**
 	 * 返回上一页或多级页面
 	 *
-	 * 对应 uni.navigateBack。若页面栈中不足 delta 个页面，将输出警告并立即 resolve。
-	 * 导航完成后会根据实际页面栈同步 currentRoute 状态。
+	 * 对应 uni.navigateBack。执行完整的导航守卫链（beforeEach → beforeResolve），
+	 * 守卫可中止或重定向返回操作。
+	 *
+	 * 注意：物理返回键和浏览器后退不经过路由器，无法被守卫拦截。
+	 * 对于原生返回，需依赖 syncRoute() + afterEach 做事后处理。
 	 *
 	 * @param delta - 返回的页面数，默认为 1
-	 * @returns 导航完成或页面栈不足时立即 resolve 的 Promise
+	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
 	async back(delta: number = 1): Promise<void> {
+		// 等待前一次导航完成（无论成功或失败），避免并发导航
+		// 错误已通过 onError 机制通知，此处无需再处理
+		if (this.pendingNavigation) {
+			await this.pendingNavigation.catch(() => {})
+		}
+
 		const from = this.routeState.getCurrentRoute()
-		await goBack(delta)
-		// 根据 uni-app 实际页面栈同步 currentRoute
-		this.syncCurrentRoute(from)
+
+		// 计算目标页面
+		const pages = getCurrentPages()
+		const targetIndex = pages.length - 1 - delta
+		if (targetIndex < 0) {
+			const failure = new NavigationFailure(from, from, RouterErrorCode.NAVIGATION_CANCELLED, 'Cannot go back: no previous page in the navigation stack')
+			this.triggerErrorHandlers(failure, from, from)
+			return Promise.reject(failure)
+		}
+
+		const targetPage = pages[targetIndex]
+		const targetPath = `/${targetPage.route}`
+		const to = this.matcher.resolve(targetPath)
+
+		// 执行守卫链
+		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
+		const handled = this.handleGuardResult(beforeResult, to, from, 'push', 0)
+		if (handled) return handled as unknown as Promise<void>
+
+		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
+		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'push', 0)
+		if (handledResolve) return handledResolve as unknown as Promise<void>
+
+		// 守卫通过，执行返回
+		try {
+			await goBack(delta)
+			this.syncCurrentRoute(from)
+		} catch (error) {
+			const code = RouterErrorCode.NAVIGATION_API_ERROR
+			const cause = isUniApiError(error) ? error : undefined
+			const failure = new NavigationFailure(to, from, code, undefined, cause)
+			this.triggerErrorHandlers(failure, to, from)
+			return Promise.reject(failure)
+		}
 	}
 
 	/**
@@ -173,6 +215,19 @@ class UniRouter implements Router {
 	}
 
 	/**
+	 * 注册路由变化监听器
+	 *
+	 * 当路由状态发生变化时（包括导航完成和状态同步），监听器将被调用。
+	 * 与 afterEach 不同，此方法用于订阅路由状态变化，不参与导航流程控制。
+	 *
+	 * @param listener - 路由变化回调函数
+	 * @returns 用于移除此监听器的函数
+	 */
+	onRouteChange(listener: (to: RouteLocation, from: RouteLocation) => void): () => void {
+		return this.routeState.onRouteChange(listener)
+	}
+
+	/**
 	 * 同步路由状态与实际页面栈
 	 *
 	 * 当页面通过浏览器后退、物理返回键等非路由器方式切换时，
@@ -197,34 +252,25 @@ class UniRouter implements Router {
 	 *
 	 * @param app - Vue 应用实例
 	 */
-	install(app: unknown): void {
-		if (!app || typeof app !== 'object' || !('provide' in app)) return
-
-		const vueApp = app as unknown as {
-			provide: (key: symbol, value: unknown) => void
-			config: { globalProperties: Record<string, unknown> }
-			unmount: () => void
-			onUnmount: (fn: () => void) => void
-		}
-
+	install(app: App): void {
 		// 通过 provide/inject 机制提供路由器，使 useRouter()/useRoute() 可用
-		vueApp.provide(ROUTER_SYMBOL, this)
+		app.provide(ROUTER_SYMBOL, this)
 
 		// 仅在 $router 和 $route 未被定义时设置全局属性
 		// 避免与 uni-app H5 内置的 vue-router 冲突
-		if (!('$router' in vueApp.config.globalProperties)) {
-			vueApp.config.globalProperties.$router = this
+		if (!('$router' in app.config.globalProperties)) {
+			app.config.globalProperties.$router = this
 		}
-		if (!('$route' in vueApp.config.globalProperties)) {
-			Object.defineProperty(vueApp.config.globalProperties, '$route', {
+		if (!('$route' in app.config.globalProperties)) {
+			Object.defineProperty(app.config.globalProperties, '$route', {
 				enumerable: true,
 				configurable: true,
 				get: () => this.currentRoute
 			})
 		}
 
-		if (this._interceptUniApi && typeof vueApp.onUnmount === 'function') {
-			vueApp.onUnmount(() => removeInterceptors())
+		if (this._interceptUniApi) {
+			app.onUnmount(() => removeInterceptors())
 		}
 	}
 
@@ -258,6 +304,8 @@ class UniRouter implements Router {
 	 * @throws {NavigationFailure} 导航失败时抛出
 	 */
 	private async performNavigation(location: RouteLocationRaw, mode: 'push' | 'replace'): Promise<RouteLocation> {
+		// 等待前一次导航完成（无论成功或失败），避免并发导航
+		// 错误已通过 onError 机制通知，此处无需再处理
 		if (this.pendingNavigation) {
 			await this.pendingNavigation.catch(() => {})
 		}
@@ -398,6 +446,7 @@ class UniRouter implements Router {
 	 */
 	private isSameRouteLocation(a: RouteLocation, b: RouteLocation): boolean {
 		if (a.path !== b.path) return false
+		if (a.name !== b.name) return false
 		return this.isSameQuery(a.query, b.query)
 	}
 
@@ -418,19 +467,21 @@ class UniRouter implements Router {
 	 * 根据 uni-app 实际页面栈同步 currentRoute 状态
 	 *
 	 * 当通过 back() 或浏览器后退等非 push/replace 方式改变页面后，
-	 * 需要从页面栈中读取当前页面信息来更新路由状态，并触发后置钩子。
+	 * 需要从页面栈中读取当前页面信息来更新路由状态。
+	 *
+	 * 状态同步不是一次完整的导航（未经过前置守卫），因此不触发 afterEach 钩子，
+	 * 仅通知 onRouteChange 监听器。
 	 *
 	 * @param from - 导航前的路由位置
 	 */
-	private syncCurrentRoute(from: RouteLocation): void {
+	private syncCurrentRoute(_from: RouteLocation): void {
 		const currentPath = getCurrentPagePath()
 		const config = this.matcher.getRouteConfig(currentPath)
 		const meta: RouteMeta = config?.meta ?? {}
 		const query = getCurrentPageQuery()
 		const fullPath = buildFullPath(currentPath, query)
-		const to: RouteLocation = { path: currentPath, meta, query, fullPath }
+		const to: RouteLocation = { path: currentPath, meta, query, fullPath, _synced: true }
 		this.routeState.setCurrentRoute(to)
-		this.guardManager.runAfterGuards(to, from)
 	}
 }
 
