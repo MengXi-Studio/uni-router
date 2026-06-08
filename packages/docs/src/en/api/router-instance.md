@@ -54,19 +54,24 @@ await router.replace({ name: 'login' })
 
 ### back()
 
-Go back to the previous page or multiple pages.
+Go back to the previous page or multiple pages, executing the full navigation guard chain.
 
 ```ts
 back(delta?: number): Promise<void>
 ```
 
 - **delta**: Number of pages to go back, defaults to 1
-- Outputs warning and resolves immediately if page stack is insufficient
+- Executes `beforeEach` → `beforeResolve` guard chain; guards can abort or redirect the back operation
+- Throws `NavigationFailure` (`NAVIGATION_ABORTED`) when page stack is insufficient
+- Throws `NavigationFailure` when guards abort the navigation
 
 ```ts
 await router.back()
 await router.back(2)
 ```
+
+::: warning `back()` only intercepts programmatic calls. Physical back button and browser back directly trigger native `navigateBack`, bypassing the router, so guards cannot intercept them. For native back, call
+`syncRoute()` in the page's `onShow` to sync state, and handle post-processing in `afterEach`. :::
 
 ### beforeEach()
 
@@ -80,7 +85,7 @@ beforeEach(guard: NavigationGuard): () => void
 
 ```ts
 const remove = router.beforeEach((to, from, next) => {
-  next()
+	next()
 })
 remove()
 ```
@@ -103,11 +108,14 @@ afterEach(guard: PostNavigationGuard): () => void
 
 ```ts
 router.afterEach((to, from) => {
-  if (to.meta.title) {
-    uni.setNavigationBarTitle({ title: to.meta.title as string })
-  }
+	if (to.meta.title) {
+		uni.setNavigationBarTitle({ title: to.meta.title as string })
+	}
 })
 ```
+
+::: tip `afterEach` is only triggered after a complete navigation (through before guards). State synchronization via `syncRoute()` / `syncCurrentRoute()` does not trigger `afterEach`, but will notify `onRouteChange`
+listeners. :::
 
 ### getRoutes()
 
@@ -148,6 +156,30 @@ Wait for the router to be initialized.
 isReady(): Promise<void>
 ```
 
+### onRouteChange()
+
+Register a route change listener.
+
+```ts
+onRouteChange(listener: (to: RouteLocation, from: RouteLocation) => void): () => void
+```
+
+- **Returns**: A function to remove this listener
+
+The listener is called when the route state changes (including navigation completion and state synchronization). Unlike `afterEach`, this method subscribes to route state changes and does not participate in navigation
+flow control.
+
+```ts
+const remove = router.onRouteChange((to, from) => {
+	console.log('Route changed:', from.path, '→', to.path)
+	// Can distinguish complete navigation from state sync via to._synced
+	if (to._synced) {
+		console.log('State sync (not a complete navigation)')
+	}
+})
+remove()
+```
+
 ### onError()
 
 Register a route error handler callback.
@@ -158,7 +190,27 @@ onError(handler: RouterOnError): () => void
 
 ```ts
 router.onError((error, to, from) => {
-  console.error(error.code, error.message)
+	console.error(error.code, error.message)
+})
+```
+
+### syncRoute()
+
+Synchronize route state with the actual page stack.
+
+```ts
+syncRoute(): void
+```
+
+When a page is switched via browser back, physical back button, or other non-router methods, the router's `currentRoute` may be out of sync with the actual page. Calling this method reads the current page info from the
+uni-app page stack and updates the route state.
+
+It is recommended to call this method in each page's `onShow` lifecycle.
+
+```ts
+// In a page
+onShow(() => {
+	router.syncRoute()
 })
 ```
 
@@ -167,7 +219,7 @@ router.onError((error, to, from) => {
 Install the router to a Vue app instance (called internally by `app.use(router)`).
 
 ```ts
-install(app: unknown): void
+install(app: App): void
 ```
 
 The installation registers the following:

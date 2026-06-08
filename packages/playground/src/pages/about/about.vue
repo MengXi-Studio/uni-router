@@ -23,15 +23,16 @@
 		</view>
 
 		<view class="section">
-			<view class="section-title">当前路由信息</view>
+			<view class="section-title">当前路由信息（响应式）</view>
+			<view class="info-text">useRoute() 返回 Ref&lt;RouteLocation&gt;，路由变化时自动更新。</view>
 			<view class="code-block"> path: {{ route.path }}\nname: {{ route.name || '-' }}\nmeta.isTab: {{ route.meta.isTab ?? '-' }}\nmeta.title: {{ route.meta.title || '-' }} </view>
 		</view>
 
 		<view class="section">
 			<view class="section-title">路由器 API</view>
 			<view class="code-block">
-				const router = useRouter()\n\n// 导航\nrouter.push('/pages/detail/detail')\nrouter.replace({ name: 'pagesAboutAbout' })\nrouter.back()\n\n// 守卫\nrouter.beforeEach((to, from, next) =>
-				next())\nrouter.beforeResolve((to, from, next) => next())\nrouter.afterEach((to, from) => {})\n\n//
+				const router = useRouter()\n\n// 导航\nrouter.push('/pages/detail/detail')\nrouter.replace({ name: 'pagesAboutAbout' })\nrouter.back() // 执行完整守卫链\n\n// 守卫\nrouter.beforeEach((to, from, next) =>
+				next())\nrouter.beforeResolve((to, from, next) => next())\nrouter.afterEach((to, from) => {})\n\n// 监听\nrouter.onRouteChange((to, from) => {})\n\n// 状态同步\nrouter.syncRoute() // 在 onShow 中调用\n\n//
 				查询\nrouter.hasRoute('pagesIndexIndex')\nrouter.getRoutes()\nrouter.resolve('/pages/detail/detail')\nrouter.isReady()\n\n// 错误\nrouter.onError((err, to, from) => {})
 			</view>
 		</view>

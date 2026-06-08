@@ -21,9 +21,11 @@
 - **Route Meta** - `meta` field for page titles, auth flags, TabBar indicators, and custom data
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths via module augmentation
 - **Error Handling** - Complete `RouterError` / `NavigationFailure` system with `onError` global capture
-- **Composables** - `useRouter()` / `useRoute()` for convenient router access in components
-- **RouterLink Component** - Declarative navigation component based on uni-app `navigator`
+- **Composables** - `useRouter()` / `useRoute()` for convenient router access in components, `useRoute()` returns a reactive ref that auto-updates on route changes
+- **RouterLink Component** - Declarative navigation component based on uni-app `navigator`, with `error` event for navigation failure handling
 - **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
+- **Guard Timeout Protection** - Configurable `guardTimeout` to prevent navigation from hanging when guards don't call `next()`
+- **Route State Sync** - `syncRoute()` method keeps route state consistent with the page stack, handling browser back, physical back button, etc.
 
 📖 **Full Documentation: [https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
@@ -84,7 +86,9 @@ import App from './App.vue'
 
 const router = createRouter({
 	routes,
-	strict: true
+	strict: true,
+	interceptUniApi: true, // Intercept uni native navigation APIs to ensure guards work
+	guardTimeout: 15000 // Guard timeout in ms, default 10000
 })
 
 export function createApp() {
@@ -101,7 +105,7 @@ import { useRouter, useRoute } from '@meng-xi/uni-router'
 
 // Use in component setup
 const router = useRouter()
-const route = useRoute()
+const route = useRoute() // Returns Ref<RouteLocation>, auto-updates on route changes
 
 // Path navigation
 await router.push('/pages/about/about')
@@ -110,7 +114,7 @@ await router.push({ path: '/pages/about/about', query: { id: '1' } })
 // Named navigation
 await router.push({ name: 'about' })
 
-// Go back
+// Go back (executes full guard chain)
 await router.back()
 await router.back(2) // Go back two levels
 ```
@@ -131,6 +135,11 @@ router.beforeEach((to, from, next) => {
 router.afterEach((to, from) => {
 	console.log(`Navigation complete: ${from.path} → ${to.path}`)
 })
+
+// Route change listener (includes navigation and state sync)
+router.onRouteChange((to, from) => {
+	console.log(`Route changed: ${from.path} → ${to.path}`)
+})
 ```
 
 ### 5. Declarative Navigation
@@ -139,10 +148,15 @@ router.afterEach((to, from) => {
 <template>
 	<RouterLink to="/pages/about/about">About Page</RouterLink>
 	<RouterLink :to="{ name: 'about' }" replace>Replace Navigation</RouterLink>
+	<RouterLink :to="{ name: 'admin' }" @error="onNavError">Admin Panel</RouterLink>
 </template>
 
 <script setup>
 import { RouterLink } from '@meng-xi/uni-router/components/RouterLink.vue'
+
+function onNavError(error) {
+	console.log('Navigation failed:', error.code)
+}
 </script>
 ```
 
@@ -150,33 +164,35 @@ import { RouterLink } from '@meng-xi/uni-router/components/RouterLink.vue'
 
 ### Core
 
-| API                     | Description                             |
-| ----------------------- | --------------------------------------- |
-| `createRouter(options)` | Create a router instance                |
-| `useRouter()`           | Get router instance (composable)        |
-| `useRoute()`            | Get current route location (composable) |
-| `RouterLink`            | Declarative navigation component        |
+| API                     | Description                               |
+| ----------------------- | ----------------------------------------- |
+| `createRouter(options)` | Create a router instance                  |
+| `useRouter()`           | Get router instance (composable)          |
+| `useRoute()`            | Get current route location (reactive ref) |
+| `RouterLink`            | Declarative navigation component          |
 
 ### Router Instance Methods
 
-| Method                        | Description                            |
-| ----------------------------- | -------------------------------------- |
-| `router.push(location)`       | Navigate to a new page                 |
-| `router.replace(location)`    | Replace the current page               |
-| `router.back(delta?)`         | Go back one or more pages              |
-| `router.beforeEach(guard)`    | Register global before guard           |
-| `router.beforeResolve(guard)` | Register global resolve guard          |
-| `router.afterEach(guard)`     | Register global after hook             |
-| `router.onError(handler)`     | Register error handler                 |
-| `router.resolve(location)`    | Resolve route location (no navigation) |
-| `router.getRoutes()`          | Get all route configs                  |
-| `router.hasRoute(name)`       | Check if a route exists                |
+| Method                        | Description                                  |
+| ----------------------------- | -------------------------------------------- |
+| `router.push(location)`       | Navigate to a new page                       |
+| `router.replace(location)`    | Replace the current page                     |
+| `router.back(delta?)`         | Go back one or more pages (with guard chain) |
+| `router.beforeEach(guard)`    | Register global before guard                 |
+| `router.beforeResolve(guard)` | Register global resolve guard                |
+| `router.afterEach(guard)`     | Register global after hook                   |
+| `router.onRouteChange(fn)`    | Register route change listener               |
+| `router.onError(handler)`     | Register error handler                       |
+| `router.syncRoute()`          | Sync route state with page stack             |
+| `router.resolve(location)`    | Resolve route location (no navigation)       |
+| `router.getRoutes()`          | Get all route configs                        |
+| `router.hasRoute(name)`       | Check if a route exists                      |
 
 ### Error Codes
 
 | Code                    | Description                                                       |
 | ----------------------- | ----------------------------------------------------------------- |
-| `NAVIGATION_ABORTED`    | Navigation aborted by guard                                       |
+| `NAVIGATION_ABORTED`    | Navigation aborted by guard or guard timeout                      |
 | `NAVIGATION_CANCELLED`  | Navigation cancelled (guard exception or redirect limit exceeded) |
 | `NAVIGATION_DUPLICATED` | Redundant navigation to current location                          |
 | `ROUTE_NOT_FOUND`       | No matching route found                                           |

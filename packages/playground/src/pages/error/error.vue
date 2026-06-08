@@ -19,10 +19,12 @@
 		</view>
 
 		<view class="section">
-			<view class="section-title">NAVIGATION_ABORTED - 导航被中止</view>
-			<view class="info-text">守卫中调用 next(false) 中止导航时抛出。</view>
+			<view class="section-title">NAVIGATION_ABORTED - 导航被中止或守卫超时</view>
+			<view class="info-text">守卫中调用 next(false) 中止导航，或守卫超时未调用 next() 时抛出。</view>
 			<view class="btn btn-danger" @click="testAborted">测试中止导航</view>
-			<view class="code-block"> router.beforeEach((to, from, next) => {\n next(false) // 中止导航\n})\n// => NavigationFailure: NAVIGATION_ABORTED </view>
+			<view class="code-block">
+				router.beforeEach((to, from, next) => {\n next(false) // 中止导航\n})\n// => NavigationFailure: NAVIGATION_ABORTED\n\n// 守卫超时也会触发此错误码\n// guardTimeout 可配置超时时间（默认10秒）
+			</view>
 		</view>
 
 		<view class="section">
@@ -44,8 +46,8 @@
 		<view class="section">
 			<view class="section-title">错误码一览</view>
 			<view class="code-block">
-				enum RouterErrorCode {\n NAVIGATION_ABORTED // 导航被守卫中止\n NAVIGATION_CANCELLED // 导航被取消\n NAVIGATION_DUPLICATED // 重复导航\n ROUTE_NOT_FOUND // 路由未找到\n NAVIGATION_API_ERROR // uni API 调用失败\n
-				SETUP_ERROR // 初始化错误\n}
+				enum RouterErrorCode {\n NAVIGATION_ABORTED // 导航被守卫中止或守卫超时\n NAVIGATION_CANCELLED // 导航被取消\n NAVIGATION_DUPLICATED // 重复导航\n ROUTE_NOT_FOUND // 路由未找到\n NAVIGATION_API_ERROR // uni API
+				调用失败\n SETUP_ERROR // 初始化错误\n}
 			</view>
 		</view>
 
@@ -69,7 +71,7 @@ async function testDuplicate() {
 }
 
 async function testAborted() {
-	const removeGuard = router.beforeEach((to, from, next) => {
+	const removeGuard = router.beforeEach((to, _from, next) => {
 		if (to.path === '/pages/about/about') {
 			next(false)
 			removeGuard()

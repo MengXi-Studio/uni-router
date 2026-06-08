@@ -6,11 +6,12 @@
 
 ```ts
 interface RouteLocation {
-  path: string
-  name?: string
-  meta: RouteMeta
-  query: Record<string, string>
-  fullPath: string
+	path: string
+	name?: string
+	meta: RouteMeta
+	query: Record<string, string>
+	fullPath: string
+	_synced?: boolean
 }
 ```
 
@@ -39,7 +40,14 @@ interface RouteLocation {
 ### fullPath
 
 - **类型**: `string`
-- **说明**: 完整路径（含查询参数），如 `/pages/about/about?id=1`
+- **说明**: 完整路径（含查询参数），如 `/pages/about/about?id=1`。查询参数按键名字母序排列，确保相同参数生成一致的 fullPath。
+
+### \_synced
+
+- **类型**: `boolean | undefined`
+- **说明**: 是否为状态同步（非完整导航）。当路由状态通过 `syncRoute()` / `syncCurrentRoute()` 从页面栈同步时设为 `true`。正常导航完成时此字段为 `undefined` 或 `false`。
+
+::: warning `_synced` 为内部标记，不应在应用代码中依赖此字段。如需区分完整导航和状态同步，可在 `onRouteChange` 监听器中检查此字段。:::
 
 ## 相关类型
 
@@ -57,8 +65,8 @@ type RouteLocationRaw = string | RouteLocationPathRaw | RouteLocationNamedRaw
 
 ```ts
 interface RouteLocationPathRaw {
-  path: string
-  query?: Record<string, string>
+	path: string
+	query?: Record<string, string>
 }
 ```
 
@@ -68,8 +76,8 @@ interface RouteLocationPathRaw {
 
 ```ts
 interface RouteLocationNamedRaw {
-  name: string
-  query?: Record<string, string>
+	name: string
+	query?: Record<string, string>
 }
 ```
 

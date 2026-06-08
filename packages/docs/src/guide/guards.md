@@ -34,7 +34,7 @@ removeGuard()
 - `next(false)` — 中止导航
 - `next(location)` — 重定向到新位置
 
-::: warning每个守卫必须且只能调用一次 `next()`。多次调用或未调用都会导致导航挂起。:::
+::: warning每个守卫必须且只能调用一次 `next()`。多次调用或未调用都会导致导航挂起。如果守卫在超时时间内（默认 10 秒，可通过 `guardTimeout` 配置）既未调用 `next()` 也未返回 rejected Promise，将自动中止导航并输出警告。:::
 
 ### 异步守卫
 
@@ -50,6 +50,8 @@ router.beforeEach(async (to, from, next) => {
 	}
 })
 ```
+
+::: tip 如果守卫中的异步操作耗时较长（如网络请求），可通过 `guardTimeout` 选项调大超时时间，避免误判为超时。:::
 
 ## beforeEnter
 

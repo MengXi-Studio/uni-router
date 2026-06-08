@@ -21,9 +21,11 @@
 - **路由元信息** - `meta` 字段支持页面标题、权限标记、TabBar 标识等自定义数据
 - **TypeScript 类型提示** - 通过模块增强为路由名称和路径提供自动补全和类型检查
 - **错误处理** - 完整的 `RouterError` / `NavigationFailure` 体系，支持 `onError` 全局捕获
-- **组合式 API** - `useRouter()` / `useRoute()` 在组件中便捷访问路由器
-- **RouterLink 组件** - 声明式导航组件，基于 uni-app `navigator` 封装
+- **组合式 API** - `useRouter()` / `useRoute()` 在组件中便捷访问路由器，`useRoute()` 返回响应式引用，路由变化自动更新
+- **RouterLink 组件** - 声明式导航组件，基于 uni-app `navigator` 封装，支持 `error` 事件捕获导航失败
 - **uni API 拦截** - 可选拦截原生导航 API，统一走路由守卫流程
+- **守卫超时保护** - 可配置 `guardTimeout`，防止守卫未调用 `next()` 导致导航永久挂起
+- **路由状态同步** - `syncRoute()` 方法确保路由状态与页面栈一致，处理浏览器后退、物理返回键等场景
 
 📖 **完整文档：[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
@@ -84,7 +86,9 @@ import App from './App.vue'
 
 const router = createRouter({
 	routes,
-	strict: true
+	strict: true,
+	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫生效
+	guardTimeout: 15000 // 守卫超时时间（毫秒），默认 10000
 })
 
 export function createApp() {
@@ -101,7 +105,7 @@ import { useRouter, useRoute } from '@meng-xi/uni-router'
 
 // 在组件 setup 中使用
 const router = useRouter()
-const route = useRoute()
+const route = useRoute() // 返回 Ref<RouteLocation>，路由变化时自动更新
 
 // 路径导航
 await router.push('/pages/about/about')
@@ -110,7 +114,7 @@ await router.push({ path: '/pages/about/about', query: { id: '1' } })
 // 命名导航
 await router.push({ name: 'about' })
 
-// 返回
+// 返回（执行完整守卫链）
 await router.back()
 await router.back(2) // 返回两级
 ```
@@ -131,6 +135,11 @@ router.beforeEach((to, from, next) => {
 router.afterEach((to, from) => {
 	console.log(`导航完成: ${from.path} → ${to.path}`)
 })
+
+// 路由变化监听（包括导航和状态同步）
+router.onRouteChange((to, from) => {
+	console.log(`路由变化: ${from.path} → ${to.path}`)
+})
 ```
 
 ### 5. 声明式导航
@@ -139,10 +148,15 @@ router.afterEach((to, from) => {
 <template>
 	<RouterLink to="/pages/about/about">关于页面</RouterLink>
 	<RouterLink :to="{ name: 'about' }" replace>替换导航</RouterLink>
+	<RouterLink :to="{ name: 'admin' }" @error="onNavError">管理后台</RouterLink>
 </template>
 
 <script setup>
 import { RouterLink } from '@meng-xi/uni-router/components/RouterLink.vue'
+
+function onNavError(error) {
+	console.log('导航失败:', error.code)
+}
 </script>
 ```
 
@@ -154,29 +168,31 @@ import { RouterLink } from '@meng-xi/uni-router/components/RouterLink.vue'
 | ----------------------- | ------------------------------ |
 | `createRouter(options)` | 创建路由器实例                 |
 | `useRouter()`           | 获取路由器实例（组合式 API）   |
-| `useRoute()`            | 获取当前路由位置（组合式 API） |
+| `useRoute()`            | 获取当前路由位置（响应式引用） |
 | `RouterLink`            | 声明式导航组件                 |
 
 ### Router 实例方法
 
-| 方法                          | 说明                   |
-| ----------------------------- | ---------------------- |
-| `router.push(location)`       | 导航到新页面           |
-| `router.replace(location)`    | 替换当前页面           |
-| `router.back(delta?)`         | 返回上一页或多级页面   |
-| `router.beforeEach(guard)`    | 注册全局前置守卫       |
-| `router.beforeResolve(guard)` | 注册全局解析守卫       |
-| `router.afterEach(guard)`     | 注册全局后置钩子       |
-| `router.onError(handler)`     | 注册错误处理回调       |
-| `router.resolve(location)`    | 解析路由位置（不导航） |
-| `router.getRoutes()`          | 获取所有路由配置       |
-| `router.hasRoute(name)`       | 检查路由是否存在       |
+| 方法                          | 说明                               |
+| ----------------------------- | ---------------------------------- |
+| `router.push(location)`       | 导航到新页面                       |
+| `router.replace(location)`    | 替换当前页面                       |
+| `router.back(delta?)`         | 返回上一页或多级页面（执行守卫链） |
+| `router.beforeEach(guard)`    | 注册全局前置守卫                   |
+| `router.beforeResolve(guard)` | 注册全局解析守卫                   |
+| `router.afterEach(guard)`     | 注册全局后置钩子                   |
+| `router.onRouteChange(fn)`    | 注册路由变化监听器                 |
+| `router.onError(handler)`     | 注册错误处理回调                   |
+| `router.syncRoute()`          | 同步路由状态与页面栈               |
+| `router.resolve(location)`    | 解析路由位置（不导航）             |
+| `router.getRoutes()`          | 获取所有路由配置                   |
+| `router.hasRoute(name)`       | 检查路由是否存在                   |
 
 ### 错误码
 
 | 错误码                  | 说明                               |
 | ----------------------- | ---------------------------------- |
-| `NAVIGATION_ABORTED`    | 导航被守卫中止                     |
+| `NAVIGATION_ABORTED`    | 导航被守卫中止或守卫超时           |
 | `NAVIGATION_CANCELLED`  | 导航被取消（守卫异常或重定向超限） |
 | `NAVIGATION_DUPLICATED` | 重复导航到当前位置                 |
 | `ROUTE_NOT_FOUND`       | 未找到匹配的路由                   |

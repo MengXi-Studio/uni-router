@@ -24,18 +24,29 @@ await router.back()
 
 ## useRoute()
 
-Get the current route location information. Must be called inside a Vue component's `setup()` function.
+Get a reactive reference to the current route location. Must be called inside a Vue component's `setup()` function.
 
 ```ts
 import { useRoute } from '@meng-xi/uni-router'
 
 const route = useRoute()
-console.log(route.path)
-console.log(route.query)
-console.log(route.meta)
+
+// Access via .value in <script setup>
+console.log(route.value.path)
+console.log(route.value.query)
+console.log(route.value.meta)
 ```
 
-::: warning `useRoute()` returns a snapshot of the route location at the time of the call. It does not automatically react to subsequent route changes. For reactive route information, listen to `router.currentRoute`. :::
+```vue
+<template>
+	<!-- Auto-unwrapped in template, no .value needed -->
+	<text>Current path: {{ route.path }}</text>
+	<text>Query: {{ route.query.id }}</text>
+</template>
+```
+
+::: tip `useRoute()` returns `Ref<RouteLocation>`, which automatically updates when the route changes, triggering component re-render. The same router instance shares the same reactive ref, ensuring all components get
+consistent route state. :::
 
 ## Using with Options API
 
@@ -86,8 +97,12 @@ async function goAbout() {
 	}
 }
 
-function goBack() {
-	router.back()
+async function goBack() {
+	try {
+		await router.back()
+	} catch (error) {
+		console.error('Back failed', error)
+	}
 }
 </script>
 ```

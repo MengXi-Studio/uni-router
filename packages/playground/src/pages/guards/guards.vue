@@ -41,6 +41,13 @@
 			<view class="info-text">在守卫中调用 next(false) 可中止当前导航。</view>
 			<view class="btn btn-gray" @click="testAbort">测试：中止导航</view>
 		</view>
+
+		<view class="section">
+			<view class="section-title">守卫超时保护</view>
+			<view class="info-text">守卫未调用 next() 时，导航不会永久挂起。超时时间可通过 guardTimeout 配置（默认 10 秒，本应用设为 15 秒）。</view>
+			<view class="btn btn-danger" @click="testTimeout">测试：守卫超时</view>
+			<view class="code-block"> const router = createRouter({\n routes,\n guardTimeout: 15000 // 15秒超时\n}) </view>
+		</view>
 	</view>
 </template>
 
@@ -68,7 +75,7 @@ function testRedirect() {
 
 function testAbort() {
 	// 动态注册一个一次性守卫来中止导航
-	const removeGuard = router.beforeEach((to, from, next) => {
+	const removeGuard = router.beforeEach((to, _from, next) => {
 		if (to.name === 'pagesDetailDetail') {
 			uni.showToast({ title: '导航已被守卫中止', icon: 'none' })
 			next(false)
@@ -80,5 +87,17 @@ function testAbort() {
 	router.push({ name: 'pagesDetailDetail' }).catch(() => {
 		// 守卫中止导航时产生的 NavigationFailure 已在 onError 中处理
 	})
+}
+
+function testTimeout() {
+	// 注册一个不调用 next() 的守卫，模拟超时
+	const removeGuard = router.beforeEach(() => {
+		// 故意不调用 next()，等待超时
+		uni.showToast({ title: '守卫未调用 next()，等待超时...', icon: 'none' })
+		setTimeout(() => {
+			removeGuard()
+		}, 1000)
+	})
+	router.push({ name: 'pagesDetailDetail' }).catch(() => {})
 }
 </script>

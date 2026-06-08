@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
+import { useRouter } from '@meng-xi/uni-router'
+
+const router = useRouter()
 
 onLaunch(() => {
 	console.log('App Launch')
@@ -7,6 +10,8 @@ onLaunch(() => {
 
 onShow(() => {
 	console.log('App Show')
+	// 同步路由状态，处理浏览器后退/物理返回键等非路由器导航场景
+	router.syncRoute()
 })
 
 onHide(() => {

@@ -59,19 +59,44 @@ router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
 
 ## back()
 
-返回上一页或多级页面，对应 `uni.navigateBack`：
+返回上一页或多级页面，执行完整的导航守卫链，对应 `uni.navigateBack`：
 
 ```ts
 router.back() // 返回上一页
 router.back(2) // 返回上两页
 ```
 
-如果页面栈中不足 `delta` 个页面，会输出警告并立即 resolve，不会抛出错误：
+### 守卫执行
+
+`back()` 会执行完整的守卫链（`beforeEach` → `beforeResolve`），守卫可中止或重定向返回操作：
 
 ```ts
-await router.back(5)
-// ⚠️ 警告：Cannot go back: no previous page in the navigation stack
+router.beforeEach((to, from, next) => {
+	// 返回时也会触发守卫
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		next({ name: 'login' }) // 重定向到登录页
+	} else {
+		next()
+	}
+})
 ```
+
+### 错误处理
+
+- 页面栈不足时抛出 `NavigationFailure`（`NAVIGATION_ABORTED`）
+- 守卫中止时抛出 `NavigationFailure`
+
+```ts
+try {
+	await router.back()
+} catch (error) {
+	if (error.code === 'NAVIGATION_ABORTED') {
+		console.log('返回被中止')
+	}
+}
+```
+
+::: warning `back()` 仅拦截编程式调用。物理返回键和浏览器后退直接触发原生 `navigateBack`，不经过路由器，守卫无法拦截。对于原生返回，需在页面 `onShow` 中调用 `router.syncRoute()` 同步状态。:::
 
 ## RouteLocationRaw
 

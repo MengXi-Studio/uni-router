@@ -9,6 +9,7 @@ interface RouterOptions {
 	routes: RouteConfig[]
 	strict?: boolean
 	interceptUniApi?: boolean
+	guardTimeout?: number
 }
 ```
 
@@ -39,6 +40,21 @@ interface RouterOptions {
 ::: warning启用 `interceptUniApi` 后，直接调用 `uni.navigateTo()` 等方法的 `success` / `fail` 回调将不会被触发，因为原始调用被阻止后转由路由器执行。建议统一使用 `router.push()` / `router.replace()` / `router.back()`
 进行导航。:::
 
+### guardTimeout
+
+- **类型**: `number`
+- **默认值**: `10000`（10 秒）
+- **说明**: 守卫超时时间（毫秒）。当守卫函数在此时间内既未调用 `next()` 也未返回 rejected Promise 时，将输出警告并自动中止导航以防止永久挂起。
+  - 适用于守卫中包含耗时异步操作（如网络请求）的场景
+  - 设为 `0` 可禁用超时保护（不推荐）
+
+```ts
+const router = createRouter({
+  routes: [...],
+  guardTimeout: 30000 // 守卫中异步请求较慢时调大超时
+})
+```
+
 ## 示例
 
 ```ts
@@ -48,6 +64,7 @@ const router = createRouter({
 		{ path: 'pages/about/about', name: 'about', meta: { requireAuth: true } }
 	],
 	strict: true,
-	interceptUniApi: true // 拦截 uni 原生导航 API，确保守卫生效
+	interceptUniApi: true,
+	guardTimeout: 15000
 })
 ```

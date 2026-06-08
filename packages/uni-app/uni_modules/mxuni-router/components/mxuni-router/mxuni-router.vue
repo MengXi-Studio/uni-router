@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter, type RouteLocationRaw } from '../../js_sdk'
+import { useRouter, type RouteLocationRaw, type NavigationFailure } from '../../js_sdk'
 
 const props = withDefaults(
 	defineProps<{
@@ -30,15 +30,24 @@ const props = withDefaults(
 	}
 )
 
+const emit = defineEmits<{
+	/** 导航失败时触发（如守卫中止、重复导航） */
+	(error: [error: NavigationFailure]): void
+}>()
+
 /** 导航器实例 */
 const router = useRouter()
 
 /** 导航到目标页面 */
-function navigate() {
-	if (props.replace) {
-		router.replace(props.to)
-	} else {
-		router.push(props.to)
+async function navigate() {
+	try {
+		if (props.replace) {
+			await router.replace(props.to)
+		} else {
+			await router.push(props.to)
+		}
+	} catch (error: NavigationFailure) {
+		emit('error', error)
 	}
 }
 </script>

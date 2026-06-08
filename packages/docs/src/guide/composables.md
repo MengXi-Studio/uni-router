@@ -24,18 +24,28 @@ await router.back()
 
 ## useRoute()
 
-获取当前路由位置信息。必须在 Vue 组件的 `setup()` 函数中调用。
+获取当前路由位置的响应式引用。必须在 Vue 组件的 `setup()` 函数中调用。
 
 ```ts
 import { useRoute } from '@meng-xi/uni-router'
 
 const route = useRoute()
-console.log(route.path)
-console.log(route.query)
-console.log(route.meta)
+
+// 在 <script setup> 中通过 .value 访问
+console.log(route.value.path)
+console.log(route.value.query)
+console.log(route.value.meta)
 ```
 
-::: warning `useRoute()` 返回的是调用时刻的路由位置快照，不会自动响应后续路由变化。如需响应式路由信息，请监听 `router.currentRoute`。:::
+```vue
+<template>
+	<!-- 模板中自动解包，无需 .value -->
+	<text>当前路径：{{ route.path }}</text>
+	<text>查询参数：{{ route.query.id }}</text>
+</template>
+```
+
+::: tip `useRoute()` 返回 `Ref<RouteLocation>`，当路由发生变化时会自动更新，组件会重新渲染。同一路由器实例共享同一个响应式 ref，确保所有组件获取一致的路由状态。:::
 
 ## 在选项式 API 中使用
 
@@ -86,8 +96,12 @@ async function goAbout() {
 	}
 }
 
-function goBack() {
-	router.back()
+async function goBack() {
+	try {
+		await router.back()
+	} catch (error) {
+		console.error('返回失败', error)
+	}
 }
 </script>
 ```

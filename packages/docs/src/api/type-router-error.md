@@ -8,25 +8,25 @@
 
 ```ts
 enum RouterErrorCode {
-  NAVIGATION_ABORTED = 'NAVIGATION_ABORTED',
-  NAVIGATION_CANCELLED = 'NAVIGATION_CANCELLED',
-  NAVIGATION_DUPLICATED = 'NAVIGATION_DUPLICATED',
-  ROUTE_NOT_FOUND = 'ROUTE_NOT_FOUND',
-  NAVIGATION_API_ERROR = 'NAVIGATION_API_ERROR',
-  SETUP_ERROR = 'SETUP_ERROR'
+	NAVIGATION_ABORTED = 'NAVIGATION_ABORTED',
+	NAVIGATION_CANCELLED = 'NAVIGATION_CANCELLED',
+	NAVIGATION_DUPLICATED = 'NAVIGATION_DUPLICATED',
+	ROUTE_NOT_FOUND = 'ROUTE_NOT_FOUND',
+	NAVIGATION_API_ERROR = 'NAVIGATION_API_ERROR',
+	SETUP_ERROR = 'SETUP_ERROR'
 }
 ```
 
 ### 错误码说明
 
-| 错误码 | 值 | 说明 |
-|--------|---|------|
-| `NAVIGATION_ABORTED` | `'NAVIGATION_ABORTED'` | 导航被守卫中止（`next(false)`） |
-| `NAVIGATION_CANCELLED` | `'NAVIGATION_CANCELLED'` | 导航被取消（守卫异常或重定向超限） |
-| `NAVIGATION_DUPLICATED` | `'NAVIGATION_DUPLICATED'` | 重复导航到当前位置 |
-| `ROUTE_NOT_FOUND` | `'ROUTE_NOT_FOUND'` | 未找到匹配的路由 |
-| `NAVIGATION_API_ERROR` | `'NAVIGATION_API_ERROR'` | uni 导航 API 调用失败 |
-| `SETUP_ERROR` | `'SETUP_ERROR'` | 路由器初始化或使用方式错误 |
+| 错误码                  | 值                        | 说明                                             |
+| ----------------------- | ------------------------- | ------------------------------------------------ |
+| `NAVIGATION_ABORTED`    | `'NAVIGATION_ABORTED'`    | 导航被守卫中止（`next(false)`）或守卫超时        |
+| `NAVIGATION_CANCELLED`  | `'NAVIGATION_CANCELLED'`  | 导航被取消（守卫异常或重定向超限）               |
+| `NAVIGATION_DUPLICATED` | `'NAVIGATION_DUPLICATED'` | 重复导航到当前位置（路径、名称和查询参数均相同） |
+| `ROUTE_NOT_FOUND`       | `'ROUTE_NOT_FOUND'`       | 未找到匹配的路由                                 |
+| `NAVIGATION_API_ERROR`  | `'NAVIGATION_API_ERROR'`  | uni 导航 API 调用失败                            |
+| `SETUP_ERROR`           | `'SETUP_ERROR'`           | 路由器初始化或使用方式错误                       |
 
 ## RouterError
 
@@ -34,8 +34,8 @@ enum RouterErrorCode {
 
 ```ts
 class RouterError extends Error {
-  readonly code: RouterErrorCode
-  readonly message: string
+	readonly code: RouterErrorCode
+	readonly message: string
 }
 ```
 
@@ -50,9 +50,9 @@ class RouterError extends Error {
 
 ```ts
 class NavigationFailure extends RouterError {
-  readonly to: RouteLocation
-  readonly from: RouteLocation
-  readonly cause?: unknown
+	readonly to: RouteLocation
+	readonly from: RouteLocation
+	readonly cause?: unknown
 }
 ```
 
@@ -67,11 +67,7 @@ class NavigationFailure extends RouterError {
 路由错误处理回调类型。
 
 ```ts
-type RouterOnError = (
-  error: RouterError,
-  to: RouteLocation,
-  from: RouteLocation
-) => void
+type RouterOnError = (error: RouterError, to: RouteLocation, from: RouteLocation) => void
 ```
 
 ## 示例
@@ -80,20 +76,20 @@ type RouterOnError = (
 import { RouterErrorCode, NavigationFailure } from '@meng-xi/uni-router'
 
 try {
-  await router.push({ name: 'about' })
+	await router.push({ name: 'about' })
 } catch (error) {
-  if (error instanceof NavigationFailure) {
-    switch (error.code) {
-      case RouterErrorCode.NAVIGATION_ABORTED:
-        console.log('导航被中止')
-        break
-      case RouterErrorCode.NAVIGATION_DUPLICATED:
-        console.log('重复导航')
-        break
-      case RouterErrorCode.NAVIGATION_API_ERROR:
-        console.error('API 调用失败', error.cause)
-        break
-    }
-  }
+	if (error instanceof NavigationFailure) {
+		switch (error.code) {
+			case RouterErrorCode.NAVIGATION_ABORTED:
+				console.log('导航被中止')
+				break
+			case RouterErrorCode.NAVIGATION_DUPLICATED:
+				console.log('重复导航')
+				break
+			case RouterErrorCode.NAVIGATION_API_ERROR:
+				console.error('API 调用失败', error.cause)
+				break
+		}
+	}
 }
 ```

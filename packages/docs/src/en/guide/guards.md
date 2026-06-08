@@ -34,7 +34,8 @@ removeGuard()
 - `next(false)` — Abort navigation
 - `next(location)` — Redirect to a new location
 
-::: warning Each guard must call `next()` exactly once. Multiple calls or no call will cause navigation to hang. :::
+::: warning Each guard must call `next()` exactly once. Multiple calls or no call will cause navigation to hang. If a guard neither calls `next()` nor returns a rejected Promise within the timeout period (default 10
+seconds, configurable via `guardTimeout`), the navigation will be automatically aborted with a warning. :::
 
 ### Async Guards
 
@@ -50,6 +51,8 @@ router.beforeEach(async (to, from, next) => {
 	}
 })
 ```
+
+::: tip If guards contain time-consuming async operations (e.g., network requests), you can increase the timeout via the `guardTimeout` option to avoid false timeout detection. :::
 
 ## beforeEnter
 

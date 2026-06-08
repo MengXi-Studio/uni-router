@@ -55,7 +55,31 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 
 ## Events
 
-The component triggers navigation via `@click` and does not emit custom events.
+### error
+
+- **Parameter**: `(error: NavigationFailure)`
+- **Description**: Emitted when navigation fails, e.g., guard abort, duplicate navigation, etc. When not listened to, errors are silently handled without causing Unhandled Promise Rejection.
+
+```vue
+<RouterLink to="pages/about/about" @error="onNavError">
+  <text>About Us</text>
+</RouterLink>
+```
+
+```ts
+import { NavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+
+function onNavError(error: NavigationFailure) {
+	switch (error.code) {
+		case RouterErrorCode.NAVIGATION_ABORTED:
+			console.log('Navigation aborted by guard')
+			break
+		case RouterErrorCode.NAVIGATION_DUPLICATED:
+			console.log('Already on this page')
+			break
+	}
+}
+```
 
 ## Slots
 
@@ -117,6 +141,14 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 </RouterLink>
 ```
 
+### Handling Navigation Errors
+
+```vue
+<RouterLink :to="{ name: 'admin' }" @error="onNavError">
+  <text>Admin Panel</text>
+</RouterLink>
+```
+
 ## Differences from vue-router RouterLink
 
 | Feature              | vue-router         | Uni Router         |
@@ -129,5 +161,6 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `exact-active-class` | ✅                 | ❌                 |
 | `v-slot` scoped slot | ✅                 | ❌                 |
 | `hover-class`        | ❌                 | ✅                 |
+| `error` event        | ❌                 | ✅                 |
 
 ::: warning When passing an object to the `to` prop, use `:to` binding (`v-bind:to`) instead of the string attribute `to`. :::

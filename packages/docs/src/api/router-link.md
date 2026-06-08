@@ -55,7 +55,31 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 
 ## 事件
 
-组件通过 `@click` 触发导航，不发射自定义事件。
+### error
+
+- **参数**: `(error: NavigationFailure)`
+- **说明**: 导航失败时触发，如守卫中止、重复导航等。不监听时静默处理，不会产生 Unhandled Promise Rejection。
+
+```vue
+<RouterLink to="pages/about/about" @error="onNavError">
+  <text>关于我们</text>
+</RouterLink>
+```
+
+```ts
+import { NavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+
+function onNavError(error: NavigationFailure) {
+	switch (error.code) {
+		case RouterErrorCode.NAVIGATION_ABORTED:
+			console.log('导航被守卫中止')
+			break
+		case RouterErrorCode.NAVIGATION_DUPLICATED:
+			console.log('已在当前页面')
+			break
+	}
+}
+```
 
 ## 插槽
 
@@ -117,6 +141,14 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 </RouterLink>
 ```
 
+### 处理导航错误
+
+```vue
+<RouterLink :to="{ name: 'admin' }" @error="onNavError">
+  <text>管理后台</text>
+</RouterLink>
+```
+
 ## 与 vue-router RouterLink 的差异
 
 | 特性                 | vue-router         | Uni Router         |
@@ -129,5 +161,6 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `exact-active-class` | ✅                 | ❌                 |
 | `v-slot` 作用域插槽  | ✅                 | ❌                 |
 | `hover-class`        | ❌                 | ✅                 |
+| `error` 事件         | ❌                 | ✅                 |
 
 ::: warning `RouterLink` 的 `to` 属性传入对象时需使用 `:to` 绑定（`v-bind:to`），而非字符串属性 `to`。:::

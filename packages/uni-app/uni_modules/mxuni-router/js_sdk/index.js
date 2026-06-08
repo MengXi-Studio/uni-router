@@ -1,4 +1,4 @@
-import { inject } from 'vue';
+import { inject, ref } from 'vue';
 
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -54,13 +54,26 @@ var NavigationFailure = class extends RouterError {
   }
 };
 
+// src/utils/general.ts
+function warn(message) {
+  if (typeof console !== "undefined") {
+    console.warn(`[uni-router] ${message}`);
+  }
+}
+function isObject(value) {
+  return value !== null && typeof value === "object";
+}
+
 // src/guard/index.ts
-function runGuard(guard, to, from) {
+var DEFAULT_GUARD_TIMEOUT = 1e4;
+function runGuard(guard, to, from, timeout) {
   return new Promise((resolve) => {
     let resolved = false;
+    let timer;
     const next = (location) => {
       if (resolved) return;
       resolved = true;
+      if (timer) clearTimeout(timer);
       if (location === false) {
         resolve({ type: "abort", code: "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */ });
       } else if (location) {
@@ -69,35 +82,52 @@ function runGuard(guard, to, from) {
         resolve({ type: "next" });
       }
     };
+    if (timeout > 0) {
+      timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          warn(`Navigation guard "${guard.name || "anonymous"}" did not resolve within ${timeout / 1e3}s. Make sure to call next() in your guard function.`);
+          resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
+        }
+      }, timeout);
+    }
     let promiseResult;
     try {
       promiseResult = guard(to, from, next);
     } catch {
       if (!resolved) {
         resolved = true;
+        if (timer) clearTimeout(timer);
         resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
       }
       return;
     }
     if (promiseResult) {
-      promiseResult.catch(() => {
+      promiseResult.then(() => {
         if (!resolved) {
           resolved = true;
+          if (timer) clearTimeout(timer);
+          resolve({ type: "next" });
+        }
+      }).catch(() => {
+        if (!resolved) {
+          resolved = true;
+          if (timer) clearTimeout(timer);
           resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
         }
       });
     }
   });
 }
-async function runGuardQueue(guards, to, from) {
+async function runGuardQueue(guards, to, from, timeout) {
   for (const guard of guards) {
-    const result = await runGuard(guard, to, from);
+    const result = await runGuard(guard, to, from, timeout);
     if (result.type === "abort") return result;
     if (result.redirect) return result;
   }
   return { type: "next" };
 }
-function createGuardManager() {
+function createGuardManager(guardTimeout = DEFAULT_GUARD_TIMEOUT) {
   const beforeGuards = [];
   const beforeResolveGuards = [];
   const afterGuards = [];
@@ -123,15 +153,15 @@ function createGuardManager() {
     };
   }
   function runBeforeGuards(to, from) {
-    return runGuardQueue(beforeGuards, to, from);
+    return runGuardQueue(beforeGuards, to, from, guardTimeout);
   }
   function runBeforeResolveGuards(to, from) {
-    return runGuardQueue(beforeResolveGuards, to, from);
+    return runGuardQueue(beforeResolveGuards, to, from, guardTimeout);
   }
   async function runBeforeEnterGuards(to, from, route) {
     if (!route.beforeEnter) return { type: "next" };
     const guards = Array.isArray(route.beforeEnter) ? route.beforeEnter : [route.beforeEnter];
-    return runGuardQueue(guards, to, from);
+    return runGuardQueue(guards, to, from, guardTimeout);
   }
   function runAfterGuards(to, from) {
     for (const guard of afterGuards) {
@@ -156,6 +186,7 @@ function createGuardManager() {
 function buildFullPath(path, query) {
   const keys = Object.keys(query);
   if (keys.length === 0) return path;
+  keys.sort();
   const qs = keys.map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(query[key])}`).join("&");
   return `${path}?${qs}`;
 }
@@ -182,22 +213,57 @@ function normalizePath(path) {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-// src/utils/general.ts
-function warn(message) {
-  if (typeof console !== "undefined") {
-    console.warn(`[uni-router] ${message}`);
-  }
-}
-function isObject(value) {
-  return value !== null && typeof value === "object";
-}
-
 // src/interceptor/index.ts
-var _isRouterCall = false;
-var _router = null;
 var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "navigateBack"];
+var InterceptorManager = class {
+  constructor() {
+    /** 路由器内部发起的 uni API 调用计数器，用于区分路由器调用和外部调用 */
+    __publicField(this, "routerCallCount", 0);
+    /** 路由器实例引用 */
+    __publicField(this, "router", null);
+  }
+  /**
+   * 标记下一次 uni API 调用由路由器内部发起
+   *
+   * 在调用 uni.navigateTo 等方法前调用，拦截器检测到此标记后放行。
+   * 使用计数器而非布尔值，避免并发导航时标记被错误消费。
+   */
+  markRouterCall() {
+    this.routerCallCount++;
+  }
+  /**
+   * 检查当前调用是否由路由器内部发起，若是则消费计数并放行
+   */
+  isRouterCall() {
+    if (this.routerCallCount > 0) {
+      this.routerCallCount--;
+      return true;
+    }
+    return false;
+  }
+  /**
+   * 获取路由器实例
+   */
+  getRouter() {
+    return this.router;
+  }
+  /**
+   * 设置路由器实例
+   */
+  setRouter(router) {
+    this.router = router;
+  }
+  /**
+   * 重置所有状态
+   */
+  reset() {
+    this.router = null;
+    this.routerCallCount = 0;
+  }
+};
+var activeManager = null;
 function markRouterCall() {
-  _isRouterCall = true;
+  activeManager?.markRouterCall();
 }
 function parseUniUrl(url) {
   if (!url) return { path: "", query: {} };
@@ -209,13 +275,14 @@ function parseUniUrl(url) {
   return { path, query };
 }
 function handleInterceptedNavigation(api, args) {
-  if (!_router) return false;
+  const router = activeManager?.getRouter();
+  if (!router) return false;
   switch (api) {
     case "navigateTo": {
       const { path, query } = parseUniUrl(args.url || "");
       if (path) {
         const hasQuery = query && Object.keys(query).length > 0;
-        _router.push(hasQuery ? { path, query } : path);
+        router.push(hasQuery ? { path, query } : path);
       }
       break;
     }
@@ -223,19 +290,19 @@ function handleInterceptedNavigation(api, args) {
       const { path, query } = parseUniUrl(args.url || "");
       if (path) {
         const hasQuery = query && Object.keys(query).length > 0;
-        _router.replace(hasQuery ? { path, query } : path);
+        router.replace(hasQuery ? { path, query } : path);
       }
       break;
     }
     case "switchTab": {
       const { path } = parseUniUrl(args.url || "");
       if (path) {
-        _router.push(path);
+        router.push(path);
       }
       break;
     }
     case "navigateBack": {
-      _router.back(args.delta || 1);
+      router.back(args.delta || 1);
       break;
     }
   }
@@ -246,12 +313,15 @@ function installInterceptors(router) {
     console.warn("[uni-router] uni.addInterceptor is not available, interceptUniApi option will be ignored");
     return;
   }
-  _router = router;
+  if (activeManager) {
+    removeInterceptors();
+  }
+  activeManager = new InterceptorManager();
+  activeManager.setRouter(router);
   for (const api of INTERCEPTED_APIS) {
     uni.addInterceptor(api, {
       invoke(args) {
-        if (_isRouterCall) {
-          _isRouterCall = false;
+        if (activeManager?.isRouterCall()) {
           return args;
         }
         return handleInterceptedNavigation(api, args);
@@ -265,7 +335,10 @@ function removeInterceptors() {
       uni.removeInterceptor(api);
     }
   }
-  _router = null;
+  if (activeManager) {
+    activeManager.reset();
+    activeManager = null;
+  }
 }
 
 // src/navigation/navigate.ts
@@ -344,9 +417,9 @@ function goBack(delta = 1) {
   const pages = getCurrentPages();
   if (pages.length <= delta) {
     warn("Cannot go back: no previous page in the navigation stack");
-    return Promise.resolve();
+    return Promise.resolve(false);
   }
-  return uniNavigateBack(delta);
+  return uniNavigateBack(delta).then(() => true);
 }
 function isUniApiError(error) {
   return error instanceof UniApiError;
@@ -557,6 +630,7 @@ var UniRouter = class {
     __publicField(this, "errorHandlers", []);
     __publicField(this, "pendingNavigation", null);
     __publicField(this, "_interceptUniApi");
+    this.guardManager = createGuardManager(options.guardTimeout);
     this.matcher = createRouteMatcher(options.routes, options.strict ?? true);
     this._interceptUniApi = options.interceptUniApi ?? false;
     this.initRoute();
@@ -600,16 +674,47 @@ var UniRouter = class {
   /**
    * 返回上一页或多级页面
    *
-   * 对应 uni.navigateBack。若页面栈中不足 delta 个页面，将输出警告并立即 resolve。
-   * 导航完成后会根据实际页面栈同步 currentRoute 状态。
+   * 对应 uni.navigateBack。执行完整的导航守卫链（beforeEach → beforeResolve），
+   * 守卫可中止或重定向返回操作。
+   *
+   * 注意：物理返回键和浏览器后退不经过路由器，无法被守卫拦截。
+   * 对于原生返回，需依赖 syncRoute() + afterEach 做事后处理。
    *
    * @param delta - 返回的页面数，默认为 1
-   * @returns 导航完成或页面栈不足时立即 resolve 的 Promise
+   * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
    */
   async back(delta = 1) {
+    if (this.pendingNavigation) {
+      await this.pendingNavigation.catch(() => {
+      });
+    }
     const from = this.routeState.getCurrentRoute();
-    await goBack(delta);
-    this.syncCurrentRoute(from);
+    const pages = getCurrentPages();
+    const targetIndex = pages.length - 1 - delta;
+    if (targetIndex < 0) {
+      const failure = new NavigationFailure(from, from, "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */, "Cannot go back: no previous page in the navigation stack");
+      this.triggerErrorHandlers(failure, from, from);
+      return Promise.reject(failure);
+    }
+    const targetPage = pages[targetIndex];
+    const targetPath = `/${targetPage.route}`;
+    const to = this.matcher.resolve(targetPath);
+    const beforeResult = await this.guardManager.runBeforeGuards(to, from);
+    const handled = this.handleGuardResult(beforeResult, to, from, "push", 0);
+    if (handled) return handled;
+    const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from);
+    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, "push", 0);
+    if (handledResolve) return handledResolve;
+    try {
+      await goBack(delta);
+      this.syncCurrentRoute(from);
+    } catch (error) {
+      const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
+      const cause = isUniApiError(error) ? error : void 0;
+      const failure = new NavigationFailure(to, from, code, void 0, cause);
+      this.triggerErrorHandlers(failure, to, from);
+      return Promise.reject(failure);
+    }
   }
   /**
    * 注册全局前置守卫，在每次导航前执行
@@ -683,6 +788,18 @@ var UniRouter = class {
     };
   }
   /**
+   * 注册路由变化监听器
+   *
+   * 当路由状态发生变化时（包括导航完成和状态同步），监听器将被调用。
+   * 与 afterEach 不同，此方法用于订阅路由状态变化，不参与导航流程控制。
+   *
+   * @param listener - 路由变化回调函数
+   * @returns 用于移除此监听器的函数
+   */
+  onRouteChange(listener) {
+    return this.routeState.onRouteChange(listener);
+  }
+  /**
    * 同步路由状态与实际页面栈
    *
    * 当页面通过浏览器后退、物理返回键等非路由器方式切换时，
@@ -706,21 +823,19 @@ var UniRouter = class {
    * @param app - Vue 应用实例
    */
   install(app) {
-    if (!app || typeof app !== "object" || !("provide" in app)) return;
-    const vueApp = app;
-    vueApp.provide(ROUTER_SYMBOL, this);
-    if (!("$router" in vueApp.config.globalProperties)) {
-      vueApp.config.globalProperties.$router = this;
+    app.provide(ROUTER_SYMBOL, this);
+    if (!("$router" in app.config.globalProperties)) {
+      app.config.globalProperties.$router = this;
     }
-    if (!("$route" in vueApp.config.globalProperties)) {
-      Object.defineProperty(vueApp.config.globalProperties, "$route", {
+    if (!("$route" in app.config.globalProperties)) {
+      Object.defineProperty(app.config.globalProperties, "$route", {
         enumerable: true,
         configurable: true,
         get: () => this.currentRoute
       });
     }
-    if (this._interceptUniApi && typeof vueApp.onUnmount === "function") {
-      vueApp.onUnmount(() => removeInterceptors());
+    if (this._interceptUniApi) {
+      app.onUnmount(() => removeInterceptors());
     }
   }
   /**
@@ -873,6 +988,7 @@ var UniRouter = class {
    */
   isSameRouteLocation(a, b) {
     if (a.path !== b.path) return false;
+    if (a.name !== b.name) return false;
     return this.isSameQuery(a.query, b.query);
   }
   /**
@@ -891,19 +1007,21 @@ var UniRouter = class {
    * 根据 uni-app 实际页面栈同步 currentRoute 状态
    *
    * 当通过 back() 或浏览器后退等非 push/replace 方式改变页面后，
-   * 需要从页面栈中读取当前页面信息来更新路由状态，并触发后置钩子。
+   * 需要从页面栈中读取当前页面信息来更新路由状态。
+   *
+   * 状态同步不是一次完整的导航（未经过前置守卫），因此不触发 afterEach 钩子，
+   * 仅通知 onRouteChange 监听器。
    *
    * @param from - 导航前的路由位置
    */
-  syncCurrentRoute(from) {
+  syncCurrentRoute(_from) {
     const currentPath = getCurrentPagePath();
     const config = this.matcher.getRouteConfig(currentPath);
     const meta = config?.meta ?? {};
     const query = getCurrentPageQuery();
     const fullPath = buildFullPath(currentPath, query);
-    const to = { path: currentPath, meta, query, fullPath };
+    const to = { path: currentPath, meta, query, fullPath, _synced: true };
     this.routeState.setCurrentRoute(to);
-    this.guardManager.runAfterGuards(to, from);
   }
 };
 var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
@@ -922,8 +1040,20 @@ function useRouter() {
   }
   return router;
 }
+var reactiveRouteMap = /* @__PURE__ */ new WeakMap();
+function getReactiveRoute(router) {
+  let routeRef = reactiveRouteMap.get(router);
+  if (routeRef) return routeRef;
+  routeRef = ref(router.currentRoute);
+  reactiveRouteMap.set(router, routeRef);
+  router.onRouteChange((to) => {
+    routeRef.value = to;
+  });
+  return routeRef;
+}
 function useRoute() {
-  return useRouter().currentRoute;
+  const router = useRouter();
+  return getReactiveRoute(router);
 }
 
 export { NavigationFailure, ROUTER_SYMBOL, RouterError, RouterErrorCode, createRouter, useRoute, useRouter };

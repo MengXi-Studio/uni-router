@@ -9,6 +9,7 @@ interface RouterOptions {
 	routes: RouteConfig[]
 	strict?: boolean
 	interceptUniApi?: boolean
+	guardTimeout?: number
 }
 ```
 
@@ -39,6 +40,22 @@ interface RouterOptions {
 ::: warning When `interceptUniApi` is enabled, `success` / `fail` callbacks of direct `uni.navigateTo()` calls will not be triggered, since the original call is blocked and redirected through the router. It is
 recommended to use `router.push()` / `router.replace()` / `router.back()` for navigation consistently. :::
 
+### guardTimeout
+
+- **Type**: `number`
+- **Default**: `10000` (10 seconds)
+- **Description**: Navigation guard timeout in milliseconds. When a guard function neither calls `next()` nor returns a rejected Promise within this time, a warning is output and the navigation is automatically aborted
+  to prevent permanent hanging.
+  - Useful when guards contain time-consuming async operations (e.g., network requests)
+  - Set to `0` to disable timeout protection (not recommended)
+
+```ts
+const router = createRouter({
+  routes: [...],
+  guardTimeout: 30000 // Increase timeout for slow async requests in guards
+})
+```
+
 ## Example
 
 ```ts
@@ -48,6 +65,7 @@ const router = createRouter({
 		{ path: 'pages/about/about', name: 'about', meta: { requireAuth: true } }
 	],
 	strict: true,
-	interceptUniApi: true // Intercept uni native navigation APIs to ensure guards work
+	interceptUniApi: true,
+	guardTimeout: 15000
 })
 ```

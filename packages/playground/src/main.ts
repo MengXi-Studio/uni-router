@@ -7,7 +7,8 @@ import { isLoggedIn } from './utils/auth'
 const router = createRouter({
 	routes,
 	strict: true,
-	interceptUniApi: true
+	interceptUniApi: true,
+	guardTimeout: 15000 // 守卫超时 15 秒，适用于异步请求较慢的场景
 })
 
 // ===== 全局前置守卫 =====
@@ -38,8 +39,13 @@ router.afterEach((to, from) => {
 	}
 })
 
+// ===== 路由变化监听 =====
+router.onRouteChange((to, from) => {
+	console.log('[onRouteChange]', `路由变化: ${from.fullPath} -> ${to.fullPath}`, to._synced ? '(状态同步)' : '')
+})
+
 // ===== 错误处理 =====
-router.onError((error, to, from) => {
+router.onError((error, to, _from) => {
 	if (error instanceof NavigationFailure) {
 		switch (error.code) {
 			case RouterErrorCode.NAVIGATION_ABORTED:

@@ -1,3 +1,5 @@
+import { App, Ref } from 'vue';
+
 /**
  * 导航守卫的 next 回调函数
  * @param to - 传入 false 中断导航，传入路由位置重定向，不传参数则放行
@@ -85,6 +87,16 @@ interface RouteLocation {
     query: Record<string, string>;
     /** 完整路径（含查询参数） */
     fullPath: string;
+    /**
+     * 是否为状态同步（非完整导航）
+     *
+     * 当路由状态通过 syncRoute() / syncCurrentRoute() 从页面栈同步时设为 true。
+     * 状态同步不是一次完整的导航（未经过前置守卫），afterEach 不会触发。
+     * 正常导航完成时此字段为 undefined 或 false。
+     *
+     * @internal 内部标记，不应在应用代码中依赖此字段
+     */
+    _synced?: boolean;
 }
 /**
  * 基于路径的原始路由位置
@@ -160,6 +172,18 @@ interface RouterOptions {
      * @default false
      */
     interceptUniApi?: boolean;
+    /**
+     * 守卫超时时间（毫秒）
+     *
+     * 当守卫函数在此时间内既未调用 next() 也未返回 rejected Promise 时，
+     * 将输出警告并自动中止导航以防止永久挂起。
+     * 适用于守卫中包含耗时异步操作（如网络请求）的场景。
+     *
+     * 设为 0 可禁用超时保护（不推荐）。
+     *
+     * @default 10000
+     */
+    guardTimeout?: number;
 }
 /**
  * 路由器实例接口，提供路由导航、守卫注册和状态查询能力
@@ -183,8 +207,12 @@ interface Router {
     replace(location: RouteLocationRaw): Promise<RouteLocation>;
     /**
      * 返回上一页或多级页面，对应 uni.navigateBack
+     *
+     * 执行完整的导航守卫链（beforeEach → beforeResolve），守卫可中止或重定向返回操作。
+     * 注意：物理返回键和浏览器后退不经过路由器，无法被守卫拦截。
+     *
      * @param delta - 返回的页面数，默认为 1
-     * @returns 导航完成或页面栈不足时立即 resolve 的 Promise
+     * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
      */
     back(delta?: number): Promise<void>;
     /**
@@ -229,6 +257,16 @@ interface Router {
      */
     isReady(): Promise<void>;
     /**
+     * 注册路由变化监听器
+     *
+     * 当路由状态发生变化时（包括导航完成和状态同步），监听器将被调用。
+     * 与 afterEach 不同，此方法用于订阅路由状态变化，不参与导航流程控制。
+     *
+     * @param listener - 路由变化回调函数
+     * @returns 用于移除此监听器的函数
+     */
+    onRouteChange(listener: (to: RouteLocation, from: RouteLocation) => void): () => void;
+    /**
      * 注册路由错误处理回调
      * @param handler - 错误处理函数
      * @returns 用于移除此处理器的函数
@@ -248,7 +286,7 @@ interface Router {
      * 安装路由器到 Vue 应用实例，注册全局属性和 provide
      * @param app - Vue 应用实例
      */
-    install(app: unknown): void;
+    install(app: App): void;
 }
 
 /**
@@ -304,12 +342,12 @@ declare function createRouter(options: RouterOptions): Router;
  */
 declare function useRouter(): Router;
 /**
- * 获取当前路由位置信息
+ * 获取当前路由位置的响应式引用
  *
  * 必须在 Vue 组件的 setup() 函数中调用，且需先通过 `app.use(router)` 安装路由器。
- * 返回的是当前路由位置的快照，不会自动响应路由变化。
+ * 返回的是响应式的路由位置 ref，当路由变化时组件会自动重新渲染。
  *
- * @returns 当前路由位置
+ * @returns 响应式路由位置 ref
  * @throws {RouterError} 在 setup 外调用或未安装路由器时抛出 SETUP_ERROR
  *
  * @example
@@ -317,10 +355,11 @@ declare function useRouter(): Router;
  * import { useRoute } from '@meng-xi/uni-router'
  *
  * const route = useRoute()
- * console.log(route.path, route.query)
+ * // 在模板中直接使用 route.path、route.query 等
+ * // 路由变化时组件会自动更新
  * ```
  */
-declare function useRoute(): RouteLocation;
+declare function useRoute(): Ref<RouteLocation>;
 
 /**
  * 路由错误类，表示路由过程中产生的错误

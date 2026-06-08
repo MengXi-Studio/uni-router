@@ -59,19 +59,45 @@ router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
 
 ## back()
 
-Go back to the previous page or multiple pages, corresponding to `uni.navigateBack`:
+Go back to the previous page or multiple pages, executing the full navigation guard chain, corresponding to `uni.navigateBack`:
 
 ```ts
 router.back() // Go back one page
 router.back(2) // Go back two pages
 ```
 
-If there are not enough pages in the stack for `delta`, a warning is output and the promise resolves immediately without throwing an error:
+### Guard Execution
+
+`back()` executes the full guard chain (`beforeEach` → `beforeResolve`), guards can abort or redirect the back operation:
 
 ```ts
-await router.back(5)
-// ⚠️ Warning: Cannot go back: no previous page in the navigation stack
+router.beforeEach((to, from, next) => {
+	// Guards are also triggered on back
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		next({ name: 'login' }) // Redirect to login page
+	} else {
+		next()
+	}
+})
 ```
+
+### Error Handling
+
+- Throws `NavigationFailure` (`NAVIGATION_ABORTED`) when page stack is insufficient
+- Throws `NavigationFailure` when guards abort the navigation
+
+```ts
+try {
+	await router.back()
+} catch (error) {
+	if (error.code === 'NAVIGATION_ABORTED') {
+		console.log('Back aborted')
+	}
+}
+```
+
+::: warning `back()` only intercepts programmatic calls. Physical back button and browser back directly trigger native `navigateBack`, bypassing the router, so guards cannot intercept them. For native back, call
+`router.syncRoute()` in the page's `onShow` to sync state. :::
 
 ## RouteLocationRaw
 

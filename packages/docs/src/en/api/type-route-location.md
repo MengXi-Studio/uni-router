@@ -6,11 +6,12 @@ Resolved route location information.
 
 ```ts
 interface RouteLocation {
-  path: string
-  name?: string
-  meta: RouteMeta
-  query: Record<string, string>
-  fullPath: string
+	path: string
+	name?: string
+	meta: RouteMeta
+	query: Record<string, string>
+	fullPath: string
+	_synced?: boolean
 }
 ```
 
@@ -39,7 +40,15 @@ interface RouteLocation {
 ### fullPath
 
 - **Type**: `string`
-- **Description**: Full path (including query parameters), e.g. `/pages/about/about?id=1`
+- **Description**: Full path (including query parameters), e.g. `/pages/about/about?id=1`. Query parameters are sorted alphabetically by key to ensure consistent fullPath generation.
+
+### \_synced
+
+- **Type**: `boolean | undefined`
+- **Description**: Whether this is a state sync (not a complete navigation). Set to `true` when route state is synchronized from the page stack via `syncRoute()` / `syncCurrentRoute()`. For normal navigation completions,
+  this field is `undefined` or `false`.
+
+::: warning `_synced` is an internal marker and should not be relied upon in application code. If you need to distinguish complete navigation from state synchronization, check this field in `onRouteChange` listeners. :::
 
 ## Related Types
 
@@ -57,8 +66,8 @@ Path-based raw route location:
 
 ```ts
 interface RouteLocationPathRaw {
-  path: string
-  query?: Record<string, string>
+	path: string
+	query?: Record<string, string>
 }
 ```
 
@@ -68,8 +77,8 @@ Name-based raw route location:
 
 ```ts
 interface RouteLocationNamedRaw {
-  name: string
-  query?: Record<string, string>
+	name: string
+	query?: Record<string, string>
 }
 ```
 

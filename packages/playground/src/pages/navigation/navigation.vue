@@ -21,10 +21,11 @@
 		</view>
 
 		<view class="section">
-			<view class="section-title">router.back() - 返回上一页</view>
-			<view class="info-text">对应 uni.navigateBack，可指定返回层级</view>
+			<view class="section-title">router.back() - 返回上一页（执行守卫链）</view>
+			<view class="info-text">对应 uni.navigateBack，执行完整的 beforeEach → beforeResolve 守卫链，守卫可中止或重定向返回操作。</view>
 			<view class="btn btn-gray" @click="goBack">返回上一页 (delta=1)</view>
-			<view class="code-block"> router.back() // 默认返回1层\nrouter.back(2) // 返回2层 </view>
+			<view class="btn btn-danger" @click="goBackWithError">测试：back() 被守卫中止</view>
+			<view class="code-block"> router.back() // 执行完整守卫链后返回\nrouter.back(2) // 返回2层\n\n// 守卫可中止返回\nrouter.beforeEach((to, from, next) => {\n next(false) // 中止返回\n}) </view>
 		</view>
 
 		<view class="section">
@@ -35,7 +36,7 @@
 
 		<view class="section">
 			<view class="section-title">RouterLink 组件</view>
-			<view class="info-text">使用 RouterLink 组件进行声明式导航</view>
+			<view class="info-text">使用 RouterLink 组件进行声明式导航，支持 @error 事件捕获导航失败。</view>
 			<RouterLink to="/pages/detail/detail" custom>
 				<view class="btn">RouterLink - 路径跳转</view>
 			</RouterLink>
@@ -45,12 +46,15 @@
 			<RouterLink to="/pages/about/about" replace custom>
 				<view class="btn btn-danger">RouterLink - replace 模式</view>
 			</RouterLink>
+			<RouterLink to="/pages/error/error" custom @error="onRouterLinkError">
+				<view class="btn btn-gray">RouterLink - 带 error 事件</view>
+			</RouterLink>
 		</view>
 	</view>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from '@meng-xi/uni-router'
+import { useRouter, NavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
 import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 
 const router = useRouter()
@@ -76,10 +80,27 @@ function replaceByName() {
 }
 
 function goBack() {
-	router.back()
+	router.back().catch((error: NavigationFailure) => {
+		if (error.code === RouterErrorCode.NAVIGATION_ABORTED) {
+			uni.showToast({ title: '返回被守卫中止', icon: 'none' })
+		}
+	})
+}
+
+function goBackWithError() {
+	const removeGuard = router.beforeEach((_to, _from, next) => {
+		uni.showToast({ title: '返回被守卫中止', icon: 'none' })
+		next(false)
+		removeGuard()
+	})
+	router.back().catch(() => {})
 }
 
 function goTabBar() {
 	router.push({ name: 'pagesAboutAbout' })
+}
+
+function onRouterLinkError(error: NavigationFailure) {
+	uni.showToast({ title: `导航失败: ${error.code}`, icon: 'none' })
 }
 </script>
