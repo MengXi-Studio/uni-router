@@ -11,8 +11,13 @@
 
 - **vue-router 风格 API** - 熟悉的 `push` / `replace` / `back` 导航方式，零学习成本
 - **路由守卫** - 全局前置守卫 `beforeEach`、解析守卫 `beforeResolve`、后置钩子 `afterEach`、路由独享守卫 `beforeEnter`
+- **守卫超时保护** - 守卫未调用 `next()` 时自动中止导航，超时时间可配置（`guardTimeout`）
 - **命名路由** - 通过 `name` 进行导航，无需硬编码路径字符串
 - **路由元信息** - `meta` 字段支持页面标题、权限标记、TabBar 标识等自定义数据
+- **uni API 拦截** - 拦截 `uni.navigateTo` 等原生导航 API，确保守卫始终生效（`interceptUniApi`）
+- **路由状态同步** - `syncRoute()` 将路由状态与实际页面栈同步，处理物理返回键等非路由器导航
+- **路由变化监听** - `onRouteChange()` 订阅路由状态变化，包括导航完成和状态同步
+- **RouterLink 组件** - 声明式导航组件，支持 `push` / `replace` 模式和 `@error` 事件
 - **TypeScript 类型提示** - 通过模块增强为路由名称和路径提供自动补全和类型检查
 - **错误处理** - 完整的 `RouterError` / `NavigationFailure` 体系，支持 `onError` 全局捕获
 - **组合式 API** - `useRouter()` / `useRoute()` 在组件中便捷访问路由器
@@ -166,18 +171,21 @@ const router = createRouter({ routes })
 
 ### Router 实例方法
 
-| 方法                          | 说明                   |
-| ----------------------------- | ---------------------- |
-| `router.push(location)`       | 导航到新页面           |
-| `router.replace(location)`    | 替换当前页面           |
-| `router.back(delta?)`         | 返回上一页或多级页面   |
-| `router.beforeEach(guard)`    | 注册全局前置守卫       |
-| `router.beforeResolve(guard)` | 注册全局解析守卫       |
-| `router.afterEach(guard)`     | 注册全局后置钩子       |
-| `router.onError(handler)`     | 注册错误处理回调       |
-| `router.resolve(location)`    | 解析路由位置（不导航） |
-| `router.getRoutes()`          | 获取所有路由配置       |
-| `router.hasRoute(name)`       | 检查路由是否存在       |
+| 方法                             | 说明                     |
+| -------------------------------- | ------------------------ |
+| `router.push(location)`          | 导航到新页面             |
+| `router.replace(location)`       | 替换当前页面             |
+| `router.back(delta?)`            | 返回上一页或多级页面     |
+| `router.beforeEach(guard)`       | 注册全局前置守卫         |
+| `router.beforeResolve(guard)`    | 注册全局解析守卫         |
+| `router.afterEach(guard)`        | 注册全局后置钩子         |
+| `router.onError(handler)`        | 注册错误处理回调         |
+| `router.resolve(location)`       | 解析路由位置（不导航）   |
+| `router.getRoutes()`             | 获取所有路由配置         |
+| `router.hasRoute(name)`          | 检查路由是否存在         |
+| `router.isReady()`               | 等待路由器初始化完成     |
+| `router.onRouteChange(listener)` | 注册路由变化监听器       |
+| `router.syncRoute()`             | 同步路由状态与实际页面栈 |
 
 ### 错误码
 
@@ -189,6 +197,49 @@ const router = createRouter({ routes })
 | `ROUTE_NOT_FOUND`       | 未找到匹配的路由                   |
 | `NAVIGATION_API_ERROR`  | uni 导航 API 调用失败              |
 | `SETUP_ERROR`           | 路由器初始化或使用方式错误         |
+
+### RouterOptions 配置项
+
+| 选项              | 类型            | 默认值  | 说明                                                                                            |
+| ----------------- | --------------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `routes`          | `RouteConfig[]` | -       | 路由配置列表，需与 `pages.json` 中的页面声明保持一致                                            |
+| `strict`          | `boolean`       | `true`  | 是否启用严格模式，启用后未匹配的命名路由将抛出异常                                              |
+| `interceptUniApi` | `boolean`       | `false` | 是否拦截 `uni.navigateTo` 等原生导航 API，启用后直接调用 uni API 将转由路由器处理，确保守卫生效 |
+| `guardTimeout`    | `number`        | `10000` | 守卫超时时间（毫秒），超时后自动中止导航并输出警告，设为 `0` 可禁用                             |
+
+### RouterLink 组件
+
+声明式导航组件，对应 uni-app 的 `<navigator>`，自动通过路由器执行导航。
+
+```html
+<!-- 路径导航 -->
+<mxuni-router to="/pages/about/about">
+	<view>跳转到关于页</view>
+</mxuni-router>
+
+<!-- replace 模式 -->
+<mxuni-router to="/pages/about/about" replace>
+	<view>替换当前页</view>
+</mxuni-router>
+
+<!-- 捕获导航失败 -->
+<mxuni-router to="/pages/about/about" @error="onNavError">
+	<view>跳转</view>
+</mxuni-router>
+```
+
+| 属性                   | 类型               | 默认值              | 说明                           |
+| ---------------------- | ------------------ | ------------------- | ------------------------------ |
+| `to`                   | `RouteLocationRaw` | -                   | 目标路由位置                   |
+| `replace`              | `boolean`          | `false`             | 是否使用替换模式导航           |
+| `hoverClass`           | `string`           | `'navigator-hover'` | 按下时的样式类                 |
+| `hoverStopPropagation` | `boolean`          | `false`             | 是否阻止祖先节点的点击态       |
+| `hoverStartTime`       | `number`           | `50`                | 按住后多久出现点击态（ms）     |
+| `hoverStayTime`        | `number`           | `600`               | 手指松开后点击态保留时间（ms） |
+
+| 事件    | 参数                | 说明           |
+| ------- | ------------------- | -------------- |
+| `error` | `NavigationFailure` | 导航失败时触发 |
 
 ## TypeScript 类型提示
 

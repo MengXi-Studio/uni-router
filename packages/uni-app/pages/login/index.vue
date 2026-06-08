@@ -65,7 +65,7 @@ export default {
 
 			setTimeout(() => {
 				if (this.redirectUrl) {
-					router.push(this.redirectUrl).catch(() => {
+					router.replace(this.redirectUrl).catch(() => {
 						uni.switchTab({ url: '/pages/index/index' })
 					})
 				} else {

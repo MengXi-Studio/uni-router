@@ -32,7 +32,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	/** 导航失败时触发（如守卫中止、重复导航） */
-	(error: [error: NavigationFailure]): void
+	error: [error: NavigationFailure]
 }>()
 
 /** 导航器实例 */
@@ -46,8 +46,8 @@ async function navigate() {
 		} else {
 			await router.push(props.to)
 		}
-	} catch (error: NavigationFailure) {
-		emit('error', error)
+	} catch (error) {
+		emit('error', error as NavigationFailure)
 	}
 }
 </script>

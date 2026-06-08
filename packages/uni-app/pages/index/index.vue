@@ -24,6 +24,22 @@
 			</view>
 		</view>
 
+		<!-- RouterLink 组件 -->
+		<view class="card">
+			<text class="card-title">RouterLink 组件</text>
+			<text class="hint">使用 mxuni-router 组件进行声明式导航</text>
+			<mxuni-router to="/pages/about/index">
+				<view class="btn">
+					<text class="btn-text">RouterLink - 路径跳转</text>
+				</view>
+			</mxuni-router>
+			<mxuni-router to="/pages/guards/index" replace>
+				<view class="btn btn-secondary">
+					<text class="btn-text-secondary">RouterLink - replace 模式</text>
+				</view>
+			</mxuni-router>
+		</view>
+
 		<!-- 路由守卫 -->
 		<view class="card">
 			<text class="card-title">路由守卫</text>
@@ -95,6 +111,24 @@
 				<text class="error-text">{{ lastError }}</text>
 			</view>
 		</view>
+
+		<!-- 路由解析 -->
+		<view class="card">
+			<text class="card-title">路由解析</text>
+			<text class="hint">resolve / hasRoute / getRoutes</text>
+			<view class="btn" @click="testResolve">
+				<text class="btn-text">resolve 解析路由</text>
+			</view>
+			<view class="btn btn-secondary" @click="testHasRoute">
+				<text class="btn-text-secondary">hasRoute 检查路由</text>
+			</view>
+			<view class="btn btn-secondary" @click="testGetRoutes">
+				<text class="btn-text-secondary">getRoutes 获取路由列表</text>
+			</view>
+			<view v-if="resolveResult" class="error-box">
+				<text class="error-text">{{ resolveResult }}</text>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -106,7 +140,8 @@ export default {
 		return {
 			loginStatus: false,
 			currentRoute: {},
-			lastError: ''
+			lastError: '',
+			resolveResult: ''
 		}
 	},
 	onLoad() {
@@ -196,6 +231,20 @@ export default {
 		doLogout() {
 			auth.logout()
 			this.loginStatus = false
+		},
+		testResolve() {
+			const resolved = router.resolve({ path: '/pages/about/index', query: { from: 'resolve' } })
+			this.resolveResult = `path: ${resolved.path}\nname: ${resolved.name || '-'}\nfullPath: ${resolved.fullPath}`
+		},
+		testHasRoute() {
+			const exists = router.hasRoute('pagesAboutIndex')
+			const notExists = router.hasRoute('nonExistent')
+			this.resolveResult = `hasRoute('pagesAboutIndex'): ${exists}\nhasRoute('nonExistent'): ${notExists}`
+		},
+		testGetRoutes() {
+			const routes = router.getRoutes()
+			const names = routes.map(r => r.name || r.path).join(', ')
+			this.resolveResult = `共 ${routes.length} 条路由:\n${names}`
 		}
 	}
 }
