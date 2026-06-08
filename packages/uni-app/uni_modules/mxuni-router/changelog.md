@@ -1,3 +1,20 @@
+## 1.1.0（2026-06-09）
+
+### 新增
+
+- **守卫超时保护** - `guardTimeout` 配置项，守卫未在指定时间内调用 `next()` 时自动中止导航，默认 10000ms，设为 0 可禁用
+- **路由变化监听** - `router.onRouteChange()` 注册路由状态变化监听器，导航完成和状态同步时触发，返回移除监听器的函数
+- **路由状态同步标记** - `RouteLocation.synced` 字段，标识该路由变化是否由状态同步（如物理返回键）触发
+- **RouterLink 错误事件** - `<mxuni-router>` 组件新增 `@error` 事件，导航失败时触发并传入 `NavigationFailure` 对象
+
+### 优化
+
+- **uni API 拦截增强** - `interceptUniApi` 拦截器逻辑优化，提升拦截稳定性
+- **守卫执行增强** - 守卫链执行逻辑优化，支持超时保护与异常处理
+- **组合式 API 增强** - `useRouter()` / `useRoute()` 内部实现优化
+- **fullPath 确定性** - `buildFullPath` 对 query 参数键排序，确保相同 query 生成一致的 `fullPath`
+- **install 类型修正** - `install(app)` 参数类型从 `unknown` 改为 `App`，提供更好的类型提示
+
 ## 1.0.0（2026-06-07）
 
 ### 新增
