@@ -3,7 +3,9 @@
 [![license](https://img.shields.io/github/license/MengXi-Studio/uni-router.svg)](LICENSE) [![npm](https://img.shields.io/npm/v/@meng-xi/uni-router?color=blue)](https://www.npmjs.com/package/@meng-xi/uni-router)
 ![npm](https://img.shields.io/npm/dt/@meng-xi/uni-router?color=green)
 
-为 uni-app 提供类似 vue-router 风格的路由管理系统（uni_modules 版本）。
+为 uni-app (Vue 3) 提供类似 vue-router 风格的路由管理系统（uni_modules 版本）。
+
+> **⚠️ 仅支持 Vue 3** — 本库基于 Vue 3 Composition API（`inject` / `ref` / `defineProps` / `defineEmits`）和 `app.provide` 等 Vue 3 专属 API，不支持 uni-app Vue 2 项目。
 
 ---
 

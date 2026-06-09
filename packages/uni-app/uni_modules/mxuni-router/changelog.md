@@ -1,3 +1,11 @@
+## 1.1.1（2026-06-10）
+
+### 修复
+
+- **`back()` 未触发 `afterEach` 守卫** - `router.back()` 导航完成后未执行 `afterEach` 后置钩子，现已修复
+- **`back()` 守卫模式错误** - `back()` 导航的守卫模式从 `'push'` 修正为 `'back'`，确保守卫链正确识别返回导航
+- **`syncRoute()` 忽略 query 变化** - `syncRoute()` 仅比较路径未比较查询参数，导致 query 变化时路由状态不同步，现已同时比较 path 和 query
+- **`app.onUnmount` 兼容性** - `install` 中直接调用 `app.onUnmount` 在 uni-app 环境下报错（该 API 为 Vue 3.5+ 新增），已添加防御性检查
 ## 1.1.0（2026-06-09）
 
 ### 新增

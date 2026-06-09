@@ -1,7 +1,7 @@
 {
 	"id": "mxuni-router",
 	"displayName": "mxuni-router",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "mxuni-router",
 	"keywords": [
 		"@meng-xi/uni-router",
@@ -51,7 +51,7 @@
 			"client": {
 				"uni-app": {
 					"vue": {
-						"vue2": "√",
+						"vue2": "x",
 						"vue3": "√"
 					},
 					"web": {

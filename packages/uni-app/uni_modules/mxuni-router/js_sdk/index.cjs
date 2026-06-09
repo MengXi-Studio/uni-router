@@ -416,12 +416,7 @@ function replaceTo(options) {
   return uniRedirectTo(path, query);
 }
 function goBack(delta = 1) {
-  const pages = getCurrentPages();
-  if (pages.length <= delta) {
-    warn("Cannot go back: no previous page in the navigation stack");
-    return Promise.resolve(false);
-  }
-  return uniNavigateBack(delta).then(() => true);
+  return uniNavigateBack(delta);
 }
 function isUniApiError(error) {
   return error instanceof UniApiError;
@@ -702,14 +697,15 @@ var UniRouter = class {
     const targetPath = `/${targetPage.route}`;
     const to = this.matcher.resolve(targetPath);
     const beforeResult = await this.guardManager.runBeforeGuards(to, from);
-    const handled = this.handleGuardResult(beforeResult, to, from, "push", 0);
+    const handled = this.handleGuardResult(beforeResult, to, from, "back", 0);
     if (handled) return handled;
     const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from);
-    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, "push", 0);
+    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, "back", 0);
     if (handledResolve) return handledResolve;
     try {
       await goBack(delta);
       this.syncCurrentRoute(from);
+      this.guardManager.runAfterGuards(to, from);
     } catch (error) {
       const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
       const cause = isUniApiError(error) ? error : void 0;
@@ -813,7 +809,8 @@ var UniRouter = class {
   syncRoute() {
     const from = this.routeState.getCurrentRoute();
     const currentPath = getCurrentPagePath();
-    if (currentPath === from.path) return;
+    const currentQuery = getCurrentPageQuery();
+    if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return;
     this.syncCurrentRoute(from);
   }
   /**
@@ -837,7 +834,9 @@ var UniRouter = class {
       });
     }
     if (this._interceptUniApi) {
-      app.onUnmount(() => removeInterceptors());
+      if (typeof app.onUnmount === "function") {
+        app.onUnmount(() => removeInterceptors());
+      }
     }
   }
   /**
