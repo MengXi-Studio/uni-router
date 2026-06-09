@@ -22,7 +22,7 @@ enum RouterErrorCode {
 | 错误码                  | 值                        | 说明                                             |
 | ----------------------- | ------------------------- | ------------------------------------------------ |
 | `NAVIGATION_ABORTED`    | `'NAVIGATION_ABORTED'`    | 导航被守卫中止（`next(false)`）或守卫超时        |
-| `NAVIGATION_CANCELLED`  | `'NAVIGATION_CANCELLED'`  | 导航被取消（守卫异常或重定向超限）               |
+| `NAVIGATION_CANCELLED`  | `'NAVIGATION_CANCELLED'`  | 导航被取消（守卫异常、重定向超限或页面栈不足）   |
 | `NAVIGATION_DUPLICATED` | `'NAVIGATION_DUPLICATED'` | 重复导航到当前位置（路径、名称和查询参数均相同） |
 | `ROUTE_NOT_FOUND`       | `'ROUTE_NOT_FOUND'`       | 未找到匹配的路由                                 |
 | `NAVIGATION_API_ERROR`  | `'NAVIGATION_API_ERROR'`  | uni 导航 API 调用失败                            |

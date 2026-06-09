@@ -1,5 +1,9 @@
 # 介绍
 
+::: warning Vue 3 Only
+Uni Router 仅支持 uni-app 的 **Vue 3** 版本，不支持 Vue 2。这包括 Composition API（`useRouter` / `useRoute`）、`<script setup>` 组件语法以及 `app.provide` 等核心依赖。如果你的项目使用 Vue 2，请先迁移至 Vue 3。
+:::
+
 Uni Router 是一个专为 [uni-app](https://uniapp.dcloud.net.cn/) 设计的路由管理库，提供类似 [vue-router](https://router.vuejs.org/) 风格的 API 体验。
 
 ## 为什么需要它？

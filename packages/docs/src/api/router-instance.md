@@ -62,7 +62,7 @@ back(delta?: number): Promise<void>
 
 - **delta**: 返回的页面数，默认为 1
 - 执行 `beforeEach` → `beforeResolve` 守卫链，守卫可中止或重定向返回操作
-- 页面栈不足时抛出 `NavigationFailure`（`NAVIGATION_ABORTED`）
+- 页面栈不足时抛出 `NavigationFailure`（`NAVIGATION_CANCELLED`）
 - 守卫中止时抛出 `NavigationFailure`
 
 ```ts

@@ -2,6 +2,19 @@
 
 Uni Router 基于 uni-app 原生导航 API 实现，兼容 uni-app 支持的所有目标平台。
 
+## Vue 版本要求
+
+::: warning 仅支持 Vue 3
+Uni Router **仅支持 uni-app Vue 3 版本**，不支持 Vue 2。原因包括：
+
+- 使用了 Vue 3 的 `inject` / `ref` 等 Composition API
+- 使用了 `app.provide()` 和 `app.onUnmount()` 等 Vue 3 应用实例 API
+- `RouterLink` 组件使用 `<script setup>` 和 `defineProps` / `defineEmits` 编译器宏
+- `peerDependencies` 声明 `vue >= 3.0.0`
+
+如果你的项目仍在使用 Vue 2，请先参考 [uni-app Vue 3 迁移指南](https://uniapp.dcloud.net.cn/tutorial/vue3-api.html) 进行升级。
+:::
+
 ## 支持的平台
 
 | 平台           | push | replace | back | 守卫 | 元信息 |

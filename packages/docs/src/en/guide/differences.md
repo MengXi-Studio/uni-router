@@ -42,7 +42,7 @@ Uni Router references vue-router's API design, but there are important differenc
 | `router.removeRoute()`         | Same as above                                                                                   |
 | Modifying `router.getRoutes()` | Route config cannot be dynamically changed                                                      |
 | `<router-view>`                | uni-app has its own page rendering mechanism                                                    |
-| `<router-link>`                | Simplified [RouterLink](/en/api/router-link) component supported, path strings and replace only |
+| `<router-link>`                | Simplified [RouterLink](/en/api/router-link) component supported, based on `<navigator>` |
 | Nested routes                  | uni-app has no nested views                                                                     |
 | Named views                    | uni-app has no multi-view support                                                               |
 | Route lazy loading             | uni-app has its own code splitting                                                              |
@@ -93,7 +93,7 @@ In vue-router 4.x, guards throwing errors cause navigation to fail. Uni Router b
 If you're migrating from vue-router to Uni Router:
 
 1. **Remove `<router-view>`**: uni-app doesn't need this component
-2. **Replace `<router-link>`**: Use the simplified [RouterLink](/en/api/router-link) component instead, note that it only supports path strings
+2. **Replace `<router-link>`**: Use the simplified [RouterLink](/en/api/router-link) component instead, supports path strings, path objects, and named objects
 3. **Remove `router.go()` and `router.forward()`**: Use `router.back()` instead
 4. **Remove dynamic route registration**: All pages must be declared in `pages.json`
 5. **Set `isTab: true` for TabBar pages**: Ensure the correct navigation API is used

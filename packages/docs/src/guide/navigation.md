@@ -87,7 +87,7 @@ router.beforeEach((to, from, next) => {
 
 ### 错误处理
 
-- 页面栈不足时抛出 `NavigationFailure`（`NAVIGATION_ABORTED`）
+- 页面栈不足时抛出 `NavigationFailure`（`NAVIGATION_CANCELLED`）
 - 守卫中止时抛出 `NavigationFailure`
 
 ```ts

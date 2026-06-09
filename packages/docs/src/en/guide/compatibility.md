@@ -2,6 +2,19 @@
 
 Uni Router is built on uni-app's native navigation APIs and is compatible with all platforms supported by uni-app.
 
+## Vue Version Requirements
+
+::: warning Vue 3 Only
+Uni Router **only supports uni-app Vue 3**. Vue 2 is not supported. Reasons include:
+
+- Uses Vue 3 Composition API such as `inject` / `ref`
+- Uses Vue 3 app instance APIs like `app.provide()` and `app.onUnmount()`
+- `RouterLink` component uses `<script setup>` and `defineProps` / `defineEmits` compiler macros
+- `peerDependencies` declares `vue >= 3.0.0`
+
+If your project still uses Vue 2, please refer to the [uni-app Vue 3 Migration Guide](https://uniapp.dcloud.net.cn/tutorial/vue3-api.html) to upgrade first.
+:::
+
 ## Supported Platforms
 
 | Platform               | push | replace | back | Guards | Meta |

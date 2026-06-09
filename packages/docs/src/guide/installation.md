@@ -3,8 +3,12 @@
 ## 前置条件
 
 - Node.js >= 16
-- uni-app 项目（基于 Vue 3）
+- uni-app 项目（**必须基于 Vue 3**，不支持 Vue 2）
 - pnpm / npm / yarn
+
+::: warning Vue 2 不支持
+`@meng-xi/uni-router` 仅兼容 Vue 3。核心功能依赖 Vue 3 的 Composition API（`inject` / `ref`）、`app.provide`、`<script setup>` 等特性，无法在 Vue 2 环境下运行。
+:::
 
 ## 安装依赖
 

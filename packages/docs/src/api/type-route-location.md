@@ -84,6 +84,12 @@ interface RouteLocationNamedRaw {
 }
 ```
 
+::: info
+源码中 `path` 的类型为 `RoutePath`，`name` 的类型为 `RouteName`，它们通过 `RouteNameMap` 接口提供类型提示。
+当使用 `@meng-xi/vite-plugin` 的 `dts` 功能生成类型声明后，`name` 和 `path` 将获得自动补全和类型检查。
+未增强时，两者均回退为 `string`。
+:::
+
 ## 示例
 
 ```ts

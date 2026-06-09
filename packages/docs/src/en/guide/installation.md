@@ -3,8 +3,12 @@
 ## Prerequisites
 
 - Node.js >= 16
-- uni-app project (based on Vue 3)
+- uni-app project (**must be based on Vue 3**, Vue 2 is not supported)
 - pnpm / npm / yarn
+
+::: warning Vue 2 Not Supported
+`@meng-xi/uni-router` is only compatible with Vue 3. Core functionality depends on Vue 3 features such as Composition API (`inject` / `ref`), `app.provide`, and `<script setup>`, which cannot run in a Vue 2 environment.
+:::
 
 ## Install Dependencies
 

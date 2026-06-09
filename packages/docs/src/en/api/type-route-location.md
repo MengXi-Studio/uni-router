@@ -86,6 +86,12 @@ interface RouteLocationNamedRaw {
 }
 ```
 
+::: info
+In the source code, the type of `path` is `RoutePath` and the type of `name` is `RouteName`, which provide type hints through the `RouteNameMap` interface.
+When using the `dts` feature of `@meng-xi/vite-plugin` to generate type declarations, `name` and `path` will have autocompletion and type checking.
+Without augmentation, both fall back to `string`.
+:::
+
 ## Example
 
 ```ts

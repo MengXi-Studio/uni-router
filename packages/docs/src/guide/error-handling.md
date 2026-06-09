@@ -32,7 +32,7 @@ class NavigationFailure extends RouterError {
 | 错误码                  | 说明             | 触发场景                       |
 | ----------------------- | ---------------- | ------------------------------ |
 | `NAVIGATION_ABORTED`    | 导航被守卫中止   | 守卫调用 `next(false)`         |
-| `NAVIGATION_CANCELLED`  | 导航被取消       | 守卫抛出异常或重定向超限       |
+| `NAVIGATION_CANCELLED`  | 导航被取消       | 守卫抛出异常、重定向超限或页面栈不足（`back()`） |
 | `NAVIGATION_DUPLICATED` | 重复导航         | `push()` 到当前已处于的页面    |
 | `ROUTE_NOT_FOUND`       | 路由未找到       | 严格模式下使用未定义的命名路由 |
 | `NAVIGATION_API_ERROR`  | uni API 调用失败 | `uni.navigateTo` 等调用失败    |

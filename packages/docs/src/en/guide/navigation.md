@@ -88,7 +88,7 @@ router.beforeEach((to, from, next) => {
 
 ### Error Handling
 
-- Throws `NavigationFailure` (`NAVIGATION_ABORTED`) when page stack is insufficient
+- Throws `NavigationFailure` (`NAVIGATION_CANCELLED`) when page stack is insufficient
 - Throws `NavigationFailure` when guards abort the navigation
 
 ```ts

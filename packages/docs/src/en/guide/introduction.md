@@ -1,5 +1,9 @@
 # Introduction
 
+::: warning Vue 3 Only
+Uni Router only supports the **Vue 3** version of uni-app. Vue 2 is not supported. This includes core dependencies such as Composition API (`useRouter` / `useRoute`), `<script setup>` component syntax, and `app.provide`. If your project uses Vue 2, please migrate to Vue 3 first.
+:::
+
 Uni Router is a routing management library designed specifically for [uni-app](https://uniapp.dcloud.net.cn/), providing a [vue-router](https://router.vuejs.org/)-style API experience.
 
 ## Why Do You Need It?

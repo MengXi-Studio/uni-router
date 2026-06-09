@@ -62,7 +62,7 @@ back(delta?: number): Promise<void>
 
 - **delta**: Number of pages to go back, defaults to 1
 - Executes `beforeEach` → `beforeResolve` guard chain; guards can abort or redirect the back operation
-- Throws `NavigationFailure` (`NAVIGATION_ABORTED`) when page stack is insufficient
+- Throws `NavigationFailure` (`NAVIGATION_CANCELLED`) when page stack is insufficient
 - Throws `NavigationFailure` when guards abort the navigation
 
 ```ts

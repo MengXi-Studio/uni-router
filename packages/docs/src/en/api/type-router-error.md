@@ -22,7 +22,7 @@ enum RouterErrorCode {
 | Error Code              | Value                     | Description                                                                  |
 | ----------------------- | ------------------------- | ---------------------------------------------------------------------------- |
 | `NAVIGATION_ABORTED`    | `'NAVIGATION_ABORTED'`    | Navigation aborted by guard (`next(false)`) or guard timeout                 |
-| `NAVIGATION_CANCELLED`  | `'NAVIGATION_CANCELLED'`  | Navigation cancelled (guard exception or redirect limit)                     |
+| `NAVIGATION_CANCELLED`  | `'NAVIGATION_CANCELLED'`  | Navigation cancelled (guard exception, redirect limit, or insufficient page stack) |
 | `NAVIGATION_DUPLICATED` | `'NAVIGATION_DUPLICATED'` | Duplicate navigation to current location (same path, name, and query params) |
 | `ROUTE_NOT_FOUND`       | `'ROUTE_NOT_FOUND'`       | No matching route found                                                      |
 | `NAVIGATION_API_ERROR`  | `'NAVIGATION_API_ERROR'`  | uni navigation API call failed                                               |
