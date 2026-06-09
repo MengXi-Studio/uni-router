@@ -272,7 +272,11 @@ class UniRouter implements Router {
 		}
 
 		if (this._interceptUniApi) {
-			app.onUnmount(() => removeInterceptors())
+			// app.onUnmount 是 Vue 3.5+ API，uni-app 可能不支持
+			// 在 uni-app 中应用不会真正卸载，拦截器无需清理
+			if (typeof app.onUnmount === 'function') {
+				app.onUnmount(() => removeInterceptors())
+			}
 		}
 	}
 
