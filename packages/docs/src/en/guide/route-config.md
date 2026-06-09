@@ -196,7 +196,10 @@ router.push({ path: '/pages/index/index' }) // ✅ Autocompletes all route paths
 router.push({ path: '/invalid/path' }) // ❌ TypeScript type error
 ```
 
-::: info When `dts` is not enabled, the types of `name` and `path` are `string`, which does not provide autocompletion or type checking. :::
+::: info
+When `dts` is not enabled, the types of `name` and `path` are `string`,
+which does not provide autocompletion or type checking.
+:::
 
 ### Full Configuration Example
 
@@ -251,7 +254,9 @@ const routes = [
 ]
 ```
 
-::: warning The `path` field must exactly match the page path declared in `pages.json`, otherwise route matching will fail. :::
+::: warning
+The `path` field must exactly match the page path declared in `pages.json`, otherwise route matching will fail.
+:::
 
 ### name
 
@@ -358,4 +363,8 @@ Uni Router does **not replace** `pages.json`, but works alongside it:
 | Route meta        | ❌ Not supported    | ✅ meta field            |
 | Named routes      | ❌ Not supported    | ✅ name field            |
 
-::: important Page declarations in `pages.json` are the foundation of the uni-app framework. Uni Router's route configurations must be consistent with them. Pages not declared in `pages.json` cannot be navigated to. :::
+::: important
+Page declarations in `pages.json` are the foundation of the uni-app framework.
+Uni Router's route configurations must be consistent with them.
+Pages not declared in `pages.json` cannot be navigated to.
+:::

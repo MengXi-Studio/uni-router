@@ -37,8 +37,10 @@ interface RouterOptions {
   - `true`：直接调用 `uni.navigateTo()` 等方法将被拦截并转由路由器处理，确保路由守卫（`beforeEach` / `beforeResolve` / `afterEach`）始终生效
   - `false`：直接调用 uni 原生 API 将绕过路由守卫
 
-::: warning启用 `interceptUniApi` 后，直接调用 `uni.navigateTo()` 等方法的 `success` / `fail` 回调将不会被触发，因为原始调用被阻止后转由路由器执行。建议统一使用 `router.push()` / `router.replace()` / `router.back()`
-进行导航。:::
+::: warning
+启用 `interceptUniApi` 后，直接调用 `uni.navigateTo()` 等方法的 `success` / `fail` 回调将不会被触发，因为原始调用被阻止后转由路由器执行。建议统一使用 `router.push()` / `router.replace()` / `router.back()`
+进行导航。
+:::
 
 ### guardTimeout
 

@@ -31,7 +31,9 @@ try {
 }
 ```
 
-::: tip可通过 `router.onError()` 全局捕获此类错误，避免每次调用都需要 try-catch。:::
+::: tip
+可通过 `router.onError()` 全局捕获此类错误，避免每次调用都需要 try-catch。
+:::
 
 ### TabBar 页面注意事项
 
@@ -55,7 +57,9 @@ router.replace({ name: 'login' })
 router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
 ```
 
-::: warning 替换到 TabBar 页面时，`uni.switchTab` 会关闭所有非 Tab 页面，而非仅替换当前页面。此行为由 uni-app 框架决定。:::
+::: warning
+替换到 TabBar 页面时，`uni.switchTab` 会关闭所有非 Tab 页面，而非仅替换当前页面。此行为由 uni-app 框架决定。
+:::
 
 ## back()
 
@@ -96,7 +100,11 @@ try {
 }
 ```
 
-::: warning `back()` 仅拦截编程式调用。物理返回键和浏览器后退直接触发原生 `navigateBack`，不经过路由器，守卫无法拦截。对于原生返回，需在页面 `onShow` 中调用 `router.syncRoute()` 同步状态。:::
+::: warning
+`back()` 仅拦截编程式调用。物理返回键和浏览器后退直接触发原生 `navigateBack`，
+不经过路由器，守卫无法拦截。对于原生返回，需在页面 `onShow` 中调用
+`router.syncRoute()` 同步状态。
+:::
 
 ## RouteLocationRaw
 

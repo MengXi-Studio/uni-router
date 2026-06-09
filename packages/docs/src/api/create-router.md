@@ -18,6 +18,8 @@ function createRouter(options: RouterOptions): Router
 interface RouterOptions {
   routes: RouteConfig[]
   strict?: boolean
+  interceptUniApi?: boolean
+  guardTimeout?: number
 }
 ```
 
@@ -30,6 +32,18 @@ interface RouterOptions {
 - **类型**: `boolean`
 - **默认值**: `true`
 - **说明**: 是否启用严格模式。启用后，未匹配的命名路由将抛出 `ROUTE_NOT_FOUND` 错误；关闭后仅输出警告并回退到名称作为路径。
+
+#### options.interceptUniApi
+
+- **类型**: `boolean`
+- **默认值**: `false`
+- **说明**: 是否拦截 uni 原生导航 API（`navigateTo` / `redirectTo` / `switchTab` / `navigateBack`）。启用后直接调用 uni API 将转由路由器处理，确保守卫始终生效。
+
+#### options.guardTimeout
+
+- **类型**: `number`
+- **默认值**: `10000`
+- **说明**: 守卫超时时间（毫秒）。超时后自动中止导航，设为 `0` 可禁用。
 
 ## 返回值
 

@@ -34,8 +34,12 @@ removeGuard()
 - `next(false)` — Abort navigation
 - `next(location)` — Redirect to a new location
 
-::: warning Each guard must call `next()` exactly once. Multiple calls or no call will cause navigation to hang. If a guard neither calls `next()` nor returns a rejected Promise within the timeout period (default 10
-seconds, configurable via `guardTimeout`), the navigation will be automatically aborted with a warning. :::
+::: warning
+Each guard must call `next()` exactly once. Multiple calls or no call will cause navigation to hang.
+If a guard neither calls `next()` nor returns a rejected Promise within the timeout period
+(default 10 seconds, configurable via `guardTimeout`), the navigation will be automatically aborted
+with a warning.
+:::
 
 ### Async Guards
 
@@ -52,7 +56,10 @@ router.beforeEach(async (to, from, next) => {
 })
 ```
 
-::: tip If guards contain time-consuming async operations (e.g., network requests), you can increase the timeout via the `guardTimeout` option to avoid false timeout detection. :::
+::: tip
+If guards contain time-consuming async operations (e.g., network requests),
+you can increase the timeout via the `guardTimeout` option to avoid false timeout detection.
+:::
 
 ## beforeEnter
 
@@ -113,7 +120,9 @@ router.afterEach((to, from) => {
 })
 ```
 
-::: tip Exceptions in `afterEach` do not affect navigation results, but you should avoid throwing errors in hooks. :::
+::: tip
+Exceptions in `afterEach` do not affect navigation results, but you should avoid throwing errors in hooks.
+:::
 
 ## Guard Execution Order
 
@@ -153,8 +162,11 @@ router.beforeEach((to, from, next) => {
 })
 ```
 
-::: warning Redirects trigger a new navigation flow, including re-executing all guards. To prevent infinite loops, the maximum redirect depth is 10. Exceeding this limit cancels the navigation and throws a
-`NAVIGATION_CANCELLED` error. :::
+::: warning
+Redirects trigger a new navigation flow, including re-executing all guards.
+To prevent infinite loops, the maximum redirect depth is 10.
+Exceeding this limit cancels the navigation and throws a `NAVIGATION_CANCELLED` error.
+:::
 
 ## Aborting Navigation
 
@@ -199,8 +211,10 @@ uni.switchTab({ url: '/pages/user/user' })
 uni.navigateBack({ delta: 1 })
 ```
 
-::: warning When interception is enabled, `success` / `fail` callbacks of direct uni native API calls will not be triggered. It is recommended to use `router.push()` / `router.replace()` / `router.back()` for navigation
-consistently. :::
+::: warning
+When interception is enabled, `success` / `fail` callbacks of direct uni native API calls will not be triggered.
+It is recommended to use `router.push()` / `router.replace()` / `router.back()` for navigation consistently.
+:::
 
 ## Guard Error Handling
 

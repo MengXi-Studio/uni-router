@@ -30,7 +30,7 @@ Uni Router references vue-router's API design, but there are important differenc
 | `router.hasRoute()`      | ✅ `router.hasRoute()`      | Name check only                     |
 | `router.getRoutes()`     | ✅ `router.getRoutes()`     | Returns shallow copy                |
 | `useRouter()`            | ✅ `useRouter()`            | Same behavior                       |
-| `useRoute()`             | ✅ `useRoute()`             | Returns snapshot, not reactive      |
+| `useRoute()`             | ✅ `useRoute()`             | Returns reactive `Ref<RouteLocation>` |
 
 ### Unsupported APIs
 

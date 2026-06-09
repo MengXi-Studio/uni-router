@@ -70,7 +70,11 @@ await router.back()
 await router.back(2)
 ```
 
-::: warning `back()` 仅拦截编程式调用。物理返回键和浏览器后退直接触发原生 `navigateBack`，不经过路由器，因此守卫无法拦截。对于原生返回，需在页面 `onShow` 中调用 `syncRoute()` 同步状态，并在 `afterEach` 中做事后处理。:::
+::: warning
+`back()` 仅拦截编程式调用。物理返回键和浏览器后退直接触发原生 `navigateBack`，
+不经过路由器，因此守卫无法拦截。对于原生返回，需在页面 `onShow` 中调用 `syncRoute()` 同步状态，
+并在 `afterEach` 中做事后处理。
+:::
 
 ### beforeEach()
 
@@ -113,7 +117,10 @@ router.afterEach((to, from) => {
 })
 ```
 
-::: tip `afterEach` 仅在完整导航（经过前置守卫）完成后触发。通过 `syncRoute()` / `syncCurrentRoute()` 进行的状态同步不会触发 `afterEach`，但会通知 `onRouteChange` 监听器。:::
+::: tip
+`afterEach` 仅在完整导航（经过前置守卫）完成后触发。通过 `syncRoute()` / `syncCurrentRoute()`
+进行的状态同步不会触发 `afterEach`，但会通知 `onRouteChange` 监听器。
+:::
 
 ### getRoutes()
 

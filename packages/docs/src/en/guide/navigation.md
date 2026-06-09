@@ -31,7 +31,9 @@ try {
 }
 ```
 
-::: tip You can use `router.onError()` to globally catch such errors, avoiding the need for try-catch on every call. :::
+::: tip
+You can use `router.onError()` to globally catch such errors, avoiding the need for try-catch on every call.
+:::
 
 ### TabBar Page Notes
 
@@ -55,7 +57,10 @@ router.replace({ name: 'login' })
 router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
 ```
 
-::: warning When replacing to a TabBar page, `uni.switchTab` closes all non-tab pages instead of just replacing the current page. This behavior is determined by the uni-app framework. :::
+::: warning
+When replacing to a TabBar page, `uni.switchTab` closes all non-tab pages instead of just replacing
+the current page. This behavior is determined by the uni-app framework.
+:::
 
 ## back()
 
@@ -96,8 +101,11 @@ try {
 }
 ```
 
-::: warning `back()` only intercepts programmatic calls. Physical back button and browser back directly trigger native `navigateBack`, bypassing the router, so guards cannot intercept them. For native back, call
-`router.syncRoute()` in the page's `onShow` to sync state. :::
+::: warning
+`back()` only intercepts programmatic calls. Physical back button and browser back directly trigger
+native `navigateBack`, bypassing the router, so guards cannot intercept them.
+For native back, call `router.syncRoute()` in the page's `onShow` to sync state.
+:::
 
 ## RouteLocationRaw
 

@@ -45,7 +45,10 @@ console.log(route.value.meta)
 </template>
 ```
 
-::: tip `useRoute()` 返回 `Ref<RouteLocation>`，当路由发生变化时会自动更新，组件会重新渲染。同一路由器实例共享同一个响应式 ref，确保所有组件获取一致的路由状态。:::
+::: tip
+`useRoute()` 返回 `Ref<RouteLocation>`，当路由发生变化时会自动更新，组件会重新渲染。
+同一路由器实例共享同一个响应式 ref，确保所有组件获取一致的路由状态。
+:::
 
 ## 在选项式 API 中使用
 

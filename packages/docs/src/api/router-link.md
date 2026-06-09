@@ -8,7 +8,9 @@
 import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 ```
 
-::: info `RouterLink` 是一个独立的 Vue 组件文件，需要直接引入 `.vue` 文件路径，而非从包入口导入。:::
+::: info
+`RouterLink` 是一个独立的 Vue 组件文件，需要直接引入 `.vue` 文件路径，而非从包入口导入。
+:::
 
 ## Props
 
@@ -163,4 +165,6 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `hover-class`        | ❌                 | ✅                 |
 | `error` 事件         | ❌                 | ✅                 |
 
-::: warning `RouterLink` 的 `to` 属性传入对象时需使用 `:to` 绑定（`v-bind:to`），而非字符串属性 `to`。:::
+::: warning
+`RouterLink` 的 `to` 属性传入对象时需使用 `:to` 绑定（`v-bind:to`），而非字符串属性 `to`。
+:::

@@ -8,7 +8,10 @@ Navigation component that triggers route navigation on click. Built on uni-app's
 import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 ```
 
-::: info `RouterLink` is a standalone Vue component file. You need to import the `.vue` file path directly, not from the package entry. :::
+::: info
+`RouterLink` is a standalone Vue component file. You need to import the `.vue` file path directly,
+not from the package entry.
+:::
 
 ## Props
 
@@ -163,4 +166,6 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `hover-class`        | ❌                 | ✅                 |
 | `error` event        | ❌                 | ✅                 |
 
-::: warning When passing an object to the `to` prop, use `:to` binding (`v-bind:to`) instead of the string attribute `to`. :::
+::: warning
+When passing an object to the `to` prop, use `:to` binding (`v-bind:to`) instead of the string attribute `to`.
+:::

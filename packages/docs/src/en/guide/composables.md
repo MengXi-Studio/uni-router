@@ -45,8 +45,11 @@ console.log(route.value.meta)
 </template>
 ```
 
-::: tip `useRoute()` returns `Ref<RouteLocation>`, which automatically updates when the route changes, triggering component re-render. The same router instance shares the same reactive ref, ensuring all components get
-consistent route state. :::
+::: tip
+`useRoute()` returns `Ref<RouteLocation>`, which automatically updates when the route changes,
+triggering component re-render. The same router instance shares the same reactive ref,
+ensuring all components get consistent route state.
+:::
 
 ## Using with Options API
 

@@ -61,7 +61,9 @@ const removeHandler = router.onError((error, to, from) => {
 removeHandler()
 ```
 
-::: tip Exceptions in `onError` do not affect the execution of other error handlers. :::
+::: tip
+Exceptions in `onError` do not affect the execution of other error handlers.
+:::
 
 ## try-catch Handling
 

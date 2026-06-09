@@ -16,7 +16,10 @@ Returns a reactive reference (`Ref<RouteLocation>`) to the current [`RouteLocati
 - Auto-unwrapped in templates, use `route.path` directly
 - Automatically updates when the route changes, triggering component re-render
 
-::: tip `useRoute()` returns a reactive reference that automatically updates when the route changes. The same router instance shares the same reactive ref, ensuring all components get consistent route state. :::
+::: tip
+`useRoute()` returns a reactive reference that automatically updates when the route changes.
+The same router instance shares the same reactive ref, ensuring all components get consistent route state.
+:::
 
 ## Thrown Errors
 

@@ -70,8 +70,12 @@ await router.back()
 await router.back(2)
 ```
 
-::: warning `back()` only intercepts programmatic calls. Physical back button and browser back directly trigger native `navigateBack`, bypassing the router, so guards cannot intercept them. For native back, call
-`syncRoute()` in the page's `onShow` to sync state, and handle post-processing in `afterEach`. :::
+::: warning
+`back()` only intercepts programmatic calls. Physical back button and browser back directly trigger
+native `navigateBack`, bypassing the router, so guards cannot intercept them.
+For native back, call `syncRoute()` in the page's `onShow` to sync state, and handle post-processing
+in `afterEach`.
+:::
 
 ### beforeEach()
 
@@ -114,8 +118,11 @@ router.afterEach((to, from) => {
 })
 ```
 
-::: tip `afterEach` is only triggered after a complete navigation (through before guards). State synchronization via `syncRoute()` / `syncCurrentRoute()` does not trigger `afterEach`, but will notify `onRouteChange`
-listeners. :::
+::: tip
+`afterEach` is only triggered after a complete navigation (through before guards).
+State synchronization via `syncRoute()` / `syncCurrentRoute()` does not trigger `afterEach`,
+but will notify `onRouteChange` listeners.
+:::
 
 ### getRoutes()
 

@@ -48,7 +48,11 @@ interface RouteLocation {
 - **Description**: Whether this is a state sync (not a complete navigation). Set to `true` when route state is synchronized from the page stack via `syncRoute()` / `syncCurrentRoute()`. For normal navigation completions,
   this field is `undefined` or `false`.
 
-::: warning `_synced` is an internal marker and should not be relied upon in application code. If you need to distinguish complete navigation from state synchronization, check this field in `onRouteChange` listeners. :::
+::: warning
+`_synced` is an internal marker and should not be relied upon in application code.
+If you need to distinguish complete navigation from state synchronization, check this field in
+`onRouteChange` listeners.
+:::
 
 ## Related Types
 

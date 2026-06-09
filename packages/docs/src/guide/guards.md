@@ -34,7 +34,9 @@ removeGuard()
 - `next(false)` — 中止导航
 - `next(location)` — 重定向到新位置
 
-::: warning每个守卫必须且只能调用一次 `next()`。多次调用或未调用都会导致导航挂起。如果守卫在超时时间内（默认 10 秒，可通过 `guardTimeout` 配置）既未调用 `next()` 也未返回 rejected Promise，将自动中止导航并输出警告。:::
+::: warning
+每个守卫必须且只能调用一次 `next()`。多次调用或未调用都会导致导航挂起。如果守卫在超时时间内（默认 10 秒，可通过 `guardTimeout` 配置）既未调用 `next()` 也未返回 rejected Promise，将自动中止导航并输出警告。
+:::
 
 ### 异步守卫
 
@@ -51,7 +53,9 @@ router.beforeEach(async (to, from, next) => {
 })
 ```
 
-::: tip 如果守卫中的异步操作耗时较长（如网络请求），可通过 `guardTimeout` 选项调大超时时间，避免误判为超时。:::
+::: tip
+如果守卫中的异步操作耗时较长（如网络请求），可通过 `guardTimeout` 选项调大超时时间，避免误判为超时。
+:::
 
 ## beforeEnter
 
@@ -112,7 +116,9 @@ router.afterEach((to, from) => {
 })
 ```
 
-::: tip `afterEach` 中的异常不会影响导航结果，但应避免在钩子中抛出错误。:::
+::: tip
+`afterEach` 中的异常不会影响导航结果，但应避免在钩子中抛出错误。
+:::
 
 ## 守卫执行顺序
 
@@ -152,7 +158,10 @@ router.beforeEach((to, from, next) => {
 })
 ```
 
-::: warning 重定向会触发新的导航流程，包括重新执行所有守卫。为防止无限循环，最大重定向深度为 10 次。超过限制时导航将被取消并抛出 `NAVIGATION_CANCELLED` 错误。:::
+::: warning
+重定向会触发新的导航流程，包括重新执行所有守卫。为防止无限循环，最大重定向深度为 10 次。
+超过限制时导航将被取消并抛出 `NAVIGATION_CANCELLED` 错误。
+:::
 
 ## 中止导航
 
@@ -197,7 +206,10 @@ uni.switchTab({ url: '/pages/user/user' })
 uni.navigateBack({ delta: 1 })
 ```
 
-::: warning 启用拦截后，直接调用 uni 原生 API 的 `success` / `fail` 回调将不会被触发。建议统一使用 `router.push()` / `router.replace()` / `router.back()` 进行导航。:::
+::: warning
+启用拦截后，直接调用 uni 原生 API 的 `success` / `fail` 回调将不会被触发。
+建议统一使用 `router.push()` / `router.replace()` / `router.back()` 进行导航。
+:::
 
 ## 守卫异常处理
 

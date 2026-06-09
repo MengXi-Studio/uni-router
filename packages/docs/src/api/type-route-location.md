@@ -47,7 +47,10 @@ interface RouteLocation {
 - **类型**: `boolean | undefined`
 - **说明**: 是否为状态同步（非完整导航）。当路由状态通过 `syncRoute()` / `syncCurrentRoute()` 从页面栈同步时设为 `true`。正常导航完成时此字段为 `undefined` 或 `false`。
 
-::: warning `_synced` 为内部标记，不应在应用代码中依赖此字段。如需区分完整导航和状态同步，可在 `onRouteChange` 监听器中检查此字段。:::
+::: warning
+`_synced` 为内部标记，不应在应用代码中依赖此字段。如需区分完整导航和状态同步，
+可在 `onRouteChange` 监听器中检查此字段。
+:::
 
 ## 相关类型
 

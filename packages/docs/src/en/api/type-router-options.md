@@ -37,8 +37,11 @@ interface RouterOptions {
   - `true`: Direct calls to `uni.navigateTo()` etc. will be intercepted and redirected through the router, ensuring route guards (`beforeEach` / `beforeResolve` / `afterEach`) are always triggered
   - `false`: Direct calls to uni native APIs bypass route guards
 
-::: warning When `interceptUniApi` is enabled, `success` / `fail` callbacks of direct `uni.navigateTo()` calls will not be triggered, since the original call is blocked and redirected through the router. It is
-recommended to use `router.push()` / `router.replace()` / `router.back()` for navigation consistently. :::
+::: warning
+When `interceptUniApi` is enabled, `success` / `fail` callbacks of direct `uni.navigateTo()` calls
+will not be triggered, since the original call is blocked and redirected through the router.
+It is recommended to use `router.push()` / `router.replace()` / `router.back()` for navigation consistently.
+:::
 
 ### guardTimeout
 

@@ -61,7 +61,9 @@ const removeHandler = router.onError((error, to, from) => {
 removeHandler()
 ```
 
-::: tip `onError` 中的异常不会影响其他错误处理器的执行。:::
+::: tip
+`onError` 中的异常不会影响其他错误处理器的执行。
+:::
 
 ## try-catch 处理
 
