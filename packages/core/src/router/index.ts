@@ -115,17 +115,18 @@ class UniRouter implements Router {
 
 		// 执行守卫链
 		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
-		const handled = this.handleGuardResult(beforeResult, to, from, 'push', 0)
+		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0)
 		if (handled) return handled as unknown as Promise<void>
 
 		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
-		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'push', 0)
+		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'back', 0)
 		if (handledResolve) return handledResolve as unknown as Promise<void>
 
 		// 守卫通过，执行返回
 		try {
 			await goBack(delta)
 			this.syncCurrentRoute(from)
+			this.guardManager.runAfterGuards(to, from)
 		} catch (error) {
 			const code = RouterErrorCode.NAVIGATION_API_ERROR
 			const cause = isUniApiError(error) ? error : undefined
@@ -239,8 +240,9 @@ class UniRouter implements Router {
 	syncRoute(): void {
 		const from = this.routeState.getCurrentRoute()
 		const currentPath = getCurrentPagePath()
-		// 若当前页面与路由状态一致，无需更新
-		if (currentPath === from.path) return
+		const currentQuery = getCurrentPageQuery()
+		// 若当前页面与路由状态一致（路径和查询参数均相同），无需更新
+		if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return
 		this.syncCurrentRoute(from)
 	}
 
@@ -345,7 +347,7 @@ class UniRouter implements Router {
 	 * @returns 解析后的目标路由位置
 	 * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
 	 */
-	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace', redirectDepth: number): Promise<RouteLocation> {
+	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'back', redirectDepth: number): Promise<RouteLocation> {
 		if (redirectDepth > MAX_REDIRECT_DEPTH) {
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
 			this.triggerErrorHandlers(failure, to, from)
@@ -407,7 +409,7 @@ class UniRouter implements Router {
 	 * @param redirectDepth - 当前重定向深度
 	 * @returns 中止或重定向时返回 Promise\<RouteLocation\>，放行时返回 null
 	 */
-	private handleGuardResult(result: GuardResult, to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace', redirectDepth: number): Promise<RouteLocation> | null {
+	private handleGuardResult(result: GuardResult, to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'back', redirectDepth: number): Promise<RouteLocation> | null {
 		if (result.type === 'abort') {
 			const failure = new NavigationFailure(to, from, result.code)
 			this.triggerErrorHandlers(failure, to, from)

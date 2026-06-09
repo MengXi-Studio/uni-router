@@ -141,15 +141,9 @@ export function replaceTo(options: UniNavigationOptions): Promise<void> {
 /**
  * 返回上一页或多级页面
  * @param delta - 返回的页面数，默认为 1
- * @returns 成功返回时 resolve true，页面栈不足时 resolve false
  */
-export function goBack(delta: number = 1): Promise<boolean> {
-	const pages = getCurrentPages()
-	if (pages.length <= delta) {
-		warn('Cannot go back: no previous page in the navigation stack')
-		return Promise.resolve(false)
-	}
-	return uniNavigateBack(delta).then(() => true)
+export function goBack(delta: number = 1): Promise<void> {
+	return uniNavigateBack(delta)
 }
 
 /**
