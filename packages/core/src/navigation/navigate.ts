@@ -1,4 +1,4 @@
-import type { RouteMeta } from '@/types/route'
+import type { RouteMeta, NavigationAnimation } from '@/types/route'
 import { buildFullPath } from '@/utils/path'
 import { warn } from '@/utils/general'
 import { markRouterCall } from '@/interceptor'
@@ -13,6 +13,8 @@ export interface UniNavigationOptions {
 	meta: RouteMeta
 	/** 查询参数 */
 	query?: Record<string, string>
+	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
+	animation?: NavigationAnimation
 }
 
 /**
@@ -52,12 +54,19 @@ function promisifyUniApi(api: string, executor: (resolve: () => void, reject: (e
  * 调用 uni.navigateTo 进行页面跳转
  * @param path - 目标页面路径
  * @param query - 查询参数
+ * @param animation - 导航动画（仅 App 端生效）
  */
-function uniNavigateTo(path: string, query?: Record<string, string>): Promise<void> {
+function uniNavigateTo(path: string, query?: Record<string, string>, animation?: NavigationAnimation): Promise<void> {
 	const url = buildFullPath(path, query ?? {})
 	return promisifyUniApi('navigateTo', (resolve, reject) => {
 		markRouterCall()
-		uni.navigateTo({ url, success: resolve, fail: reject })
+		uni.navigateTo({
+			url,
+			...(animation?.type && { animationType: animation.type }),
+			...(animation?.duration != null && { animationDuration: animation.duration }),
+			success: resolve,
+			fail: reject
+		})
 	})
 }
 
@@ -88,11 +97,18 @@ function uniRedirectTo(path: string, query?: Record<string, string>): Promise<vo
 /**
  * 调用 uni.navigateBack 返回上一页
  * @param delta - 返回的页面数
+ * @param animation - 导航动画（仅 App 端生效）
  */
-function uniNavigateBack(delta: number = 1): Promise<void> {
+function uniNavigateBack(delta: number = 1, animation?: NavigationAnimation): Promise<void> {
 	return promisifyUniApi('navigateBack', (resolve, reject) => {
 		markRouterCall()
-		uni.navigateBack({ delta, success: resolve, fail: reject })
+		uni.navigateBack({
+			delta,
+			...(animation?.type && { animationType: animation.type }),
+			...(animation?.duration != null && { animationDuration: animation.duration }),
+			success: resolve,
+			fail: reject
+		})
 	})
 }
 
@@ -111,14 +127,18 @@ function hasQueryParams(query?: Record<string, string>): boolean {
  * @throws {UniApiError} uni API 调用失败时抛出
  */
 export function navigateTo(options: UniNavigationOptions): Promise<void> {
-	const { path, meta, query } = options
+	const { path, meta, query, animation } = options
+	const effectiveAnimation = animation ?? meta.animation
 	if (meta.isTab) {
 		if (hasQueryParams(query)) {
 			warn('uni.switchTab does not support query parameters. They will be ignored.')
 		}
+		if (effectiveAnimation) {
+			warn('uni.switchTab does not support animation parameters. The animation option will be ignored.')
+		}
 		return uniSwitchTab(path)
 	}
-	return uniNavigateTo(path, query)
+	return uniNavigateTo(path, query, effectiveAnimation)
 }
 
 /**
@@ -127,13 +147,20 @@ export function navigateTo(options: UniNavigationOptions): Promise<void> {
  * @throws {UniApiError} uni API 调用失败时抛出
  */
 export function replaceTo(options: UniNavigationOptions): Promise<void> {
-	const { path, meta, query } = options
+	const { path, meta, query, animation } = options
+	const effectiveAnimation = animation ?? meta.animation
 	if (meta.isTab) {
 		warn('router.replace() to a tab page will close all non-tab pages instead of replacing the current page only')
 		if (hasQueryParams(query)) {
 			warn('uni.switchTab does not support query parameters. They will be ignored.')
 		}
+		if (effectiveAnimation) {
+			warn('uni.switchTab does not support animation parameters. The animation option will be ignored.')
+		}
 		return uniSwitchTab(path)
+	}
+	if (effectiveAnimation) {
+		warn('uni.redirectTo does not support animation parameters. The animation option will be ignored.')
 	}
 	return uniRedirectTo(path, query)
 }
@@ -141,9 +168,10 @@ export function replaceTo(options: UniNavigationOptions): Promise<void> {
 /**
  * 返回上一页或多级页面
  * @param delta - 返回的页面数，默认为 1
+ * @param animation - 导航动画（仅 App 端生效）
  */
-export function goBack(delta: number = 1): Promise<void> {
-	return uniNavigateBack(delta)
+export function goBack(delta: number = 1, animation?: NavigationAnimation): Promise<void> {
+	return uniNavigateBack(delta, animation)
 }
 
 /**

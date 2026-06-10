@@ -10,6 +10,8 @@ export type {
 	RouteLocationPathRaw,
 	RouteLocationNamedRaw,
 	RouteLocationRaw,
+	NavigationAnimation,
+	UniAnimationType,
 	NavigationGuardNext,
 	NavigationGuard,
 	PostNavigationGuard,
@@ -18,4 +20,4 @@ export type {
 	Router
 } from '@/types'
 export { RouterError, NavigationFailure } from '@/errors'
-export { RouterErrorCode } from '@/types'
+export { RouterErrorCode, DEFAULT_ANIMATION_DURATION } from '@/types'

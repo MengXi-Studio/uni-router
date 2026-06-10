@@ -1,4 +1,4 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw } from './route'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationAnimation } from './route'
 import type { NavigationGuard, PostNavigationGuard } from './guard'
 import type { RouterError } from './error'
 import type { App } from 'vue'
@@ -75,9 +75,10 @@ export interface Router {
 	 * 注意：物理返回键和浏览器后退不经过路由器，无法被守卫拦截。
 	 *
 	 * @param delta - 返回的页面数，默认为 1
+	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
-	back(delta?: number): Promise<void>
+	back(delta?: number, animation?: NavigationAnimation): Promise<void>
 
 	/**
 	 * 注册全局前置守卫，在每次导航前执行

@@ -1,4 +1,4 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, Router, RouterOnError, RouterOptions } from '@/types'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, Router, RouterOnError, RouterOptions } from '@/types'
 import type { App } from 'vue'
 import { RouterErrorCode } from '@/types/error'
 import { NavigationFailure, RouterError } from '@/errors'
@@ -89,9 +89,10 @@ class UniRouter implements Router {
 	 * 对于原生返回，需依赖 syncRoute() + afterEach 做事后处理。
 	 *
 	 * @param delta - 返回的页面数，默认为 1
+	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
-	async back(delta: number = 1): Promise<void> {
+	async back(delta: number = 1, animation?: NavigationAnimation): Promise<void> {
 		// 等待前一次导航完成（无论成功或失败），避免并发导航
 		// 错误已通过 onError 机制通知，此处无需再处理
 		if (this.pendingNavigation) {
@@ -113,6 +114,9 @@ class UniRouter implements Router {
 		const targetPath = `/${targetPage.route}`
 		const to = this.matcher.resolve(targetPath)
 
+		// 动画优先级：调用时传入 > 目标页面 meta.animation > uni 默认值
+		const effectiveAnimation = animation ?? to.meta.animation
+
 		// 执行守卫链
 		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
 		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0)
@@ -124,7 +128,7 @@ class UniRouter implements Router {
 
 		// 守卫通过，执行返回
 		try {
-			await goBack(delta)
+			await goBack(delta, effectiveAnimation)
 			this.syncCurrentRoute(from)
 			this.guardManager.runAfterGuards(to, from)
 		} catch (error) {
@@ -318,6 +322,8 @@ class UniRouter implements Router {
 
 		const to = this.matcher.resolve(location)
 		const from = this.routeState.getCurrentRoute()
+		// 从原始路由位置中提取动画参数（resolve 会丢弃 animation 字段）
+		const animation = this.extractAnimation(location)
 
 		if (mode === 'push' && this.isSameRouteLocation(to, from)) {
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_DUPLICATED, `Avoided redundant navigation to current location: "${to.fullPath}"`)
@@ -325,7 +331,7 @@ class UniRouter implements Router {
 			return Promise.reject(failure)
 		}
 
-		const navigationPromise = this.executeNavigation(to, from, mode, 0)
+		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation)
 		this.pendingNavigation = navigationPromise
 
 		try {
@@ -348,10 +354,11 @@ class UniRouter implements Router {
 	 * @param from - 来源路由
 	 * @param mode - 导航模式
 	 * @param redirectDepth - 当前重定向深度
+	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
 	 * @returns 解析后的目标路由位置
 	 * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
 	 */
-	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'back', redirectDepth: number): Promise<RouteLocation> {
+	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'back', redirectDepth: number, animation?: NavigationAnimation): Promise<RouteLocation> {
 		if (redirectDepth > MAX_REDIRECT_DEPTH) {
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
 			this.triggerErrorHandlers(failure, to, from)
@@ -361,22 +368,23 @@ class UniRouter implements Router {
 		const config = this.matcher.getRouteConfig(to.path)
 
 		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
-		const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth)
+		const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation)
 		if (handled) return handled
 
 		const beforeEnterResult = config ? await this.guardManager.runBeforeEnterGuards(to, from, config) : { type: 'next' as const }
-		const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth)
+		const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation)
 		if (handledEnter) return handledEnter
 
 		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
-		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth)
+		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation)
 		if (handledResolve) return handledResolve
 
 		try {
 			const navOptions = {
 				path: to.path,
 				meta: to.meta,
-				query: to.query
+				query: to.query,
+				animation
 			}
 
 			if (mode === 'push') {
@@ -411,9 +419,10 @@ class UniRouter implements Router {
 	 * @param from - 来源路由
 	 * @param mode - 导航模式
 	 * @param redirectDepth - 当前重定向深度
+	 * @param animation - 当前导航的动画参数
 	 * @returns 中止或重定向时返回 Promise\<RouteLocation\>，放行时返回 null
 	 */
-	private handleGuardResult(result: GuardResult, to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'back', redirectDepth: number): Promise<RouteLocation> | null {
+	private handleGuardResult(result: GuardResult, to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'back', redirectDepth: number, animation?: NavigationAnimation): Promise<RouteLocation> | null {
 		if (result.type === 'abort') {
 			const failure = new NavigationFailure(to, from, result.code)
 			this.triggerErrorHandlers(failure, to, from)
@@ -421,8 +430,10 @@ class UniRouter implements Router {
 		}
 
 		if (result.redirect) {
+			// 重定向时提取新位置的动画参数，未指定则沿用当前动画
+			const redirectAnimation = this.extractAnimation(result.redirect) ?? animation
 			const redirectTarget = this.matcher.resolve(result.redirect)
-			return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1)
+			return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1, redirectAnimation)
 		}
 
 		return null
@@ -467,6 +478,21 @@ class UniRouter implements Router {
 		const keysB = Object.keys(b)
 		if (keysA.length !== keysB.length) return false
 		return keysA.every(key => a[key] === b[key])
+	}
+
+	/**
+	 * 从原始路由位置中提取动画参数
+	 *
+	 * resolve() 会丢弃 animation 字段，因此需要在解析前提取。
+	 * 字符串形式的路由位置不包含动画参数。
+	 *
+	 * @param location - 原始路由位置
+	 * @returns 动画配置，不存在时返回 undefined
+	 */
+	private extractAnimation(location: RouteLocationRaw): NavigationAnimation | undefined {
+		if (typeof location === 'string') return undefined
+		if (typeof location === 'object' && 'animation' in location) return location.animation
+		return undefined
 	}
 
 	/**
