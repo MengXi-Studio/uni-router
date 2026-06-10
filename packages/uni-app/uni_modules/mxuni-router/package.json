@@ -88,9 +88,9 @@
 						"chrome": "√"
 					},
 					"app": {
-						"android": "√",
-						"ios": "√",
-						"harmony": "√"
+						"android": "x",
+						"ios": "x",
+						"harmony": "x"
 					},
 					"mp": {
 						"weixin": "√"

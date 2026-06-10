@@ -25,6 +25,7 @@
 - **RouterLink 组件** - 声明式导航组件，基于 uni-app `navigator` 封装，支持 `error` 事件捕获导航失败
 - **uni API 拦截** - 可选拦截原生导航 API，统一走路由守卫流程
 - **守卫超时保护** - 可配置 `guardTimeout`，防止守卫未调用 `next()` 导致导航永久挂起
+- **导航动画** - 支持 `push` / `replace` / `back` 时传入动画参数，支持路由级 `meta.animation` 默认动画，仅 App 端生效
 - **路由状态同步** - `syncRoute()` 方法确保路由状态与页面栈一致，处理浏览器后退、物理返回键等场景
 
 📖 **完整文档：[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
@@ -117,9 +118,34 @@ await router.push({ name: 'about' })
 // 返回（执行完整守卫链）
 await router.back()
 await router.back(2) // 返回两级
+await router.back(1, { type: 'slide-out-left' }) // 返回并指定动画
 ```
 
-### 4. 路由守卫
+### 4. 导航动画
+
+导航动画仅 App 端生效，其他平台自动忽略。优先级：`调用时传入` > `meta.animation` > `uni 默认值`。
+
+```typescript
+import type { NavigationAnimation } from '@meng-xi/uni-router'
+
+// 方式一：导航时传入动画
+await router.push({ path: '/pages/about/about', animation: { type: 'slide-in-bottom' } })
+await router.back(1, { type: 'slide-out-right', duration: 500 })
+
+// 方式二：路由级默认动画（在路由配置中设置 meta.animation）
+const routes = [
+	{
+		path: 'pages/about/about',
+		name: 'about',
+		meta: { animation: { type: 'fade-in', duration: 300 } }
+	}
+]
+
+// 方式三：RouterLink 组件的 animation prop
+// <RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">关于页面</RouterLink>
+```
+
+### 5. 路由守卫
 
 ```typescript
 // 全局前置守卫 - 登录验证
@@ -142,13 +168,14 @@ router.onRouteChange((to, from) => {
 })
 ```
 
-### 5. 声明式导航
+### 6. 声明式导航
 
 ```vue
 <template>
 	<RouterLink to="/pages/about/about">关于页面</RouterLink>
 	<RouterLink :to="{ name: 'about' }" replace>替换导航</RouterLink>
 	<RouterLink :to="{ name: 'admin' }" @error="onNavError">管理后台</RouterLink>
+	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">底部滑入</RouterLink>
 </template>
 
 <script setup>
@@ -173,20 +200,20 @@ function onNavError(error) {
 
 ### Router 实例方法
 
-| 方法                          | 说明                               |
-| ----------------------------- | ---------------------------------- |
-| `router.push(location)`       | 导航到新页面                       |
-| `router.replace(location)`    | 替换当前页面                       |
-| `router.back(delta?)`         | 返回上一页或多级页面（执行守卫链） |
-| `router.beforeEach(guard)`    | 注册全局前置守卫                   |
-| `router.beforeResolve(guard)` | 注册全局解析守卫                   |
-| `router.afterEach(guard)`     | 注册全局后置钩子                   |
-| `router.onRouteChange(fn)`    | 注册路由变化监听器                 |
-| `router.onError(handler)`     | 注册错误处理回调                   |
-| `router.syncRoute()`          | 同步路由状态与页面栈               |
-| `router.resolve(location)`    | 解析路由位置（不导航）             |
-| `router.getRoutes()`          | 获取所有路由配置                   |
-| `router.hasRoute(name)`       | 检查路由是否存在                   |
+| 方法                              | 说明                               |
+| --------------------------------- | ---------------------------------- |
+| `router.push(location)`           | 导航到新页面                       |
+| `router.replace(location)`        | 替换当前页面                       |
+| `router.back(delta?, animation?)` | 返回上一页或多级页面（执行守卫链） |
+| `router.beforeEach(guard)`        | 注册全局前置守卫                   |
+| `router.beforeResolve(guard)`     | 注册全局解析守卫                   |
+| `router.afterEach(guard)`         | 注册全局后置钩子                   |
+| `router.onRouteChange(fn)`        | 注册路由变化监听器                 |
+| `router.onError(handler)`         | 注册错误处理回调                   |
+| `router.syncRoute()`              | 同步路由状态与页面栈               |
+| `router.resolve(location)`        | 解析路由位置（不导航）             |
+| `router.getRoutes()`              | 获取所有路由配置                   |
+| `router.hasRoute(name)`           | 检查路由是否存在                   |
 
 ### 错误码
 

@@ -25,6 +25,7 @@
 - **RouterLink Component** - Declarative navigation component based on uni-app `navigator`, with `error` event for navigation failure handling
 - **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
 - **Guard Timeout Protection** - Configurable `guardTimeout` to prevent navigation from hanging when guards don't call `next()`
+- **Navigation Animation** - Support animation params in `push` / `replace` / `back`, with route-level `meta.animation` defaults. App only, other platforms auto-ignore
 - **Route State Sync** - `syncRoute()` method keeps route state consistent with the page stack, handling browser back, physical back button, etc.
 
 📖 **Full Documentation: [https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
@@ -117,9 +118,34 @@ await router.push({ name: 'about' })
 // Go back (executes full guard chain)
 await router.back()
 await router.back(2) // Go back two levels
+await router.back(1, { type: 'slide-out-left' }) // Go back with animation
 ```
 
-### 4. Route Guards
+### 4. Navigation Animation
+
+Navigation animation only takes effect on App, other platforms auto-ignore. Priority: `inline param` > `meta.animation` > `uni default`.
+
+```typescript
+import type { NavigationAnimation } from '@meng-xi/uni-router'
+
+// Option 1: Pass animation when navigating
+await router.push({ path: '/pages/about/about', animation: { type: 'slide-in-bottom' } })
+await router.back(1, { type: 'slide-out-right', duration: 500 })
+
+// Option 2: Route-level default animation (set meta.animation in route config)
+const routes = [
+	{
+		path: 'pages/about/about',
+		name: 'about',
+		meta: { animation: { type: 'fade-in', duration: 300 } }
+	}
+]
+
+// Option 3: RouterLink animation prop
+// <RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">About</RouterLink>
+```
+
+### 5. Route Guards
 
 ```typescript
 // Global before guard - auth check
@@ -142,13 +168,14 @@ router.onRouteChange((to, from) => {
 })
 ```
 
-### 5. Declarative Navigation
+### 6. Declarative Navigation
 
 ```vue
 <template>
 	<RouterLink to="/pages/about/about">About Page</RouterLink>
 	<RouterLink :to="{ name: 'about' }" replace>Replace Navigation</RouterLink>
 	<RouterLink :to="{ name: 'admin' }" @error="onNavError">Admin Panel</RouterLink>
+	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">Slide In Bottom</RouterLink>
 </template>
 
 <script setup>
@@ -173,20 +200,20 @@ function onNavError(error) {
 
 ### Router Instance Methods
 
-| Method                        | Description                                  |
-| ----------------------------- | -------------------------------------------- |
-| `router.push(location)`       | Navigate to a new page                       |
-| `router.replace(location)`    | Replace the current page                     |
-| `router.back(delta?)`         | Go back one or more pages (with guard chain) |
-| `router.beforeEach(guard)`    | Register global before guard                 |
-| `router.beforeResolve(guard)` | Register global resolve guard                |
-| `router.afterEach(guard)`     | Register global after hook                   |
-| `router.onRouteChange(fn)`    | Register route change listener               |
-| `router.onError(handler)`     | Register error handler                       |
-| `router.syncRoute()`          | Sync route state with page stack             |
-| `router.resolve(location)`    | Resolve route location (no navigation)       |
-| `router.getRoutes()`          | Get all route configs                        |
-| `router.hasRoute(name)`       | Check if a route exists                      |
+| Method                            | Description                                  |
+| --------------------------------- | -------------------------------------------- |
+| `router.push(location)`           | Navigate to a new page                       |
+| `router.replace(location)`        | Replace the current page                     |
+| `router.back(delta?, animation?)` | Go back one or more pages (with guard chain) |
+| `router.beforeEach(guard)`        | Register global before guard                 |
+| `router.beforeResolve(guard)`     | Register global resolve guard                |
+| `router.afterEach(guard)`         | Register global after hook                   |
+| `router.onRouteChange(fn)`        | Register route change listener               |
+| `router.onError(handler)`         | Register error handler                       |
+| `router.syncRoute()`              | Sync route state with page stack             |
+| `router.resolve(location)`        | Resolve route location (no navigation)       |
+| `router.getRoutes()`              | Get all route configs                        |
+| `router.hasRoute(name)`           | Check if a route exists                      |
 
 ### Error Codes
 
