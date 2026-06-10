@@ -1,3 +1,11 @@
+## 1.1.2（2026-06-10）
+
+### 修复
+
+- **`getCurrentPages()` 环境保护** - 新增 `safeGetCurrentPages()` 函数，在 SSR / Node 环境下 `getCurrentPages` 不存在时返回空数组，避免 `ReferenceError`
+- **拦截器 `invoke` 低版本基础库兼容** - 拦截外部导航调用时先将 `args.url` 置为空字符串，防止低版本小程序基础库忽略返回值 `false` 而继续执行原始 API
+- **拦截器重复安装警告** - `installInterceptors` 中检测到已有活跃管理器时输出 `console.warn`，提醒只支持单路由器实例
+
 ## 1.1.1（2026-06-10）
 
 ### 修复

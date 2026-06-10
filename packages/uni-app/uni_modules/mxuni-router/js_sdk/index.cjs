@@ -316,6 +316,7 @@ function installInterceptors(router) {
     return;
   }
   if (activeManager) {
+    console.warn("[uni-router] Another router instance has already installed interceptors. Replacing with the new instance. Only one router instance with interceptUniApi is supported.");
     removeInterceptors();
   }
   activeManager = new InterceptorManager();
@@ -326,6 +327,7 @@ function installInterceptors(router) {
         if (activeManager?.isRouterCall()) {
           return args;
         }
+        if ("url" in args) args.url = "";
         return handleInterceptedNavigation(api, args);
       }
     });
@@ -423,17 +425,21 @@ function isUniApiError(error) {
 }
 
 // src/navigation/context.ts
+function safeGetCurrentPages() {
+  if (typeof getCurrentPages !== "function") return [];
+  return getCurrentPages();
+}
 function getPageStackLength() {
-  return getCurrentPages().length;
+  return safeGetCurrentPages().length;
 }
 function getCurrentPagePath() {
-  const pages = getCurrentPages();
+  const pages = safeGetCurrentPages();
   if (pages.length === 0) return "/";
   const currentPage = pages[pages.length - 1];
   return `/${currentPage.route}`;
 }
 function getCurrentPageQuery() {
-  const pages = getCurrentPages();
+  const pages = safeGetCurrentPages();
   if (pages.length === 0) return {};
   const currentPage = pages[pages.length - 1];
   if (!currentPage?.options) return {};
