@@ -163,8 +163,9 @@ export function installInterceptors(router: Router): void {
 		return
 	}
 
-	// 如果已有活跃管理器，先清理
+	// 如果已有活跃管理器，先清理并警告
 	if (activeManager) {
+		console.warn('[uni-router] Another router instance has already installed interceptors. Replacing with the new instance. Only one router instance with interceptUniApi is supported.')
 		removeInterceptors()
 	}
 
@@ -177,6 +178,9 @@ export function installInterceptors(router: Router): void {
 				if (activeManager?.isRouterCall()) {
 					return args
 				}
+				// 双重保险：修改 URL 防止低版本基础库忽略返回值
+				// 部分低版本小程序基础库可能忽略 invoke 返回的 false 而继续执行原始 API
+				if ('url' in args) args.url = ''
 				return handleInterceptedNavigation(api, args)
 			}
 		})
