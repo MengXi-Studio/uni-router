@@ -69,6 +69,7 @@ Go back to the previous page or multiple pages, executing the full navigation gu
 ```ts
 router.back() // Go back one page
 router.back(2) // Go back two pages
+router.back(1, { type: 'slide-out-right', duration: 500 }) // Go back with animation
 ```
 
 ### Guard Execution
@@ -139,6 +140,64 @@ router.push('/about')
 router.push('/user')
 // The second push waits for the first to complete
 ```
+
+## Navigation Animation
+
+Navigation animation only takes effect on App, other platforms auto-ignore. Priority: `inline param` > `meta.animation` > `uni default`.
+
+### Option 1: Pass animation when navigating
+
+```ts
+await router.push({ path: '/pages/about/about', animation: { type: 'slide-in-bottom' } })
+await router.back(1, { type: 'slide-out-right', duration: 500 })
+```
+
+### Option 2: Route-level default animation
+
+Set `meta.animation` in route config. All navigation to this route will use this animation as the default:
+
+```ts
+const routes = [
+  {
+    path: 'pages/about/about',
+    name: 'about',
+    meta: { animation: { type: 'fade-in', duration: 300 } }
+  }
+]
+```
+
+### Option 3: RouterLink component
+
+```vue
+<RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom' }">
+  <text>Slide In Bottom</text>
+</RouterLink>
+```
+
+### NavigationAnimation
+
+```ts
+interface NavigationAnimation {
+  type: UniAnimationType
+  duration?: number // default 300ms
+}
+```
+
+### UniAnimationType
+
+Show animations (navigateTo):
+- `slide-in-right` / `slide-in-left` / `slide-in-top` / `slide-in-bottom`
+- `pop-in` / `fade-in` / `zoom-out` / `zoom-fade-out`
+- `none` / `auto`
+
+Close animations (navigateBack):
+- `slide-out-right` / `slide-out-left` / `slide-out-top` / `slide-out-bottom`
+- `pop-out` / `fade-out` / `zoom-in` / `zoom-fade-in`
+- `none` / `auto`
+
+::: info
+Animation types correspond to uni-app's `animationType` parameter. See [uni-app navigation animation docs](https://uniapp.dcloud.net.cn/api/router.html#animation).
+:::
 
 ## Navigation and Guards
 

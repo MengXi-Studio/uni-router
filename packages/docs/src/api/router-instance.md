@@ -57,10 +57,11 @@ await router.replace({ name: 'login' })
 返回上一页或多级页面，执行完整的导航守卫链。
 
 ```ts
-back(delta?: number): Promise<void>
+back(delta?: number, animation?: NavigationAnimation): Promise<void>
 ```
 
 - **delta**: 返回的页面数，默认为 1
+- **animation**: 导航动画（仅 App 端生效），覆盖 `meta.animation`。未指定时使用目标页面的 `meta.animation`
 - 执行 `beforeEach` → `beforeResolve` 守卫链，守卫可中止或重定向返回操作
 - 页面栈不足时抛出 `NavigationFailure`（`NAVIGATION_CANCELLED`）
 - 守卫中止时抛出 `NavigationFailure`
@@ -68,6 +69,7 @@ back(delta?: number): Promise<void>
 ```ts
 await router.back()
 await router.back(2)
+await router.back(1, { type: 'slide-out-right', duration: 500 })
 ```
 
 ::: warning

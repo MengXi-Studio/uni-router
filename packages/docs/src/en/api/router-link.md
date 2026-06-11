@@ -32,6 +32,25 @@ not from the package entry.
   - `false` → calls `router.push(to)`
   - `true` → calls `router.replace(to)`
 
+### animation
+
+- **Type**: `NavigationAnimation | undefined`
+- **Default**: `undefined`
+- **Description**: Navigation animation (App only), overrides `meta.animation`. Falls back to the target route's `meta.animation` when not specified
+
+```ts
+interface NavigationAnimation {
+  type: UniAnimationType
+  duration?: number // default 300ms
+}
+```
+
+```vue
+<RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom' }">
+  <text>Slide In Bottom</text>
+</RouterLink>
+```
+
 ### hoverClass
 
 - **Type**: `string`
@@ -164,6 +183,7 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `exact-active-class` | ✅                 | ❌                 |
 | `v-slot` scoped slot | ✅                 | ❌                 |
 | `hover-class`        | ❌                 | ✅                 |
+| `animation`          | ❌                 | ✅                 |
 | `error` event        | ❌                 | ✅                 |
 
 ::: warning

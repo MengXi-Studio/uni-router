@@ -70,6 +70,7 @@ type RouteLocationRaw = string | RouteLocationPathRaw | RouteLocationNamedRaw
 interface RouteLocationPathRaw {
 	path: string
 	query?: Record<string, string>
+	animation?: NavigationAnimation
 }
 ```
 
@@ -81,6 +82,7 @@ interface RouteLocationPathRaw {
 interface RouteLocationNamedRaw {
 	name: string
 	query?: Record<string, string>
+	animation?: NavigationAnimation
 }
 ```
 

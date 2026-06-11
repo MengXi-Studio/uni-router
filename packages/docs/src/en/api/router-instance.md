@@ -57,10 +57,11 @@ await router.replace({ name: 'login' })
 Go back to the previous page or multiple pages, executing the full navigation guard chain.
 
 ```ts
-back(delta?: number): Promise<void>
+back(delta?: number, animation?: NavigationAnimation): Promise<void>
 ```
 
 - **delta**: Number of pages to go back, defaults to 1
+- **animation**: Navigation animation (App only), overrides `meta.animation`. Falls back to the target page's `meta.animation` when not specified
 - Executes `beforeEach` → `beforeResolve` guard chain; guards can abort or redirect the back operation
 - Throws `NavigationFailure` (`NAVIGATION_CANCELLED`) when page stack is insufficient
 - Throws `NavigationFailure` when guards abort the navigation
@@ -68,6 +69,7 @@ back(delta?: number): Promise<void>
 ```ts
 await router.back()
 await router.back(2)
+await router.back(1, { type: 'slide-out-right', duration: 500 })
 ```
 
 ::: warning

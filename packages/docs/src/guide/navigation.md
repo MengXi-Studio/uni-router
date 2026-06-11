@@ -68,6 +68,7 @@ router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
 ```ts
 router.back() // 返回上一页
 router.back(2) // 返回上两页
+router.back(1, { type: 'slide-out-right', duration: 500 }) // 返回并指定动画
 ```
 
 ### 守卫执行
@@ -138,6 +139,64 @@ router.push('/about')
 router.push('/user')
 // 第二次 push 会等第一次完成后再执行
 ```
+
+## 导航动画
+
+导航动画仅 App 端生效，其他平台自动忽略。优先级：`调用时传入` > `meta.animation` > `uni 默认值`。
+
+### 方式一：导航时传入动画
+
+```ts
+await router.push({ path: '/pages/about/about', animation: { type: 'slide-in-bottom' } })
+await router.back(1, { type: 'slide-out-right', duration: 500 })
+```
+
+### 方式二：路由级默认动画
+
+在路由配置中设置 `meta.animation`，该路由的所有导航将使用此动画作为默认值：
+
+```ts
+const routes = [
+  {
+    path: 'pages/about/about',
+    name: 'about',
+    meta: { animation: { type: 'fade-in', duration: 300 } }
+  }
+]
+```
+
+### 方式三：RouterLink 组件
+
+```vue
+<RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom' }">
+  <text>底部滑入</text>
+</RouterLink>
+```
+
+### NavigationAnimation
+
+```ts
+interface NavigationAnimation {
+  type: UniAnimationType
+  duration?: number // 默认 300ms
+}
+```
+
+### UniAnimationType
+
+显示动画（navigateTo）：
+- `slide-in-right` / `slide-in-left` / `slide-in-top` / `slide-in-bottom`
+- `pop-in` / `fade-in` / `zoom-out` / `zoom-fade-out`
+- `none` / `auto`
+
+关闭动画（navigateBack）：
+- `slide-out-right` / `slide-out-left` / `slide-out-top` / `slide-out-bottom`
+- `pop-out` / `fade-out` / `zoom-in` / `zoom-fade-in`
+- `none` / `auto`
+
+::: info
+动画类型对应 uni-app 的 `animationType` 参数，详见 [uni-app 导航动画文档](https://uniapp.dcloud.net.cn/api/router.html#animation)。
+:::
 
 ## 导航与守卫
 

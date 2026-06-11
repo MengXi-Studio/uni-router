@@ -9,6 +9,7 @@ interface RouteMeta {
   title?: string
   isTab?: boolean
   requireAuth?: boolean
+  animation?: NavigationAnimation
   [key: string]: unknown
 }
 ```
@@ -35,6 +36,30 @@ Must be consistent with the `tabBar.list` declaration in `pages.json`.
 
 - **Type**: `boolean | undefined`
 - **Description**: Whether login authentication is required, commonly used with `beforeEach` guards
+
+### animation
+
+- **Type**: `NavigationAnimation | undefined`
+- **Description**: Default navigation animation (App only), can be overridden by the `animation` parameter passed to `push` / `replace` / `back`
+
+```ts
+interface NavigationAnimation {
+  type: UniAnimationType
+  duration?: number // default 300ms
+}
+```
+
+Animation priority: `inline param` > `meta.animation` > `uni default`
+
+```ts
+const routes = [
+  {
+    path: 'pages/about/about',
+    name: 'about',
+    meta: { animation: { type: 'fade-in', duration: 300 } }
+  }
+]
+```
 
 ## Custom Extensions
 

@@ -72,6 +72,7 @@ Path-based raw route location:
 interface RouteLocationPathRaw {
 	path: string
 	query?: Record<string, string>
+	animation?: NavigationAnimation
 }
 ```
 
@@ -83,6 +84,7 @@ Name-based raw route location:
 interface RouteLocationNamedRaw {
 	name: string
 	query?: Record<string, string>
+	animation?: NavigationAnimation
 }
 ```
 

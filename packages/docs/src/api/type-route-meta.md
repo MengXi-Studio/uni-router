@@ -9,6 +9,7 @@ interface RouteMeta {
   title?: string
   isTab?: boolean
   requireAuth?: boolean
+  animation?: NavigationAnimation
   [key: string]: unknown
 }
 ```
@@ -35,6 +36,30 @@ interface RouteMeta {
 
 - **类型**: `boolean | undefined`
 - **说明**: 是否需要登录认证，常与 `beforeEach` 守卫配合使用
+
+### animation
+
+- **类型**: `NavigationAnimation | undefined`
+- **说明**: 默认导航动画（仅 App 端生效），可被 `push` / `replace` / `back` 调用时传入的 `animation` 参数覆盖
+
+```ts
+interface NavigationAnimation {
+  type: UniAnimationType
+  duration?: number // 默认 300ms
+}
+```
+
+动画优先级：`调用时传入` > `meta.animation` > `uni 默认值`
+
+```ts
+const routes = [
+  {
+    path: 'pages/about/about',
+    name: 'about',
+    meta: { animation: { type: 'fade-in', duration: 300 } }
+  }
+]
+```
 
 ## 自定义扩展
 

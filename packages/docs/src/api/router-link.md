@@ -31,6 +31,25 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
   - `false` → 调用 `router.push(to)`
   - `true` → 调用 `router.replace(to)`
 
+### animation
+
+- **类型**: `NavigationAnimation | undefined`
+- **默认值**: `undefined`
+- **说明**: 导航动画（仅 App 端生效），覆盖 `meta.animation`。未指定时使用目标路由的 `meta.animation`
+
+```ts
+interface NavigationAnimation {
+  type: UniAnimationType
+  duration?: number // 默认 300ms
+}
+```
+
+```vue
+<RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom' }">
+  <text>底部滑入</text>
+</RouterLink>
+```
+
 ### hoverClass
 
 - **类型**: `string`
@@ -163,6 +182,7 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `exact-active-class` | ✅                 | ❌                 |
 | `v-slot` 作用域插槽  | ✅                 | ❌                 |
 | `hover-class`        | ❌                 | ✅                 |
+| `animation`          | ❌                 | ✅                 |
 | `error` 事件         | ❌                 | ✅                 |
 
 ::: warning
