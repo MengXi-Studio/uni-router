@@ -14,17 +14,11 @@
 
 ## 一、uni-app 功能缺失
 
-### 1. 缺少 `reLaunch` 导航方式
+### 1. ~~缺少 `reLaunch` 导航方式~~ ✅ 已实现
 
-uni-app 提供 `uni.reLaunch` 用于关闭所有页面并打开某页面，常用于：
-
-- 退出登录后跳转登录页
-- 从深层页面返回首页
-- 重置整个页面栈
-
-当前 `Router` 接口仅支持 `push`/`replace`/`back`，缺少 `reLaunch` 对应方法。
-
-**建议**: 新增 `router.relaunch(location: RouteLocationRaw): Promise<RouteLocation>`，对应 `uni.reLaunch`。
+新增 `router.relaunch(location: RouteLocationRaw): Promise<RouteLocation>` 方法，对应 `uni.reLaunch`。
+TabBar 页面自动切换为 `uni.switchTab`，`reLaunch` 不支持动画参数（传入时输出警告）。
+拦截器同步支持 `uni.reLaunch` 拦截。
 
 ### 2. 缺少页面间通信能力（EventChannel）
 

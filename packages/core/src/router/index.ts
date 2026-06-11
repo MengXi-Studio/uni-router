@@ -3,7 +3,7 @@ import type { App } from 'vue'
 import { RouterErrorCode } from '@/types/error'
 import { NavigationFailure, RouterError } from '@/errors'
 import { createGuardManager, type GuardResult } from '@/guard'
-import { navigateTo, replaceTo, goBack, isUniApiError } from '@/navigation'
+import { navigateTo, replaceTo, relaunchTo, goBack, isUniApiError } from '@/navigation'
 import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/navigation/context'
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
@@ -77,6 +77,21 @@ class UniRouter implements Router {
 	 */
 	replace(location: RouteLocationRaw): Promise<RouteLocation> {
 		return this.performNavigation(location, 'replace')
+	}
+
+	/**
+	 * 关闭所有页面并打开目标页面
+	 *
+	 * 对应 uni.reLaunch（普通页面）或 uni.switchTab（TabBar 页面）。
+	 * 常用于退出登录后跳转登录页、从深层页面返回首页、重置整个页面栈等场景。
+	 * reLaunch 不支持动画参数，传入时将输出警告。
+	 *
+	 * @param location - 目标路由位置
+	 * @returns 解析后的目标路由位置
+	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
+	 */
+	relaunch(location: RouteLocationRaw): Promise<RouteLocation> {
+		return this.performNavigation(location, 'relaunch')
 	}
 
 	/**
@@ -313,7 +328,7 @@ class UniRouter implements Router {
 	 * @returns 解析后的目标路由位置
 	 * @throws {NavigationFailure} 导航失败时抛出
 	 */
-	private async performNavigation(location: RouteLocationRaw, mode: 'push' | 'replace'): Promise<RouteLocation> {
+	private async performNavigation(location: RouteLocationRaw, mode: 'push' | 'replace' | 'relaunch'): Promise<RouteLocation> {
 		// 等待前一次导航完成（无论成功或失败），避免并发导航
 		// 错误已通过 onError 机制通知，此处无需再处理
 		if (this.pendingNavigation) {
@@ -358,7 +373,7 @@ class UniRouter implements Router {
 	 * @returns 解析后的目标路由位置
 	 * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
 	 */
-	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'back', redirectDepth: number, animation?: NavigationAnimation): Promise<RouteLocation> {
+	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'relaunch' | 'back', redirectDepth: number, animation?: NavigationAnimation): Promise<RouteLocation> {
 		if (redirectDepth > MAX_REDIRECT_DEPTH) {
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
 			this.triggerErrorHandlers(failure, to, from)
@@ -389,8 +404,10 @@ class UniRouter implements Router {
 
 			if (mode === 'push') {
 				await navigateTo(navOptions)
-			} else {
+			} else if (mode === 'replace') {
 				await replaceTo(navOptions)
+			} else {
+				await relaunchTo(navOptions)
 			}
 
 			this.routeState.setCurrentRoute(to)
@@ -422,7 +439,14 @@ class UniRouter implements Router {
 	 * @param animation - 当前导航的动画参数
 	 * @returns 中止或重定向时返回 Promise\<RouteLocation\>，放行时返回 null
 	 */
-	private handleGuardResult(result: GuardResult, to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'back', redirectDepth: number, animation?: NavigationAnimation): Promise<RouteLocation> | null {
+	private handleGuardResult(
+		result: GuardResult,
+		to: RouteLocation,
+		from: RouteLocation,
+		mode: 'push' | 'replace' | 'relaunch' | 'back',
+		redirectDepth: number,
+		animation?: NavigationAnimation
+	): Promise<RouteLocation> | null {
 		if (result.type === 'abort') {
 			const failure = new NavigationFailure(to, from, result.code)
 			this.triggerErrorHandlers(failure, to, from)

@@ -4,7 +4,7 @@ import { normalizePath, parseQuery } from '@/utils/path'
 /**
  * uni API 拦截器模块
  *
- * 通过 uni.addInterceptor 拦截原生导航 API（navigateTo / redirectTo / switchTab / navigateBack），
+ * 通过 uni.addInterceptor 拦截原生导航 API（navigateTo / redirectTo / switchTab / reLaunch / navigateBack），
  * 将外部直接调用重定向到路由器实例，确保路由守卫始终生效。
  *
  * 拦截器通过内部标记区分「路由器发起的调用」和「外部直接调用」：
@@ -13,7 +13,7 @@ import { normalizePath, parseQuery } from '@/utils/path'
  */
 
 /** 需要拦截的 uni 导航 API 列表 */
-const INTERCEPTED_APIS = ['navigateTo', 'redirectTo', 'switchTab', 'navigateBack'] as const
+const INTERCEPTED_APIS = ['navigateTo', 'redirectTo', 'switchTab', 'reLaunch', 'navigateBack'] as const
 
 /**
  * 拦截器管理器
@@ -163,6 +163,13 @@ function handleInterceptedNavigation(api: string, args: Record<string, any>): fa
 			const { path } = parseUniUrl(args.url || '')
 			if (path) {
 				router.push(path)
+			}
+			break
+		}
+		case 'reLaunch': {
+			const { path, query } = parseUniUrl(args.url || '')
+			if (path) {
+				router.relaunch(buildLocation(path, query))
 			}
 			break
 		}

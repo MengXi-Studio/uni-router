@@ -74,6 +74,8 @@ declare const uni: {
 	redirectTo(options: UniNavigateOptions): void
 	/** 跳转到 tabBar 页面，并关闭其他所有非 tabBar 页面 */
 	switchTab(options: UniNavigateOptions): void
+	/** 关闭所有页面，打开到应用内的某个页面 */
+	reLaunch(options: UniNavigateOptions): void
 	/** 关闭当前页面，返回上一页面或多级页面 */
 	navigateBack(options: UniNavigateBackOptions): void
 	/** 动态设置当前页面的标题 */

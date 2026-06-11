@@ -113,6 +113,19 @@ function uniNavigateBack(delta: number = 1, animation?: NavigationAnimation): Pr
 }
 
 /**
+ * 调用 uni.reLaunch 关闭所有页面并打开目标页面
+ * @param path - 目标页面路径
+ * @param query - 查询参数
+ */
+function uniReLaunch(path: string, query?: Record<string, string>): Promise<void> {
+	const url = buildFullPath(path, query ?? {})
+	return promisifyUniApi('reLaunch', (resolve, reject) => {
+		markRouterCall()
+		uni.reLaunch({ url, success: resolve, fail: reject })
+	})
+}
+
+/**
  * 检查查询参数是否非空
  * @param query - 查询参数对象
  * @returns 存在参数时返回 true
@@ -172,6 +185,29 @@ export function replaceTo(options: UniNavigationOptions): Promise<void> {
  */
 export function goBack(delta: number = 1, animation?: NavigationAnimation): Promise<void> {
 	return uniNavigateBack(delta, animation)
+}
+
+/**
+ * 关闭所有页面并打开目标页面，自动根据 meta.isTab 选择 reLaunch 或 switchTab
+ * @param options - 导航选项
+ * @throws {UniApiError} uni API 调用失败时抛出
+ */
+export function relaunchTo(options: UniNavigationOptions): Promise<void> {
+	const { path, meta, query, animation } = options
+	const effectiveAnimation = animation ?? meta.animation
+	if (meta.isTab) {
+		if (hasQueryParams(query)) {
+			warn('uni.switchTab does not support query parameters. They will be ignored.')
+		}
+		if (effectiveAnimation) {
+			warn('uni.switchTab does not support animation parameters. The animation option will be ignored.')
+		}
+		return uniSwitchTab(path)
+	}
+	if (effectiveAnimation) {
+		warn('uni.reLaunch does not support animation parameters. The animation option will be ignored.')
+	}
+	return uniReLaunch(path, query)
 }
 
 /**

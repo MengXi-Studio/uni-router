@@ -64,9 +64,22 @@ export interface Router {
 	 * 替换当前页面，对应 uni.redirectTo / uni.switchTab
 	 * @param location - 目标路由位置
 	 * @returns 解析后的目标路由位置
-	 * @throws {NavigationFailure} 导航被中止、重复或 API 调用失败时抛出
+	 * @throws {NavigationFailure} 导航被中止或 API 调用失败时抛出
 	 */
 	replace(location: RouteLocationRaw): Promise<RouteLocation>
+
+	/**
+	 * 关闭所有页面并打开目标页面，对应 uni.reLaunch / uni.switchTab
+	 *
+	 * 常用于退出登录后跳转登录页、从深层页面返回首页、重置整个页面栈等场景。
+	 * TabBar 页面自动切换为 uni.switchTab。
+	 * reLaunch 不支持动画参数，传入时将输出警告。
+	 *
+	 * @param location - 目标路由位置
+	 * @returns 解析后的目标路由位置
+	 * @throws {NavigationFailure} 导航被中止或 API 调用失败时抛出
+	 */
+	relaunch(location: RouteLocationRaw): Promise<RouteLocation>
 
 	/**
 	 * 返回上一页或多级页面，对应 uni.navigateBack
