@@ -31,6 +31,20 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
   - `false` → 调用 `router.push(to)`
   - `true` → 调用 `router.replace(to)`
 
+### relaunch
+
+- **类型**: `boolean`
+- **默认值**: `false`
+- **说明**: 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面）
+  - `true` → 调用 `router.relaunch(to)`
+  - 优先级高于 `replace`，同时设置 `relaunch` 和 `replace` 时使用 `relaunch`
+
+```vue
+<RouterLink to="pages/index/index" relaunch>
+  <text>返回首页</text>
+</RouterLink>
+```
+
 ### animation
 
 - **类型**: `NavigationAnimation | undefined`
@@ -177,6 +191,7 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | 宿主元素             | `<a>`              | `<navigator>`      |
 | `to` 类型            | `string \| object` | `string \| object` |
 | `replace`            | ✅                 | ✅                 |
+| `relaunch`           | ❌                 | ✅                 |
 | `custom`             | ✅                 | ❌                 |
 | `active-class`       | ✅                 | ❌                 |
 | `exact-active-class` | ✅                 | ❌                 |

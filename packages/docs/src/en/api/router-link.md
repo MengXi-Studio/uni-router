@@ -32,6 +32,20 @@ not from the package entry.
   - `false` → calls `router.push(to)`
   - `true` → calls `router.replace(to)`
 
+### relaunch
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Whether to use relaunch mode for navigation (close all pages and open target page)
+  - `true` → calls `router.relaunch(to)`
+  - Takes priority over `replace`; when both `relaunch` and `replace` are set, `relaunch` is used
+
+```vue
+<RouterLink to="pages/index/index" relaunch>
+  <text>Back to Home</text>
+</RouterLink>
+```
+
 ### animation
 
 - **Type**: `NavigationAnimation | undefined`
@@ -178,6 +192,7 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | Host element         | `<a>`              | `<navigator>`      |
 | `to` type            | `string \| object` | `string \| object` |
 | `replace`            | ✅                 | ✅                 |
+| `relaunch`           | ❌                 | ✅                 |
 | `custom`             | ✅                 | ❌                 |
 | `active-class`       | ✅                 | ❌                 |
 | `exact-active-class` | ✅                 | ❌                 |

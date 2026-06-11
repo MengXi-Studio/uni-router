@@ -180,6 +180,7 @@ router.onRouteChange((to, from) => {
 	<RouterLink :to="{ name: 'about' }" replace>替换导航</RouterLink>
 	<RouterLink :to="{ name: 'admin' }" @error="onNavError">管理后台</RouterLink>
 	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">底部滑入</RouterLink>
+	<RouterLink to="/pages/index/index" relaunch>返回首页</RouterLink>
 </template>
 
 <script setup>

@@ -180,6 +180,7 @@ router.onRouteChange((to, from) => {
 	<RouterLink :to="{ name: 'about' }" replace>Replace Navigation</RouterLink>
 	<RouterLink :to="{ name: 'admin' }" @error="onNavError">Admin Panel</RouterLink>
 	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">Slide In Bottom</RouterLink>
+	<RouterLink to="/pages/index/index" relaunch>Back to Home</RouterLink>
 </template>
 
 <script setup>

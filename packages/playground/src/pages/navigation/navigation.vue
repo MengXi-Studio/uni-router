@@ -68,6 +68,9 @@
 			<RouterLink to="/pages/error/error" custom @error="onRouterLinkError">
 				<view class="btn btn-gray">RouterLink - 带 error 事件</view>
 			</RouterLink>
+			<RouterLink to="/pages/index/index" relaunch custom>
+				<view class="btn btn-danger">RouterLink - relaunch 模式</view>
+			</RouterLink>
 		</view>
 	</view>
 </template>

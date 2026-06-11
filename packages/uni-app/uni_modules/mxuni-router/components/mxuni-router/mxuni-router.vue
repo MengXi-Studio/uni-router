@@ -13,6 +13,8 @@ const props = withDefaults(
 		to: RouteLocationRaw
 		/** 是否使用替换模式导航 */
 		replace?: boolean
+		/** 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面） */
+		relaunch?: boolean
 		/** 导航动画（仅 App 端生效），覆盖 meta.animation */
 		animation?: NavigationAnimation
 		/** 按下时的样式类，设置为 'none' 可禁用点击态 */
@@ -53,7 +55,9 @@ async function navigate() {
 			}
 		}
 
-		if (props.replace) {
+		if (props.relaunch) {
+			await router.relaunch(location)
+		} else if (props.replace) {
 			await router.replace(location)
 		} else {
 			await router.push(location)
