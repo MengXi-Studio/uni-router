@@ -15,7 +15,7 @@ declare module '@meng-xi/uni-router' {
     /** 登录 */
     pagesLoginLogin: { path: '/pages/login/login'; meta: { title: string } }
     /** 关于 */
-    pagesAboutAbout: { path: '/pages/about/about'; meta: { title: string; isTab: true } }
+    pagesAboutAbout: { path: '/pages/about/about'; meta: { title: string; isTab: true; animation: unknown } }
     /** 路由解析 */
     pagesResolveResolve: { path: '/pages/resolve/resolve'; meta: { title: string } }
     /** 错误处理 */

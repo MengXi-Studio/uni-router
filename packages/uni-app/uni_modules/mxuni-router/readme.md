@@ -16,6 +16,7 @@
 - **守卫超时保护** - 守卫未调用 `next()` 时自动中止导航，超时时间可配置（`guardTimeout`）
 - **命名路由** - 通过 `name` 进行导航，无需硬编码路径字符串
 - **路由元信息** - `meta` 字段支持页面标题、权限标记、TabBar 标识等自定义数据
+- **导航动画** - 支持 `push` / `replace` / `back` 时传入动画参数，支持路由级 `meta.animation` 默认动画，仅 App 端生效
 - **uni API 拦截** - 拦截 `uni.navigateTo` 等原生导航 API，确保守卫始终生效（`interceptUniApi`）
 - **路由状态同步** - `syncRoute()` 将路由状态与实际页面栈同步，处理物理返回键等非路由器导航
 - **路由变化监听** - `onRouteChange()` 订阅路由状态变化，包括导航完成和状态同步
@@ -102,6 +103,7 @@ await router.push({ name: 'about' })
 // 返回
 await router.back()
 await router.back(2) // 返回两级
+await router.back(1, { type: 'slide-out-left' }) // 返回并指定动画
 ```
 
 ### 3. 路由守卫
@@ -173,21 +175,21 @@ const router = createRouter({ routes })
 
 ### Router 实例方法
 
-| 方法                             | 说明                     |
-| -------------------------------- | ------------------------ |
-| `router.push(location)`          | 导航到新页面             |
-| `router.replace(location)`       | 替换当前页面             |
-| `router.back(delta?)`            | 返回上一页或多级页面     |
-| `router.beforeEach(guard)`       | 注册全局前置守卫         |
-| `router.beforeResolve(guard)`    | 注册全局解析守卫         |
-| `router.afterEach(guard)`        | 注册全局后置钩子         |
-| `router.onError(handler)`        | 注册错误处理回调         |
-| `router.resolve(location)`       | 解析路由位置（不导航）   |
-| `router.getRoutes()`             | 获取所有路由配置         |
-| `router.hasRoute(name)`          | 检查路由是否存在         |
-| `router.isReady()`               | 等待路由器初始化完成     |
-| `router.onRouteChange(listener)` | 注册路由变化监听器       |
-| `router.syncRoute()`             | 同步路由状态与实际页面栈 |
+| 方法                              | 说明                     |
+| --------------------------------- | ------------------------ |
+| `router.push(location)`           | 导航到新页面             |
+| `router.replace(location)`        | 替换当前页面             |
+| `router.back(delta?, animation?)` | 返回上一页或多级页面     |
+| `router.beforeEach(guard)`        | 注册全局前置守卫         |
+| `router.beforeResolve(guard)`     | 注册全局解析守卫         |
+| `router.afterEach(guard)`         | 注册全局后置钩子         |
+| `router.onError(handler)`         | 注册错误处理回调         |
+| `router.resolve(location)`        | 解析路由位置（不导航）   |
+| `router.getRoutes()`              | 获取所有路由配置         |
+| `router.hasRoute(name)`           | 检查路由是否存在         |
+| `router.isReady()`                | 等待路由器初始化完成     |
+| `router.onRouteChange(listener)`  | 注册路由变化监听器       |
+| `router.syncRoute()`              | 同步路由状态与实际页面栈 |
 
 ### 错误码
 
@@ -230,14 +232,15 @@ const router = createRouter({ routes })
 </mxuni-router>
 ```
 
-| 属性                   | 类型               | 默认值              | 说明                           |
-| ---------------------- | ------------------ | ------------------- | ------------------------------ |
-| `to`                   | `RouteLocationRaw` | -                   | 目标路由位置                   |
-| `replace`              | `boolean`          | `false`             | 是否使用替换模式导航           |
-| `hoverClass`           | `string`           | `'navigator-hover'` | 按下时的样式类                 |
-| `hoverStopPropagation` | `boolean`          | `false`             | 是否阻止祖先节点的点击态       |
-| `hoverStartTime`       | `number`           | `50`                | 按住后多久出现点击态（ms）     |
-| `hoverStayTime`        | `number`           | `600`               | 手指松开后点击态保留时间（ms） |
+| 属性                   | 类型                  | 默认值              | 说明                                           |
+| ---------------------- | --------------------- | ------------------- | ---------------------------------------------- |
+| `to`                   | `RouteLocationRaw`    | -                   | 目标路由位置                                   |
+| `replace`              | `boolean`             | `false`             | 是否使用替换模式导航                           |
+| `animation`            | `NavigationAnimation` | `undefined`         | 导航动画（仅 App 端生效），覆盖 meta.animation |
+| `hoverClass`           | `string`              | `'navigator-hover'` | 按下时的样式类                                 |
+| `hoverStopPropagation` | `boolean`             | `false`             | 是否阻止祖先节点的点击态                       |
+| `hoverStartTime`       | `number`              | `50`                | 按住后多久出现点击态（ms）                     |
+| `hoverStayTime`        | `number`              | `600`               | 手指松开后点击态保留时间（ms）                 |
 
 | 事件    | 参数                | 说明           |
 | ------- | ------------------- | -------------- |

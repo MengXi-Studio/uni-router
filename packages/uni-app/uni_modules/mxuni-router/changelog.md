@@ -1,3 +1,17 @@
+## 1.2.0（2026-06-11）
+
+### 新增
+
+- **导航动画** - 完整的页面切换动画支持，仅 App 端生效，其他平台自动忽略
+  - `NavigationAnimation` 接口 - 动画配置类型，包含 `type` 和可选 `duration` 字段
+  - `UniAnimationType` 类型 - 覆盖 uni-app 支持的全部动画类型（slide-in/out、fade-in/out、zoom-in/out、pop-in/out、auto、none）
+  - `DEFAULT_ANIMATION_DURATION` 常量 - 默认动画持续时间 300ms
+  - `RouteLocationPathRaw.animation` / `RouteLocationNamedRaw.animation` - 导航时传入动画参数，覆盖 `meta.animation`
+  - `RouteMeta.animation` - 路由级默认动画配置
+  - `back(delta?, animation?)` - `back()` 方法新增可选 `animation` 参数
+  - `RouterLink` 组件新增 `animation` prop - 声明式导航支持动画
+  - 动画优先级：`调用时传入` > `meta.animation` > `uni 默认值`
+
 ## 1.1.2（2026-06-10）
 
 ### 修复

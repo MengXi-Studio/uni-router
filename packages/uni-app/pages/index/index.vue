@@ -40,6 +40,18 @@
 			</mxuni-router>
 		</view>
 
+		<!-- 导航动画 -->
+		<view class="card">
+			<text class="card-title">导航动画（仅 App 端生效）</text>
+			<text class="hint">通过 animation 参数控制页面切换动画</text>
+			<view class="btn" @click="pushWithAnimation">
+				<text class="btn-text">push - 底部滑入动画</text>
+			</view>
+			<view class="btn btn-secondary" @click="backWithAnimation">
+				<text class="btn-text-secondary">back - 左侧滑出动画</text>
+			</view>
+		</view>
+
 		<!-- 路由守卫 -->
 		<view class="card">
 			<text class="card-title">路由守卫</text>
@@ -190,6 +202,20 @@ export default {
 		async replacePage() {
 			try {
 				await router.replace('/pages/about/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		async pushWithAnimation() {
+			try {
+				await router.push({ path: '/pages/about/index', query: { from: 'anim' }, animation: { type: 'slide-in-bottom' } })
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		async backWithAnimation() {
+			try {
+				await router.back(1, { type: 'slide-out-left', duration: 500 })
 			} catch (e) {
 				this.lastError = e.message || String(e)
 			}

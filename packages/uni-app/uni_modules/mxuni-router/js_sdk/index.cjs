@@ -276,6 +276,15 @@ function parseUniUrl(url) {
   const query = queryString ? parseQuery(queryString) : {};
   return { path, query };
 }
+function extractAnimation(args) {
+  if (!args.animationType) return void 0;
+  return { type: args.animationType, ...args.animationDuration != null && { duration: args.animationDuration } };
+}
+function buildLocation(path, query, animation) {
+  const hasQuery = query && Object.keys(query).length > 0;
+  if (!hasQuery && !animation) return path;
+  return { path, ...hasQuery && { query }, ...animation };
+}
 function handleInterceptedNavigation(api, args) {
   const router = activeManager?.getRouter();
   if (!router) return false;
@@ -283,16 +292,14 @@ function handleInterceptedNavigation(api, args) {
     case "navigateTo": {
       const { path, query } = parseUniUrl(args.url || "");
       if (path) {
-        const hasQuery = query && Object.keys(query).length > 0;
-        router.push(hasQuery ? { path, query } : path);
+        router.push(buildLocation(path, query, extractAnimation(args)));
       }
       break;
     }
     case "redirectTo": {
       const { path, query } = parseUniUrl(args.url || "");
       if (path) {
-        const hasQuery = query && Object.keys(query).length > 0;
-        router.replace(hasQuery ? { path, query } : path);
+        router.replace(buildLocation(path, query));
       }
       break;
     }
@@ -304,7 +311,7 @@ function handleInterceptedNavigation(api, args) {
       break;
     }
     case "navigateBack": {
-      router.back(args.delta || 1);
+      router.back(args.delta || 1, extractAnimation(args));
       break;
     }
   }
@@ -367,11 +374,17 @@ function promisifyUniApi(api, executor) {
     executor(resolve, (err) => reject(new UniApiError(api, err)));
   });
 }
-function uniNavigateTo(path, query) {
+function uniNavigateTo(path, query, animation) {
   const url = buildFullPath(path, query ?? {});
   return promisifyUniApi("navigateTo", (resolve, reject) => {
     markRouterCall();
-    uni.navigateTo({ url, success: resolve, fail: reject });
+    uni.navigateTo({
+      url,
+      ...animation?.type && { animationType: animation.type },
+      ...animation?.duration != null && { animationDuration: animation.duration },
+      success: resolve,
+      fail: reject
+    });
   });
 }
 function uniSwitchTab(path) {
@@ -387,38 +400,55 @@ function uniRedirectTo(path, query) {
     uni.redirectTo({ url, success: resolve, fail: reject });
   });
 }
-function uniNavigateBack(delta = 1) {
+function uniNavigateBack(delta = 1, animation) {
   return promisifyUniApi("navigateBack", (resolve, reject) => {
     markRouterCall();
-    uni.navigateBack({ delta, success: resolve, fail: reject });
+    uni.navigateBack({
+      delta,
+      ...animation?.type && { animationType: animation.type },
+      ...animation?.duration != null && { animationDuration: animation.duration },
+      success: resolve,
+      fail: reject
+    });
   });
 }
 function hasQueryParams(query) {
   return !!query && Object.keys(query).length > 0;
 }
 function navigateTo(options) {
-  const { path, meta, query } = options;
+  const { path, meta, query, animation } = options;
+  const effectiveAnimation = animation ?? meta.animation;
   if (meta.isTab) {
     if (hasQueryParams(query)) {
       warn("uni.switchTab does not support query parameters. They will be ignored.");
     }
+    if (effectiveAnimation) {
+      warn("uni.switchTab does not support animation parameters. The animation option will be ignored.");
+    }
     return uniSwitchTab(path);
   }
-  return uniNavigateTo(path, query);
+  return uniNavigateTo(path, query, effectiveAnimation);
 }
 function replaceTo(options) {
-  const { path, meta, query } = options;
+  const { path, meta, query, animation } = options;
+  const effectiveAnimation = animation ?? meta.animation;
   if (meta.isTab) {
     warn("router.replace() to a tab page will close all non-tab pages instead of replacing the current page only");
     if (hasQueryParams(query)) {
       warn("uni.switchTab does not support query parameters. They will be ignored.");
     }
+    if (effectiveAnimation) {
+      warn("uni.switchTab does not support animation parameters. The animation option will be ignored.");
+    }
     return uniSwitchTab(path);
+  }
+  if (effectiveAnimation) {
+    warn("uni.redirectTo does not support animation parameters. The animation option will be ignored.");
   }
   return uniRedirectTo(path, query);
 }
-function goBack(delta = 1) {
-  return uniNavigateBack(delta);
+function goBack(delta = 1, animation) {
+  return uniNavigateBack(delta, animation);
 }
 function isUniApiError(error) {
   return error instanceof UniApiError;
@@ -684,9 +714,10 @@ var UniRouter = class {
    * 对于原生返回，需依赖 syncRoute() + afterEach 做事后处理。
    *
    * @param delta - 返回的页面数，默认为 1
+   * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
    * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
    */
-  async back(delta = 1) {
+  async back(delta = 1, animation) {
     if (this.pendingNavigation) {
       await this.pendingNavigation.catch(() => {
       });
@@ -702,6 +733,7 @@ var UniRouter = class {
     const targetPage = pages[targetIndex];
     const targetPath = `/${targetPage.route}`;
     const to = this.matcher.resolve(targetPath);
+    const effectiveAnimation = animation ?? to.meta.animation;
     const beforeResult = await this.guardManager.runBeforeGuards(to, from);
     const handled = this.handleGuardResult(beforeResult, to, from, "back", 0);
     if (handled) return handled;
@@ -709,7 +741,7 @@ var UniRouter = class {
     const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, "back", 0);
     if (handledResolve) return handledResolve;
     try {
-      await goBack(delta);
+      await goBack(delta, effectiveAnimation);
       this.syncCurrentRoute(from);
       this.guardManager.runAfterGuards(to, from);
     } catch (error) {
@@ -879,12 +911,13 @@ var UniRouter = class {
     }
     const to = this.matcher.resolve(location);
     const from = this.routeState.getCurrentRoute();
+    const animation = this.extractAnimation(location);
     if (mode === "push" && this.isSameRouteLocation(to, from)) {
       const failure = new NavigationFailure(to, from, "NAVIGATION_DUPLICATED" /* NAVIGATION_DUPLICATED */, `Avoided redundant navigation to current location: "${to.fullPath}"`);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
-    const navigationPromise = this.executeNavigation(to, from, mode, 0);
+    const navigationPromise = this.executeNavigation(to, from, mode, 0, animation);
     this.pendingNavigation = navigationPromise;
     try {
       const result = await navigationPromise;
@@ -905,10 +938,11 @@ var UniRouter = class {
    * @param from - 来源路由
    * @param mode - 导航模式
    * @param redirectDepth - 当前重定向深度
+   * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
    * @returns 解析后的目标路由位置
    * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
    */
-  async executeNavigation(to, from, mode, redirectDepth) {
+  async executeNavigation(to, from, mode, redirectDepth, animation) {
     if (redirectDepth > MAX_REDIRECT_DEPTH) {
       const failure = new NavigationFailure(to, from, "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`);
       this.triggerErrorHandlers(failure, to, from);
@@ -916,19 +950,20 @@ var UniRouter = class {
     }
     const config = this.matcher.getRouteConfig(to.path);
     const beforeResult = await this.guardManager.runBeforeGuards(to, from);
-    const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth);
+    const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation);
     if (handled) return handled;
     const beforeEnterResult = config ? await this.guardManager.runBeforeEnterGuards(to, from, config) : { type: "next" };
-    const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth);
+    const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation);
     if (handledEnter) return handledEnter;
     const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from);
-    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth);
+    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation);
     if (handledResolve) return handledResolve;
     try {
       const navOptions = {
         path: to.path,
         meta: to.meta,
-        query: to.query
+        query: to.query,
+        animation
       };
       if (mode === "push") {
         await navigateTo(navOptions);
@@ -959,17 +994,19 @@ var UniRouter = class {
    * @param from - 来源路由
    * @param mode - 导航模式
    * @param redirectDepth - 当前重定向深度
+   * @param animation - 当前导航的动画参数
    * @returns 中止或重定向时返回 Promise\<RouteLocation\>，放行时返回 null
    */
-  handleGuardResult(result, to, from, mode, redirectDepth) {
+  handleGuardResult(result, to, from, mode, redirectDepth, animation) {
     if (result.type === "abort") {
       const failure = new NavigationFailure(to, from, result.code);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
     if (result.redirect) {
+      const redirectAnimation = this.extractAnimation(result.redirect) ?? animation;
       const redirectTarget = this.matcher.resolve(result.redirect);
-      return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1);
+      return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1, redirectAnimation);
     }
     return null;
   }
@@ -1009,6 +1046,20 @@ var UniRouter = class {
     const keysB = Object.keys(b);
     if (keysA.length !== keysB.length) return false;
     return keysA.every((key) => a[key] === b[key]);
+  }
+  /**
+   * 从原始路由位置中提取动画参数
+   *
+   * resolve() 会丢弃 animation 字段，因此需要在解析前提取。
+   * 字符串形式的路由位置不包含动画参数。
+   *
+   * @param location - 原始路由位置
+   * @returns 动画配置，不存在时返回 undefined
+   */
+  extractAnimation(location) {
+    if (typeof location === "string") return void 0;
+    if (typeof location === "object" && "animation" in location) return location.animation;
+    return void 0;
   }
   /**
    * 根据 uni-app 实际页面栈同步 currentRoute 状态
@@ -1063,6 +1114,10 @@ function useRoute() {
   return getReactiveRoute(router);
 }
 
+// src/types/route.ts
+var DEFAULT_ANIMATION_DURATION = 300;
+
+exports.DEFAULT_ANIMATION_DURATION = DEFAULT_ANIMATION_DURATION;
 exports.NavigationFailure = NavigationFailure;
 exports.ROUTER_SYMBOL = ROUTER_SYMBOL;
 exports.RouterError = RouterError;

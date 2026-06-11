@@ -2,7 +2,7 @@ import '@meng-xi/uni-router'
 
 declare module '@meng-xi/uni-router' {
   interface RouteNameMap {
-    /** uni-app */
+    /** 首页 */
     pagesIndexIndex: { path: '/pages/index/index'; meta: { title: string } }
     /** 路由守卫 */
     pagesGuardsIndex: { path: '/pages/guards/index'; meta: { title: string } }

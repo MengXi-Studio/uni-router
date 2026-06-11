@@ -20,6 +20,34 @@ type NavigationGuard = (to: RouteLocation, from: RouteLocation, next: Navigation
 type PostNavigationGuard = (to: RouteLocation, from: RouteLocation) => void;
 
 /**
+ * 导航动画类型
+ *
+ * 用于 uni.navigateTo / uni.navigateBack 的 animationType 参数，
+ * 仅 App 端生效，其他平台自动忽略。
+ *
+ * 显示动画（navigateTo）：slide-in-right / slide-in-left / slide-in-top / slide-in-bottom / pop-in / fade-in / zoom-out / zoom-fade-out / none / auto
+ * 关闭动画（navigateBack）：slide-out-right / slide-out-left / slide-out-top / slide-out-bottom / pop-out / fade-out / zoom-in / zoom-fade-in / none / auto
+ *
+ * @see https://en.uniapp.dcloud.io/api/router.html#animation
+ */
+type UniAnimationType = 'auto' | 'none' | 'slide-in-right' | 'slide-in-left' | 'slide-in-top' | 'slide-in-bottom' | 'slide-out-right' | 'slide-out-left' | 'slide-out-top' | 'slide-out-bottom' | 'fade-in' | 'fade-out' | 'zoom-out' | 'zoom-in' | 'zoom-fade-out' | 'zoom-fade-in' | 'pop-in' | 'pop-out';
+/**
+ * 动画持续时间默认值（ms），与 uni-app 官方默认值一致
+ */
+declare const DEFAULT_ANIMATION_DURATION = 300;
+/**
+ * 导航动画配置
+ *
+ * 仅 App 端生效，其他平台自动忽略。
+ * 优先级：push/replace 调用时传入 > meta.animation > uni 默认值
+ */
+interface NavigationAnimation {
+    /** 窗口动画类型 */
+    type: UniAnimationType;
+    /** 动画持续时间（ms），默认 300 */
+    duration?: number;
+}
+/**
  * 路由名称映射表
  *
  * 用于为路由名称和路径提供 TypeScript 类型提示。
@@ -57,6 +85,8 @@ interface RouteMeta {
     isTab?: boolean;
     /** 是否需要登录认证 */
     requireAuth?: boolean;
+    /** 默认导航动画（仅 App 端生效），可被 push/replace 时的 animation 参数覆盖 */
+    animation?: NavigationAnimation;
     /** 自定义扩展字段 */
     [key: string]: unknown;
 }
@@ -106,6 +136,8 @@ interface RouteLocationPathRaw {
     path: RoutePath;
     /** 查询参数 */
     query?: Record<string, string>;
+    /** 导航动画（仅 App 端生效），覆盖 meta.animation */
+    animation?: NavigationAnimation;
 }
 /**
  * 基于名称的原始路由位置
@@ -115,6 +147,8 @@ interface RouteLocationNamedRaw {
     name: RouteName;
     /** 查询参数 */
     query?: Record<string, string>;
+    /** 导航动画（仅 App 端生效），覆盖 meta.animation */
+    animation?: NavigationAnimation;
 }
 /**
  * 原始路由位置，支持路径字符串、路径对象或命名对象
@@ -212,9 +246,10 @@ interface Router {
      * 注意：物理返回键和浏览器后退不经过路由器，无法被守卫拦截。
      *
      * @param delta - 返回的页面数，默认为 1
+     * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
      * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
      */
-    back(delta?: number): Promise<void>;
+    back(delta?: number, animation?: NavigationAnimation): Promise<void>;
     /**
      * 注册全局前置守卫，在每次导航前执行
      * @param guard - 前置守卫函数
@@ -394,4 +429,4 @@ declare class NavigationFailure extends RouterError {
     constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: unknown);
 }
 
-export { NavigationFailure, type NavigationGuard, type NavigationGuardNext, type PostNavigationGuard, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, createRouter, useRoute, useRouter };
+export { DEFAULT_ANIMATION_DURATION, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type PostNavigationGuard, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, createRouter, useRoute, useRouter };

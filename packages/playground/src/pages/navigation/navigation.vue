@@ -35,6 +35,14 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">导航动画（仅 App 端生效）</view>
+			<view class="info-text">通过 animation 参数控制页面切换动画，优先级：调用时传入 > meta.animation > uni 默认值</view>
+			<view class="btn" @click="pushWithAnimation">push - 底部滑入动画</view>
+			<view class="btn btn-success" @click="backWithAnimation">back - 左侧滑出动画</view>
+			<view class="code-block"> router.push({ path: '/pages/detail/detail', animation: { type: 'slide-in-bottom' } })\nrouter.back(1, { type: 'slide-out-left', duration: 500 }) </view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">RouterLink 组件</view>
 			<view class="info-text">使用 RouterLink 组件进行声明式导航，支持 @error 事件捕获导航失败。</view>
 			<RouterLink to="/pages/detail/detail" custom>
@@ -98,6 +106,14 @@ function goBackWithError() {
 
 function goTabBar() {
 	router.push({ name: 'pagesAboutAbout' })
+}
+
+function pushWithAnimation() {
+	router.push({ path: '/pages/detail/detail', query: { id: 'anim' }, animation: { type: 'slide-in-bottom' } })
+}
+
+function backWithAnimation() {
+	router.back(1, { type: 'slide-out-left', duration: 500 })
 }
 
 function onRouterLinkError(error: NavigationFailure) {
