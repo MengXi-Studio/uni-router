@@ -19,6 +19,7 @@ Uni Router references vue-router's API design, but there are important differenc
 | ------------------------ | --------------------------- | ----------------------------------- |
 | `router.push()`          | ✅ `router.push()`          | Auto-selects navigateTo / switchTab |
 | `router.replace()`       | ✅ `router.replace()`       | Auto-selects redirectTo / switchTab |
+| `router.relaunch()`      | ✅ `router.relaunch()`      | Auto-selects reLaunch / switchTab   |
 | `router.back()`          | ✅ `router.back(delta?)`    | Supports delta parameter            |
 | `router.beforeEach()`    | ✅ `router.beforeEach()`    | Same behavior                       |
 | `router.beforeResolve()` | ✅ `router.beforeResolve()` | Same behavior                       |
@@ -72,6 +73,7 @@ vue-router manipulates the browser History stack. Uni Router manipulates the uni
 
 - `push()` → Page pushed onto stack
 - `replace()` → Replace top of stack
+- `relaunch()` → Clear page stack and open target page
 - `back()` → Page popped from stack
 
 ### replace to TabBar Page

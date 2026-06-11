@@ -1,6 +1,6 @@
 # Navigation
 
-Uni Router provides three navigation methods, corresponding to uni-app's native navigation APIs.
+Uni Router provides four navigation methods, corresponding to uni-app's native navigation APIs.
 
 ## push()
 
@@ -60,6 +60,34 @@ router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
 ::: warning
 When replacing to a TabBar page, `uni.switchTab` closes all non-tab pages instead of just replacing
 the current page. This behavior is determined by the uni-app framework.
+:::
+
+## relaunch()
+
+Close all pages and open the target page. Automatically selects the uni API based on the target page's `meta.isTab`:
+
+- Regular page → `uni.reLaunch`
+- TabBar page → `uni.switchTab`
+
+Commonly used for scenarios like redirecting to the login page after logout, returning to the home page from a deep page, or resetting the entire page stack.
+
+```ts
+router.relaunch('pages/index/index')
+router.relaunch({ name: 'home' })
+router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' } })
+```
+
+::: info
+`relaunch()` does not perform duplicate navigation detection. In stack-clearing scenarios, the target page may be the current page (e.g., "return to home"), so it should not be rejected.
+:::
+
+::: warning
+`uni.reLaunch` does not support animation parameters. If an animation parameter is provided, a warning is output and it is ignored:
+
+```ts
+router.relaunch({ path: 'pages/index/index', animation: { type: 'fade-in' } })
+// ⚠️ Warning: uni.reLaunch does not support animation parameters. The animation option will be ignored.
+```
 :::
 
 ## back()
@@ -211,3 +239,7 @@ Route guards are executed in sequence during navigation. See [Route Guards](./gu
 6. Call uni navigation API
 7. Update route state
 8. Execute global afterEach hooks
+
+::: info
+`relaunch()` also goes through the full guard chain, but skips step 2 (duplicate navigation detection).
+:::

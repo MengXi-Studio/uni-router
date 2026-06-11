@@ -1,6 +1,6 @@
 # 路由导航
 
-Uni Router 提供三种导航方式，分别对应 uni-app 的原生导航 API。
+Uni Router 提供四种导航方式，分别对应 uni-app 的原生导航 API。
 
 ## push()
 
@@ -59,6 +59,34 @@ router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
 
 ::: warning
 替换到 TabBar 页面时，`uni.switchTab` 会关闭所有非 Tab 页面，而非仅替换当前页面。此行为由 uni-app 框架决定。
+:::
+
+## relaunch()
+
+关闭所有页面并打开目标页面。根据目标页面的 `meta.isTab` 自动选择 uni API：
+
+- 普通页面 → `uni.reLaunch`
+- TabBar 页面 → `uni.switchTab`
+
+常用于退出登录后跳转登录页、从深层页面返回首页、重置整个页面栈等场景。
+
+```ts
+router.relaunch('pages/index/index')
+router.relaunch({ name: 'home' })
+router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' } })
+```
+
+::: info
+`relaunch()` 不进行重复导航检测。因为清栈场景下目标页面可能就是当前页面（如"返回首页"），不应拒绝。
+:::
+
+::: warning
+`uni.reLaunch` 不支持动画参数。如果传入了 animation 参数，会输出警告并忽略：
+
+```ts
+router.relaunch({ path: 'pages/index/index', animation: { type: 'fade-in' } })
+// ⚠️ 警告：uni.reLaunch does not support animation parameters. The animation option will be ignored.
+```
 :::
 
 ## back()
@@ -210,3 +238,7 @@ interface NavigationAnimation {
 6. 调用 uni 导航 API
 7. 更新路由状态
 8. 执行全局后置钩子 `afterEach`
+
+::: info
+`relaunch()` 同样走完整的守卫链，但跳过步骤 2（重复导航检测）。
+:::

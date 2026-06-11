@@ -15,7 +15,7 @@
 
 ## 特性
 
-- **vue-router 风格 API** - 熟悉的 `push` / `replace` / `back` 导航方式，零学习成本
+- **vue-router 风格 API** - 熟悉的 `push` / `replace` / `relaunch` / `back` 导航方式，零学习成本
 - **路由守卫** - 全局前置守卫 `beforeEach`、解析守卫 `beforeResolve`、后置钩子 `afterEach`、路由独享守卫 `beforeEnter`
 - **命名路由** - 通过 `name` 进行导航，无需硬编码路径字符串
 - **路由元信息** - `meta` 字段支持页面标题、权限标记、TabBar 标识等自定义数据
@@ -119,6 +119,10 @@ await router.push({ name: 'about' })
 await router.back()
 await router.back(2) // 返回两级
 await router.back(1, { type: 'slide-out-left' }) // 返回并指定动画
+
+// 关闭所有页面并打开目标页面（对应 uni.reLaunch）
+await router.relaunch('/pages/index/index')
+await router.relaunch({ name: 'login', query: { redirect: '/about' } })
 ```
 
 ### 4. 导航动画
@@ -204,6 +208,7 @@ function onNavError(error) {
 | --------------------------------- | ---------------------------------- |
 | `router.push(location)`           | 导航到新页面                       |
 | `router.replace(location)`        | 替换当前页面                       |
+| `router.relaunch(location)`       | 关闭所有页面并打开目标页面         |
 | `router.back(delta?, animation?)` | 返回上一页或多级页面（执行守卫链） |
 | `router.beforeEach(guard)`        | 注册全局前置守卫                   |
 | `router.beforeResolve(guard)`     | 注册全局解析守卫                   |
@@ -244,13 +249,13 @@ router.push({ path: '/invalid/path' }) // ❌ 类型错误
 
 Uni Router **不替代** `pages.json`，而是与之配合使用：
 
-| 职责       | pages.json        | Uni Router            |
-| ---------- | ----------------- | --------------------- |
-| 页面注册   | 必须声明          | 不负责                |
-| 路由导航   | uni.navigateTo 等 | push / replace / back |
-| 路由守卫   | 不支持            | beforeEach 等         |
-| 路由元信息 | 不支持            | meta 字段             |
-| 命名路由   | 不支持            | name 字段             |
+| 职责       | pages.json        | Uni Router                       |
+| ---------- | ----------------- | -------------------------------- |
+| 页面注册   | 必须声明          | 不负责                           |
+| 路由导航   | uni.navigateTo 等 | push / replace / relaunch / back |
+| 路由守卫   | 不支持            | beforeEach 等                    |
+| 路由元信息 | 不支持            | meta 字段                        |
+| 命名路由   | 不支持            | name 字段                        |
 
 ## License
 

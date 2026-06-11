@@ -29,6 +29,17 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">router.relaunch() - 关闭所有页面并打开目标页面</view>
+			<view class="info-text">对应 uni.reLaunch，关闭所有页面后打开目标页面，常用于退出登录、返回首页等场景。TabBar 页面自动切换为 switchTab。</view>
+			<view class="btn" @click="relaunchByPath">relaunch - 路径字符串</view>
+			<view class="btn btn-warn" @click="relaunchByObj">relaunch - 路径对象（带参数）</view>
+			<view class="btn btn-success" @click="relaunchTabBar">relaunch - TabBar 页面</view>
+			<view class="code-block">
+				router.relaunch('/pages/index/index')\nrouter.relaunch({ path: '/pages/detail/detail', query: { from: 'relaunch' } })\nrouter.relaunch({ name: 'pagesAboutAbout' }) // 自动 switchTab
+			</view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">TabBar 页面导航</view>
 			<view class="info-text">TabBar 页面使用 push/replace 均会自动调用 switchTab</view>
 			<view class="btn btn-success" @click="goTabBar">跳转到关于页 (TabBar)</view>
@@ -106,6 +117,18 @@ function goBackWithError() {
 
 function goTabBar() {
 	router.push({ name: 'pagesAboutAbout' })
+}
+
+function relaunchByPath() {
+	router.relaunch('/pages/index/index')
+}
+
+function relaunchByObj() {
+	router.relaunch({ path: '/pages/detail/detail', query: { id: 'relaunch', from: 'relaunch' } })
+}
+
+function relaunchTabBar() {
+	router.relaunch({ name: 'pagesAboutAbout' })
 }
 
 function pushWithAnimation() {

@@ -15,7 +15,7 @@
 
 ## Features
 
-- **vue-router-style API** - Familiar `push` / `replace` / `back` navigation, zero learning curve
+- **vue-router-style API** - Familiar `push` / `replace` / `relaunch` / `back` navigation, zero learning curve
 - **Route Guards** - Global `beforeEach`, `beforeResolve`, `afterEach`, and per-route `beforeEnter`
 - **Named Routes** - Navigate by `name` instead of hardcoded path strings
 - **Route Meta** - `meta` field for page titles, auth flags, TabBar indicators, and custom data
@@ -119,6 +119,10 @@ await router.push({ name: 'about' })
 await router.back()
 await router.back(2) // Go back two levels
 await router.back(1, { type: 'slide-out-left' }) // Go back with animation
+
+// Close all pages and open target page (corresponds to uni.reLaunch)
+await router.relaunch('/pages/index/index')
+await router.relaunch({ name: 'login', query: { redirect: '/about' } })
 ```
 
 ### 4. Navigation Animation
@@ -204,6 +208,7 @@ function onNavError(error) {
 | --------------------------------- | -------------------------------------------- |
 | `router.push(location)`           | Navigate to a new page                       |
 | `router.replace(location)`        | Replace the current page                     |
+| `router.relaunch(location)`       | Close all pages and open target page         |
 | `router.back(delta?, animation?)` | Go back one or more pages (with guard chain) |
 | `router.beforeEach(guard)`        | Register global before guard                 |
 | `router.beforeResolve(guard)`     | Register global resolve guard                |
@@ -244,13 +249,13 @@ router.push({ path: '/invalid/path' }) // ❌ Type error
 
 Uni Router does **not replace** `pages.json`, but works alongside it:
 
-| Responsibility    | pages.json          | Uni Router            |
-| ----------------- | ------------------- | --------------------- |
-| Page registration | Required            | Not responsible       |
-| Route navigation  | uni.navigateTo etc. | push / replace / back |
-| Route guards      | Not supported       | beforeEach etc.       |
-| Route meta        | Not supported       | meta field            |
-| Named routes      | Not supported       | name field            |
+| Responsibility    | pages.json          | Uni Router                       |
+| ----------------- | ------------------- | -------------------------------- |
+| Page registration | Required            | Not responsible                  |
+| Route navigation  | uni.navigateTo etc. | push / replace / relaunch / back |
+| Route guards      | Not supported       | beforeEach etc.                  |
+| Route meta        | Not supported       | meta field                       |
+| Named routes      | Not supported       | name field                       |
 
 ## License
 

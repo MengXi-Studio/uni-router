@@ -216,7 +216,7 @@ function normalizePath(path) {
 }
 
 // src/interceptor/index.ts
-var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "navigateBack"];
+var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
 var InterceptorManager = class {
   constructor() {
     /** 路由器内部发起的 uni API 调用计数器，用于区分路由器调用和外部调用 */
@@ -307,6 +307,13 @@ function handleInterceptedNavigation(api, args) {
       const { path } = parseUniUrl(args.url || "");
       if (path) {
         router.push(path);
+      }
+      break;
+    }
+    case "reLaunch": {
+      const { path, query } = parseUniUrl(args.url || "");
+      if (path) {
+        router.relaunch(buildLocation(path, query));
       }
       break;
     }
@@ -412,6 +419,13 @@ function uniNavigateBack(delta = 1, animation) {
     });
   });
 }
+function uniReLaunch(path, query) {
+  const url = buildFullPath(path, query ?? {});
+  return promisifyUniApi("reLaunch", (resolve, reject) => {
+    markRouterCall();
+    uni.reLaunch({ url, success: resolve, fail: reject });
+  });
+}
 function hasQueryParams(query) {
   return !!query && Object.keys(query).length > 0;
 }
@@ -449,6 +463,23 @@ function replaceTo(options) {
 }
 function goBack(delta = 1, animation) {
   return uniNavigateBack(delta, animation);
+}
+function relaunchTo(options) {
+  const { path, meta, query, animation } = options;
+  const effectiveAnimation = animation ?? meta.animation;
+  if (meta.isTab) {
+    if (hasQueryParams(query)) {
+      warn("uni.switchTab does not support query parameters. They will be ignored.");
+    }
+    if (effectiveAnimation) {
+      warn("uni.switchTab does not support animation parameters. The animation option will be ignored.");
+    }
+    return uniSwitchTab(path);
+  }
+  if (effectiveAnimation) {
+    warn("uni.reLaunch does not support animation parameters. The animation option will be ignored.");
+  }
+  return uniReLaunch(path, query);
 }
 function isUniApiError(error) {
   return error instanceof UniApiError;
@@ -703,6 +734,20 @@ var UniRouter = class {
    */
   replace(location) {
     return this.performNavigation(location, "replace");
+  }
+  /**
+   * 关闭所有页面并打开目标页面
+   *
+   * 对应 uni.reLaunch（普通页面）或 uni.switchTab（TabBar 页面）。
+   * 常用于退出登录后跳转登录页、从深层页面返回首页、重置整个页面栈等场景。
+   * reLaunch 不支持动画参数，传入时将输出警告。
+   *
+   * @param location - 目标路由位置
+   * @returns 解析后的目标路由位置
+   * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
+   */
+  relaunch(location) {
+    return this.performNavigation(location, "relaunch");
   }
   /**
    * 返回上一页或多级页面
@@ -967,8 +1012,10 @@ var UniRouter = class {
       };
       if (mode === "push") {
         await navigateTo(navOptions);
-      } else {
+      } else if (mode === "replace") {
         await replaceTo(navOptions);
+      } else {
+        await relaunchTo(navOptions);
       }
       this.routeState.setCurrentRoute(to);
       this.guardManager.runAfterGuards(to, from);

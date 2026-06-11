@@ -52,6 +52,25 @@ await router.replace('pages/login/login')
 await router.replace({ name: 'login' })
 ```
 
+### relaunch()
+
+Close all pages and open the target page.
+
+```ts
+relaunch(location: RouteLocationRaw): Promise<RouteLocation>
+```
+
+- Regular page → `uni.reLaunch`
+- TabBar page → `uni.switchTab`
+- No duplicate navigation detection (the target page may be the current page in stack-clearing scenarios)
+- `uni.reLaunch` does not support animation parameters; a warning is output when provided
+
+```ts
+await router.relaunch('pages/index/index')
+await router.relaunch({ name: 'home' })
+await router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' } })
+```
+
 ### back()
 
 Go back to the previous page or multiple pages, executing the full navigation guard chain.

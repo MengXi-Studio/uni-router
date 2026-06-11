@@ -52,6 +52,25 @@ await router.replace('pages/login/login')
 await router.replace({ name: 'login' })
 ```
 
+### relaunch()
+
+关闭所有页面并打开目标页面。
+
+```ts
+relaunch(location: RouteLocationRaw): Promise<RouteLocation>
+```
+
+- 普通页面 → `uni.reLaunch`
+- TabBar 页面 → `uni.switchTab`
+- 不进行重复导航检测（清栈场景下目标页面可能就是当前页面）
+- `uni.reLaunch` 不支持动画参数，传入时将输出警告
+
+```ts
+await router.relaunch('pages/index/index')
+await router.relaunch({ name: 'home' })
+await router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' } })
+```
+
 ### back()
 
 返回上一页或多级页面，执行完整的导航守卫链。
