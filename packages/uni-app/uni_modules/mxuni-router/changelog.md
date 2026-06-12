@@ -1,3 +1,15 @@
+## 1.3.0（2026-06-12）
+
+### 新增
+
+- **relaunch 导航方式** - `router.relaunch(location)` 关闭所有页面并打开目标页面，对应 `uni.reLaunch`
+  - TabBar 页面自动切换为 `uni.switchTab`
+  - `uni.reLaunch` 不支持动画参数，传入时输出警告
+  - 不进行重复导航检测（清栈场景下目标页面可能就是当前页面）
+  - 走完整守卫链（beforeEach → beforeEnter → beforeResolve → afterEach）
+- **RouterLink `relaunch` prop** - 声明式导航支持 relaunch 模式，优先级高于 `replace`
+- **uni API 拦截器新增 `reLaunch`** - 拦截 `uni.reLaunch` 调用，转发到 `router.relaunch()`
+
 ## 1.2.0（2026-06-11）
 
 ### 新增

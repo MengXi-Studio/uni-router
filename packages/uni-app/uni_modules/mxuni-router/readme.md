@@ -11,7 +11,7 @@
 
 ## 特性
 
-- **vue-router 风格 API** - 熟悉的 `push` / `replace` / `back` 导航方式，零学习成本
+- **vue-router 风格 API** - 熟悉的 `push` / `replace` / `relaunch` / `back` 导航方式，零学习成本
 - **路由守卫** - 全局前置守卫 `beforeEach`、解析守卫 `beforeResolve`、后置钩子 `afterEach`、路由独享守卫 `beforeEnter`
 - **守卫超时保护** - 守卫未调用 `next()` 时自动中止导航，超时时间可配置（`guardTimeout`）
 - **命名路由** - 通过 `name` 进行导航，无需硬编码路径字符串
@@ -20,7 +20,7 @@
 - **uni API 拦截** - 拦截 `uni.navigateTo` 等原生导航 API，确保守卫始终生效（`interceptUniApi`）
 - **路由状态同步** - `syncRoute()` 将路由状态与实际页面栈同步，处理物理返回键等非路由器导航
 - **路由变化监听** - `onRouteChange()` 订阅路由状态变化，包括导航完成和状态同步
-- **RouterLink 组件** - 声明式导航组件，支持 `push` / `replace` 模式和 `@error` 事件
+- **RouterLink 组件** - 声明式导航组件，支持 `push` / `replace` / `relaunch` 模式和 `@error` 事件
 - **TypeScript 类型提示** - 通过模块增强为路由名称和路径提供自动补全和类型检查
 - **错误处理** - 完整的 `RouterError` / `NavigationFailure` 体系，支持 `onError` 全局捕获
 - **组合式 API** - `useRouter()` / `useRoute()` 在组件中便捷访问路由器
@@ -104,6 +104,10 @@ await router.push({ name: 'about' })
 await router.back()
 await router.back(2) // 返回两级
 await router.back(1, { type: 'slide-out-left' }) // 返回并指定动画
+
+// 关闭所有页面并打开目标页面（对应 uni.reLaunch）
+await router.relaunch('/pages/index/index')
+await router.relaunch({ name: 'login', query: { redirect: '/about' } })
 ```
 
 ### 3. 路由守卫
@@ -175,21 +179,22 @@ const router = createRouter({ routes })
 
 ### Router 实例方法
 
-| 方法                              | 说明                     |
-| --------------------------------- | ------------------------ |
-| `router.push(location)`           | 导航到新页面             |
-| `router.replace(location)`        | 替换当前页面             |
-| `router.back(delta?, animation?)` | 返回上一页或多级页面     |
-| `router.beforeEach(guard)`        | 注册全局前置守卫         |
-| `router.beforeResolve(guard)`     | 注册全局解析守卫         |
-| `router.afterEach(guard)`         | 注册全局后置钩子         |
-| `router.onError(handler)`         | 注册错误处理回调         |
-| `router.resolve(location)`        | 解析路由位置（不导航）   |
-| `router.getRoutes()`              | 获取所有路由配置         |
-| `router.hasRoute(name)`           | 检查路由是否存在         |
-| `router.isReady()`                | 等待路由器初始化完成     |
-| `router.onRouteChange(listener)`  | 注册路由变化监听器       |
-| `router.syncRoute()`              | 同步路由状态与实际页面栈 |
+| 方法                              | 说明                       |
+| --------------------------------- | -------------------------- |
+| `router.push(location)`           | 导航到新页面               |
+| `router.replace(location)`        | 替换当前页面               |
+| `router.relaunch(location)`       | 关闭所有页面并打开目标页面 |
+| `router.back(delta?, animation?)` | 返回上一页或多级页面       |
+| `router.beforeEach(guard)`        | 注册全局前置守卫           |
+| `router.beforeResolve(guard)`     | 注册全局解析守卫           |
+| `router.afterEach(guard)`         | 注册全局后置钩子           |
+| `router.onError(handler)`         | 注册错误处理回调           |
+| `router.resolve(location)`        | 解析路由位置（不导航）     |
+| `router.getRoutes()`              | 获取所有路由配置           |
+| `router.hasRoute(name)`           | 检查路由是否存在           |
+| `router.isReady()`                | 等待路由器初始化完成       |
+| `router.onRouteChange(listener)`  | 注册路由变化监听器         |
+| `router.syncRoute()`              | 同步路由状态与实际页面栈   |
 
 ### 错误码
 
@@ -226,21 +231,27 @@ const router = createRouter({ routes })
 	<view>替换当前页</view>
 </mxuni-router>
 
+<!-- relaunch 模式 -->
+<mxuni-router to="/pages/index/index" relaunch>
+	<view>返回首页</view>
+</mxuni-router>
+
 <!-- 捕获导航失败 -->
 <mxuni-router to="/pages/about/about" @error="onNavError">
 	<view>跳转</view>
 </mxuni-router>
 ```
 
-| 属性                   | 类型                  | 默认值              | 说明                                           |
-| ---------------------- | --------------------- | ------------------- | ---------------------------------------------- |
-| `to`                   | `RouteLocationRaw`    | -                   | 目标路由位置                                   |
-| `replace`              | `boolean`             | `false`             | 是否使用替换模式导航                           |
-| `animation`            | `NavigationAnimation` | `undefined`         | 导航动画（仅 App 端生效），覆盖 meta.animation |
-| `hoverClass`           | `string`              | `'navigator-hover'` | 按下时的样式类                                 |
-| `hoverStopPropagation` | `boolean`             | `false`             | 是否阻止祖先节点的点击态                       |
-| `hoverStartTime`       | `number`              | `50`                | 按住后多久出现点击态（ms）                     |
-| `hoverStayTime`        | `number`              | `600`               | 手指松开后点击态保留时间（ms）                 |
+| 属性                   | 类型                  | 默认值              | 说明                                                                         |
+| ---------------------- | --------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `to`                   | `RouteLocationRaw`    | -                   | 目标路由位置                                                                 |
+| `replace`              | `boolean`             | `false`             | 是否使用替换模式导航                                                         |
+| `relaunch`             | `boolean`             | `false`             | 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面），优先级高于 replace |
+| `animation`            | `NavigationAnimation` | `undefined`         | 导航动画（仅 App 端生效），覆盖 meta.animation                               |
+| `hoverClass`           | `string`              | `'navigator-hover'` | 按下时的样式类                                                               |
+| `hoverStopPropagation` | `boolean`             | `false`             | 是否阻止祖先节点的点击态                                                     |
+| `hoverStartTime`       | `number`              | `50`                | 按住后多久出现点击态（ms）                                                   |
+| `hoverStayTime`        | `number`              | `600`               | 手指松开后点击态保留时间（ms）                                               |
 
 | 事件    | 参数                | 说明           |
 | ------- | ------------------- | -------------- |
@@ -264,13 +275,13 @@ router.push({ path: '/invalid/path' }) // ❌ 类型错误
 
 Uni Router **不替代** `pages.json`，而是与之配合使用：
 
-| 职责       | pages.json        | Uni Router            |
-| ---------- | ----------------- | --------------------- |
-| 页面注册   | 必须声明          | 不负责                |
-| 路由导航   | uni.navigateTo 等 | push / replace / back |
-| 路由守卫   | 不支持            | beforeEach 等         |
-| 路由元信息 | 不支持            | meta 字段             |
-| 命名路由   | 不支持            | name 字段             |
+| 职责       | pages.json        | Uni Router                       |
+| ---------- | ----------------- | -------------------------------- |
+| 页面注册   | 必须声明          | 不负责                           |
+| 路由导航   | uni.navigateTo 等 | push / replace / relaunch / back |
+| 路由守卫   | 不支持            | beforeEach 等                    |
+| 路由元信息 | 不支持            | meta 字段                        |
+| 命名路由   | 不支持            | name 字段                        |
 
 ## License
 

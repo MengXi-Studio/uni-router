@@ -9,7 +9,7 @@
 		<!-- 路由导航 -->
 		<view class="card">
 			<text class="card-title">路由导航</text>
-			<text class="hint">使用 router.push / replace / back 进行导航</text>
+			<text class="hint">使用 router.push / replace / relaunch / back 进行导航</text>
 			<view class="btn" @click="pushByPath">
 				<text class="btn-text">push (路径)</text>
 			</view>
@@ -21,6 +21,9 @@
 			</view>
 			<view class="btn btn-secondary" @click="replacePage">
 				<text class="btn-text-secondary">replace 替换当前页</text>
+			</view>
+			<view class="btn btn-secondary" @click="relaunchPage">
+				<text class="btn-text-secondary">relaunch 关闭所有页面并跳转</text>
 			</view>
 		</view>
 
@@ -36,6 +39,11 @@
 			<mxuni-router to="/pages/guards/index" replace>
 				<view class="btn btn-secondary">
 					<text class="btn-text-secondary">RouterLink - replace 模式</text>
+				</view>
+			</mxuni-router>
+			<mxuni-router to="/pages/index/index" relaunch>
+				<view class="btn btn-secondary">
+					<text class="btn-text-secondary">RouterLink - relaunch 模式</text>
 				</view>
 			</mxuni-router>
 		</view>
@@ -202,6 +210,13 @@ export default {
 		async replacePage() {
 			try {
 				await router.replace('/pages/about/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		async relaunchPage() {
+			try {
+				await router.relaunch('/pages/about/index')
 			} catch (e) {
 				this.lastError = e.message || String(e)
 			}
