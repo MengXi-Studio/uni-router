@@ -22,26 +22,20 @@ hero:
 features:
   - icon: 🧭
     title: 路由导航
-    details: 支持 push / replace / back 等导航方式，自动识别 TabBar 页面并选择对应的 uni API
+    details: push / replace / relaunch / back，自动识别 TabBar 页面，声明式 RouterLink 组件
   - icon: 🛡️
     title: 路由守卫
-    details: 提供全局前置守卫、解析守卫、后置钩子及路由独享守卫，支持权限控制和重定向
-  - icon: 🔒
-    title: API 拦截
-    details: interceptUniApi 拦截原生 uni 导航 API，确保路由守卫始终生效，防止绕过守卫直接跳转
+    details: 全局前置/解析/后置守卫及路由独享守卫，可拦截原生 API 确保守卫生效
+  - icon: 📡
+    title: 页面间通信
+    details: push 支持 events 参数和 eventChannel 返回值，实现页面间双向通信
+  - icon: 🎬
+    title: 导航动画
+    details: 支持导航时传入动画参数和路由级 meta.animation 默认动画，仅 App 端生效
   - icon: 📋
     title: 路由元信息
-    details: 完整支持 title、isTab、requireAuth 及自定义扩展字段，灵活管理页面属性
-  - icon: 🔗
-    title: 路由链接
-    details: 提供 RouterLink 组件，支持声明式导航，兼容路径字符串、路径对象和命名对象
-  - icon: 🌐
-    title: 多端兼容
-    details: 基于 uni-app 原生 API 实现，兼容 iOS、Android、H5、微信小程序、支付宝小程序等全平台
+    details: 支持 title、isTab、requireAuth 及自定义扩展字段，灵活管理页面属性
   - icon: 💪
     title: TypeScript 优先
-    details: 完整的类型定义，提供良好的 IDE 智能提示和类型安全
-  - icon: 🪝
-    title: 组合式 API
-    details: 提供 useRouter() 和 useRoute() 组合式函数，与 Vue 3 Composition API 无缝集成
+    details: 完整类型定义与组合式 API，useRouter() / useRoute() 与 Vue 3 无缝集成
 ---

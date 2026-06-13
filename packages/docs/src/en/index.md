@@ -22,26 +22,20 @@ hero:
 features:
   - icon: 🧭
     title: Route Navigation
-    details: Support push / replace / back navigation methods, automatically detect TabBar pages and choose the corresponding uni API
+    details: push / replace / relaunch / back, auto-detect TabBar pages, declarative RouterLink component
   - icon: 🛡️
     title: Route Guards
-    details: Provide global beforeEach, beforeResolve, afterEach guards and per-route beforeEnter guards with redirect support
-  - icon: 🔒
-    title: API Interception
-    details: interceptUniApi intercepts native uni navigation APIs, ensuring route guards always take effect and preventing bypass
+    details: Global beforeEach / beforeResolve / afterEach and per-route beforeEnter guards, with native API interception
+  - icon: 📡
+    title: Page Communication
+    details: push supports events param and eventChannel return value for bidirectional page communication
+  - icon: 🎬
+    title: Navigation Animation
+    details: Support inline animation params and route-level meta.animation defaults. App only, other platforms auto-ignore
   - icon: 📋
     title: Route Meta
-    details: Full support for title, isTab, requireAuth and custom extension fields, flexibly manage page properties
-  - icon: 🔗
-    title: Router Link
-    details: RouterLink component for declarative navigation, supporting path strings, path objects, and named objects
-  - icon: 🌐
-    title: Multi-Platform
-    details: Built on uni-app native APIs, compatible with iOS, Android, H5, WeChat Mini Program, Alipay Mini Program and more
+    details: Support title, isTab, requireAuth and custom extension fields for flexible page property management
   - icon: 💪
     title: TypeScript First
-    details: Complete type definitions with excellent IDE intellisense and type safety
-  - icon: 🪝
-    title: Composables
-    details: useRouter() and useRoute() composable functions seamlessly integrate with Vue 3 Composition API
+    details: Complete type definitions and composables, useRouter() / useRoute() seamlessly integrate with Vue 3
 ---

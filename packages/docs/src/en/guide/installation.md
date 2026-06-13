@@ -28,6 +28,8 @@ yarn add @meng-xi/uni-router
 
 :::
 
+You can also install via the [uni-app Plugin Market](https://ext.dcloud.net.cn/plugin?id=28271).
+
 ## Peer Dependencies
 
 `@meng-xi/uni-router` declares `vue` as an optional peer dependency. If your project already has Vue 3 installed, no additional steps are needed. If not, ensure Vue 3 is in your project:

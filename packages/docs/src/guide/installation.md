@@ -28,6 +28,8 @@ yarn add @meng-xi/uni-router
 
 :::
 
+也可以通过 [uni-app 插件市场](https://ext.dcloud.net.cn/plugin?id=28271) 安装。
+
 ## 对等依赖
 
 `@meng-xi/uni-router` 将 `vue` 声明为可选的对等依赖。如果你的项目已经安装了 Vue 3，则无需额外操作。如果未安装，需要确保项目中有 Vue 3：

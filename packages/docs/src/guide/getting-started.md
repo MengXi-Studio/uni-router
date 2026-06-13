@@ -51,7 +51,9 @@ const routes: RouteConfig[] = [
 
 const router = createRouter({
 	routes,
-	strict: true
+	strict: true,
+	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫生效
+	guardTimeout: 15000 // 守卫超时时间（毫秒），默认 10000
 })
 
 export default router
@@ -97,6 +99,9 @@ export default {
 		},
 		goBack() {
 			this.$router.back()
+		},
+		goHome() {
+			this.$router.relaunch({ name: 'home' })
 		}
 	}
 }
@@ -153,6 +158,6 @@ router.afterEach((to, from) => {
 ## 下一步
 
 - [路由配置](./route-config) — 了解如何配置路由和元信息
-- [路由导航](./navigation) — 了解 push / replace / back 的详细用法
+- [路由导航](./navigation) — 了解 push / replace / relaunch / back 的详细用法
 - [路由守卫](./guards) — 了解完整的守卫机制
 - [组合式 API](./composables) — 了解 useRouter 和 useRoute 的用法

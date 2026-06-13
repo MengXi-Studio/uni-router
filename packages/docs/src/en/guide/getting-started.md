@@ -51,7 +51,9 @@ const routes: RouteConfig[] = [
 
 const router = createRouter({
 	routes,
-	strict: true
+	strict: true,
+	interceptUniApi: true, // Intercept native uni navigation APIs to ensure guards work
+	guardTimeout: 15000 // Guard timeout in ms, default 10000
 })
 
 export default router
@@ -97,6 +99,9 @@ export default {
 		},
 		goBack() {
 			this.$router.back()
+		},
+		goHome() {
+			this.$router.relaunch({ name: 'home' })
 		}
 	}
 }
@@ -153,6 +158,6 @@ router.afterEach((to, from) => {
 ## Next Steps
 
 - [Route Configuration](./route-config) — Learn how to configure routes and meta
-- [Navigation](./navigation) — Learn about push / replace / back in detail
+- [Navigation](./navigation) — Learn about push / replace / relaunch / back in detail
 - [Route Guards](./guards) — Learn the complete guard mechanism
 - [Composables](./composables) — Learn about useRouter and useRoute
