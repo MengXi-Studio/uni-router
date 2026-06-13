@@ -73,6 +73,7 @@ interface RouteLocationPathRaw {
 	path: string
 	query?: Record<string, string>
 	animation?: NavigationAnimation
+	events?: EventListeners
 }
 ```
 
@@ -85,7 +86,48 @@ interface RouteLocationNamedRaw {
 	name: string
 	query?: Record<string, string>
 	animation?: NavigationAnimation
+	events?: EventListeners
 }
+```
+
+### NavigationResult
+
+The return type of `push()`, extends `RouteLocation` with an additional `eventChannel` for page communication:
+
+```ts
+interface NavigationResult extends RouteLocation {
+	eventChannel?: EventChannel
+}
+```
+
+- **eventChannel**: Page communication event channel, only available in `push` mode. `replace` / `relaunch` return `undefined` for this field.
+
+::: info
+`NavigationResult` extends `RouteLocation`, so existing code like `const route = await router.push(...)` works without modification.
+:::
+
+### EventChannel
+
+Page communication event channel, corresponding to uni-app's native `uni.navigateTo` EventChannel mechanism:
+
+```ts
+interface EventChannel {
+	emit(event: string, ...args: any[]): void
+	on(event: string, callback: (...args: any[]) => void): void
+	off(event: string, callback?: (...args: any[]) => void): void
+}
+```
+
+- **emit**: Send an event to the peer page
+- **on**: Listen for an event from the peer page
+- **off**: Unlisten an event
+
+### EventListeners
+
+Event listener collection, used for the `events` field in `RouteLocationPathRaw` and `RouteLocationNamedRaw`:
+
+```ts
+type EventListeners = Record<string, (...args: any[]) => void>
 ```
 
 ::: info

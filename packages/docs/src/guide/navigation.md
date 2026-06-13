@@ -168,6 +168,81 @@ router.push('/user')
 // 第二次 push 会等第一次完成后再执行
 ```
 
+## 页面间通信（EventChannel）
+
+`push()` 支持 `events` 参数和 `eventChannel` 返回值，对应 uni-app 原生 `uni.navigateTo` 的 EventChannel 机制，实现页面间双向通信。仅 `push` 模式支持，`replace` / `relaunch` 传入 `events` 时会输出警告并忽略。
+
+### 基本用法
+
+```ts
+// 页面 A：导航并监听被打开页面发来的事件
+const { eventChannel } = await router.push({
+	path: 'pages/detail/detail',
+	query: { id: '1' },
+	events: {
+		// 监听被打开页面发来的 update 事件
+		update(data) {
+			console.log('收到更新:', data)
+		}
+	}
+})
+
+// 向被打开页面发送事件
+eventChannel.emit('init', { message: '来自页面A的初始化数据' })
+```
+
+```ts
+// 页面 B（detail）：获取 EventChannel 并通信
+const instance = getCurrentInstance()
+const eventChannel = instance.proxy.getOpenerEventChannel()
+
+// 监听来自发起页面的 init 事件
+eventChannel.on('init', (data) => {
+	console.log('收到初始化数据:', data)
+})
+
+// 向发起页面发送 update 事件
+eventChannel.emit('update', { result: '处理完成' })
+```
+
+### 类型定义
+
+```ts
+interface NavigationResult extends RouteLocation {
+	eventChannel?: EventChannel
+}
+
+interface EventChannel {
+	emit(event: string, ...args: any[]): void
+	on(event: string, callback: (...args: any[]) => void): void
+	off(event: string, callback?: (...args: any[]) => void): void
+}
+
+type EventListeners = Record<string, (...args: any[]) => void>
+```
+
+### RouteLocationRaw 中的 events
+
+```ts
+interface RouteLocationPathRaw {
+	path: string
+	query?: Record<string, string>
+	animation?: NavigationAnimation
+	events?: EventListeners
+}
+
+interface RouteLocationNamedRaw {
+	name: string
+	query?: Record<string, string>
+	animation?: NavigationAnimation
+	events?: EventListeners
+}
+```
+
+::: info
+`NavigationResult` 继承自 `RouteLocation`，原有代码 `const route = await router.push(...)` 无需修改，`eventChannel` 为可选字段。
+:::
+
 ## 导航动画
 
 导航动画仅 App 端生效，其他平台自动忽略。优先级：`调用时传入` > `meta.animation` > `uni 默认值`。

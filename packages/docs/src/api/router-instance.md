@@ -23,18 +23,32 @@ router.currentRoute.fullPath
 导航到新页面。
 
 ```ts
-push(location: RouteLocationRaw): Promise<RouteLocation>
+push(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 - 普通页面 → `uni.navigateTo`
 - TabBar 页面 → `uni.switchTab`
 - 重复导航时抛出 `NAVIGATION_DUPLICATED`
+- 返回 `NavigationResult`（继承自 `RouteLocation`），包含可选的 `eventChannel` 用于页面间通信
 
 ```ts
 await router.push('pages/about/about')
 await router.push({ path: 'pages/about/about', query: { id: '1' } })
 await router.push({ name: 'about' })
+
+// 使用 EventChannel 进行页面间通信
+const { eventChannel } = await router.push({
+	path: 'pages/detail/detail',
+	events: {
+		update(data) { console.log('收到更新:', data) }
+	}
+})
+eventChannel.emit('init', { message: '初始化数据' })
 ```
+
+::: info
+`NavigationResult` 继承自 `RouteLocation`，原有代码 `const route = await router.push(...)` 无需修改。`eventChannel` 仅在 `push` 模式下可用，`replace` / `relaunch` 返回的 `eventChannel` 为 `undefined`。
+:::
 
 ### replace()
 

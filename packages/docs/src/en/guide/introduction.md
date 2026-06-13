@@ -20,9 +20,10 @@ Uni Router wraps a layer on top of uni-app's native routing APIs, solving the ab
 
 ## Core Features
 
-- 🧭 **Route Navigation** — `push()` / `replace()` / `back()`, automatically detect TabBar pages
+- 🧭 **Route Navigation** — `push()` / `replace()` / `relaunch()` / `back()`, automatically detect TabBar pages
 - 🛡️ **Route Guards** — `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
 - 📋 **Route Meta** — `title` / `isTab` / `requireAuth` and custom extension fields
+- 📡 **Page Communication** — `push()` supports `events` param and `eventChannel` return value for bidirectional page communication
 - 🌐 **Multi-Platform** — Built on uni-app native APIs, compatible with all uni-app target platforms
 - 💪 **TypeScript** — Complete type definitions and intellisense
 - 🪝 **Composables** — `useRouter()` / `useRoute()`

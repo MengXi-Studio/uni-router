@@ -169,6 +169,81 @@ router.push('/user')
 // The second push waits for the first to complete
 ```
 
+## Page Communication (EventChannel)
+
+`push()` supports `events` param and `eventChannel` return value, corresponding to uni-app's native `uni.navigateTo` EventChannel mechanism for bidirectional page communication. Only `push` mode supports this; `replace` / `relaunch` will output a warning and ignore `events` when provided.
+
+### Basic Usage
+
+```ts
+// Page A: navigate and listen for events from the opened page
+const { eventChannel } = await router.push({
+	path: 'pages/detail/detail',
+	query: { id: '1' },
+	events: {
+		// Listen for the update event from the opened page
+		update(data) {
+			console.log('Received update:', data)
+		}
+	}
+})
+
+// Send event to the opened page
+eventChannel.emit('init', { message: 'Init data from Page A' })
+```
+
+```ts
+// Page B (detail): get EventChannel and communicate
+const instance = getCurrentInstance()
+const eventChannel = instance.proxy.getOpenerEventChannel()
+
+// Listen for the init event from the opener page
+eventChannel.on('init', (data) => {
+	console.log('Received init data:', data)
+})
+
+// Send update event to the opener page
+eventChannel.emit('update', { result: 'Processing complete' })
+```
+
+### Type Definitions
+
+```ts
+interface NavigationResult extends RouteLocation {
+	eventChannel?: EventChannel
+}
+
+interface EventChannel {
+	emit(event: string, ...args: any[]): void
+	on(event: string, callback: (...args: any[]) => void): void
+	off(event: string, callback?: (...args: any[]) => void): void
+}
+
+type EventListeners = Record<string, (...args: any[]) => void>
+```
+
+### events in RouteLocationRaw
+
+```ts
+interface RouteLocationPathRaw {
+	path: string
+	query?: Record<string, string>
+	animation?: NavigationAnimation
+	events?: EventListeners
+}
+
+interface RouteLocationNamedRaw {
+	name: string
+	query?: Record<string, string>
+	animation?: NavigationAnimation
+	events?: EventListeners
+}
+```
+
+::: info
+`NavigationResult` extends `RouteLocation`, so existing code like `const route = await router.push(...)` works without modification. `eventChannel` is an optional field.
+:::
+
 ## Navigation Animation
 
 Navigation animation only takes effect on App, other platforms auto-ignore. Priority: `inline param` > `meta.animation` > `uni default`.

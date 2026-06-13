@@ -26,6 +26,7 @@
 - **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
 - **Guard Timeout Protection** - Configurable `guardTimeout` to prevent navigation from hanging when guards don't call `next()`
 - **Navigation Animation** - Support animation params in `push` / `replace` / `back`, with route-level `meta.animation` defaults. App only, other platforms auto-ignore
+- **Page Communication** - `push` supports `events` param and `eventChannel` return value for bidirectional page communication (corresponds to uni.navigateTo EventChannel)
 - **Route State Sync** - `syncRoute()` method keeps route state consistent with the page stack, handling browser back, physical back button, etc.
 
 📖 **Full Documentation: [https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
@@ -125,7 +126,41 @@ await router.relaunch('/pages/index/index')
 await router.relaunch({ name: 'login', query: { redirect: '/about' } })
 ```
 
-### 4. Navigation Animation
+### 4. Page Communication (EventChannel)
+
+`push` supports `events` param and `eventChannel` return value, corresponding to uni-app's native `uni.navigateTo` EventChannel mechanism. Only `push` mode supports this.
+
+```typescript
+// Page A: navigate and listen for events from the opened page
+const { eventChannel } = await router.push({
+	path: '/pages/detail/detail',
+	query: { id: '1' },
+	events: {
+		// Listen for the update event from the opened page
+		update(data) {
+			console.log('Received update:', data)
+		}
+	}
+})
+
+// Send event to the opened page
+eventChannel.emit('init', { message: 'Init data from Page A' })
+
+// Page B (detail): get EventChannel and communicate
+// <script setup>
+const instance = getCurrentInstance()
+const eventChannel = instance.proxy.getOpenerEventChannel()
+
+// Listen for the init event from the opener page
+eventChannel.on('init', (data) => {
+	console.log('Received init data:', data)
+})
+
+// Send update event to the opener page
+eventChannel.emit('update', { result: 'Processing complete' })
+```
+
+### 5. Navigation Animation
 
 Navigation animation only takes effect on App, other platforms auto-ignore. Priority: `inline param` > `meta.animation` > `uni default`.
 
@@ -149,7 +184,7 @@ const routes = [
 // <RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">About</RouterLink>
 ```
 
-### 5. Route Guards
+### 6. Route Guards
 
 ```typescript
 // Global before guard - auth check
@@ -172,7 +207,7 @@ router.onRouteChange((to, from) => {
 })
 ```
 
-### 6. Declarative Navigation
+### 7. Declarative Navigation
 
 ```vue
 <template>
@@ -205,12 +240,12 @@ function onNavError(error) {
 
 ### Router Instance Methods
 
-| Method                            | Description                                  |
-| --------------------------------- | -------------------------------------------- |
-| `router.push(location)`           | Navigate to a new page                       |
-| `router.replace(location)`        | Replace the current page                     |
-| `router.relaunch(location)`       | Close all pages and open target page         |
-| `router.back(delta?, animation?)` | Go back one or more pages (with guard chain) |
+| Method                            | Description                                                        |
+| --------------------------------- | ------------------------------------------------------------------ |
+| `router.push(location)`           | Navigate to a new page, returns `NavigationResult` (with `eventChannel`) |
+| `router.replace(location)`        | Replace the current page                                           |
+| `router.relaunch(location)`       | Close all pages and open target page                               |
+| `router.back(delta?, animation?)` | Go back one or more pages (with guard chain)                       |
 | `router.beforeEach(guard)`        | Register global before guard                 |
 | `router.beforeResolve(guard)`     | Register global resolve guard                |
 | `router.afterEach(guard)`         | Register global after hook                   |
@@ -231,6 +266,15 @@ function onNavError(error) {
 | `ROUTE_NOT_FOUND`       | No matching route found                                           |
 | `NAVIGATION_API_ERROR`  | uni navigation API call failed                                    |
 | `SETUP_ERROR`           | Router initialization or usage error                              |
+
+### Exported Types
+
+| Type                  | Description                                                         |
+| --------------------- | ------------------------------------------------------------------- |
+| `NavigationResult`    | `push` return type, extends `RouteLocation`, includes `eventChannel` |
+| `EventChannel`        | Page communication event channel, supports `emit` / `on` / `off`    |
+| `EventListeners`      | Event listener collection, `Record<string, (...args: any[]) => void>` |
+| `NavigationAnimation` | Navigation animation config, with `type` and optional `duration`    |
 
 ## TypeScript Type Hints
 

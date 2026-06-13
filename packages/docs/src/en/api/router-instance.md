@@ -23,18 +23,32 @@ router.currentRoute.fullPath
 Navigate to a new page.
 
 ```ts
-push(location: RouteLocationRaw): Promise<RouteLocation>
+push(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 - Regular page → `uni.navigateTo`
 - TabBar page → `uni.switchTab`
 - Throws `NAVIGATION_DUPLICATED` on duplicate navigation
+- Returns `NavigationResult` (extends `RouteLocation`), includes optional `eventChannel` for page communication
 
 ```ts
 await router.push('pages/about/about')
 await router.push({ path: 'pages/about/about', query: { id: '1' } })
 await router.push({ name: 'about' })
+
+// Use EventChannel for page communication
+const { eventChannel } = await router.push({
+	path: 'pages/detail/detail',
+	events: {
+		update(data) { console.log('Received update:', data) }
+	}
+})
+eventChannel.emit('init', { message: 'Init data' })
 ```
+
+::: info
+`NavigationResult` extends `RouteLocation`, so existing code like `const route = await router.push(...)` works without modification. `eventChannel` is only available in `push` mode; `replace` / `relaunch` return `undefined` for `eventChannel`.
+:::
 
 ### replace()
 

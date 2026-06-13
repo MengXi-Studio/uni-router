@@ -71,6 +71,7 @@ interface RouteLocationPathRaw {
 	path: string
 	query?: Record<string, string>
 	animation?: NavigationAnimation
+	events?: EventListeners
 }
 ```
 
@@ -83,7 +84,48 @@ interface RouteLocationNamedRaw {
 	name: string
 	query?: Record<string, string>
 	animation?: NavigationAnimation
+	events?: EventListeners
 }
+```
+
+### NavigationResult
+
+`push()` 方法的返回类型，继承自 `RouteLocation`，额外包含页面间通信的 `eventChannel`：
+
+```ts
+interface NavigationResult extends RouteLocation {
+	eventChannel?: EventChannel
+}
+```
+
+- **eventChannel**: 页面间通信事件通道，仅在 `push` 模式下可用。`replace` / `relaunch` 返回时此字段为 `undefined`
+
+::: info
+`NavigationResult` 继承自 `RouteLocation`，原有代码 `const route = await router.push(...)` 无需修改。
+:::
+
+### EventChannel
+
+页面间通信事件通道，对应 uni-app 原生 `uni.navigateTo` 的 EventChannel 机制：
+
+```ts
+interface EventChannel {
+	emit(event: string, ...args: any[]): void
+	on(event: string, callback: (...args: any[]) => void): void
+	off(event: string, callback?: (...args: any[]) => void): void
+}
+```
+
+- **emit**: 向对端页面发送事件
+- **on**: 监听对端页面发来的事件
+- **off**: 取消监听事件
+
+### EventListeners
+
+事件监听器集合，用于 `RouteLocationPathRaw` 和 `RouteLocationNamedRaw` 的 `events` 字段：
+
+```ts
+type EventListeners = Record<string, (...args: any[]) => void>
 ```
 
 ::: info

@@ -26,6 +26,7 @@
 - **uni API 拦截** - 可选拦截原生导航 API，统一走路由守卫流程
 - **守卫超时保护** - 可配置 `guardTimeout`，防止守卫未调用 `next()` 导致导航永久挂起
 - **导航动画** - 支持 `push` / `replace` / `back` 时传入动画参数，支持路由级 `meta.animation` 默认动画，仅 App 端生效
+- **页面间通信** - `push` 支持 `events` 参数和 `eventChannel` 返回值，实现页面间双向通信（对应 uni.navigateTo 的 EventChannel）
 - **路由状态同步** - `syncRoute()` 方法确保路由状态与页面栈一致，处理浏览器后退、物理返回键等场景
 
 📖 **完整文档：[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
@@ -125,7 +126,41 @@ await router.relaunch('/pages/index/index')
 await router.relaunch({ name: 'login', query: { redirect: '/about' } })
 ```
 
-### 4. 导航动画
+### 4. 页面间通信（EventChannel）
+
+`push` 方法支持 `events` 参数和 `eventChannel` 返回值，对应 uni-app 原生 `uni.navigateTo` 的 EventChannel 机制，仅 `push` 模式支持。
+
+```typescript
+// 页面 A：导航并监听被打开页面发来的事件
+const { eventChannel } = await router.push({
+	path: '/pages/detail/detail',
+	query: { id: '1' },
+	events: {
+		// 监听被打开页面发来的 update 事件
+		update(data) {
+			console.log('收到更新:', data)
+		}
+	}
+})
+
+// 向被打开页面发送事件
+eventChannel.emit('init', { message: '来自页面A的初始化数据' })
+
+// 页面 B（detail）：获取 EventChannel 并通信
+// <script setup>
+const instance = getCurrentInstance()
+const eventChannel = instance.proxy.getOpenerEventChannel()
+
+// 监听来自发起页面的 init 事件
+eventChannel.on('init', (data) => {
+	console.log('收到初始化数据:', data)
+})
+
+// 向发起页面发送 update 事件
+eventChannel.emit('update', { result: '处理完成' })
+```
+
+### 5. 导航动画
 
 导航动画仅 App 端生效，其他平台自动忽略。优先级：`调用时传入` > `meta.animation` > `uni 默认值`。
 
@@ -149,7 +184,7 @@ const routes = [
 // <RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">关于页面</RouterLink>
 ```
 
-### 5. 路由守卫
+### 6. 路由守卫
 
 ```typescript
 // 全局前置守卫 - 登录验证
@@ -172,7 +207,7 @@ router.onRouteChange((to, from) => {
 })
 ```
 
-### 6. 声明式导航
+### 7. 声明式导航
 
 ```vue
 <template>
@@ -205,12 +240,12 @@ function onNavError(error) {
 
 ### Router 实例方法
 
-| 方法                              | 说明                               |
-| --------------------------------- | ---------------------------------- |
-| `router.push(location)`           | 导航到新页面                       |
-| `router.replace(location)`        | 替换当前页面                       |
-| `router.relaunch(location)`       | 关闭所有页面并打开目标页面         |
-| `router.back(delta?, animation?)` | 返回上一页或多级页面（执行守卫链） |
+| 方法                              | 说明                                                        |
+| --------------------------------- | ----------------------------------------------------------- |
+| `router.push(location)`           | 导航到新页面，返回 `NavigationResult`（含 `eventChannel`）  |
+| `router.replace(location)`        | 替换当前页面                                                |
+| `router.relaunch(location)`       | 关闭所有页面并打开目标页面                                  |
+| `router.back(delta?, animation?)` | 返回上一页或多级页面（执行守卫链）                          |
 | `router.beforeEach(guard)`        | 注册全局前置守卫                   |
 | `router.beforeResolve(guard)`     | 注册全局解析守卫                   |
 | `router.afterEach(guard)`         | 注册全局后置钩子                   |
@@ -231,6 +266,15 @@ function onNavError(error) {
 | `ROUTE_NOT_FOUND`       | 未找到匹配的路由                   |
 | `NAVIGATION_API_ERROR`  | uni 导航 API 调用失败              |
 | `SETUP_ERROR`           | 路由器初始化或使用方式错误         |
+
+### 导出类型
+
+| 类型                  | 说明                                                    |
+| --------------------- | ------------------------------------------------------- |
+| `NavigationResult`    | `push` 返回值，继承 `RouteLocation`，含 `eventChannel` |
+| `EventChannel`        | 页面间通信事件通道，支持 `emit` / `on` / `off`          |
+| `EventListeners`      | 事件监听器集合，`Record<string, (...args: any[]) => void>` |
+| `NavigationAnimation` | 导航动画配置，含 `type` 和可选 `duration`               |
 
 ## TypeScript 类型提示
 
