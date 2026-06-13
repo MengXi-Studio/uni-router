@@ -1,4 +1,4 @@
-import type { NavigationAnimation, RouteLocationRaw, Router } from '@/types'
+import type { NavigationAnimation, RouteLocationRaw, Router, EventListeners } from '@/types'
 import { normalizePath, parseQuery } from '@/utils/path'
 
 /**
@@ -118,17 +118,18 @@ function extractAnimation(args: Record<string, any>): NavigationAnimation | unde
 }
 
 /**
- * 将路径、查询参数和动画配置合并为 RouteLocationRaw
+ * 将路径、查询参数、动画配置和事件监听器合并为 RouteLocationRaw
  *
  * @param path - 页面路径
  * @param query - 查询参数
  * @param animation - 动画配置
+ * @param events - 页面间通信事件监听器
  * @returns 路由位置对象
  */
-function buildLocation(path: string, query: Record<string, string>, animation?: NavigationAnimation): RouteLocationRaw {
+function buildLocation(path: string, query: Record<string, string>, animation?: NavigationAnimation, events?: EventListeners): RouteLocationRaw {
 	const hasQuery = query && Object.keys(query).length > 0
-	if (!hasQuery && !animation) return path
-	return { path, ...(hasQuery && { query }), ...animation }
+	if (!hasQuery && !animation && !events) return path
+	return { path, ...(hasQuery && { query }), ...animation, ...(events && { events }) }
 }
 
 /**
@@ -148,7 +149,8 @@ function handleInterceptedNavigation(api: string, args: Record<string, any>): fa
 		case 'navigateTo': {
 			const { path, query } = parseUniUrl(args.url || '')
 			if (path) {
-				router.push(buildLocation(path, query, extractAnimation(args)))
+				const events: EventListeners | undefined = args.events
+				router.push(buildLocation(path, query, extractAnimation(args), events))
 			}
 			break
 		}

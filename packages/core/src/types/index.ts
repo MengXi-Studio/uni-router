@@ -1,4 +1,19 @@
-export type { RouteNameMap, RouteName, RoutePath, RouteMeta, RouteConfig, RouteLocation, RouteLocationPathRaw, RouteLocationNamedRaw, RouteLocationRaw, NavigationAnimation, UniAnimationType } from './route'
+export type {
+	RouteNameMap,
+	RouteName,
+	RoutePath,
+	RouteMeta,
+	RouteConfig,
+	RouteLocation,
+	RouteLocationPathRaw,
+	RouteLocationNamedRaw,
+	RouteLocationRaw,
+	NavigationAnimation,
+	UniAnimationType,
+	EventChannel,
+	EventListeners,
+	NavigationResult
+} from './route'
 export { DEFAULT_ANIMATION_DURATION } from './route'
 
 export type { NavigationGuardNext, NavigationGuard, PostNavigationGuard } from './guard'

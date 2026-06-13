@@ -1,4 +1,4 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, Router, RouterOnError, RouterOptions } from '@/types'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, NavigationResult, EventChannel, EventListeners, Router, RouterOnError, RouterOptions } from '@/types'
 import type { App } from 'vue'
 import { RouterErrorCode } from '@/types/error'
 import { NavigationFailure, RouterError } from '@/errors'
@@ -8,7 +8,7 @@ import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/n
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
 import { installInterceptors, removeInterceptors } from '@/interceptor'
-import { buildFullPath } from '@/utils'
+import { buildFullPath, warn } from '@/utils'
 
 /**
  * 最大重定向深度，超过此值将取消导航以防止无限循环
@@ -27,7 +27,7 @@ class UniRouter implements Router {
 	private guardManager = createGuardManager()
 	private matcher = createRouteMatcher([], true)
 	private errorHandlers: RouterOnError[] = []
-	private pendingNavigation: Promise<RouteLocation> | null = null
+	private pendingNavigation: Promise<NavigationResult | RouteLocation | void> | null = null
 	private _interceptUniApi: boolean
 
 	/**
@@ -57,11 +57,14 @@ class UniRouter implements Router {
 	 * 若目标与当前位置相同，将拒绝导航并抛出 NAVIGATION_DUPLICATED 错误。
 	 * 并发导航将排队执行，前一次导航完成后再开始下一次。
 	 *
+	 * 返回 NavigationResult，包含目标路由位置和可选的 eventChannel。
+	 * eventChannel 仅在对应 uni.navigateTo 时可用，用于页面间双向通信。
+	 *
 	 * @param location - 目标路由位置
-	 * @returns 解析后的目标路由位置
+	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel
 	 * @throws {NavigationFailure} 导航被守卫中止、重复或 API 调用失败时抛出
 	 */
-	push(location: RouteLocationRaw): Promise<RouteLocation> {
+	push(location: RouteLocationRaw): Promise<NavigationResult> {
 		return this.performNavigation(location, 'push')
 	}
 
@@ -134,11 +137,11 @@ class UniRouter implements Router {
 
 		// 执行守卫链
 		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
-		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0)
+		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0, effectiveAnimation)
 		if (handled) return handled as unknown as Promise<void>
 
 		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
-		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'back', 0)
+		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'back', 0, effectiveAnimation)
 		if (handledResolve) return handledResolve as unknown as Promise<void>
 
 		// 守卫通过，执行返回
@@ -324,11 +327,11 @@ class UniRouter implements Router {
 	 * 处理并发导航排队、重复导航检测，并委托 executeNavigation 执行完整的守卫链和导航操作。
 	 *
 	 * @param location - 目标路由位置
-	 * @param mode - 导航模式，push 或 replace
-	 * @returns 解析后的目标路由位置
+	 * @param mode - 导航模式，push、replace 或 relaunch
+	 * @returns 导航结果（push 模式包含 eventChannel）
 	 * @throws {NavigationFailure} 导航失败时抛出
 	 */
-	private async performNavigation(location: RouteLocationRaw, mode: 'push' | 'replace' | 'relaunch'): Promise<RouteLocation> {
+	private async performNavigation(location: RouteLocationRaw, mode: 'push' | 'replace' | 'relaunch'): Promise<NavigationResult> {
 		// 等待前一次导航完成（无论成功或失败），避免并发导航
 		// 错误已通过 onError 机制通知，此处无需再处理
 		if (this.pendingNavigation) {
@@ -337,8 +340,14 @@ class UniRouter implements Router {
 
 		const to = this.matcher.resolve(location)
 		const from = this.routeState.getCurrentRoute()
-		// 从原始路由位置中提取动画参数（resolve 会丢弃 animation 字段）
+		// 从原始路由位置中提取动画参数和事件监听器（resolve 会丢弃这些字段）
 		const animation = this.extractAnimation(location)
+		const events = this.extractEvents(location)
+
+		// events 仅在 push 模式下有效，其他模式发出警告并忽略
+		if (events && mode !== 'push') {
+			warn(`uni.${mode === 'replace' ? 'redirectTo' : 'reLaunch'} does not support events. The events option will be ignored.`)
+		}
 
 		if (mode === 'push' && this.isSameRouteLocation(to, from)) {
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_DUPLICATED, `Avoided redundant navigation to current location: "${to.fullPath}"`)
@@ -346,7 +355,7 @@ class UniRouter implements Router {
 			return Promise.reject(failure)
 		}
 
-		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation)
+		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, mode === 'push' ? events : undefined)
 		this.pendingNavigation = navigationPromise
 
 		try {
@@ -370,10 +379,18 @@ class UniRouter implements Router {
 	 * @param mode - 导航模式
 	 * @param redirectDepth - 当前重定向深度
 	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
-	 * @returns 解析后的目标路由位置
+	 * @param events - 页面间通信事件监听器（仅 push 时生效）
+	 * @returns 导航结果（push 模式包含 eventChannel）
 	 * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
 	 */
-	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'relaunch' | 'back', redirectDepth: number, animation?: NavigationAnimation): Promise<RouteLocation> {
+	private async executeNavigation(
+		to: RouteLocation,
+		from: RouteLocation,
+		mode: 'push' | 'replace' | 'relaunch' | 'back',
+		redirectDepth: number,
+		animation?: NavigationAnimation,
+		events?: EventListeners
+	): Promise<NavigationResult> {
 		if (redirectDepth > MAX_REDIRECT_DEPTH) {
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
 			this.triggerErrorHandlers(failure, to, from)
@@ -383,15 +400,15 @@ class UniRouter implements Router {
 		const config = this.matcher.getRouteConfig(to.path)
 
 		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
-		const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation)
+		const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation, events)
 		if (handled) return handled
 
 		const beforeEnterResult = config ? await this.guardManager.runBeforeEnterGuards(to, from, config) : { type: 'next' as const }
-		const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation)
+		const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation, events)
 		if (handledEnter) return handledEnter
 
 		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
-		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation)
+		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation, events)
 		if (handledResolve) return handledResolve
 
 		try {
@@ -399,11 +416,13 @@ class UniRouter implements Router {
 				path: to.path,
 				meta: to.meta,
 				query: to.query,
-				animation
+				animation,
+				events
 			}
 
+			let eventChannel: EventChannel | undefined
 			if (mode === 'push') {
-				await navigateTo(navOptions)
+				eventChannel = await navigateTo(navOptions)
 			} else if (mode === 'replace') {
 				await replaceTo(navOptions)
 			} else {
@@ -413,7 +432,7 @@ class UniRouter implements Router {
 			this.routeState.setCurrentRoute(to)
 			this.guardManager.runAfterGuards(to, from)
 
-			return to
+			return { ...to, eventChannel }
 		} catch (error) {
 			const code = RouterErrorCode.NAVIGATION_API_ERROR
 			const cause = isUniApiError(error) ? error : undefined
@@ -445,8 +464,9 @@ class UniRouter implements Router {
 		from: RouteLocation,
 		mode: 'push' | 'replace' | 'relaunch' | 'back',
 		redirectDepth: number,
-		animation?: NavigationAnimation
-	): Promise<RouteLocation> | null {
+		animation?: NavigationAnimation,
+		events?: EventListeners
+	): Promise<NavigationResult> | null {
 		if (result.type === 'abort') {
 			const failure = new NavigationFailure(to, from, result.code)
 			this.triggerErrorHandlers(failure, to, from)
@@ -454,10 +474,11 @@ class UniRouter implements Router {
 		}
 
 		if (result.redirect) {
-			// 重定向时提取新位置的动画参数，未指定则沿用当前动画
+			// 重定向时提取新位置的动画参数和事件监听器，未指定则沿用当前值
 			const redirectAnimation = this.extractAnimation(result.redirect) ?? animation
+			const redirectEvents = this.extractEvents(result.redirect) ?? events
 			const redirectTarget = this.matcher.resolve(result.redirect)
-			return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1, redirectAnimation)
+			return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1, redirectAnimation, redirectEvents)
 		}
 
 		return null
@@ -516,6 +537,21 @@ class UniRouter implements Router {
 	private extractAnimation(location: RouteLocationRaw): NavigationAnimation | undefined {
 		if (typeof location === 'string') return undefined
 		if (typeof location === 'object' && 'animation' in location) return location.animation
+		return undefined
+	}
+
+	/**
+	 * 从原始路由位置中提取事件监听器
+	 *
+	 * resolve() 会丢弃 events 字段，因此需要在解析前提取。
+	 * 字符串形式的路由位置不包含事件监听器。
+	 *
+	 * @param location - 原始路由位置
+	 * @returns 事件监听器，不存在时返回 undefined
+	 */
+	private extractEvents(location: RouteLocationRaw): EventListeners | undefined {
+		if (typeof location === 'string') return undefined
+		if (typeof location === 'object' && 'events' in location) return location.events
 		return undefined
 	}
 

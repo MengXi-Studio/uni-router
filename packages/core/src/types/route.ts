@@ -149,6 +149,52 @@ export interface RouteLocation {
 }
 
 /**
+ * 页面间通信事件通道
+ *
+ * 用于 uni.navigateTo 的 events 参数和 success 回调中的 eventChannel，
+ * 实现页面间双向通信。
+ *
+ * @see https://uniapp.dcloud.net.cn/api/router.html#navigateto
+ */
+export interface EventChannel {
+	/** 监听事件 */
+	on(event: string, callback: (...args: any[]) => void): EventChannel
+	/** 监听事件（仅触发一次） */
+	once(event: string, callback: (...args: any[]) => void): EventChannel
+	/** 取消监听事件 */
+	off(event: string, callback?: (...args: any[]) => void): EventChannel
+	/** 触发事件 */
+	emit(event: string, ...args: any[]): EventChannel
+}
+
+/**
+ * 页面间通信事件监听器
+ *
+ * 键为事件名称，值为事件处理函数。用于 uni.navigateTo 的 events 参数，
+ * 监听目标页面通过 eventChannel.emit 发送的事件。
+ */
+export type EventListeners = Record<string, (...args: any[]) => void>
+
+/**
+ * 导航结果
+ *
+ * push 导航完成后的返回值，包含目标路由位置和可选的页面间通信通道。
+ * 继承 RouteLocation，因此可以直接作为 RouteLocation 使用。
+ *
+ * eventChannel 仅在 push（对应 uni.navigateTo）时可用，
+ * 其他导航方式（replace / relaunch / back）不支持 EventChannel。
+ */
+export interface NavigationResult extends RouteLocation {
+	/**
+	 * 页面间通信事件通道（仅 push 时可用）
+	 *
+	 * 通过此通道可以向目标页面发送事件，目标页面通过 getOpenerEventChannel() 接收。
+	 * 仅对应 uni.navigateTo 的导航结果，其他导航方式此字段为 undefined。
+	 */
+	eventChannel?: EventChannel
+}
+
+/**
  * 基于路径的原始路由位置
  */
 export interface RouteLocationPathRaw {
@@ -160,6 +206,14 @@ export interface RouteLocationPathRaw {
 
 	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
 	animation?: NavigationAnimation
+
+	/**
+	 * 页面间通信事件监听器（仅 push 时生效）
+	 *
+	 * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
+	 * 其他导航方式（replace / relaunch）不支持 events，传入时将被忽略。
+	 */
+	events?: EventListeners
 }
 
 /**
@@ -174,6 +228,14 @@ export interface RouteLocationNamedRaw {
 
 	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
 	animation?: NavigationAnimation
+
+	/**
+	 * 页面间通信事件监听器（仅 push 时生效）
+	 *
+	 * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
+	 * 其他导航方式（replace / relaunch）不支持 events，传入时将被忽略。
+	 */
+	events?: EventListeners
 }
 
 /**

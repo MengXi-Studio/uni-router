@@ -1,4 +1,4 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationAnimation } from './route'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationAnimation, NavigationResult } from './route'
 import type { NavigationGuard, PostNavigationGuard } from './guard'
 import type { RouterError } from './error'
 import type { App } from 'vue'
@@ -54,11 +54,15 @@ export interface Router {
 
 	/**
 	 * 导航到新页面，对应 uni.navigateTo / uni.switchTab
+	 *
+	 * 返回 NavigationResult，包含目标路由位置和可选的 eventChannel。
+	 * eventChannel 仅在对应 uni.navigateTo 时可用，用于页面间双向通信。
+	 *
 	 * @param location - 目标路由位置
-	 * @returns 解析后的目标路由位置
+	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel
 	 * @throws {NavigationFailure} 导航被中止、重复或 API 调用失败时抛出
 	 */
-	push(location: RouteLocationRaw): Promise<RouteLocation>
+	push(location: RouteLocationRaw): Promise<NavigationResult>
 
 	/**
 	 * 替换当前页面，对应 uni.redirectTo / uni.switchTab

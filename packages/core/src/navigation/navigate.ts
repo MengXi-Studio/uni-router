@@ -1,4 +1,4 @@
-import type { RouteMeta, NavigationAnimation } from '@/types/route'
+import type { RouteMeta, NavigationAnimation, EventChannel, EventListeners } from '@/types/route'
 import { buildFullPath } from '@/utils/path'
 import { warn } from '@/utils/general'
 import { markRouterCall } from '@/interceptor'
@@ -15,6 +15,13 @@ export interface UniNavigationOptions {
 	query?: Record<string, string>
 	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
 	animation?: NavigationAnimation
+	/**
+	 * 页面间通信事件监听器（仅 push 时生效）
+	 *
+	 * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
+	 * 其他导航方式不支持 events，传入时将被忽略。
+	 */
+	events?: EventListeners
 }
 
 /**
@@ -55,17 +62,20 @@ function promisifyUniApi(api: string, executor: (resolve: () => void, reject: (e
  * @param path - 目标页面路径
  * @param query - 查询参数
  * @param animation - 导航动画（仅 App 端生效）
+ * @param events - 页面间通信事件监听器
+ * @returns EventChannel 实例，用于向目标页面发送事件
  */
-function uniNavigateTo(path: string, query?: Record<string, string>, animation?: NavigationAnimation): Promise<void> {
+function uniNavigateTo(path: string, query?: Record<string, string>, animation?: NavigationAnimation, events?: EventListeners): Promise<EventChannel> {
 	const url = buildFullPath(path, query ?? {})
-	return promisifyUniApi('navigateTo', (resolve, reject) => {
+	return new Promise((resolve, reject) => {
 		markRouterCall()
 		uni.navigateTo({
 			url,
+			events,
 			...(animation?.type && { animationType: animation.type }),
 			...(animation?.duration != null && { animationDuration: animation.duration }),
-			success: resolve,
-			fail: reject
+			success: res => resolve(res.eventChannel),
+			fail: (err: unknown) => reject(new UniApiError('navigateTo', err))
 		})
 	})
 }
@@ -137,10 +147,11 @@ function hasQueryParams(query?: Record<string, string>): boolean {
 /**
  * 导航到指定页面，自动根据 meta.isTab 选择 navigateTo 或 switchTab
  * @param options - 导航选项
+ * @returns EventChannel 实例（仅 navigateTo 时可用），switchTab 时返回 undefined
  * @throws {UniApiError} uni API 调用失败时抛出
  */
-export function navigateTo(options: UniNavigationOptions): Promise<void> {
-	const { path, meta, query, animation } = options
+export function navigateTo(options: UniNavigationOptions): Promise<EventChannel | undefined> {
+	const { path, meta, query, animation, events } = options
 	const effectiveAnimation = animation ?? meta.animation
 	if (meta.isTab) {
 		if (hasQueryParams(query)) {
@@ -149,9 +160,12 @@ export function navigateTo(options: UniNavigationOptions): Promise<void> {
 		if (effectiveAnimation) {
 			warn('uni.switchTab does not support animation parameters. The animation option will be ignored.')
 		}
-		return uniSwitchTab(path)
+		if (events) {
+			warn('uni.switchTab does not support events. The events option will be ignored.')
+		}
+		return uniSwitchTab(path).then(() => undefined)
 	}
-	return uniNavigateTo(path, query, effectiveAnimation)
+	return uniNavigateTo(path, query, effectiveAnimation, events)
 }
 
 /**
