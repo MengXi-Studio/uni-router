@@ -123,4 +123,9 @@ page {
 	background-color: #ffebeb;
 	color: #ff3b30;
 }
+
+.tag-purple {
+	background-color: #f0e6ff;
+	color: #af52de;
+}
 </style>

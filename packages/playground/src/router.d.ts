@@ -20,6 +20,8 @@ declare module '@meng-xi/uni-router' {
     pagesResolveResolve: { path: '/pages/resolve/resolve'; meta: { title: string } }
     /** 错误处理 */
     pagesErrorError: { path: '/pages/error/error'; meta: { title: string } }
+    /** 页面间通信 */
+    pagesEventChannelEventChannel: { path: '/pages/event-channel/event-channel'; meta: { title: string } }
     /** 个人中心 */
     pagesSubProfileProfile: { path: '/pages-sub/profile/profile'; meta: { title: string } }
     /** 设置 */

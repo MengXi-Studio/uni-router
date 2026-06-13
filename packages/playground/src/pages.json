@@ -54,6 +54,12 @@
 			"style": {
 				"navigationBarTitleText": "错误处理"
 			}
+		},
+		{
+			"path": "pages/event-channel/event-channel",
+			"style": {
+				"navigationBarTitleText": "页面间通信"
+			}
 		}
 	],
 	"subPackages": [

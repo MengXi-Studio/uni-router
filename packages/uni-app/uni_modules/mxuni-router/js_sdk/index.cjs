@@ -280,10 +280,10 @@ function extractAnimation(args) {
   if (!args.animationType) return void 0;
   return { type: args.animationType, ...args.animationDuration != null && { duration: args.animationDuration } };
 }
-function buildLocation(path, query, animation) {
+function buildLocation(path, query, animation, events) {
   const hasQuery = query && Object.keys(query).length > 0;
-  if (!hasQuery && !animation) return path;
-  return { path, ...hasQuery && { query }, ...animation };
+  if (!hasQuery && !animation && !events) return path;
+  return { path, ...hasQuery && { query }, ...animation, ...events && { events } };
 }
 function handleInterceptedNavigation(api, args) {
   const router = activeManager?.getRouter();
@@ -292,7 +292,8 @@ function handleInterceptedNavigation(api, args) {
     case "navigateTo": {
       const { path, query } = parseUniUrl(args.url || "");
       if (path) {
-        router.push(buildLocation(path, query, extractAnimation(args)));
+        const events = args.events;
+        router.push(buildLocation(path, query, extractAnimation(args), events));
       }
       break;
     }
@@ -381,16 +382,17 @@ function promisifyUniApi(api, executor) {
     executor(resolve, (err) => reject(new UniApiError(api, err)));
   });
 }
-function uniNavigateTo(path, query, animation) {
+function uniNavigateTo(path, query, animation, events) {
   const url = buildFullPath(path, query ?? {});
-  return promisifyUniApi("navigateTo", (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     markRouterCall();
     uni.navigateTo({
       url,
+      events,
       ...animation?.type && { animationType: animation.type },
       ...animation?.duration != null && { animationDuration: animation.duration },
-      success: resolve,
-      fail: reject
+      success: (res) => resolve(res.eventChannel),
+      fail: (err) => reject(new UniApiError("navigateTo", err))
     });
   });
 }
@@ -430,7 +432,7 @@ function hasQueryParams(query) {
   return !!query && Object.keys(query).length > 0;
 }
 function navigateTo(options) {
-  const { path, meta, query, animation } = options;
+  const { path, meta, query, animation, events } = options;
   const effectiveAnimation = animation ?? meta.animation;
   if (meta.isTab) {
     if (hasQueryParams(query)) {
@@ -439,9 +441,12 @@ function navigateTo(options) {
     if (effectiveAnimation) {
       warn("uni.switchTab does not support animation parameters. The animation option will be ignored.");
     }
-    return uniSwitchTab(path);
+    if (events) {
+      warn("uni.switchTab does not support events. The events option will be ignored.");
+    }
+    return uniSwitchTab(path).then(() => void 0);
   }
-  return uniNavigateTo(path, query, effectiveAnimation);
+  return uniNavigateTo(path, query, effectiveAnimation, events);
 }
 function replaceTo(options) {
   const { path, meta, query, animation } = options;
@@ -715,8 +720,11 @@ var UniRouter = class {
    * 若目标与当前位置相同，将拒绝导航并抛出 NAVIGATION_DUPLICATED 错误。
    * 并发导航将排队执行，前一次导航完成后再开始下一次。
    *
+   * 返回 NavigationResult，包含目标路由位置和可选的 eventChannel。
+   * eventChannel 仅在对应 uni.navigateTo 时可用，用于页面间双向通信。
+   *
    * @param location - 目标路由位置
-   * @returns 解析后的目标路由位置
+   * @returns 导航结果，包含目标路由位置和可选的 eventChannel
    * @throws {NavigationFailure} 导航被守卫中止、重复或 API 调用失败时抛出
    */
   push(location) {
@@ -780,10 +788,10 @@ var UniRouter = class {
     const to = this.matcher.resolve(targetPath);
     const effectiveAnimation = animation ?? to.meta.animation;
     const beforeResult = await this.guardManager.runBeforeGuards(to, from);
-    const handled = this.handleGuardResult(beforeResult, to, from, "back", 0);
+    const handled = this.handleGuardResult(beforeResult, to, from, "back", 0, effectiveAnimation);
     if (handled) return handled;
     const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from);
-    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, "back", 0);
+    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, "back", 0, effectiveAnimation);
     if (handledResolve) return handledResolve;
     try {
       await goBack(delta, effectiveAnimation);
@@ -945,8 +953,8 @@ var UniRouter = class {
    * 处理并发导航排队、重复导航检测，并委托 executeNavigation 执行完整的守卫链和导航操作。
    *
    * @param location - 目标路由位置
-   * @param mode - 导航模式，push 或 replace
-   * @returns 解析后的目标路由位置
+   * @param mode - 导航模式，push、replace 或 relaunch
+   * @returns 导航结果（push 模式包含 eventChannel）
    * @throws {NavigationFailure} 导航失败时抛出
    */
   async performNavigation(location, mode) {
@@ -957,12 +965,16 @@ var UniRouter = class {
     const to = this.matcher.resolve(location);
     const from = this.routeState.getCurrentRoute();
     const animation = this.extractAnimation(location);
+    const events = this.extractEvents(location);
+    if (events && mode !== "push") {
+      warn(`uni.${mode === "replace" ? "redirectTo" : "reLaunch"} does not support events. The events option will be ignored.`);
+    }
     if (mode === "push" && this.isSameRouteLocation(to, from)) {
       const failure = new NavigationFailure(to, from, "NAVIGATION_DUPLICATED" /* NAVIGATION_DUPLICATED */, `Avoided redundant navigation to current location: "${to.fullPath}"`);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
-    const navigationPromise = this.executeNavigation(to, from, mode, 0, animation);
+    const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, mode === "push" ? events : void 0);
     this.pendingNavigation = navigationPromise;
     try {
       const result = await navigationPromise;
@@ -984,10 +996,11 @@ var UniRouter = class {
    * @param mode - 导航模式
    * @param redirectDepth - 当前重定向深度
    * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
-   * @returns 解析后的目标路由位置
+   * @param events - 页面间通信事件监听器（仅 push 时生效）
+   * @returns 导航结果（push 模式包含 eventChannel）
    * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
    */
-  async executeNavigation(to, from, mode, redirectDepth, animation) {
+  async executeNavigation(to, from, mode, redirectDepth, animation, events) {
     if (redirectDepth > MAX_REDIRECT_DEPTH) {
       const failure = new NavigationFailure(to, from, "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`);
       this.triggerErrorHandlers(failure, to, from);
@@ -995,23 +1008,25 @@ var UniRouter = class {
     }
     const config = this.matcher.getRouteConfig(to.path);
     const beforeResult = await this.guardManager.runBeforeGuards(to, from);
-    const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation);
+    const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation, events);
     if (handled) return handled;
     const beforeEnterResult = config ? await this.guardManager.runBeforeEnterGuards(to, from, config) : { type: "next" };
-    const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation);
+    const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation, events);
     if (handledEnter) return handledEnter;
     const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from);
-    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation);
+    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation, events);
     if (handledResolve) return handledResolve;
     try {
       const navOptions = {
         path: to.path,
         meta: to.meta,
         query: to.query,
-        animation
+        animation,
+        events
       };
+      let eventChannel;
       if (mode === "push") {
-        await navigateTo(navOptions);
+        eventChannel = await navigateTo(navOptions);
       } else if (mode === "replace") {
         await replaceTo(navOptions);
       } else {
@@ -1019,7 +1034,7 @@ var UniRouter = class {
       }
       this.routeState.setCurrentRoute(to);
       this.guardManager.runAfterGuards(to, from);
-      return to;
+      return { ...to, eventChannel };
     } catch (error) {
       const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
       const cause = isUniApiError(error) ? error : void 0;
@@ -1044,7 +1059,7 @@ var UniRouter = class {
    * @param animation - 当前导航的动画参数
    * @returns 中止或重定向时返回 Promise\<RouteLocation\>，放行时返回 null
    */
-  handleGuardResult(result, to, from, mode, redirectDepth, animation) {
+  handleGuardResult(result, to, from, mode, redirectDepth, animation, events) {
     if (result.type === "abort") {
       const failure = new NavigationFailure(to, from, result.code);
       this.triggerErrorHandlers(failure, to, from);
@@ -1052,8 +1067,9 @@ var UniRouter = class {
     }
     if (result.redirect) {
       const redirectAnimation = this.extractAnimation(result.redirect) ?? animation;
+      const redirectEvents = this.extractEvents(result.redirect) ?? events;
       const redirectTarget = this.matcher.resolve(result.redirect);
-      return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1, redirectAnimation);
+      return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1, redirectAnimation, redirectEvents);
     }
     return null;
   }
@@ -1106,6 +1122,20 @@ var UniRouter = class {
   extractAnimation(location) {
     if (typeof location === "string") return void 0;
     if (typeof location === "object" && "animation" in location) return location.animation;
+    return void 0;
+  }
+  /**
+   * 从原始路由位置中提取事件监听器
+   *
+   * resolve() 会丢弃 events 字段，因此需要在解析前提取。
+   * 字符串形式的路由位置不包含事件监听器。
+   *
+   * @param location - 原始路由位置
+   * @returns 事件监听器，不存在时返回 undefined
+   */
+  extractEvents(location) {
+    if (typeof location === "string") return void 0;
+    if (typeof location === "object" && "events" in location) return location.events;
     return void 0;
   }
   /**

@@ -97,6 +97,13 @@ export const routes: RouteConfig[] = [
 		}
 	},
 	{
+		path: '/pages/event-channel/event-channel',
+		name: 'pagesEventChannelEventChannel',
+		meta: {
+			title: '页面间通信'
+		}
+	},
+	{
 		path: '/pages-sub/profile/profile',
 		name: 'pagesSubProfileProfile',
 		meta: {

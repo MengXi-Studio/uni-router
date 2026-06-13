@@ -54,6 +54,13 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">EventChannel - 页面间通信</view>
+			<view class="info-text">push 支持 events 参数和 eventChannel 返回值，实现页面间双向通信</view>
+			<view class="btn" @click="goEventChannel">查看 EventChannel 演示</view>
+			<view class="code-block"> const { eventChannel } = await router.push({\n  path: '/pages/detail/detail',\n  events: {\n    receiveData: (data) => console.log(data)\n  }\n})\neventChannel.emit('fromOpener', { msg: 'hello' }) </view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">RouterLink 组件</view>
 			<view class="info-text">使用 RouterLink 组件进行声明式导航，支持 @error 事件捕获导航失败。</view>
 			<RouterLink to="/pages/detail/detail" custom>
@@ -140,6 +147,10 @@ function pushWithAnimation() {
 
 function backWithAnimation() {
 	router.back(1, { type: 'slide-out-left', duration: 500 })
+}
+
+function goEventChannel() {
+	router.push({ name: 'pagesEventChannelEventChannel' })
 }
 
 function onRouterLinkError(error: NavigationFailure) {
