@@ -79,14 +79,53 @@
 				<view class="btn btn-danger">RouterLink - relaunch 模式</view>
 			</RouterLink>
 		</view>
+
+		<view class="section">
+			<view class="section-title">RouterLink - animation 属性</view>
+			<view class="info-text">通过 animation 属性控制导航动画（仅 App 端生效），覆盖 meta.animation。</view>
+			<RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }" custom>
+				<view class="btn">RouterLink - 底部滑入动画</view>
+			</RouterLink>
+			<view class="code-block"> &lt;RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }"&gt; 底部滑入 &lt;/RouterLink&gt; </view>
+		</view>
+
+		<view class="section">
+			<view class="section-title">RouterLink - events 与 navigated</view>
+			<view class="info-text">通过 events 属性监听目标页面事件，通过 @navigated 获取 eventChannel 向目标页面发送数据。</view>
+			<RouterLink
+				:to="{ path: '/pages/detail/detail', query: { id: 'link-ec' } }"
+				:events="{ receiveData: (data) => onReceiveData(data) }"
+				custom
+				@navigated="onNavigated"
+				@error="onRouterLinkError"
+			>
+				<view class="btn btn-success">RouterLink - events + navigated</view>
+			</RouterLink>
+			<view class="code-block"> &lt;RouterLink\n  :to="{ path: '/pages/detail/detail', query: { id: '1' } }"\n  :events="{ receiveData: (data) => console.log(data) }"\n  @navigated="onNavigated"\n&gt;\n  查看详情\n&lt;/RouterLink&gt; </view>
+			<view v-if="routerLinkLog" class="info-text" style="color: #34c759">{{ routerLinkLog }}</view>
+		</view>
 	</view>
 </template>
 
 <script setup lang="ts">
-import { useRouter, NavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+import { ref } from 'vue'
+import { useRouter, NavigationFailure, RouterErrorCode, type EventChannel } from '@meng-xi/uni-router'
 import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 
 const router = useRouter()
+const routerLinkLog = ref('')
+
+function onReceiveData(data: Record<string, unknown>) {
+	routerLinkLog.value = `收到详情页数据: ${JSON.stringify(data)}`
+	uni.showToast({ title: `收到: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
+}
+
+function onNavigated(eventChannel: EventChannel | undefined) {
+	if (eventChannel) {
+		eventChannel.emit('fromOpener', { msg: '来自 RouterLink 的 navigated 事件' })
+		routerLinkLog.value = '已通过 eventChannel 发送消息到详情页'
+	}
+}
 
 function pushByPath() {
 	router.push('/pages/detail/detail')

@@ -26,6 +26,15 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">EventChannel.once - 一次性监听</view>
+			<view class="info-text">once() 监听的事件只触发一次后自动移除，适合只需响应一次的场景。</view>
+			<view class="btn btn-warn" @click="pushWithOnce">push 并使用 once 监听</view>
+			<view class="code-block">
+				const { eventChannel } = await router.push({&#10;  path: '/pages/detail/detail',&#10;  query: { id: 'once' },&#10;  events: {&#10;    onceEvent: (data) => {&#10;      console.log('仅触发一次:', data)&#10;    }&#10;  }&#10;})&#10;&#10;// 也可以在 eventChannel 上使用 once&#10;eventChannel.once('replyOnce', (data) => {&#10;  console.log('只收到一次:', data)&#10;})
+			</view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">通信日志</view>
 			<view class="code-block" v-if="logs.length > 0">
 				<view v-for="(log, index) in logs" :key="index">{{ log }}</view>
@@ -88,6 +97,35 @@ async function pushAndWaitReply() {
 	// 延迟发送，等被打开页面准备好
 	setTimeout(() => {
 		result.eventChannel?.emit('fromOpener', { msg: '请回复我！' })
+		addLog('已发送 fromOpener 事件')
+	}, 500)
+}
+
+async function pushWithOnce() {
+	logs.value = []
+	addLog('发起 push 导航，使用 once 监听...')
+
+	const result = await router.push({
+		path: '/pages/detail/detail',
+		query: { id: 'once', demo: 'once-listener' },
+		events: {
+			onceEvent: (data: Record<string, unknown>) => {
+				addLog(`[once] 收到一次性事件: ${JSON.stringify(data)}`)
+				uni.showToast({ title: `once: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
+			}
+		}
+	})
+
+	// 在 eventChannel 上也使用 once 监听
+	result.eventChannel?.once('replyOnce', (data: Record<string, unknown>) => {
+		addLog(`[once] 收到详情页一次性回复: ${JSON.stringify(data)}`)
+	})
+
+	addLog('导航成功，已注册 once 监听')
+
+	// 延迟发送，等被打开页面准备好
+	setTimeout(() => {
+		result.eventChannel?.emit('fromOpener', { msg: '请用 once 回复！' })
 		addLog('已发送 fromOpener 事件')
 	}, 500)
 }

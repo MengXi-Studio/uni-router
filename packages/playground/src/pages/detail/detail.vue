@@ -28,6 +28,7 @@
 
 		<view class="btn btn-gray" @click="goBack">返回上一页</view>
 		<view class="btn btn-success" @click="replyToOpener" v-if="hasEventChannel">通过 EventChannel 回复发起页</view>
+		<view class="btn btn-warn" @click="replyOnceToOpener" v-if="hasEventChannel">通过 once 回复发起页（一次性）</view>
 	</view>
 </template>
 
@@ -54,6 +55,11 @@ onMounted(() => {
 		eventChannel?.on('fromOpener', (data: Record<string, unknown>) => {
 			eventChannelMessages.value.push(`fromOpener: ${JSON.stringify(data)}`)
 		})
+
+		// 使用 once 监听一次性事件
+		eventChannel?.once('fromOpener', (data: Record<string, unknown>) => {
+			eventChannelMessages.value.push(`[once] fromOpener: ${JSON.stringify(data)}`)
+		})
 	}
 })
 
@@ -62,6 +68,14 @@ function replyToOpener() {
 		eventChannel.emit('receiveData', { msg: '详情页收到你的消息了！' })
 		eventChannel.emit('replyFromDetail', { msg: '这是详情页的回复' })
 		uni.showToast({ title: '已回复发起页', icon: 'none' })
+	}
+}
+
+function replyOnceToOpener() {
+	if (eventChannel) {
+		eventChannel.emit('onceEvent', { msg: '这是一次性回复' })
+		eventChannel.emit('replyOnce', { msg: 'once 回复' })
+		uni.showToast({ title: '已通过 once 回复', icon: 'none' })
 	}
 }
 

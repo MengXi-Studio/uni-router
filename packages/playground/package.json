@@ -24,7 +24,7 @@
 		"@dcloudio/uni-automator": "3.0.0-4050720250324001",
 		"@dcloudio/uni-cli-shared": "3.0.0-4050720250324001",
 		"@dcloudio/vite-plugin-uni": "3.0.0-4050720250324001",
-		"@meng-xi/vite-plugin": "^0.1.8",
+		"@meng-xi/vite-plugin": "^0.1.9",
 		"typescript": "^5.9.3",
 		"vite": "^6.0.0",
 		"vue-tsc": "^2.2.0"
