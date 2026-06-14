@@ -1,6 +1,6 @@
 {
 	"name": "@meng-xi/uni-app-demo",
-	"version": "1.3.0",
+	"version": "1.4.0",
 	"description": "在 uni-app 项目中使用 @meng-xi/uni-router 路由管理功能",
 	"main": "main.js",
 	"repository": {
