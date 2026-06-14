@@ -65,6 +65,26 @@ interface NavigationAnimation {
 </RouterLink>
 ```
 
+### events
+
+- **Type**: `EventListeners | undefined`
+- **Default**: `undefined`
+- **Description**: Page communication event listeners (only effective in push mode), corresponding to the `events` parameter of `uni.navigateTo`, used to listen for events sent by the target page via `eventChannel.emit`. Other navigation modes (`replace` / `relaunch`) do not support `events`; they will be ignored when provided.
+
+```ts
+type EventListeners = Record<string, (...args: any[]) => void>
+```
+
+```vue
+<RouterLink
+  :to="{ path: 'pages/detail/detail', query: { id: '1' } }"
+  :events="{ update: (data) => console.log('Received update:', data) }"
+  @navigated="onNavigated"
+>
+  <text>View Details</text>
+</RouterLink>
+```
+
 ### hoverClass
 
 - **Type**: `string`
@@ -114,6 +134,28 @@ function onNavError(error: NavigationFailure) {
 			console.log('Already on this page')
 			break
 	}
+}
+```
+
+### navigated
+
+- **Parameter**: `(eventChannel: EventChannel | undefined)`
+- **Description**: Emitted after a successful `push` navigation, returns `eventChannel` for page communication. `eventChannel` is only available in `push` mode; `replace` / `relaunch` do not trigger this event.
+
+```vue
+<RouterLink
+  :to="{ path: 'pages/detail/detail', query: { id: '1' } }"
+  :events="{ update: (data) => console.log('Received update:', data) }"
+  @navigated="onNavigated"
+>
+  <text>View Details</text>
+</RouterLink>
+```
+
+```ts
+function onNavigated(eventChannel) {
+  // Send event to the target page
+  eventChannel?.emit('init', { message: 'Data from the opener page' })
 }
 ```
 
@@ -199,7 +241,9 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `v-slot` scoped slot | ✅                 | ❌                 |
 | `hover-class`        | ❌                 | ✅                 |
 | `animation`          | ❌                 | ✅                 |
+| `events`             | ❌                 | ✅                 |
 | `error` event        | ❌                 | ✅                 |
+| `navigated` event    | ❌                 | ✅                 |
 
 ::: warning
 When passing an object to the `to` prop, use `:to` binding (`v-bind:to`) instead of the string attribute `to`.

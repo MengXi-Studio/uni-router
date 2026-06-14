@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter, type RouteLocationRaw, type NavigationFailure, type NavigationAnimation } from '@meng-xi/uni-router'
+import { useRouter, type RouteLocationRaw, type NavigationFailure, type NavigationAnimation, type EventListeners, type EventChannel } from '@meng-xi/uni-router'
 
 const props = withDefaults(
 	defineProps<{
@@ -17,6 +17,8 @@ const props = withDefaults(
 		relaunch?: boolean
 		/** 导航动画（仅 App 端生效），覆盖 meta.animation */
 		animation?: NavigationAnimation
+		/** 页面间通信事件监听器（仅 push 时生效），对应 uni.navigateTo 的 events 参数 */
+		events?: EventListeners
 		/** 按下时的样式类，设置为 'none' 可禁用点击态 */
 		hoverClass?: string
 		/** 是否阻止祖先节点的点击态 */
@@ -35,6 +37,8 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
+	/** push 导航成功后触发，返回 eventChannel 用于页面间通信（仅 push 时可用） */
+	navigated: [eventChannel: EventChannel | undefined]
 	/** 导航失败时触发（如守卫中止、重复导航） */
 	error: [error: NavigationFailure]
 }>()
@@ -46,12 +50,12 @@ const router = useRouter()
 async function navigate() {
 	try {
 		let location: RouteLocationRaw = props.to
-		// 将 animation 合并到 location 对象中传递给路由器
-		if (props.animation) {
+		// 将 animation 和 events 合并到 location 对象中传递给路由器
+		if (props.animation || props.events) {
 			if (typeof props.to === 'string') {
-				location = { path: props.to, animation: props.animation }
+				location = { path: props.to, animation: props.animation, events: props.events }
 			} else {
-				location = { ...props.to, animation: props.animation }
+				location = { ...props.to, animation: props.animation, events: props.events }
 			}
 		}
 
@@ -60,7 +64,8 @@ async function navigate() {
 		} else if (props.replace) {
 			await router.replace(location)
 		} else {
-			await router.push(location)
+			const result = await router.push(location)
+			emit('navigated', result.eventChannel)
 		}
 	} catch (error) {
 		emit('error', error as NavigationFailure)

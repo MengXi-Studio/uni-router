@@ -22,7 +22,7 @@
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths via module augmentation
 - **Error Handling** - Complete `RouterError` / `NavigationFailure` system with `onError` global capture
 - **Composables** - `useRouter()` / `useRoute()` for convenient router access in components, `useRoute()` returns a reactive ref that auto-updates on route changes
-- **RouterLink Component** - Declarative navigation component based on uni-app `navigator`, with `error` event for navigation failure handling
+- **RouterLink Component** - Declarative navigation component based on uni-app `navigator`, with `events` for page communication, `navigated` event for `eventChannel` access, and `error` event for navigation failure handling
 - **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
 - **Guard Timeout Protection** - Configurable `guardTimeout` to prevent navigation from hanging when guards don't call `next()`
 - **Navigation Animation** - Support animation params in `push` / `replace` / `back`, with route-level `meta.animation` defaults. App only, other platforms auto-ignore
@@ -216,6 +216,15 @@ router.onRouteChange((to, from) => {
 	<RouterLink :to="{ name: 'admin' }" @error="onNavError">Admin Panel</RouterLink>
 	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">Slide In Bottom</RouterLink>
 	<RouterLink to="/pages/index/index" relaunch>Back to Home</RouterLink>
+	<!-- Page communication: listen to target page events via events, get eventChannel via navigated -->
+	<RouterLink
+		:to="{ path: '/pages/detail/detail', query: { id: '1' } }"
+		:events="{ update: (data) => console.log('Received update:', data) }"
+		@navigated="onNavigated"
+		@error="onNavError"
+	>
+		View Details
+	</RouterLink>
 </template>
 
 <script setup>
@@ -223,6 +232,11 @@ import { RouterLink } from '@meng-xi/uni-router/components/RouterLink.vue'
 
 function onNavError(error) {
 	console.log('Navigation failed:', error.code)
+}
+
+function onNavigated(eventChannel) {
+	// Send event to the target page
+	eventChannel?.emit('init', { message: 'Data from the opener page' })
 }
 </script>
 ```

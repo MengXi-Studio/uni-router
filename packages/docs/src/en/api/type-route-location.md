@@ -112,15 +112,21 @@ Page communication event channel, corresponding to uni-app's native `uni.navigat
 
 ```ts
 interface EventChannel {
-	emit(event: string, ...args: any[]): void
-	on(event: string, callback: (...args: any[]) => void): void
-	off(event: string, callback?: (...args: any[]) => void): void
+	emit(event: string, ...args: any[]): EventChannel
+	on(event: string, callback: (...args: any[]) => void): EventChannel
+	once(event: string, callback: (...args: any[]) => void): EventChannel
+	off(event: string, callback?: (...args: any[]) => void): EventChannel
 }
 ```
 
 - **emit**: Send an event to the peer page
 - **on**: Listen for an event from the peer page
+- **once**: Listen for an event from the peer page (fires only once)
 - **off**: Unlisten an event
+
+::: tip
+All methods return the `EventChannel` instance, supporting method chaining.
+:::
 
 ### EventListeners
 

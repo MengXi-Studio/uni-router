@@ -64,6 +64,26 @@ interface NavigationAnimation {
 </RouterLink>
 ```
 
+### events
+
+- **类型**: `EventListeners | undefined`
+- **默认值**: `undefined`
+- **说明**: 页面间通信事件监听器（仅 push 时生效），对应 `uni.navigateTo` 的 `events` 参数，用于监听目标页面通过 `eventChannel.emit` 发送的事件。其他导航方式（`replace` / `relaunch`）不支持 `events`，传入时将被忽略。
+
+```ts
+type EventListeners = Record<string, (...args: any[]) => void>
+```
+
+```vue
+<RouterLink
+  :to="{ path: 'pages/detail/detail', query: { id: '1' } }"
+  :events="{ update: (data) => console.log('收到更新:', data) }"
+  @navigated="onNavigated"
+>
+  <text>查看详情</text>
+</RouterLink>
+```
+
 ### hoverClass
 
 - **类型**: `string`
@@ -113,6 +133,28 @@ function onNavError(error: NavigationFailure) {
 			console.log('已在当前页面')
 			break
 	}
+}
+```
+
+### navigated
+
+- **参数**: `(eventChannel: EventChannel | undefined)`
+- **说明**: `push` 导航成功后触发，返回 `eventChannel` 用于页面间通信。仅在 `push` 模式下 `eventChannel` 有值，`replace` / `relaunch` 不会触发此事件。
+
+```vue
+<RouterLink
+  :to="{ path: 'pages/detail/detail', query: { id: '1' } }"
+  :events="{ update: (data) => console.log('收到更新:', data) }"
+  @navigated="onNavigated"
+>
+  <text>查看详情</text>
+</RouterLink>
+```
+
+```ts
+function onNavigated(eventChannel) {
+  // 向目标页面发送事件
+  eventChannel?.emit('init', { message: '来自发起页面的数据' })
 }
 ```
 
@@ -198,7 +240,9 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `v-slot` 作用域插槽  | ✅                 | ❌                 |
 | `hover-class`        | ❌                 | ✅                 |
 | `animation`          | ❌                 | ✅                 |
+| `events`             | ❌                 | ✅                 |
 | `error` 事件         | ❌                 | ✅                 |
+| `navigated` 事件     | ❌                 | ✅                 |
 
 ::: warning
 `RouterLink` 的 `to` 属性传入对象时需使用 `:to` 绑定（`v-bind:to`），而非字符串属性 `to`。

@@ -110,15 +110,21 @@ interface NavigationResult extends RouteLocation {
 
 ```ts
 interface EventChannel {
-	emit(event: string, ...args: any[]): void
-	on(event: string, callback: (...args: any[]) => void): void
-	off(event: string, callback?: (...args: any[]) => void): void
+	emit(event: string, ...args: any[]): EventChannel
+	on(event: string, callback: (...args: any[]) => void): EventChannel
+	once(event: string, callback: (...args: any[]) => void): EventChannel
+	off(event: string, callback?: (...args: any[]) => void): EventChannel
 }
 ```
 
 - **emit**: 向对端页面发送事件
 - **on**: 监听对端页面发来的事件
+- **once**: 监听对端页面发来的事件（仅触发一次）
 - **off**: 取消监听事件
+
+::: tip
+所有方法均返回 `EventChannel` 实例，支持链式调用。
+:::
 
 ### EventListeners
 

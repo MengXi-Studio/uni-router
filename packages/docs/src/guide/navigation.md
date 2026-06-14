@@ -213,9 +213,10 @@ interface NavigationResult extends RouteLocation {
 }
 
 interface EventChannel {
-	emit(event: string, ...args: any[]): void
-	on(event: string, callback: (...args: any[]) => void): void
-	off(event: string, callback?: (...args: any[]) => void): void
+	emit(event: string, ...args: any[]): EventChannel
+	on(event: string, callback: (...args: any[]) => void): EventChannel
+	once(event: string, callback: (...args: any[]) => void): EventChannel
+	off(event: string, callback?: (...args: any[]) => void): EventChannel
 }
 
 type EventListeners = Record<string, (...args: any[]) => void>

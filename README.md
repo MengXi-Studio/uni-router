@@ -22,7 +22,7 @@
 - **TypeScript 类型提示** - 通过模块增强为路由名称和路径提供自动补全和类型检查
 - **错误处理** - 完整的 `RouterError` / `NavigationFailure` 体系，支持 `onError` 全局捕获
 - **组合式 API** - `useRouter()` / `useRoute()` 在组件中便捷访问路由器，`useRoute()` 返回响应式引用，路由变化自动更新
-- **RouterLink 组件** - 声明式导航组件，基于 uni-app `navigator` 封装，支持 `error` 事件捕获导航失败
+- **RouterLink 组件** - 声明式导航组件，基于 uni-app `navigator` 封装，支持 `events` 页面间通信、`navigated` 事件获取 `eventChannel`、`error` 事件捕获导航失败
 - **uni API 拦截** - 可选拦截原生导航 API，统一走路由守卫流程
 - **守卫超时保护** - 可配置 `guardTimeout`，防止守卫未调用 `next()` 导致导航永久挂起
 - **导航动画** - 支持 `push` / `replace` / `back` 时传入动画参数，支持路由级 `meta.animation` 默认动画，仅 App 端生效
@@ -216,6 +216,15 @@ router.onRouteChange((to, from) => {
 	<RouterLink :to="{ name: 'admin' }" @error="onNavError">管理后台</RouterLink>
 	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">底部滑入</RouterLink>
 	<RouterLink to="/pages/index/index" relaunch>返回首页</RouterLink>
+	<!-- 页面间通信：通过 events 监听目标页面事件，通过 navigated 获取 eventChannel 发送事件 -->
+	<RouterLink
+		:to="{ path: '/pages/detail/detail', query: { id: '1' } }"
+		:events="{ update: (data) => console.log('收到更新:', data) }"
+		@navigated="onNavigated"
+		@error="onNavError"
+	>
+		查看详情
+	</RouterLink>
 </template>
 
 <script setup>
@@ -223,6 +232,11 @@ import { RouterLink } from '@meng-xi/uni-router/components/RouterLink.vue'
 
 function onNavError(error) {
 	console.log('导航失败:', error.code)
+}
+
+function onNavigated(eventChannel) {
+	// 向目标页面发送事件
+	eventChannel?.emit('init', { message: '来自发起页面的数据' })
 }
 </script>
 ```
