@@ -10,7 +10,7 @@ interface RouteMeta {
   isTab?: boolean
   requireAuth?: boolean
   animation?: NavigationAnimation
-  [key: string]: unknown
+  [key: string]: any
 }
 ```
 
