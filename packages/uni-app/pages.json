@@ -30,6 +30,12 @@
 			"style": {
 				"navigationBarTitleText": "登录"
 			}
+		},
+		{
+			"path": "pages/event-channel/index",
+			"style": {
+				"navigationBarTitleText": "页面间通信"
+			}
 		}
 	],
 	"globalStyle": {

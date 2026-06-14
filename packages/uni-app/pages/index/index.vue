@@ -48,6 +48,36 @@
 			</mxuni-router>
 		</view>
 
+		<!-- RouterLink animation -->
+		<view class="card">
+			<text class="card-title">RouterLink - animation 属性</text>
+			<text class="hint">通过 animation 属性控制导航动画（仅 App 端生效）</text>
+			<mxuni-router to="/pages/about/index" :animation="{ type: 'slide-in-bottom' }">
+				<view class="btn">
+					<text class="btn-text">RouterLink - 底部滑入动画</text>
+				</view>
+			</mxuni-router>
+		</view>
+
+		<!-- RouterLink events + navigated -->
+		<view class="card">
+			<text class="card-title">RouterLink - events 与 navigated</text>
+			<text class="hint">通过 events 属性监听目标页面事件，通过 @navigated 获取 eventChannel</text>
+			<mxuni-router
+				:to="{ path: '/pages/about/index', query: { id: 'link-ec' } }"
+				:events="{ receiveData: (data) => onReceiveData(data) }"
+				@navigated="onNavigated"
+				@error="onRouterLinkError"
+			>
+				<view class="btn btn-secondary">
+					<text class="btn-text-secondary">RouterLink - events + navigated</text>
+				</view>
+			</mxuni-router>
+			<view v-if="routerLinkLog" class="info-row">
+				<text class="info-value active">{{ routerLinkLog }}</text>
+			</view>
+		</view>
+
 		<!-- 导航动画 -->
 		<view class="card">
 			<text class="card-title">导航动画（仅 App 端生效）</text>
@@ -75,6 +105,15 @@
 				<text :class="['info-value', loginStatus ? 'active' : 'inactive']">
 					{{ loginStatus ? '已登录' : '未登录' }}
 				</text>
+			</view>
+		</view>
+
+		<!-- EventChannel -->
+		<view class="card">
+			<text class="card-title">EventChannel - 页面间通信</text>
+			<text class="hint">push 支持 events 参数和 eventChannel 返回值，实现页面间双向通信</text>
+			<view class="btn" @click="goToEventChannel">
+				<text class="btn-text">查看 EventChannel 演示</text>
 			</view>
 		</view>
 
@@ -161,7 +200,8 @@ export default {
 			loginStatus: false,
 			currentRoute: {},
 			lastError: '',
-			resolveResult: ''
+			resolveResult: '',
+			routerLinkLog: ''
 		}
 	},
 	onLoad() {
@@ -286,6 +326,26 @@ export default {
 			const routes = router.getRoutes()
 			const names = routes.map(r => r.name || r.path).join(', ')
 			this.resolveResult = `共 ${routes.length} 条路由:\n${names}`
+		},
+		async goToEventChannel() {
+			try {
+				await router.push('/pages/event-channel/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		onReceiveData(data) {
+			this.routerLinkLog = `收到关于页数据: ${JSON.stringify(data)}`
+			uni.showToast({ title: `收到: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
+		},
+		onNavigated(eventChannel) {
+			if (eventChannel) {
+				eventChannel.emit('fromOpener', { msg: '来自 RouterLink 的 navigated 事件' })
+				this.routerLinkLog = '已通过 eventChannel 发送消息到关于页'
+			}
+		},
+		onRouterLinkError(error) {
+			this.lastError = `RouterLink 导航失败: ${error.message || String(error)}`
 		}
 	}
 }

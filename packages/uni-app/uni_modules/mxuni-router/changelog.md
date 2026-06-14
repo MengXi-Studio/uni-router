@@ -1,3 +1,19 @@
+## 1.4.0（2026-06-14）
+
+### 新增
+
+- **EventChannel 页面间通信** - `push` 支持 `events` 参数和 `eventChannel` 返回值，实现页面间双向通信
+  - `RouteLocationPathRaw.events` / `RouteLocationNamedRaw.events` - 导航时传入事件监听器，监听目标页面通过 `eventChannel.emit` 发送的事件
+  - `NavigationResult.eventChannel` - `push` 返回结果新增 `eventChannel` 字段，用于向目标页面发送事件
+  - `EventChannel` 接口 - 完整的 `on` / `once` / `off` / `emit` 方法定义
+  - `EventListeners` 类型 - 事件监听器映射类型
+  - 非 push 模式（replace / relaunch）传入 `events` 时输出警告并忽略
+  - TabBar 页面（switchTab）不支持 `events`，传入时输出警告并忽略
+- **RouterLink `events` prop** - 声明式导航支持页面间通信，对应 `uni.navigateTo` 的 `events` 参数
+- **RouterLink `@navigated` 事件** - 导航成功后触发，参数为 `EventChannel | undefined`，仅 push 模式返回 `eventChannel` 实例
+- **uni API 拦截器支持 `events`** - 拦截 `uni.navigateTo` 时提取 `events` 参数转发到路由器
+- **类型导出** - 新增 `EventChannel` 和 `EventListeners` 类型导出
+
 ## 1.3.0（2026-06-12）
 
 ### 新增

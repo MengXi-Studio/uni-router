@@ -8,6 +8,8 @@ export interface RouteMeta {
 	isTab?: boolean
 	/** 是否需要登录 */
 	requireAuth?: boolean
+	/** 默认导航动画（仅 App 端生效） */
+	animation?: { type: string; duration?: number }
 	/** 自定义扩展字段 */
 	[key: string]: unknown
 }
@@ -22,6 +24,8 @@ export interface RouteConfig {
 	name?: string
 	/** 路由元信息 */
 	meta?: RouteMeta
+	/** 路由独享守卫，进入该路由时触发 */
+	beforeEnter?: (to: any, from: any, next: (arg?: any) => void) => void
 }
 
 /**
@@ -41,13 +45,18 @@ export const routes: RouteConfig[] = [
 		name: 'pagesGuardsIndex',
 		meta: {
 			title: '路由守卫'
+		},
+		beforeEnter(to, from, next) {
+			console.log('[beforeEnter] 路由独享守卫:', from.fullPath, '->', to.fullPath)
+			next()
 		}
 	},
 	{
 		path: '/pages/about/index',
 		name: 'pagesAboutIndex',
 		meta: {
-			title: '关于'
+			title: '关于',
+			animation: { type: 'slide-in-right' }
 		}
 	},
 	{
@@ -63,6 +72,13 @@ export const routes: RouteConfig[] = [
 		name: 'pagesLoginIndex',
 		meta: {
 			title: '登录'
+		}
+	},
+	{
+		path: '/pages/event-channel/index',
+		name: 'pagesEventChannelIndex',
+		meta: {
+			title: '页面间通信'
 		}
 	}
 ]

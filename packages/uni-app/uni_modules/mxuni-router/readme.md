@@ -20,7 +20,8 @@
 - **uni API 拦截** - 拦截 `uni.navigateTo` 等原生导航 API，确保守卫始终生效（`interceptUniApi`）
 - **路由状态同步** - `syncRoute()` 将路由状态与实际页面栈同步，处理物理返回键等非路由器导航
 - **路由变化监听** - `onRouteChange()` 订阅路由状态变化，包括导航完成和状态同步
-- **RouterLink 组件** - 声明式导航组件，支持 `push` / `replace` / `relaunch` 模式和 `@error` 事件
+- **RouterLink 组件** - 声明式导航组件，支持 `push` / `replace` / `relaunch` 模式、`events` 页面间通信、`animation` 导航动画、`@navigated` / `@error` 事件
+- **页面间通信** - `push` 支持 `events` 参数和 `eventChannel` 返回值，实现页面间双向通信（对应 uni.navigateTo 的 EventChannel 机制）
 - **TypeScript 类型提示** - 通过模块增强为路由名称和路径提供自动补全和类型检查
 - **错误处理** - 完整的 `RouterError` / `NavigationFailure` 体系，支持 `onError` 全局捕获
 - **组合式 API** - `useRouter()` / `useRoute()` 在组件中便捷访问路由器
@@ -100,6 +101,22 @@ await router.push({ path: '/pages/about/about', query: { id: '1' } })
 // 命名导航
 await router.push({ name: 'about' })
 
+// 带动画导航（仅 App 端生效）
+await router.push({ path: '/pages/about/about', animation: { type: 'slide-in-bottom' } })
+
+// 带页面间通信的导航
+const result = await router.push({
+	path: '/pages/about/about',
+	events: {
+		// 监听目标页面通过 eventChannel.emit 发送的事件
+		receiveData: data => {
+			console.log('收到数据:', data)
+		}
+	}
+})
+// 通过 eventChannel 向目标页面发送事件
+result.eventChannel?.emit('fromOpener', { msg: '你好' })
+
 // 返回
 await router.back()
 await router.back(2) // 返回两级
@@ -122,10 +139,38 @@ router.beforeEach((to, from, next) => {
 	}
 })
 
+// 全局解析守卫 - 在所有前置守卫和路由独享守卫完成后执行
+router.beforeResolve((to, from, next) => {
+	console.log('所有守卫已通过，即将完成导航')
+	next()
+})
+
 // 全局后置钩子
 router.afterEach((to, from) => {
 	console.log(`导航完成: ${from.path} → ${to.path}`)
 })
+
+// 路由独享守卫 - 在路由配置中定义
+const router = createRouter({
+	routes: [
+		{
+			path: '/pages/admin/index',
+			name: 'admin',
+			meta: { title: '管理页', requireAuth: true },
+			beforeEnter(to, from, next) {
+				console.log('进入管理页')
+				next()
+			}
+		}
+	]
+})
+
+// 守卫注册函数返回移除函数
+const removeGuard = router.beforeEach((to, from, next) => {
+	// ...
+	next()
+})
+removeGuard() // 移除此守卫
 ```
 
 ### 4. 自动生成路由配置（推荐）
@@ -179,22 +224,22 @@ const router = createRouter({ routes })
 
 ### Router 实例方法
 
-| 方法                              | 说明                       |
-| --------------------------------- | -------------------------- |
-| `router.push(location)`           | 导航到新页面               |
-| `router.replace(location)`        | 替换当前页面               |
-| `router.relaunch(location)`       | 关闭所有页面并打开目标页面 |
-| `router.back(delta?, animation?)` | 返回上一页或多级页面       |
-| `router.beforeEach(guard)`        | 注册全局前置守卫           |
-| `router.beforeResolve(guard)`     | 注册全局解析守卫           |
-| `router.afterEach(guard)`         | 注册全局后置钩子           |
-| `router.onError(handler)`         | 注册错误处理回调           |
-| `router.resolve(location)`        | 解析路由位置（不导航）     |
-| `router.getRoutes()`              | 获取所有路由配置           |
-| `router.hasRoute(name)`           | 检查路由是否存在           |
-| `router.isReady()`                | 等待路由器初始化完成       |
-| `router.onRouteChange(listener)`  | 注册路由变化监听器         |
-| `router.syncRoute()`              | 同步路由状态与实际页面栈   |
+| 方法                              | 说明                       | 返回值                      |
+| --------------------------------- | -------------------------- | --------------------------- |
+| `router.push(location)`           | 导航到新页面               | `Promise<NavigationResult>` |
+| `router.replace(location)`        | 替换当前页面               | `Promise<RouteLocation>`    |
+| `router.relaunch(location)`       | 关闭所有页面并打开目标页面 | `Promise<RouteLocation>`    |
+| `router.back(delta?, animation?)` | 返回上一页或多级页面       | `Promise<void>`             |
+| `router.beforeEach(guard)`        | 注册全局前置守卫           | `() => void` 移除函数       |
+| `router.beforeResolve(guard)`     | 注册全局解析守卫           | `() => void` 移除函数       |
+| `router.afterEach(guard)`         | 注册全局后置钩子           | `() => void` 移除函数       |
+| `router.onError(handler)`         | 注册错误处理回调           | `() => void` 移除函数       |
+| `router.resolve(location)`        | 解析路由位置（不导航）     | `RouteLocation`             |
+| `router.getRoutes()`              | 获取所有路由配置           | `RouteConfig[]`             |
+| `router.hasRoute(name)`           | 检查路由是否存在           | `boolean`                   |
+| `router.isReady()`                | 等待路由器初始化完成       | `Promise<void>`             |
+| `router.onRouteChange(listener)`  | 注册路由变化监听器         | `() => void` 移除函数       |
+| `router.syncRoute()`              | 同步路由状态与实际页面栈   | `void`                      |
 
 ### 错误码
 
@@ -236,10 +281,23 @@ const router = createRouter({ routes })
 	<view>返回首页</view>
 </mxuni-router>
 
-<!-- 捕获导航失败 -->
-<mxuni-router to="/pages/about/about" @error="onNavError">
-	<view>跳转</view>
+<!-- 带动画导航（仅 App 端生效） -->
+<mxuni-router to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">
+	<view>底部滑入</view>
 </mxuni-router>
+
+<!-- 带页面间通信 -->
+<mxuni-router :to="{ path: '/pages/about/about', query: { id: '1' } }" :events="{ receiveData: (data) => console.log(data) }" @navigated="onNavigated" @error="onNavError">
+	<view>跳转并通信</view>
+</mxuni-router>
+```
+
+```typescript
+// @navigated 回调获取 eventChannel
+function onNavigated(eventChannel) {
+	// 向目标页面发送事件
+	eventChannel?.emit('fromOpener', { msg: '你好' })
+}
 ```
 
 | 属性                   | 类型                  | 默认值              | 说明                                                                         |
@@ -248,14 +306,67 @@ const router = createRouter({ routes })
 | `replace`              | `boolean`             | `false`             | 是否使用替换模式导航                                                         |
 | `relaunch`             | `boolean`             | `false`             | 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面），优先级高于 replace |
 | `animation`            | `NavigationAnimation` | `undefined`         | 导航动画（仅 App 端生效），覆盖 meta.animation                               |
+| `events`               | `EventListeners`      | `undefined`         | 监听被打开页面通过 eventChannel 发送的事件                                   |
 | `hoverClass`           | `string`              | `'navigator-hover'` | 按下时的样式类                                                               |
 | `hoverStopPropagation` | `boolean`             | `false`             | 是否阻止祖先节点的点击态                                                     |
 | `hoverStartTime`       | `number`              | `50`                | 按住后多久出现点击态（ms）                                                   |
 | `hoverStayTime`        | `number`              | `600`               | 手指松开后点击态保留时间（ms）                                               |
 
-| 事件    | 参数                | 说明           |
-| ------- | ------------------- | -------------- |
-| `error` | `NavigationFailure` | 导航失败时触发 |
+| 事件        | 参数                   | 说明                                     |
+| ----------- | ---------------------- | ---------------------------------------- |
+| `navigated` | `EventChannel \| void` | 导航成功后触发，参数为 eventChannel 实例 |
+| `error`     | `NavigationFailure`    | 导航失败时触发                           |
+
+### RouteConfig 路由配置项
+
+| 字段          | 类型                                   | 说明                                     |
+| ------------- | -------------------------------------- | ---------------------------------------- |
+| `path`        | `string`                               | 页面路径，需与 `pages.json` 中的路径一致 |
+| `name`        | `string`                               | 路由名称，用于命名路由导航               |
+| `meta`        | `RouteMeta`                            | 路由元信息                               |
+| `beforeEnter` | `NavigationGuard \| NavigationGuard[]` | 路由独享守卫，进入该路由时触发           |
+
+### RouteMeta 路由元信息
+
+| 字段            | 类型                  | 说明                                                                     |
+| --------------- | --------------------- | ------------------------------------------------------------------------ |
+| `title`         | `string`              | 页面标题                                                                 |
+| `isTab`         | `boolean`             | 是否为 TabBar 页面，为 true 时 push/replace 自动使用 switchTab           |
+| `requireAuth`   | `boolean`             | 是否需要登录认证                                                         |
+| `animation`     | `NavigationAnimation` | 默认导航动画（仅 App 端生效），可被 push/replace 时的 animation 参数覆盖 |
+| `[key: string]` | `unknown`             | 自定义扩展字段                                                           |
+
+### NavigationResult 导航结果
+
+`push()` 的返回值，继承 `RouteLocation`，额外包含 `eventChannel`：
+
+| 字段           | 类型                        | 说明                           |
+| -------------- | --------------------------- | ------------------------------ |
+| `path`         | `string`                    | 规范化后的路径                 |
+| `name`         | `string \| undefined`       | 路由名称                       |
+| `meta`         | `RouteMeta`                 | 路由元信息                     |
+| `query`        | `Record<string, string>`    | 查询参数                       |
+| `fullPath`     | `string`                    | 完整路径（含查询参数）         |
+| `eventChannel` | `EventChannel \| undefined` | 页面间通信通道，仅 push 时可用 |
+
+### Options API
+
+在 Options API 组件中，可通过 `this.$router` 和 `this.$route` 访问路由器：
+
+```typescript
+export default {
+	methods: {
+		goToAbout() {
+			this.$router.push('/pages/about/about')
+		}
+	},
+	computed: {
+		currentPath() {
+			return this.$route.path
+		}
+	}
+}
+```
 
 ## TypeScript 类型提示
 
