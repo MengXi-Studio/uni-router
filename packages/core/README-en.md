@@ -22,9 +22,10 @@
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths via module augmentation
 - **Error Handling** - Complete `RouterError` / `NavigationFailure` system with `onError` global capture
 - **Composables** - `useRouter()` / `useRoute()` for convenient router access in components, `useRoute()` returns a reactive ref that auto-updates on route changes
-- **RouterLink Component** - Declarative navigation component based on uni-app `navigator`, with `events` for page communication, `navigated` event for `eventChannel` access, and `error` event for navigation failure handling
+- **RouterLink Component** - Declarative navigation component based on uni-app `navigator`, with `error` event for navigation failure handling
 - **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
 - **Guard Timeout Protection** - Configurable `guardTimeout` to prevent navigation from hanging when guards don't call `next()`
+- **Ready Timeout Protection** - Configurable `readyTimeout` to prevent `isReady()` from hanging when router initialization fails
 - **Navigation Animation** - Support animation params in `push` / `replace` / `back`, with route-level `meta.animation` defaults. App only, other platforms auto-ignore
 - **Page Communication** - `push` supports `events` param and `eventChannel` return value for bidirectional page communication (corresponds to uni.navigateTo EventChannel)
 - **Route State Sync** - `syncRoute()` method keeps route state consistent with the page stack, handling browser back, physical back button, etc.
@@ -90,7 +91,8 @@ const router = createRouter({
 	routes,
 	strict: true,
 	interceptUniApi: true, // Intercept uni native navigation APIs to ensure guards work
-	guardTimeout: 15000 // Guard timeout in ms, default 10000
+	guardTimeout: 15000, // Guard timeout in ms, default 10000
+	readyTimeout: 5000 // Router ready timeout in ms, default 0 (never timeout)
 })
 
 export function createApp() {
@@ -152,7 +154,7 @@ const instance = getCurrentInstance()
 const eventChannel = instance.proxy.getOpenerEventChannel()
 
 // Listen for the init event from the opener page
-eventChannel.on('init', (data) => {
+eventChannel.on('init', data => {
 	console.log('Received init data:', data)
 })
 
@@ -216,15 +218,6 @@ router.onRouteChange((to, from) => {
 	<RouterLink :to="{ name: 'admin' }" @error="onNavError">Admin Panel</RouterLink>
 	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">Slide In Bottom</RouterLink>
 	<RouterLink to="/pages/index/index" relaunch>Back to Home</RouterLink>
-	<!-- Page communication: listen to target page events via events, get eventChannel via navigated -->
-	<RouterLink
-		:to="{ path: '/pages/detail/detail', query: { id: '1' } }"
-		:events="{ update: (data) => console.log('Received update:', data) }"
-		@navigated="onNavigated"
-		@error="onNavError"
-	>
-		View Details
-	</RouterLink>
 </template>
 
 <script setup>
@@ -232,11 +225,6 @@ import { RouterLink } from '@meng-xi/uni-router/components/RouterLink.vue'
 
 function onNavError(error) {
 	console.log('Navigation failed:', error.code)
-}
-
-function onNavigated(eventChannel) {
-	// Send event to the target page
-	eventChannel?.emit('init', { message: 'Data from the opener page' })
 }
 </script>
 ```
@@ -254,21 +242,21 @@ function onNavigated(eventChannel) {
 
 ### Router Instance Methods
 
-| Method                            | Description                                                        |
-| --------------------------------- | ------------------------------------------------------------------ |
-| `router.push(location)`           | Navigate to a new page, returns `NavigationResult` (with `eventChannel`) |
-| `router.replace(location)`        | Replace the current page                                           |
-| `router.relaunch(location)`       | Close all pages and open target page                               |
-| `router.back(delta?, animation?)` | Go back one or more pages (with guard chain)                       |
-| `router.beforeEach(guard)`        | Register global before guard                 |
-| `router.beforeResolve(guard)`     | Register global resolve guard                |
-| `router.afterEach(guard)`         | Register global after hook                   |
-| `router.onRouteChange(fn)`        | Register route change listener               |
-| `router.onError(handler)`         | Register error handler                       |
-| `router.syncRoute()`              | Sync route state with page stack             |
-| `router.resolve(location)`        | Resolve route location (no navigation)       |
-| `router.getRoutes()`              | Get all route configs                        |
-| `router.hasRoute(name)`           | Check if a route exists                      |
+| Method                            | Description                                                                 |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| `router.push(location)`           | Navigate to a new page, returns `NavigationResult` (with `eventChannel`)    |
+| `router.replace(location)`        | Replace the current page                                                    |
+| `router.relaunch(location)`       | Close all pages and open target page                                        |
+| `router.back(delta?, animation?)` | Go back one or more pages (with guard chain), returns target route location |
+| `router.beforeEach(guard)`        | Register global before guard                                                |
+| `router.beforeResolve(guard)`     | Register global resolve guard                                               |
+| `router.afterEach(guard)`         | Register global after hook                                                  |
+| `router.onRouteChange(fn)`        | Register route change listener                                              |
+| `router.onError(handler)`         | Register error handler                                                      |
+| `router.syncRoute()`              | Sync route state with page stack                                            |
+| `router.resolve(location)`        | Resolve route location (no navigation)                                      |
+| `router.getRoutes()`              | Get all route configs                                                       |
+| `router.hasRoute(name)`           | Check if a route exists                                                     |
 
 ### Error Codes
 
@@ -283,12 +271,12 @@ function onNavigated(eventChannel) {
 
 ### Exported Types
 
-| Type                  | Description                                                         |
-| --------------------- | ------------------------------------------------------------------- |
-| `NavigationResult`    | `push` return type, extends `RouteLocation`, includes `eventChannel` |
-| `EventChannel`        | Page communication event channel, supports `emit` / `on` / `off`    |
+| Type                  | Description                                                           |
+| --------------------- | --------------------------------------------------------------------- |
+| `NavigationResult`    | `push` return type, extends `RouteLocation`, includes `eventChannel`  |
+| `EventChannel`        | Page communication event channel, supports `emit` / `on` / `off`      |
 | `EventListeners`      | Event listener collection, `Record<string, (...args: any[]) => void>` |
-| `NavigationAnimation` | Navigation animation config, with `type` and optional `duration`    |
+| `NavigationAnimation` | Navigation animation config, with `type` and optional `duration`      |
 
 ## TypeScript Type Hints
 

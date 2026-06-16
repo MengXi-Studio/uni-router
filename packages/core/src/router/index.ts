@@ -36,6 +36,7 @@ class UniRouter implements Router {
 	constructor(options: RouterOptions) {
 		this.guardManager = createGuardManager(options.guardTimeout)
 		this.matcher = createRouteMatcher(options.routes, options.strict ?? true)
+		this.routeState = createRouteState(options.readyTimeout)
 		this._interceptUniApi = options.interceptUniApi ?? false
 		this.initRoute()
 		if (this._interceptUniApi) {
@@ -110,7 +111,7 @@ class UniRouter implements Router {
 	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
-	async back(delta: number = 1, animation?: NavigationAnimation): Promise<void> {
+	async back(delta: number = 1, animation?: NavigationAnimation): Promise<RouteLocation> {
 		// 等待前一次导航完成（无论成功或失败），避免并发导航
 		// 错误已通过 onError 机制通知，此处无需再处理
 		if (this.pendingNavigation) {
@@ -138,17 +139,18 @@ class UniRouter implements Router {
 		// 执行守卫链
 		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
 		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0, effectiveAnimation)
-		if (handled) return handled as unknown as Promise<void>
+		if (handled) return handled as unknown as Promise<RouteLocation>
 
 		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
 		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'back', 0, effectiveAnimation)
-		if (handledResolve) return handledResolve as unknown as Promise<void>
+		if (handledResolve) return handledResolve as unknown as Promise<RouteLocation>
 
 		// 守卫通过，执行返回
 		try {
 			await goBack(delta, effectiveAnimation)
 			this.syncCurrentRoute(from)
 			this.guardManager.runAfterGuards(to, from)
+			return this.routeState.getCurrentRoute()
 		} catch (error) {
 			const code = RouterErrorCode.NAVIGATION_API_ERROR
 			const cause = isUniApiError(error) ? error : undefined

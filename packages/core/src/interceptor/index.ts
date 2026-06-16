@@ -129,7 +129,7 @@ function extractAnimation(args: Record<string, any>): NavigationAnimation | unde
 function buildLocation(path: string, query: Record<string, string>, animation?: NavigationAnimation, events?: EventListeners): RouteLocationRaw {
 	const hasQuery = query && Object.keys(query).length > 0
 	if (!hasQuery && !animation && !events) return path
-	return { path, ...(hasQuery && { query }), ...animation, ...(events && { events }) }
+	return { path, ...(hasQuery && { query }), ...(animation && { animation }), ...(events && { events }) }
 }
 
 /**

@@ -43,6 +43,18 @@ export interface RouterOptions {
 	 * @default 10000
 	 */
 	guardTimeout?: number
+
+	/**
+	 * 路由器就绪超时时间（毫秒）
+	 *
+	 * 当路由器在此时间内未能完成初始化时，`await router.isReady()` 将被 reject，
+	 * 防止路由器初始化异常时 Promise 永久挂起。
+	 *
+	 * 设为 0 可禁用超时保护（默认行为，即永不超时）。
+	 *
+	 * @default 0
+	 */
+	readyTimeout?: number
 }
 
 /**
@@ -89,13 +101,15 @@ export interface Router {
 	 * 返回上一页或多级页面，对应 uni.navigateBack
 	 *
 	 * 执行完整的导航守卫链（beforeEach → beforeResolve），守卫可中止或重定向返回操作。
+	 * 返回同步后的当前路由位置，调用者可获取返回到的目标页面信息。
 	 * 注意：物理返回键和浏览器后退不经过路由器，无法被守卫拦截。
 	 *
 	 * @param delta - 返回的页面数，默认为 1
 	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
+	 * @returns 返回到的目标路由位置
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
-	back(delta?: number, animation?: NavigationAnimation): Promise<void>
+	back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
 
 	/**
 	 * 注册全局前置守卫，在每次导航前执行
