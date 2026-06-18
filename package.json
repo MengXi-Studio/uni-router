@@ -1,7 +1,7 @@
 {
 	"name": "uni-router",
 	"type": "module",
-	"version": "1.4.0",
+	"version": "1.5.0",
 	"private": false,
 	"description": "为 uni-app 提供类似 vue-router 风格的路由",
 	"packageManager": "pnpm@10.30.0",
