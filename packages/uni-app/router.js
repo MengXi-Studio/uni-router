@@ -4,9 +4,21 @@ import routes from './router.config'
 const router = createRouter({
 	routes,
 	strict: true,
-	interceptUniApi: true,
-	guardTimeout: 15000
+	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫始终生效
+	guardTimeout: 15000, // 守卫超时 15 秒，适用于异步请求较慢的场景
+	readyTimeout: 5000 // 路由器就绪超时 5 秒，防止初始化异常时 isReady() 永久挂起
 })
+
+// ===== 等待路由器初始化完成 =====
+// isReady() 在路由器完成初始化后 resolve；若配置了 readyTimeout 且超时则 reject
+router
+	.isReady()
+	.then(() => {
+		console.log('[isReady] 路由器初始化完成')
+	})
+	.catch(error => {
+		console.error('[isReady] 路由器初始化超时:', error.message)
+	})
 
 // 登录状态（简单模拟，实际项目应从存储中读取）
 let isLoggedIn = false

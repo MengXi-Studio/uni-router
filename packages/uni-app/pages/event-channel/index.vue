@@ -32,6 +32,15 @@
 			</view>
 		</view>
 
+		<!-- EventChannel.off -->
+		<view class="card">
+			<text class="card-title">EventChannel.off - 取消监听</text>
+			<text class="hint">off() 取消已注册的事件监听器，后续 emit 不会触发该回调</text>
+			<view class="btn btn-warning" @click="pushWithOff">
+				<text class="btn-text">push 并演示 off 取消监听</text>
+			</view>
+		</view>
+
 		<!-- 通信日志 -->
 		<view class="card">
 			<text class="card-title">通信日志</text>
@@ -77,7 +86,7 @@ export default {
 				path: '/pages/about/index',
 				query: { id: 'ec', demo: 'event-channel' },
 				events: {
-					receiveData: (data) => {
+					receiveData: data => {
 						this.addLog(`收到关于页数据: ${JSON.stringify(data)}`)
 					}
 				}
@@ -95,7 +104,7 @@ export default {
 				path: '/pages/about/index',
 				query: { id: 'ec-reply', demo: 'event-channel-reply' },
 				events: {
-					replyFromAbout: (data) => {
+					replyFromAbout: data => {
 						this.addLog(`收到关于页回复: ${JSON.stringify(data)}`)
 						uni.showToast({ title: `收到: ${data.msg}`, icon: 'none' })
 					}
@@ -116,14 +125,14 @@ export default {
 				path: '/pages/about/index',
 				query: { id: 'once', demo: 'once-listener' },
 				events: {
-					onceEvent: (data) => {
+					onceEvent: data => {
 						this.addLog(`[once] 收到一次性事件: ${JSON.stringify(data)}`)
 						uni.showToast({ title: `once: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
 					}
 				}
 			})
 
-			result.eventChannel?.once('replyOnce', (data) => {
+			result.eventChannel?.once('replyOnce', data => {
 				this.addLog(`[once] 收到关于页一次性回复: ${JSON.stringify(data)}`)
 			})
 
@@ -131,6 +140,41 @@ export default {
 			setTimeout(() => {
 				result.eventChannel?.emit('fromOpener', { msg: '请用 once 回复！' })
 				this.addLog('已发送 fromOpener 事件')
+			}, 500)
+		},
+		async pushWithOff() {
+			this.logs = []
+			this.addLog('发起 push 导航，演示 off 取消监听...')
+
+			// 定义一个事件处理函数
+			const offHandler = data => {
+				this.addLog(`[off] 收到事件（取消前）: ${JSON.stringify(data)}`)
+			}
+
+			const result = await router.push({
+				path: '/pages/about/index',
+				query: { id: 'off', demo: 'off-listener' },
+				events: {
+					offDemo: offHandler
+				}
+			})
+
+			this.addLog('导航成功，已注册 offDemo 监听')
+
+			// 1 秒后取消监听
+			setTimeout(() => {
+				result.eventChannel?.off('offDemo', offHandler)
+				this.addLog('已调用 off("offDemo", handler) 取消监听')
+
+				// 再次 emit，此时不应触发回调
+				result.eventChannel?.emit('offDemo', { msg: '此消息不应被接收' })
+				this.addLog('已 emit offDemo 事件，但因已 off，回调不会触发')
+			}, 1000)
+
+			// 先发送一次让目标页能收到
+			setTimeout(() => {
+				result.eventChannel?.emit('fromOpener', { msg: '请回复 offDemo 事件！' })
+				this.addLog('已发送 fromOpener 事件，等待关于页回复 offDemo')
 			}, 500)
 		},
 		goBack() {

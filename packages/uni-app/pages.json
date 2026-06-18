@@ -36,6 +36,12 @@
 			"style": {
 				"navigationBarTitleText": "页面间通信"
 			}
+		},
+		{
+			"path": "pages/composable/index",
+			"style": {
+				"navigationBarTitleText": "组合式 API"
+			}
 		}
 	],
 	"globalStyle": {

@@ -63,12 +63,7 @@
 		<view class="card">
 			<text class="card-title">RouterLink - events 与 navigated</text>
 			<text class="hint">通过 events 属性监听目标页面事件，通过 @navigated 获取 eventChannel</text>
-			<mxuni-router
-				:to="{ path: '/pages/about/index', query: { id: 'link-ec' } }"
-				:events="{ receiveData: (data) => onReceiveData(data) }"
-				@navigated="onNavigated"
-				@error="onRouterLinkError"
-			>
+			<mxuni-router :to="{ path: '/pages/about/index', query: { id: 'link-ec' } }" :events="{ receiveData: data => onReceiveData(data) }" @navigated="onNavigated" @error="onRouterLinkError">
 				<view class="btn btn-secondary">
 					<text class="btn-text-secondary">RouterLink - events + navigated</text>
 				</view>
@@ -186,6 +181,33 @@
 			</view>
 			<view v-if="resolveResult" class="error-box">
 				<text class="error-text">{{ resolveResult }}</text>
+			</view>
+		</view>
+
+		<!-- interceptUniApi 拦截演示 -->
+		<view class="card">
+			<text class="card-title">interceptUniApi - 拦截 uni 原生导航 API</text>
+			<text class="hint">启用 interceptUniApi 后，直接调用 uni.navigateTo 等将被拦截，自动转为 router.push / replace / relaunch / back，确保守卫始终生效</text>
+			<view class="btn" @click="interceptedNavigateTo">
+				<text class="btn-text">uni.navigateTo（被拦截转为 push）</text>
+			</view>
+			<view class="btn btn-secondary" @click="interceptedRedirectTo">
+				<text class="btn-text-secondary">uni.redirectTo（被拦截转为 replace）</text>
+			</view>
+			<view class="btn btn-secondary" @click="interceptedReLaunch">
+				<text class="btn-text-secondary">uni.reLaunch（被拦截转为 relaunch）</text>
+			</view>
+			<view class="btn btn-secondary" @click="interceptedNavigateBack">
+				<text class="btn-text-secondary">uni.navigateBack（被拦截转为 back）</text>
+			</view>
+		</view>
+
+		<!-- 组合式 API -->
+		<view class="card">
+			<text class="card-title">组合式 API（useRouter / useRoute）</text>
+			<text class="hint">在 Vue 3 setup 中使用 useRouter() 和 useRoute() 访问路由器</text>
+			<view class="btn" @click="goToComposable">
+				<text class="btn-text">查看组合式 API 演示</text>
 			</view>
 		</view>
 	</view>
@@ -346,6 +368,32 @@ export default {
 		},
 		onRouterLinkError(error) {
 			this.lastError = `RouterLink 导航失败: ${error.message || String(error)}`
+		},
+		// ===== interceptUniApi 拦截演示 =====
+		// 启用 interceptUniApi: true 后，直接调用 uni 原生导航 API 会被拦截并转为路由器方法
+		interceptedNavigateTo() {
+			// 会被拦截，自动转为 router.push({ path: '/pages/about/index', query: { id: 'intercepted' } })
+			uni.navigateTo({ url: '/pages/about/index?id=intercepted' })
+		},
+		interceptedRedirectTo() {
+			// 会被拦截，自动转为 router.replace('/pages/about/index')
+			uni.redirectTo({ url: '/pages/about/index' })
+		},
+		interceptedReLaunch() {
+			// 会被拦截，自动转为 router.relaunch('/pages/index/index')
+			uni.reLaunch({ url: '/pages/index/index' })
+		},
+		interceptedNavigateBack() {
+			// 会被拦截，自动转为 router.back(1)，执行完整守卫链
+			uni.navigateBack({ delta: 1 })
+		},
+		// ===== 组合式 API 演示页面跳转 =====
+		async goToComposable() {
+			try {
+				await router.push('/pages/composable/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
 		}
 	}
 }

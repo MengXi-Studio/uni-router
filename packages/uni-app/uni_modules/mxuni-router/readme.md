@@ -14,6 +14,7 @@
 - **vue-router 风格 API** - 熟悉的 `push` / `replace` / `relaunch` / `back` 导航方式，零学习成本
 - **路由守卫** - 全局前置守卫 `beforeEach`、解析守卫 `beforeResolve`、后置钩子 `afterEach`、路由独享守卫 `beforeEnter`
 - **守卫超时保护** - 守卫未调用 `next()` 时自动中止导航，超时时间可配置（`guardTimeout`）
+- **路由器就绪超时保护** - 路由器初始化超时时 `isReady()` 自动 reject，防止 Promise 永久挂起（`readyTimeout`）
 - **命名路由** - 通过 `name` 进行导航，无需硬编码路径字符串
 - **路由元信息** - `meta` 字段支持页面标题、权限标记、TabBar 标识等自定义数据
 - **导航动画** - 支持 `push` / `replace` / `back` 时传入动画参数，支持路由级 `meta.animation` 默认动画，仅 App 端生效
@@ -229,7 +230,7 @@ const router = createRouter({ routes })
 | `router.push(location)`           | 导航到新页面               | `Promise<NavigationResult>` |
 | `router.replace(location)`        | 替换当前页面               | `Promise<RouteLocation>`    |
 | `router.relaunch(location)`       | 关闭所有页面并打开目标页面 | `Promise<RouteLocation>`    |
-| `router.back(delta?, animation?)` | 返回上一页或多级页面       | `Promise<void>`             |
+| `router.back(delta?, animation?)` | 返回上一页或多级页面       | `Promise<RouteLocation>`    |
 | `router.beforeEach(guard)`        | 注册全局前置守卫           | `() => void` 移除函数       |
 | `router.beforeResolve(guard)`     | 注册全局解析守卫           | `() => void` 移除函数       |
 | `router.afterEach(guard)`         | 注册全局后置钩子           | `() => void` 移除函数       |
@@ -252,14 +253,21 @@ const router = createRouter({ routes })
 | `NAVIGATION_API_ERROR`  | uni 导航 API 调用失败              |
 | `SETUP_ERROR`           | 路由器初始化或使用方式错误         |
 
+### 导出常量
+
+| 常量                         | 值    | 说明                                                |
+| ---------------------------- | ----- | --------------------------------------------------- |
+| `DEFAULT_ANIMATION_DURATION` | `300` | 默认动画持续时间（毫秒），与 uni-app 官方默认值一致 |
+
 ### RouterOptions 配置项
 
-| 选项              | 类型            | 默认值  | 说明                                                                                            |
-| ----------------- | --------------- | ------- | ----------------------------------------------------------------------------------------------- |
-| `routes`          | `RouteConfig[]` | -       | 路由配置列表，需与 `pages.json` 中的页面声明保持一致                                            |
-| `strict`          | `boolean`       | `true`  | 是否启用严格模式，启用后未匹配的命名路由将抛出异常                                              |
-| `interceptUniApi` | `boolean`       | `false` | 是否拦截 `uni.navigateTo` 等原生导航 API，启用后直接调用 uni API 将转由路由器处理，确保守卫生效 |
-| `guardTimeout`    | `number`        | `10000` | 守卫超时时间（毫秒），超时后自动中止导航并输出警告，设为 `0` 可禁用                             |
+| 选项              | 类型            | 默认值  | 说明                                                                                                                                                                     |
+| ----------------- | --------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `routes`          | `RouteConfig[]` | -       | 路由配置列表，需与 `pages.json` 中的页面声明保持一致                                                                                                                     |
+| `strict`          | `boolean`       | `true`  | 是否启用严格模式，启用后未匹配的命名路由将抛出异常                                                                                                                       |
+| `interceptUniApi` | `boolean`       | `false` | 是否拦截 `uni.navigateTo` / `uni.redirectTo` / `uni.switchTab` / `uni.reLaunch` / `uni.navigateBack` 原生导航 API，启用后直接调用 uni API 将转由路由器处理，确保守卫生效 |
+| `guardTimeout`    | `number`        | `10000` | 守卫超时时间（毫秒），超时后自动中止导航并输出警告，设为 `0` 可禁用                                                                                                      |
+| `readyTimeout`    | `number`        | `0`     | 路由器就绪超时时间（毫秒），超时后 `isReady()` 将 reject，防止 Promise 永久挂起，设为 `0` 可禁用                                                                         |
 
 ### RouterLink 组件
 
@@ -334,7 +342,7 @@ function onNavigated(eventChannel) {
 | `isTab`         | `boolean`             | 是否为 TabBar 页面，为 true 时 push/replace 自动使用 switchTab           |
 | `requireAuth`   | `boolean`             | 是否需要登录认证                                                         |
 | `animation`     | `NavigationAnimation` | 默认导航动画（仅 App 端生效），可被 push/replace 时的 animation 参数覆盖 |
-| `[key: string]` | `unknown`             | 自定义扩展字段                                                           |
+| `[key: string]` | `any`                 | 自定义扩展字段                                                           |
 
 ### NavigationResult 导航结果
 

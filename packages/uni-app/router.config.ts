@@ -1,36 +1,11 @@
-/**
- * 路由元信息
- */
-export interface RouteMeta {
-	/** 页面标题 */
-	title?: string
-	/** 是否为TabBar页面 */
-	isTab?: boolean
-	/** 是否需要登录 */
-	requireAuth?: boolean
-	/** 默认导航动画（仅 App 端生效） */
-	animation?: { type: string; duration?: number }
-	/** 自定义扩展字段 */
-	[key: string]: unknown
-}
-
-/**
- * 路由配置项
- */
-export interface RouteConfig {
-	/** 路由路径 */
-	path: string
-	/** 路由名称（用于命名路由导航） */
-	name?: string
-	/** 路由元信息 */
-	meta?: RouteMeta
-	/** 路由独享守卫，进入该路由时触发 */
-	beforeEnter?: (to: any, from: any, next: (arg?: any) => void) => void
-}
+import type { RouteConfig } from './uni_modules/mxuni-router/js_sdk/index.js'
 
 /**
  * 路由配置列表
  * @description 由 pages.json 自动生成
+ *
+ * 类型定义（RouteConfig / RouteMeta / NavigationAnimation 等）统一从 mxuni-router 导入，
+ * 避免重复定义导致与 mxuni-router 实现不一致。
  */
 export const routes: RouteConfig[] = [
 	{
@@ -79,6 +54,13 @@ export const routes: RouteConfig[] = [
 		name: 'pagesEventChannelIndex',
 		meta: {
 			title: '页面间通信'
+		}
+	},
+	{
+		path: '/pages/composable/index',
+		name: 'pagesComposableIndex',
+		meta: {
+			title: '组合式 API'
 		}
 	}
 ]

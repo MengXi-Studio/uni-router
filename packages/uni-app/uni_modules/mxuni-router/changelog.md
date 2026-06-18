@@ -1,3 +1,17 @@
+## 1.5.0（2026-06-18）
+
+### 新增
+
+- **路由器就绪超时保护** - `readyTimeout` 配置项，防止路由器初始化异常时 `isReady()` Promise 永久挂起
+  - `RouterOptions.readyTimeout` - 路由器就绪超时时间（毫秒），默认 `0`（永不超时），设为大于 0 时超时后 `isReady()` 将 reject
+  - `router.isReady()` 超时 reject - 当配置了 `readyTimeout > 0` 且路由器在指定时间内未完成初始化时，`await router.isReady()` 将抛出超时错误
+
+### 修复
+
+- **`interceptUniApi` 拦截列表文档遗漏 `reLaunch`** - v1.0.0 文档仅列出 `navigateTo` / `redirectTo` / `switchTab` / `navigateBack` 四个 API，实际实现（含 v1.3.0 新增）拦截五个 API，已补充 `reLaunch` 到文档说明
+- **`RouteMeta` 索引签名类型修正** - `[key: string]` 类型从 `unknown` 修正为 `any`，与实际实现保持一致
+- **`router.back()` 返回值文档修正** - 返回值类型从 `Promise<void>` 修正为 `Promise<RouteLocation>`，与实际实现保持一致
+
 ## 1.4.0（2026-06-14）
 
 ### 新增
