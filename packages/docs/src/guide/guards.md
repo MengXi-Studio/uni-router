@@ -202,6 +202,9 @@ uni.redirectTo({ url: '/pages/about/about' })
 // 以下调用会被拦截，自动转为 router.push('/pages/user/user')
 uni.switchTab({ url: '/pages/user/user' })
 
+// 以下调用会被拦截，自动转为 router.relaunch({ path: '/pages/index/index' })
+uni.reLaunch({ url: '/pages/index/index' })
+
 // 以下调用会被拦截，自动转为 router.back(1)
 uni.navigateBack({ delta: 1 })
 ```

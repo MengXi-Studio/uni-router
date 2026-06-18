@@ -97,7 +97,7 @@ export interface RouteMeta {
 	animation?: NavigationAnimation
 
 	/** 自定义扩展字段 */
-	[key: string]: unknown
+	[key: string]: any
 }
 
 /**

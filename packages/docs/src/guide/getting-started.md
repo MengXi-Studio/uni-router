@@ -53,7 +53,8 @@ const router = createRouter({
 	routes,
 	strict: true,
 	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫生效
-	guardTimeout: 15000 // 守卫超时时间（毫秒），默认 10000
+	guardTimeout: 15000, // 守卫超时时间（毫秒），默认 10000
+	readyTimeout: 5000 // 路由器就绪超时时间（毫秒），默认 0（永不超时）
 })
 
 export default router

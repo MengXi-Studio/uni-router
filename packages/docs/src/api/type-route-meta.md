@@ -28,7 +28,7 @@ interface RouteMeta {
   - `true` → `uni.switchTab`
   - `false` / 未设置 → `uni.navigateTo` / `uni.redirectTo`
 
-::: important
+::: warning
 必须与 `pages.json` 中的 `tabBar.list` 声明一致。
 :::
 

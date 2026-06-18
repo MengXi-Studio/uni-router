@@ -301,7 +301,10 @@ const router = createRouter({
 			meta: { isTab: true }
 		}
 	],
-	strict: true
+	strict: true,
+	interceptUniApi: true,
+	guardTimeout: 15000,
+	readyTimeout: 5000
 })
 ```
 
@@ -363,7 +366,7 @@ Uni Router does **not replace** `pages.json`, but works alongside it:
 | Route meta        | ❌ Not supported    | ✅ meta field            |
 | Named routes      | ❌ Not supported    | ✅ name field            |
 
-::: important
+::: warning
 Page declarations in `pages.json` are the foundation of the uni-app framework.
 Uni Router's route configurations must be consistent with them.
 Pages not declared in `pages.json` cannot be navigated to.

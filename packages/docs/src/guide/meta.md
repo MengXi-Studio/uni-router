@@ -49,7 +49,7 @@ const routes = [
 router.push({ name: 'user' })
 ```
 
-::: important
+::: warning
 `isTab` 必须与 `pages.json` 中的 `tabBar.list` 声明一致。如果页面是 TabBar 页面但未设置 `isTab: true`，导航将使用 `uni.navigateTo` 而非 `uni.switchTab`，导致导航失败。
 :::
 

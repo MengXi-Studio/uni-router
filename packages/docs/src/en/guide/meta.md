@@ -49,7 +49,7 @@ const routes = [
 router.push({ name: 'user' })
 ```
 
-::: important
+::: warning
 `isTab` must be consistent with the `tabBar.list` declaration in `pages.json`. If a page is a TabBar page but `isTab: true` is not set, navigation will use `uni.navigateTo` instead of `uni.switchTab`, causing navigation failure.
 :::
 

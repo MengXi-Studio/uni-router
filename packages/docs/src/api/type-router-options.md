@@ -10,6 +10,7 @@ interface RouterOptions {
 	strict?: boolean
 	interceptUniApi?: boolean
 	guardTimeout?: number
+	readyTimeout?: number
 }
 ```
 
@@ -33,7 +34,7 @@ interface RouterOptions {
 
 - **类型**: `boolean`
 - **默认值**: `false`
-- **说明**: 是否拦截 uni 原生导航 API（`navigateTo` / `redirectTo` / `switchTab` / `navigateBack`）
+- **说明**: 是否拦截 uni 原生导航 API（`navigateTo` / `redirectTo` / `switchTab` / `reLaunch` / `navigateBack`）
   - `true`：直接调用 `uni.navigateTo()` 等方法将被拦截并转由路由器处理，确保路由守卫（`beforeEach` / `beforeResolve` / `afterEach`）始终生效
   - `false`：直接调用 uni 原生 API 将绕过路由守卫
 
@@ -57,6 +58,20 @@ const router = createRouter({
 })
 ```
 
+### readyTimeout
+
+- **类型**: `number`
+- **默认值**: `0`（永不超时）
+- **说明**: 路由器就绪超时时间（毫秒）。当路由器在此时间内未能完成初始化时，`await router.isReady()` 将被 reject，防止路由器初始化异常时 Promise 永久挂起。
+  - 设为 `0` 可禁用超时保护（默认行为，即永不超时）
+
+```ts
+const router = createRouter({
+  routes: [...],
+  readyTimeout: 5000 // 5 秒内未就绪则 reject isReady() Promise
+})
+```
+
 ## 示例
 
 ```ts
@@ -67,6 +82,7 @@ const router = createRouter({
 	],
 	strict: true,
 	interceptUniApi: true,
-	guardTimeout: 15000
+	guardTimeout: 15000,
+	readyTimeout: 5000
 })
 ```

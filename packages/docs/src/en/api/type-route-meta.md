@@ -10,7 +10,7 @@ interface RouteMeta {
   isTab?: boolean
   requireAuth?: boolean
   animation?: NavigationAnimation
-  [key: string]: any
+  [key: string]: unknown
 }
 ```
 
@@ -28,7 +28,7 @@ interface RouteMeta {
   - `true` → `uni.switchTab`
   - `false` / not set → `uni.navigateTo` / `uni.redirectTo`
 
-::: important
+::: warning
 Must be consistent with the `tabBar.list` declaration in `pages.json`.
 :::
 

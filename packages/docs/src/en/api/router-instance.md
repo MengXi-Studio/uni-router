@@ -90,7 +90,7 @@ await router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' }
 Go back to the previous page or multiple pages, executing the full navigation guard chain.
 
 ```ts
-back(delta?: number, animation?: NavigationAnimation): Promise<void>
+back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
 ```
 
 - **delta**: Number of pages to go back, defaults to 1
@@ -98,6 +98,7 @@ back(delta?: number, animation?: NavigationAnimation): Promise<void>
 - Executes `beforeEach` → `beforeResolve` guard chain; guards can abort or redirect the back operation
 - Throws `NavigationFailure` (`NAVIGATION_CANCELLED`) when page stack is insufficient
 - Throws `NavigationFailure` when guards abort the navigation
+- Returns the synchronized current route location, allowing the caller to get the target page info
 
 ```ts
 await router.back()
@@ -197,6 +198,10 @@ Wait for the router to be initialized.
 ```ts
 isReady(): Promise<void>
 ```
+
+::: tip
+When `readyTimeout` is configured (non-zero), if the router fails to initialize within the timeout, this Promise will be rejected to prevent permanent hanging.
+:::
 
 ### onRouteChange()
 

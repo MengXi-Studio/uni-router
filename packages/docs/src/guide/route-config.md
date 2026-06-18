@@ -298,7 +298,10 @@ const router = createRouter({
 			meta: { isTab: true }
 		}
 	],
-	strict: true
+	strict: true,
+	interceptUniApi: true,
+	guardTimeout: 15000,
+	readyTimeout: 5000
 })
 ```
 
@@ -360,7 +363,7 @@ Uni Router **不替代** `pages.json`，而是与之配合使用：
 | 路由元信息 | ❌ 不支持         | ✅ meta 字段             |
 | 命名路由   | ❌ 不支持         | ✅ name 字段             |
 
-::: important
+::: warning
 `pages.json` 中的页面声明是 uni-app 框架的基础，Uni Router 的路由配置必须与之保持一致。
 `pages.json` 中未声明的页面无法被导航到。
 :::

@@ -207,6 +207,9 @@ uni.redirectTo({ url: '/pages/about/about' })
 // Intercepted, converted to router.push('/pages/user/user')
 uni.switchTab({ url: '/pages/user/user' })
 
+// Intercepted, converted to router.relaunch({ path: '/pages/index/index' })
+uni.reLaunch({ url: '/pages/index/index' })
+
 // Intercepted, converted to router.back(1)
 uni.navigateBack({ delta: 1 })
 ```

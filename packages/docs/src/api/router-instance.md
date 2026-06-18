@@ -90,7 +90,7 @@ await router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' }
 返回上一页或多级页面，执行完整的导航守卫链。
 
 ```ts
-back(delta?: number, animation?: NavigationAnimation): Promise<void>
+back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
 ```
 
 - **delta**: 返回的页面数，默认为 1
@@ -98,6 +98,7 @@ back(delta?: number, animation?: NavigationAnimation): Promise<void>
 - 执行 `beforeEach` → `beforeResolve` 守卫链，守卫可中止或重定向返回操作
 - 页面栈不足时抛出 `NavigationFailure`（`NAVIGATION_CANCELLED`）
 - 守卫中止时抛出 `NavigationFailure`
+- 返回同步后的当前路由位置，调用者可获取返回到的目标页面信息
 
 ```ts
 await router.back()
@@ -195,6 +196,10 @@ console.log(location.fullPath)
 ```ts
 isReady(): Promise<void>
 ```
+
+::: tip
+当配置了 `readyTimeout`（非 0）时，若路由器在超时时间内未完成初始化，此 Promise 将被 reject，防止永久挂起。
+:::
 
 ### onRouteChange()
 

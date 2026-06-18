@@ -10,6 +10,7 @@ interface RouterOptions {
 	strict?: boolean
 	interceptUniApi?: boolean
 	guardTimeout?: number
+	readyTimeout?: number
 }
 ```
 
@@ -33,7 +34,7 @@ interface RouterOptions {
 
 - **Type**: `boolean`
 - **Default**: `false`
-- **Description**: Whether to intercept uni native navigation APIs (`navigateTo` / `redirectTo` / `switchTab` / `navigateBack`)
+- **Description**: Whether to intercept uni native navigation APIs (`navigateTo` / `redirectTo` / `switchTab` / `reLaunch` / `navigateBack`)
   - `true`: Direct calls to `uni.navigateTo()` etc. will be intercepted and redirected through the router, ensuring route guards (`beforeEach` / `beforeResolve` / `afterEach`) are always triggered
   - `false`: Direct calls to uni native APIs bypass route guards
 
@@ -59,6 +60,20 @@ const router = createRouter({
 })
 ```
 
+### readyTimeout
+
+- **Type**: `number`
+- **Default**: `0` (never timeout)
+- **Description**: Router ready timeout in milliseconds. When the router fails to initialize within this time, `await router.isReady()` will be rejected, preventing the Promise from hanging permanently if the router initialization fails.
+  - Set to `0` to disable timeout protection (default behavior, never timeout)
+
+```ts
+const router = createRouter({
+  routes: [...],
+  readyTimeout: 5000 // Reject isReady() Promise if not ready within 5 seconds
+})
+```
+
 ## Example
 
 ```ts
@@ -69,6 +84,7 @@ const router = createRouter({
 	],
 	strict: true,
 	interceptUniApi: true,
-	guardTimeout: 15000
+	guardTimeout: 15000,
+	readyTimeout: 5000
 })
 ```

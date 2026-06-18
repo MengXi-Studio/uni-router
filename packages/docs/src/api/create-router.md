@@ -20,6 +20,7 @@ interface RouterOptions {
   strict?: boolean
   interceptUniApi?: boolean
   guardTimeout?: number
+  readyTimeout?: number
 }
 ```
 
@@ -37,13 +38,19 @@ interface RouterOptions {
 
 - **类型**: `boolean`
 - **默认值**: `false`
-- **说明**: 是否拦截 uni 原生导航 API（`navigateTo` / `redirectTo` / `switchTab` / `navigateBack`）。启用后直接调用 uni API 将转由路由器处理，确保守卫始终生效。
+- **说明**: 是否拦截 uni 原生导航 API（`navigateTo` / `redirectTo` / `switchTab` / `reLaunch` / `navigateBack`）。启用后直接调用 uni API 将转由路由器处理，确保守卫始终生效。
 
 #### options.guardTimeout
 
 - **类型**: `number`
 - **默认值**: `10000`
 - **说明**: 守卫超时时间（毫秒）。超时后自动中止导航，设为 `0` 可禁用。
+
+#### options.readyTimeout
+
+- **类型**: `number`
+- **默认值**: `0`（永不超时）
+- **说明**: 路由器就绪超时时间（毫秒）。超时后 `router.isReady()` 将被 reject，设为 `0` 可禁用。
 
 ## 返回值
 

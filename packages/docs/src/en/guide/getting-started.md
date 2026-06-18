@@ -53,7 +53,8 @@ const router = createRouter({
 	routes,
 	strict: true,
 	interceptUniApi: true, // Intercept native uni navigation APIs to ensure guards work
-	guardTimeout: 15000 // Guard timeout in ms, default 10000
+	guardTimeout: 15000, // Guard timeout in ms, default 10000
+	readyTimeout: 5000 // Router ready timeout in ms, default 0 (never timeout)
 })
 
 export default router

@@ -20,6 +20,7 @@ interface RouterOptions {
   strict?: boolean
   interceptUniApi?: boolean
   guardTimeout?: number
+  readyTimeout?: number
 }
 ```
 
@@ -37,13 +38,19 @@ Route configuration list, must be consistent with page declarations in `pages.js
 
 - **Type**: `boolean`
 - **Default**: `false`
-- **Description**: Whether to intercept uni native navigation APIs (`navigateTo` / `redirectTo` / `switchTab` / `navigateBack`). When enabled, direct calls to uni APIs are redirected through the router, ensuring guards are always triggered.
+- **Description**: Whether to intercept uni native navigation APIs (`navigateTo` / `redirectTo` / `switchTab` / `reLaunch` / `navigateBack`). When enabled, direct calls to uni APIs are redirected through the router, ensuring guards are always triggered.
 
 #### options.guardTimeout
 
 - **Type**: `number`
 - **Default**: `10000`
 - **Description**: Guard timeout in milliseconds. Navigation is automatically aborted on timeout. Set to `0` to disable.
+
+#### options.readyTimeout
+
+- **Type**: `number`
+- **Default**: `0` (never timeout)
+- **Description**: Router ready timeout in milliseconds. When the router fails to initialize within this time, `router.isReady()` will be rejected. Set to `0` to disable.
 
 ## Return Value
 
