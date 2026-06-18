@@ -283,7 +283,7 @@ function extractAnimation(args) {
 function buildLocation(path, query, animation, events) {
   const hasQuery = query && Object.keys(query).length > 0;
   if (!hasQuery && !animation && !events) return path;
-  return { path, ...hasQuery && { query }, ...animation, ...events && { events } };
+  return { path, ...hasQuery && { query }, ...animation && { animation }, ...events && { events } };
 }
 function handleInterceptedNavigation(api, args) {
   const router = activeManager?.getRouter();
@@ -525,11 +525,14 @@ var START_LOCATION = Object.freeze({
   query: Object.freeze({}),
   fullPath: "/"
 });
-function createRouteState() {
+var DEFAULT_READY_TIMEOUT = 0;
+function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
   let currentRoute = START_LOCATION;
   let ready = false;
   const readyResolvers = [];
+  const readyRejecters = [];
   const listeners = [];
+  let readyTimer = null;
   function getCurrentRoute() {
     return currentRoute;
   }
@@ -542,10 +545,15 @@ function createRouteState() {
     });
     if (!ready) {
       ready = true;
+      if (readyTimer) {
+        clearTimeout(readyTimer);
+        readyTimer = null;
+      }
       for (const resolve of readyResolvers) {
         resolve();
       }
       readyResolvers.length = 0;
+      readyRejecters.length = 0;
     }
     for (const listener of listeners) {
       listener(currentRoute, from);
@@ -560,8 +568,21 @@ function createRouteState() {
   }
   function onReady() {
     if (ready) return Promise.resolve();
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       readyResolvers.push(resolve);
+      readyRejecters.push(reject);
+      if (readyTimeout > 0 && !readyTimer) {
+        readyTimer = setTimeout(() => {
+          if (ready) return;
+          const error = new Error(`[uni-router] Router isReady() timed out after ${readyTimeout}ms. The router was not initialized properly.`);
+          for (const rejecter of readyRejecters) {
+            rejecter(error);
+          }
+          readyResolvers.length = 0;
+          readyRejecters.length = 0;
+          readyTimer = null;
+        }, readyTimeout);
+      }
     });
   }
   function onRouteChange(listener) {
@@ -701,6 +722,7 @@ var UniRouter = class {
     __publicField(this, "_interceptUniApi");
     this.guardManager = createGuardManager(options.guardTimeout);
     this.matcher = createRouteMatcher(options.routes, options.strict ?? true);
+    this.routeState = createRouteState(options.readyTimeout);
     this._interceptUniApi = options.interceptUniApi ?? false;
     this.initRoute();
     if (this._interceptUniApi) {
@@ -797,6 +819,7 @@ var UniRouter = class {
       await goBack(delta, effectiveAnimation);
       this.syncCurrentRoute(from);
       this.guardManager.runAfterGuards(to, from);
+      return this.routeState.getCurrentRoute();
     } catch (error) {
       const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
       const cause = isUniApiError(error) ? error : void 0;

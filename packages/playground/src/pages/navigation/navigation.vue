@@ -104,6 +104,19 @@
 			<view class="code-block"> &lt;RouterLink\n  :to="{ path: '/pages/detail/detail', query: { id: '1' } }"\n  :events="{ receiveData: (data) => console.log(data) }"\n  @navigated="onNavigated"\n&gt;\n  查看详情\n&lt;/RouterLink&gt; </view>
 			<view v-if="routerLinkLog" class="info-text" style="color: #34c759">{{ routerLinkLog }}</view>
 		</view>
+
+		<view class="section">
+			<view class="section-title">interceptUniApi - 拦截 uni 原生导航 API</view>
+			<view class="info-text">
+				启用 interceptUniApi 后，直接调用 uni.navigateTo / uni.redirectTo / uni.switchTab / uni.reLaunch / uni.navigateBack 将被拦截，自动转为 router.push / replace / relaunch / back，确保路由守卫始终生效。
+			</view>
+			<view class="btn" @click="interceptedNavigateTo">uni.navigateTo（被拦截转为 push）</view>
+			<view class="btn btn-warn" @click="interceptedRedirectTo">uni.redirectTo（被拦截转为 replace）</view>
+			<view class="btn btn-success" @click="interceptedSwitchTab">uni.switchTab（被拦截转为 push）</view>
+			<view class="btn btn-danger" @click="interceptedReLaunch">uni.reLaunch（被拦截转为 relaunch）</view>
+			<view class="btn btn-gray" @click="interceptedNavigateBack">uni.navigateBack（被拦截转为 back）</view>
+			<view class="code-block"> // 启用 interceptUniApi: true 后\nuni.navigateTo({ url: '/pages/detail/detail?id=1' })\n// => 自动转为 router.push({ path: '/pages/detail/detail', query: { id: '1' } })\n// 守卫链（beforeEach → beforeResolve → afterEach）照常执行\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链 </view>
+		</view>
 	</view>
 </template>
 
@@ -190,6 +203,33 @@ function backWithAnimation() {
 
 function goEventChannel() {
 	router.push({ name: 'pagesEventChannelEventChannel' })
+}
+
+// ===== interceptUniApi 拦截演示 =====
+// 启用 interceptUniApi: true 后，直接调用 uni 原生导航 API 会被拦截并转为路由器方法
+function interceptedNavigateTo() {
+	// 会被拦截，自动转为 router.push({ path: '/pages/detail/detail', query: { id: 'intercepted' } })
+	uni.navigateTo({ url: '/pages/detail/detail?id=intercepted' })
+}
+
+function interceptedRedirectTo() {
+	// 会被拦截，自动转为 router.replace({ path: '/pages/about/about' })
+	uni.redirectTo({ url: '/pages/about/about' })
+}
+
+function interceptedSwitchTab() {
+	// 会被拦截，自动转为 router.push('/pages/index/index')
+	uni.switchTab({ url: '/pages/index/index' })
+}
+
+function interceptedReLaunch() {
+	// 会被拦截，自动转为 router.relaunch({ path: '/pages/index/index' })
+	uni.reLaunch({ url: '/pages/index/index' })
+}
+
+function interceptedNavigateBack() {
+	// 会被拦截，自动转为 router.back(1)，执行完整守卫链
+	uni.navigateBack({ delta: 1 })
 }
 
 function onRouterLinkError(error: NavigationFailure) {

@@ -91,7 +91,7 @@ export const routes: RouteConfig[] = [
 		path: '/pages/guards/guards',
 		name: 'pagesGuardsGuards',
 		meta: { title: '路由守卫' },
-		beforeEnter(to: { fullPath: string }, from: { fullPath: string }, next: () => void) {
+		beforeEnter(to: { fullPath: any }, from: { fullPath: any }, next: () => void) {
 			console.log('[beforeEnter] 路由独享守卫:', from.fullPath, '->', to.fullPath)
 			next()
 		}
