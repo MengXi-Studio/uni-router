@@ -1,76 +1,10 @@
 /**
- * 导航动画类型
- *
- * 用于 uni.navigateTo / uni.navigateBack 的 animationType 参数，
- * 仅 App 端生效，其他平台自动忽略。
- *
- * 显示动画（navigateTo）：slide-in-right / slide-in-left / slide-in-top / slide-in-bottom / pop-in / fade-in / zoom-out / zoom-fade-out / none / auto
- * 关闭动画（navigateBack）：slide-out-right / slide-out-left / slide-out-top / slide-out-bottom / pop-out / fade-out / zoom-in / zoom-fade-in / none / auto
- *
- * @see https://en.uniapp.dcloud.io/api/router.html#animation
+ * @plugin generate-router
+ * @date 2026-06-21 23:01:28
+ * @version 0.2.2
  */
-export type UniAnimationType =
-	| 'auto'
-	| 'none'
-	| 'slide-in-right'
-	| 'slide-in-left'
-	| 'slide-in-top'
-	| 'slide-in-bottom'
-	| 'slide-out-right'
-	| 'slide-out-left'
-	| 'slide-out-top'
-	| 'slide-out-bottom'
-	| 'fade-in'
-	| 'fade-out'
-	| 'zoom-out'
-	| 'zoom-in'
-	| 'zoom-fade-out'
-	| 'zoom-fade-in'
-	| 'pop-in'
-	| 'pop-out'
 
-/**
- * 导航动画配置
- *
- * 仅 App 端生效，其他平台自动忽略。
- * 优先级：push/replace 调用时传入 > meta.animation > uni 默认值
- */
-export interface NavigationAnimation {
-	/** 窗口动画类型 */
-	type: UniAnimationType
-	/** 动画持续时间（ms），默认 300 */
-	duration?: number
-}
-
-/**
- * 路由元信息
- */
-export interface RouteMeta {
-	/** 页面标题 */
-	title?: string
-	/** 是否为TabBar页面 */
-	isTab?: boolean
-	/** 是否需要登录 */
-	requireAuth?: boolean
-	/** 默认导航动画（仅 App 端生效），可被 push/replace 时的 animation 参数覆盖 */
-	animation?: NavigationAnimation
-	/** 自定义扩展字段 */
-	[key: string]: any
-}
-
-/**
- * 路由配置项
- */
-export interface RouteConfig {
-	/** 路由路径 */
-	path: string
-	/** 路由名称（用于命名路由导航） */
-	name?: string
-	/** 路由元信息 */
-	meta?: RouteMeta
-	/** 自定义扩展字段 */
-	[key: string]: any
-}
+import type { RouteConfig } from '@meng-xi/uni-router'
 
 /**
  * 路由配置列表
@@ -90,11 +24,7 @@ export const routes: RouteConfig[] = [
 	{
 		path: '/pages/guards/guards',
 		name: 'pagesGuardsGuards',
-		meta: { title: '路由守卫' },
-		beforeEnter(to: { fullPath: any }, from: { fullPath: any }, next: () => void) {
-			console.log('[beforeEnter] 路由独享守卫:', from.fullPath, '->', to.fullPath)
-			next()
-		}
+		meta: { title: '路由守卫' }
 	},
 	{
 		path: '/pages/detail/detail',

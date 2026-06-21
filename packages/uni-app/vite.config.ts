@@ -11,6 +11,7 @@ export default defineConfig({
 			pagesJsonPath: 'pages.json',
 			outputPath: 'router.config.ts',
 			dts: 'router.d.d.ts',
+			fileHeader: true,
 			metaMapping: {
 				navigationBarTitleText: 'title',
 				requireAuth: 'requireAuth'
