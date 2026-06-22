@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter, type RouteLocationRaw, type NavigationFailure, type NavigationAnimation, type EventListeners, type EventChannel } from '@meng-xi/uni-router'
+import { useRouter, type RouteLocationRaw, type NavigationFailure, type NavigationAnimation, type EventListeners, type EventChannel, type ParamObject } from '@meng-xi/uni-router'
 
 const props = withDefaults(
 	defineProps<{
@@ -15,6 +15,10 @@ const props = withDefaults(
 		replace?: boolean
 		/** 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面） */
 		relaunch?: boolean
+		/** 页面参数，支持复杂数据（仅 JSON 可序列化值） */
+		params?: ParamObject
+		/** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
+		persistent?: boolean
 		/** 导航动画（仅 App 端生效），覆盖 meta.animation */
 		animation?: NavigationAnimation
 		/** 页面间通信事件监听器（仅 push 时生效），对应 uni.navigateTo 的 events 参数 */
@@ -50,12 +54,12 @@ const router = useRouter()
 async function navigate() {
 	try {
 		let location: RouteLocationRaw = props.to
-		// 将 animation 和 events 合并到 location 对象中传递给路由器
-		if (props.animation || props.events) {
+		// 将 animation、events、params、persistent 合并到 location 对象中传递给路由器
+		if (props.animation || props.events || props.params || props.persistent !== undefined) {
 			if (typeof props.to === 'string') {
-				location = { path: props.to, animation: props.animation, events: props.events }
+				location = { path: props.to, animation: props.animation, events: props.events, params: props.params, persistent: props.persistent }
 			} else {
-				location = { ...props.to, animation: props.animation, events: props.events }
+				location = { ...props.to, animation: props.animation, events: props.events, ...(props.params && { params: props.params }), ...(props.persistent !== undefined && { persistent: props.persistent }) }
 			}
 		}
 

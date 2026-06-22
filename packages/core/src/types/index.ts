@@ -13,7 +13,9 @@ export type {
 	EventChannel,
 	EventListeners,
 	NavigationResult,
-	QueryValue
+	QueryValue,
+	ParamValue,
+	ParamObject
 } from './route'
 export { DEFAULT_ANIMATION_DURATION } from './route'
 

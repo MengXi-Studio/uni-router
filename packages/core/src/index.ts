@@ -21,7 +21,9 @@ export type {
 	RouterOnError,
 	RouterOptions,
 	Router,
-	QueryValue
+	QueryValue,
+	ParamValue,
+	ParamObject
 } from '@/types'
 export { RouterError, NavigationFailure } from '@/errors'
 export { RouterErrorCode, DEFAULT_ANIMATION_DURATION } from '@/types'

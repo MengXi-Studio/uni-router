@@ -1,8 +1,10 @@
-import type { RouteConfig, RouteLocation, RouteLocationNamedRaw, RouteLocationPathRaw, RouteLocationRaw, RouteMeta } from '@/types/route'
+import type { RouteConfig, RouteLocation, RouteLocationNamedRaw, RouteLocationPathRaw, RouteLocationRaw, RouteMeta, ParamObject } from '@/types/route'
 import { RouterErrorCode } from '@/types/error'
 import { RouterError } from '@/errors'
 import { buildFullPath, parseQuery, normalizePath, createRouteLocation, serializeQuery } from '@/utils'
 import { warn, isObject } from '@/utils/general'
+import type { ParamsManager } from '@/params'
+import { PARAMS_KEY } from '@/params'
 
 /**
  * 路由匹配器接口，负责路由的查找和解析
@@ -24,7 +26,7 @@ export interface RouteMatcher {
  * @param strict - 是否启用严格模式
  * @returns 路由匹配器实例
  */
-export function createRouteMatcher(routes: RouteConfig[], strict: boolean): RouteMatcher {
+export function createRouteMatcher(routes: RouteConfig[], strict: boolean, paramsManager: ParamsManager): RouteMatcher {
 	const pathMap: Map<string, RouteConfig> = new Map()
 	const nameMap: Map<string, RouteConfig> = new Map()
 	const routeList: RouteConfig[] = []
@@ -100,12 +102,16 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean): Rout
 		const query = queryString ? parseQuery(queryString) : {}
 		const meta: RouteMeta = config?.meta ?? {}
 
+		// 从 query 中提取 __params_key 并读取 params
+		const params = extractParams(query)
+
 		return createRouteLocation({
 			path: normalizedPath,
 			name: config?.name,
 			meta,
 			query,
-			fullPath: buildFullPath(normalizedPath, query)
+			fullPath: buildFullPath(normalizedPath, query),
+			params
 		})
 	}
 
@@ -119,12 +125,16 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean): Rout
 		const query = serializeQuery(location.query)
 		const meta: RouteMeta = config?.meta ?? {}
 
+		// 从 query 中提取 __params_key 并读取 params
+		const params = extractParams(query)
+
 		return createRouteLocation({
 			path: normalizedPath,
 			name: config?.name,
 			meta,
 			query,
-			fullPath: buildFullPath(normalizedPath, query)
+			fullPath: buildFullPath(normalizedPath, query),
+			params
 		})
 	}
 
@@ -142,23 +152,38 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean): Rout
 			warn(`Route name "${location.name}" not found`)
 			const query = serializeQuery(location.query)
 			const path = `/${location.name}`
+			const params = extractParams(query)
 			return createRouteLocation({
 				path,
 				meta: {},
 				query,
-				fullPath: buildFullPath(path, query)
+				fullPath: buildFullPath(path, query),
+				params
 			})
 		}
 
 		const query = serializeQuery(location.query)
 		const resolvedPath = normalizePath(config.path)
+		const params = extractParams(query)
 		return createRouteLocation({
 			path: resolvedPath,
 			name: config.name,
 			meta: config.meta ?? {},
 			query,
-			fullPath: buildFullPath(resolvedPath, query)
+			fullPath: buildFullPath(resolvedPath, query),
+			params
 		})
+	}
+
+	/**
+	 * 从 query 中提取 __params_key 并从 ParamsManager 读取 params
+	 * 提取后从 query 中移除内部 key
+	 */
+	function extractParams(query: Record<string, string>): ParamObject | undefined {
+		const key = query[PARAMS_KEY]
+		if (!key) return undefined
+		delete query[PARAMS_KEY]
+		return paramsManager.get(decodeURIComponent(key))
 	}
 
 	return {

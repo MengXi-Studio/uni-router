@@ -55,6 +55,16 @@ export interface RouterOptions {
 	 * @default 0
 	 */
 	readyTimeout?: number
+
+	/**
+	 * 页面参数持久化默认值
+	 *
+	 * 设为 true 时，所有 params 默认通过 uni.setStorageSync 持久化存储，
+	 * H5 刷新后仍可读取。单次导航可通过 persistent 选项覆盖此默认值。
+	 *
+	 * @default false
+	 */
+	paramsPersistent?: boolean
 }
 
 /**

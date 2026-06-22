@@ -1,4 +1,4 @@
-import type { QueryValue, RouteLocation, RouteMeta } from '@/types/route'
+import type { QueryValue, RouteLocation, RouteMeta, ParamObject } from '@/types/route'
 
 /**
  * 将 QueryValue 序列化为字符串
@@ -44,13 +44,15 @@ export function serializeQuery(query?: Record<string, QueryValue>): Record<strin
  * @param base - 路由位置基础数据
  * @returns 完整的 RouteLocation 对象
  */
-export function createRouteLocation(base: { path: string; name?: string; meta: RouteMeta; query: Record<string, string>; fullPath: string; _synced?: boolean }): RouteLocation {
+export function createRouteLocation(base: { path: string; name?: string; meta: RouteMeta; query: Record<string, string>; fullPath: string; params?: ParamObject; _synced?: boolean }): RouteLocation {
 	const query = base.query
+	const params: Readonly<ParamObject> = base.params ? Object.freeze({ ...base.params }) : Object.freeze({})
 	return {
 		path: base.path,
 		name: base.name,
 		meta: base.meta,
 		query,
+		params,
 		fullPath: base.fullPath,
 		...(base._synced !== undefined && { _synced: base._synced }),
 

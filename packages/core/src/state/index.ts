@@ -57,6 +57,7 @@ export function createRouteState(readyTimeout: number = DEFAULT_READY_TIMEOUT) {
 			meta: Object.freeze({ ...route.meta }),
 			query: Object.freeze({ ...route.query }),
 			fullPath: route.fullPath,
+			params: route.params,
 			...(route._synced !== undefined && { _synced: route._synced })
 		})
 

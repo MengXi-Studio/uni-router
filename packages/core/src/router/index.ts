@@ -1,4 +1,19 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, NavigationResult, EventChannel, EventListeners, Router, RouterOnError, RouterOptions } from '@/types'
+import type {
+	RouteConfig,
+	RouteLocation,
+	RouteLocationPathRaw,
+	RouteLocationNamedRaw,
+	RouteLocationRaw,
+	RouteMeta,
+	NavigationAnimation,
+	NavigationResult,
+	EventChannel,
+	EventListeners,
+	Router,
+	RouterOnError,
+	RouterOptions,
+	ParamObject
+} from '@/types'
 import type { App } from 'vue'
 import { RouterErrorCode } from '@/types/error'
 import { NavigationFailure, RouterError } from '@/errors'
@@ -8,6 +23,8 @@ import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/n
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
 import { installInterceptors, removeInterceptors } from '@/interceptor'
+import { createParamsManager, PARAMS_KEY } from '@/params'
+import type { ParamsManager } from '@/params'
 import { buildFullPath, createRouteLocation, warn } from '@/utils'
 
 /**
@@ -25,7 +42,8 @@ const MAX_REDIRECT_DEPTH = 10
 class UniRouter implements Router {
 	private routeState = createRouteState()
 	private guardManager = createGuardManager()
-	private matcher = createRouteMatcher([], true)
+	private paramsManager: ParamsManager = createParamsManager(false)
+	private matcher = createRouteMatcher([], true, this.paramsManager)
 	private errorHandlers: RouterOnError[] = []
 	private pendingNavigation: Promise<NavigationResult | RouteLocation | void> | null = null
 	private _interceptUniApi: boolean
@@ -35,9 +53,14 @@ class UniRouter implements Router {
 	 */
 	constructor(options: RouterOptions) {
 		this.guardManager = createGuardManager(options.guardTimeout)
-		this.matcher = createRouteMatcher(options.routes, options.strict ?? true)
+		this.paramsManager = createParamsManager(options.paramsPersistent ?? false)
+		this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager)
 		this.routeState = createRouteState(options.readyTimeout)
 		this._interceptUniApi = options.interceptUniApi ?? false
+
+		// 路由器初始化时清理所有残留 params（上次运行可能残留 storage 数据）
+		this.paramsManager.cleanupAll()
+
 		this.initRoute()
 		if (this._interceptUniApi) {
 			installInterceptors(this)
@@ -268,6 +291,8 @@ class UniRouter implements Router {
 		// 若当前页面与路由状态一致（路径和查询参数均相同），无需更新
 		if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return
 		this.syncCurrentRoute(from)
+		// 同步时清理无效 params
+		this.paramsManager.cleanupStale()
 	}
 
 	/**
@@ -340,7 +365,10 @@ class UniRouter implements Router {
 			await this.pendingNavigation.catch(() => {})
 		}
 
-		const to = this.matcher.resolve(location)
+		// 在 resolve 前处理 params：存入 ParamsManager 并将 key 注入 location
+		const enrichedLocation = this.enrichLocationWithParams(location)
+
+		const to = this.matcher.resolve(enrichedLocation)
 		const from = this.routeState.getCurrentRoute()
 		// 从原始路由位置中提取动画参数和事件监听器（resolve 会丢弃这些字段）
 		const animation = this.extractAnimation(location)
@@ -558,6 +586,45 @@ class UniRouter implements Router {
 	}
 
 	/**
+	 * 从原始路由位置中提取 params 和 persistent，存入 ParamsManager 并将 key 注入 location
+	 *
+	 * params 在 resolve 前处理，因为需要将 key 拼入 query 以便目标页面读取。
+	 *
+	 * @param location - 原始路由位置
+	 * @returns 注入 __params_key 后的路由位置
+	 */
+	private enrichLocationWithParams(location: RouteLocationRaw): RouteLocationRaw {
+		if (typeof location === 'string') return location
+
+		// 检查是否有 params
+		const hasParams = 'params' in location && (location as { params?: ParamObject }).params
+		if (!hasParams || Object.keys((location as { params: ParamObject }).params).length === 0) return location
+
+		const params = (location as { params: ParamObject }).params
+		const persistent = 'persistent' in location ? (location as { persistent?: boolean }).persistent : undefined
+		const key = this.paramsManager.set(params, persistent)
+
+		// 将 key 注入 query
+		if ('path' in location) {
+			const pathLoc = location as RouteLocationPathRaw
+			return {
+				...pathLoc,
+				query: { ...pathLoc.query, [PARAMS_KEY]: key }
+			}
+		}
+
+		if ('name' in location) {
+			const namedLoc = location as RouteLocationNamedRaw
+			return {
+				...namedLoc,
+				query: { ...namedLoc.query, [PARAMS_KEY]: key }
+			}
+		}
+
+		return location
+	}
+
+	/**
 	 * 根据 uni-app 实际页面栈同步 currentRoute 状态
 	 *
 	 * 当通过 back() 或浏览器后退等非 push/replace 方式改变页面后，
@@ -574,7 +641,16 @@ class UniRouter implements Router {
 		const meta: RouteMeta = config?.meta ?? {}
 		const query = getCurrentPageQuery()
 		const fullPath = buildFullPath(currentPath, query)
-		const to = createRouteLocation({ path: currentPath, meta, query, fullPath, _synced: true })
+
+		// 从 query 中提取 __params_key 并读取 params
+		let params: ParamObject = {}
+		const paramsKey = query[PARAMS_KEY]
+		if (paramsKey) {
+			const resolved = this.paramsManager.get(decodeURIComponent(paramsKey))
+			if (resolved) params = resolved
+		}
+
+		const to = createRouteLocation({ path: currentPath, meta, query, fullPath, params, _synced: true })
 		this.routeState.setCurrentRoute(to)
 	}
 }

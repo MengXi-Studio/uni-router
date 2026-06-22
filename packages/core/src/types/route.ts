@@ -55,6 +55,18 @@ export interface NavigationAnimation {
 export type QueryValue = string | number | boolean
 
 /**
+ * 页面参数值类型（仅支持 JSON 可序列化数据）
+ */
+export type ParamValue = string | number | boolean | null | ParamObject | ParamValue[]
+
+/**
+ * 页面参数对象类型
+ */
+export interface ParamObject {
+	[key: string]: ParamValue
+}
+
+/**
  * 路由名称映射表
  *
  * 用于为路由名称和路径提供 TypeScript 类型提示。
@@ -137,6 +149,9 @@ export interface RouteLocation {
 
 	/** 查询参数 */
 	query: Record<string, string>
+
+	/** 页面参数（从内存或 storage 中读取，只读） */
+	params: Readonly<ParamObject>
 
 	/** 完整路径（含查询参数） */
 	fullPath: string
@@ -240,6 +255,12 @@ export interface RouteLocationPathRaw {
 	/** 查询参数，值支持 string / number / boolean，内部自动序列化为字符串 */
 	query?: Record<string, QueryValue>
 
+	/** 页面参数，支持复杂数据（仅 JSON 可序列化值） */
+	params?: ParamObject
+
+	/** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
+	persistent?: boolean
+
 	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
 	animation?: NavigationAnimation
 
@@ -261,6 +282,12 @@ export interface RouteLocationNamedRaw {
 
 	/** 查询参数，值支持 string / number / boolean，内部自动序列化为字符串 */
 	query?: Record<string, QueryValue>
+
+	/** 页面参数，支持复杂数据（仅 JSON 可序列化值） */
+	params?: ParamObject
+
+	/** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
+	persistent?: boolean
 
 	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
 	animation?: NavigationAnimation

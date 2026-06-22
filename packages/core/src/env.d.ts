@@ -9,6 +9,8 @@ declare global {
 		route: string
 		/** 页面启动参数 */
 		options?: Record<string, string | undefined>
+		/** 页面实例信息（部分平台可用） */
+		$page?: { fullPath: string }
 	}
 
 	/**
@@ -112,6 +114,14 @@ declare global {
 		addInterceptor(api: string, callbacks: UniInterceptorCallbacks): void
 		/** 移除 API 拦截器 */
 		removeInterceptor(api: string): void
+		/** 同步存储数据 */
+		setStorageSync(key: string, data: any): void
+		/** 同步读取存储数据 */
+		getStorageSync(key: string): any
+		/** 同步删除存储数据 */
+		removeStorageSync(key: string): void
+		/** 同步获取存储信息 */
+		getStorageInfoSync(): { keys: string[]; currentSize: number; limitSize: number }
 	}
 }
 
