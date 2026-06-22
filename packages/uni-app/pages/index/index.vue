@@ -59,6 +59,22 @@
 			</mxuni-router>
 		</view>
 
+		<!-- RouterLink params/persistent -->
+		<view class="card">
+			<text class="card-title">RouterLink - params 与 persistent</text>
+			<text class="hint">通过 params 属性传递复杂数据，通过 persistent 属性控制是否持久化到 storage</text>
+			<mxuni-router :to="{ path: '/pages/about/index', query: { id: 'link-params' } }" :params="{ orderInfo: { orderId: 'A001', amount: 99.9 } }">
+				<view class="btn">
+					<text class="btn-text">RouterLink - 带 params 跳转</text>
+				</view>
+			</mxuni-router>
+			<mxuni-router :to="{ path: '/pages/about/index', query: { id: 'link-persistent' } }" :params="{ config: { theme: 'dark' } }" persistent>
+				<view class="btn btn-secondary">
+					<text class="btn-text-secondary">RouterLink - params 持久化</text>
+				</view>
+			</mxuni-router>
+		</view>
+
 		<!-- RouterLink events + navigated -->
 		<view class="card">
 			<text class="card-title">RouterLink - events 与 navigated</text>
@@ -82,6 +98,30 @@
 			</view>
 			<view class="btn btn-secondary" @click="backWithAnimation">
 				<text class="btn-text-secondary">back - 左侧滑出动画</text>
+			</view>
+		</view>
+
+		<!-- params 参数传递 -->
+		<view class="card">
+			<text class="card-title">params - 页面参数传递</text>
+			<text class="hint">params 支持传递复杂数据（对象、数组等），不暴露在 URL 中，目标页面通过 route.params 读取</text>
+			<view class="btn" @click="pushWithParams">
+				<text class="btn-text">push - 带 params 跳转</text>
+			</view>
+			<view class="btn btn-secondary" @click="pushWithParamsPersistent">
+				<text class="btn-text-secondary">push - params 持久化存储</text>
+			</view>
+		</view>
+
+		<!-- 查询参数增强 -->
+		<view class="card">
+			<text class="card-title">查询参数增强 - queryInt / queryNumber / queryBool</text>
+			<text class="hint">RouteLocation 提供三个便捷方法，自动解析 query 参数为指定类型</text>
+			<view class="btn" @click="pushWithNumericQuery">
+				<text class="btn-text">push - 数值类型查询参数</text>
+			</view>
+			<view class="btn btn-secondary" @click="pushWithBoolQuery">
+				<text class="btn-text-secondary">push - 布尔类型查询参数</text>
 			</view>
 		</view>
 
@@ -134,6 +174,10 @@
 			<view class="info-row">
 				<text class="info-label">fullPath</text>
 				<text class="info-value">{{ currentRoute.fullPath || '-' }}</text>
+			</view>
+			<view class="info-row">
+				<text class="info-label">params</text>
+				<text class="info-value">{{ paramsStr }}</text>
 			</view>
 		</view>
 
@@ -226,6 +270,13 @@ export default {
 			routerLinkLog: ''
 		}
 	},
+	computed: {
+		paramsStr() {
+			const p = this.currentRoute.params
+			if (!p || !Object.keys(p).length) return '{}'
+			return JSON.stringify(p)
+		}
+	},
 	onLoad() {
 		this.updateRouteInfo()
 		this.updateLoginStatus()
@@ -242,7 +293,8 @@ export default {
 				path: route.path || '',
 				name: route.name || '',
 				meta: route.meta || {},
-				fullPath: route.fullPath || ''
+				fullPath: route.fullPath || '',
+				params: route.params || {}
 			}
 		},
 		updateLoginStatus() {
@@ -386,6 +438,55 @@ export default {
 		interceptedNavigateBack() {
 			// 会被拦截，自动转为 router.back(1)，执行完整守卫链
 			uni.navigateBack({ delta: 1 })
+		},
+		// ===== params 参数传递演示 =====
+		async pushWithParams() {
+			try {
+				this.lastError = ''
+				await router.push({
+					path: '/pages/about/index',
+					query: { id: 'params-demo' },
+					params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
+				})
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		async pushWithParamsPersistent() {
+			try {
+				this.lastError = ''
+				await router.push({
+					path: '/pages/about/index',
+					query: { id: 'persistent-demo' },
+					params: { bigData: { items: [1, 2, 3], total: 3 } },
+					persistent: true
+				})
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		// ===== 查询参数增强演示 =====
+		async pushWithNumericQuery() {
+			try {
+				this.lastError = ''
+				await router.push({
+					path: '/pages/about/index',
+					query: { id: 'numeric', price: 19.99, count: 5 }
+				})
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		async pushWithBoolQuery() {
+			try {
+				this.lastError = ''
+				await router.push({
+					path: '/pages/about/index',
+					query: { id: 'bool', enabled: true, visible: false }
+				})
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
 		},
 		// ===== 组合式 API 演示页面跳转 =====
 		async goToComposable() {

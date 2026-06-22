@@ -178,12 +178,15 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean, param
 	/**
 	 * 从 query 中提取 __params_key 并从 ParamsManager 读取 params
 	 * 提取后从 query 中移除内部 key
+	 *
+	 * 使用 peek 而非 get，因为 resolve 在导航执行前调用，
+	 * 此时目标页面尚未入栈，get 的惰性清理会误删 params。
 	 */
 	function extractParams(query: Record<string, string>): ParamObject | undefined {
 		const key = query[PARAMS_KEY]
 		if (!key) return undefined
 		delete query[PARAMS_KEY]
-		return paramsManager.get(decodeURIComponent(key))
+		return paramsManager.peek(decodeURIComponent(key))
 	}
 
 	return {

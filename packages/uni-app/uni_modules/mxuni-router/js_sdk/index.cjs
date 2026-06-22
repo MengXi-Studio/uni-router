@@ -189,8 +189,8 @@ function buildFullPath(path, query) {
   const keys = Object.keys(query);
   if (keys.length === 0) return path;
   keys.sort();
-  const qs = keys.map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(query[key])}`).join("&");
-  return `${path}?${qs}`;
+  const qs = keys.filter((key) => query[key] !== void 0 && query[key] !== null).map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(query[key]))}`).join("&");
+  return qs ? `${path}?${qs}` : path;
 }
 function parseQuery(queryString) {
   const query = {};
@@ -518,13 +518,67 @@ function getCurrentPageQuery() {
   return query;
 }
 
+// src/utils/query.ts
+function serializeQueryValue(value) {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return String(value);
+}
+function serializeQuery(query) {
+  if (!query) return {};
+  const result = {};
+  for (const key of Object.keys(query)) {
+    const value = query[key];
+    if (value !== void 0 && value !== null) {
+      result[key] = serializeQueryValue(value);
+    }
+  }
+  return result;
+}
+function createRouteLocation(base) {
+  const query = base.query;
+  const params = base.params ? Object.freeze({ ...base.params }) : Object.freeze({});
+  return {
+    path: base.path,
+    name: base.name,
+    meta: base.meta,
+    query,
+    params,
+    fullPath: base.fullPath,
+    ...base._synced !== void 0 && { _synced: base._synced },
+    queryInt(key, defaultValue) {
+      const val = query[key];
+      if (val === void 0 || val === "") return defaultValue;
+      const parsed = parseInt(val, 10);
+      return isNaN(parsed) ? defaultValue : parsed;
+    },
+    queryNumber(key, defaultValue) {
+      const val = query[key];
+      if (val === void 0 || val === "") return defaultValue;
+      const parsed = Number(val);
+      return isNaN(parsed) ? defaultValue : parsed;
+    },
+    queryBool(key, defaultValue) {
+      const val = query[key];
+      if (val === void 0) return defaultValue;
+      if (val === "true" || val === "1") return true;
+      if (val === "false" || val === "0") return false;
+      return defaultValue;
+    }
+  };
+}
+function createStartLocation() {
+  return createRouteLocation({
+    path: "/",
+    meta: Object.freeze({}),
+    query: Object.freeze({}),
+    fullPath: "/"
+  });
+}
+
 // src/state/index.ts
-var START_LOCATION = Object.freeze({
-  path: "/",
-  meta: Object.freeze({}),
-  query: Object.freeze({}),
-  fullPath: "/"
-});
+var START_LOCATION = createStartLocation();
 var DEFAULT_READY_TIMEOUT = 0;
 function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
   let currentRoute = START_LOCATION;
@@ -538,10 +592,14 @@ function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
   }
   function setCurrentRoute(route) {
     const from = currentRoute;
-    currentRoute = Object.freeze({
-      ...route,
+    currentRoute = createRouteLocation({
+      path: route.path,
+      name: route.name,
       meta: Object.freeze({ ...route.meta }),
-      query: Object.freeze({ ...route.query })
+      query: Object.freeze({ ...route.query }),
+      fullPath: route.fullPath,
+      params: route.params,
+      ...route._synced !== void 0 && { _synced: route._synced }
     });
     if (!ready) {
       ready = true;
@@ -561,7 +619,7 @@ function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
   }
   function initCurrentRoute(path, meta, query) {
     const fullPath = buildFullPath(path, query);
-    setCurrentRoute({ path, meta, query, fullPath });
+    setCurrentRoute(createRouteLocation({ path, meta, query, fullPath }));
   }
   function isReady() {
     return ready;
@@ -602,8 +660,116 @@ function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
   };
 }
 
+// src/params/index.ts
+var PARAMS_STORAGE_PREFIX = "__uni_router_params__";
+var PARAMS_KEY = "__params_key";
+function generateKey() {
+  const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+  return `pk_${hex}`;
+}
+function safeGetCurrentPages2() {
+  if (typeof getCurrentPages !== "function") return [];
+  return getCurrentPages();
+}
+function isPageInStack(key) {
+  const pages = safeGetCurrentPages2();
+  const encodedKey = encodeURIComponent(key);
+  return pages.some((page) => {
+    const fullPath = page.$page?.fullPath ?? "";
+    return fullPath.includes(`${PARAMS_KEY}=${encodedKey}`);
+  });
+}
+function createParamsManager(defaultPersistent) {
+  const memoryMap = /* @__PURE__ */ new Map();
+  function set(params, persistent) {
+    const useStorage = persistent ?? defaultPersistent;
+    const key = generateKey();
+    try {
+      JSON.stringify(params);
+    } catch {
+      warn("params must be JSON-serializable. Non-serializable values will be lost.");
+    }
+    if (useStorage) {
+      try {
+        uni.setStorageSync(PARAMS_STORAGE_PREFIX + key, JSON.stringify(params));
+      } catch {
+        warn("Failed to write params to storage, falling back to memory storage.");
+        memoryMap.set(key, params);
+      }
+    } else {
+      memoryMap.set(key, params);
+    }
+    return key;
+  }
+  function get(key) {
+    if (memoryMap.has(key)) {
+      if (!isPageInStack(key)) {
+        memoryMap.delete(key);
+        return void 0;
+      }
+      return memoryMap.get(key);
+    }
+    try {
+      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
+      if (raw) {
+        if (!isPageInStack(key)) {
+          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
+          return void 0;
+        }
+        try {
+          return JSON.parse(raw);
+        } catch {
+          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
+          return void 0;
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
+  function remove(key) {
+    memoryMap.delete(key);
+    try {
+      uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
+    } catch {
+    }
+  }
+  function cleanupStale() {
+    for (const key of memoryMap.keys()) {
+      if (!isPageInStack(key)) {
+        memoryMap.delete(key);
+      }
+    }
+    try {
+      const info = uni.getStorageInfoSync();
+      for (const k of info.keys) {
+        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
+          const paramsKey = k.slice(PARAMS_STORAGE_PREFIX.length);
+          if (!isPageInStack(paramsKey)) {
+            uni.removeStorageSync(k);
+          }
+        }
+      }
+    } catch {
+    }
+  }
+  function cleanupAll() {
+    memoryMap.clear();
+    try {
+      const info = uni.getStorageInfoSync();
+      for (const k of info.keys) {
+        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
+          uni.removeStorageSync(k);
+        }
+      }
+    } catch {
+    }
+  }
+  return { set, get, remove, cleanupStale, cleanupAll };
+}
+
 // src/matcher/index.ts
-function createRouteMatcher(routes, strict) {
+function createRouteMatcher(routes, strict, paramsManager) {
   const pathMap = /* @__PURE__ */ new Map();
   const nameMap = /* @__PURE__ */ new Map();
   const routeList = [];
@@ -652,26 +818,30 @@ function createRouteMatcher(routes, strict) {
     const config = pathMap.get(normalizedPath);
     const query = queryString ? parseQuery(queryString) : {};
     const meta = config?.meta ?? {};
-    return {
+    const params = extractParams(query);
+    return createRouteLocation({
       path: normalizedPath,
       name: config?.name,
       meta,
       query,
-      fullPath: buildFullPath(normalizedPath, query)
-    };
+      fullPath: buildFullPath(normalizedPath, query),
+      params
+    });
   }
   function resolveFromPathRaw(location) {
     const normalizedPath = normalizePath(location.path);
     const config = pathMap.get(normalizedPath);
-    const query = location.query ?? {};
+    const query = serializeQuery(location.query);
     const meta = config?.meta ?? {};
-    return {
+    const params = extractParams(query);
+    return createRouteLocation({
       path: normalizedPath,
       name: config?.name,
       meta,
       query,
-      fullPath: buildFullPath(normalizedPath, query)
-    };
+      fullPath: buildFullPath(normalizedPath, query),
+      params
+    });
   }
   function resolveFromName(location) {
     const config = nameMap.get(location.name);
@@ -680,24 +850,34 @@ function createRouteMatcher(routes, strict) {
         throw new RouterError("ROUTE_NOT_FOUND" /* ROUTE_NOT_FOUND */, `Route name "${location.name}" not found`);
       }
       warn(`Route name "${location.name}" not found`);
-      const query2 = location.query ?? {};
+      const query2 = serializeQuery(location.query);
       const path = `/${location.name}`;
-      return {
+      const params2 = extractParams(query2);
+      return createRouteLocation({
         path,
         meta: {},
         query: query2,
-        fullPath: buildFullPath(path, query2)
-      };
+        fullPath: buildFullPath(path, query2),
+        params: params2
+      });
     }
-    const query = location.query ?? {};
+    const query = serializeQuery(location.query);
     const resolvedPath = normalizePath(config.path);
-    return {
+    const params = extractParams(query);
+    return createRouteLocation({
       path: resolvedPath,
       name: config.name,
       meta: config.meta ?? {},
       query,
-      fullPath: buildFullPath(resolvedPath, query)
-    };
+      fullPath: buildFullPath(resolvedPath, query),
+      params
+    });
+  }
+  function extractParams(query) {
+    const key = query[PARAMS_KEY];
+    if (!key) return void 0;
+    delete query[PARAMS_KEY];
+    return paramsManager.get(decodeURIComponent(key));
   }
   return {
     getRoutes,
@@ -716,14 +896,17 @@ var UniRouter = class {
   constructor(options) {
     __publicField(this, "routeState", createRouteState());
     __publicField(this, "guardManager", createGuardManager());
-    __publicField(this, "matcher", createRouteMatcher([], true));
+    __publicField(this, "paramsManager", createParamsManager(false));
+    __publicField(this, "matcher", createRouteMatcher([], true, this.paramsManager));
     __publicField(this, "errorHandlers", []);
     __publicField(this, "pendingNavigation", null);
     __publicField(this, "_interceptUniApi");
     this.guardManager = createGuardManager(options.guardTimeout);
-    this.matcher = createRouteMatcher(options.routes, options.strict ?? true);
+    this.paramsManager = createParamsManager(options.paramsPersistent ?? false);
+    this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager);
     this.routeState = createRouteState(options.readyTimeout);
     this._interceptUniApi = options.interceptUniApi ?? false;
+    this.paramsManager.cleanupAll();
     this.initRoute();
     if (this._interceptUniApi) {
       installInterceptors(this);
@@ -926,6 +1109,7 @@ var UniRouter = class {
     const currentQuery = getCurrentPageQuery();
     if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return;
     this.syncCurrentRoute(from);
+    this.paramsManager.cleanupStale();
   }
   /**
    * 安装路由器到 Vue 应用实例
@@ -985,7 +1169,8 @@ var UniRouter = class {
       await this.pendingNavigation.catch(() => {
       });
     }
-    const to = this.matcher.resolve(location);
+    const enrichedLocation = this.enrichLocationWithParams(location);
+    const to = this.matcher.resolve(enrichedLocation);
     const from = this.routeState.getCurrentRoute();
     const animation = this.extractAnimation(location);
     const events = this.extractEvents(location);
@@ -1162,6 +1347,37 @@ var UniRouter = class {
     return void 0;
   }
   /**
+   * 从原始路由位置中提取 params 和 persistent，存入 ParamsManager 并将 key 注入 location
+   *
+   * params 在 resolve 前处理，因为需要将 key 拼入 query 以便目标页面读取。
+   *
+   * @param location - 原始路由位置
+   * @returns 注入 __params_key 后的路由位置
+   */
+  enrichLocationWithParams(location) {
+    if (typeof location === "string") return location;
+    const hasParams = "params" in location && location.params;
+    if (!hasParams || Object.keys(location.params).length === 0) return location;
+    const params = location.params;
+    const persistent = "persistent" in location ? location.persistent : void 0;
+    const key = this.paramsManager.set(params, persistent);
+    if ("path" in location) {
+      const pathLoc = location;
+      return {
+        ...pathLoc,
+        query: { ...pathLoc.query, [PARAMS_KEY]: key }
+      };
+    }
+    if ("name" in location) {
+      const namedLoc = location;
+      return {
+        ...namedLoc,
+        query: { ...namedLoc.query, [PARAMS_KEY]: key }
+      };
+    }
+    return location;
+  }
+  /**
    * 根据 uni-app 实际页面栈同步 currentRoute 状态
    *
    * 当通过 back() 或浏览器后退等非 push/replace 方式改变页面后，
@@ -1178,7 +1394,13 @@ var UniRouter = class {
     const meta = config?.meta ?? {};
     const query = getCurrentPageQuery();
     const fullPath = buildFullPath(currentPath, query);
-    const to = { path: currentPath, meta, query, fullPath, _synced: true };
+    let params = {};
+    const paramsKey = query[PARAMS_KEY];
+    if (paramsKey) {
+      const resolved = this.paramsManager.get(decodeURIComponent(paramsKey));
+      if (resolved) params = resolved;
+    }
+    const to = createRouteLocation({ path: currentPath, meta, query, fullPath, params, _synced: true });
     this.routeState.setCurrentRoute(to);
   }
 };

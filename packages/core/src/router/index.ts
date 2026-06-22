@@ -643,10 +643,12 @@ class UniRouter implements Router {
 		const fullPath = buildFullPath(currentPath, query)
 
 		// 从 query 中提取 __params_key 并读取 params
+		// 使用 peek：syncCurrentRoute 在 back() 后调用，此时目标页面已在栈中，
+		// 但 get 的惰性清理可能在某些边界情况下误删，peek 更安全
 		let params: ParamObject = {}
 		const paramsKey = query[PARAMS_KEY]
 		if (paramsKey) {
-			const resolved = this.paramsManager.get(decodeURIComponent(paramsKey))
+			const resolved = this.paramsManager.peek(decodeURIComponent(paramsKey))
 			if (resolved) params = resolved
 		}
 

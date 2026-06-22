@@ -19,7 +19,11 @@ export const routes: RouteConfig[] = [
 	{
 		path: '/pages/guards/index',
 		name: 'pagesGuardsIndex',
-		meta: { title: '路由守卫' }
+		meta: { title: '路由守卫' },
+		beforeEnter(to, from, next) {
+			console.log(`[beforeEnter] 路由独享守卫: ${from.path} → ${to.path}`)
+			next()
+		}
 	},
 	{
 		path: '/pages/about/index',

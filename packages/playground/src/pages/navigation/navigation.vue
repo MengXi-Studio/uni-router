@@ -40,6 +40,29 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">params - 页面参数传递</view>
+			<view class="info-text">params 支持传递复杂数据（对象、数组等），不暴露在 URL 中，目标页面通过 route.params 读取。</view>
+			<view class="btn" @click="pushWithParams">push - 带 params 跳转</view>
+			<view class="btn btn-success" @click="pushWithParamsPersistent">push - params 持久化存储</view>
+			<view class="code-block">
+				// 传递 params\nawait router.push({\n path: '/pages/detail/detail',\n query: { id: '1' },\n params: { userInfo: { name: 'Tom', age: 20 } }\n})\n\n// 目标页面读取\nconst route =
+				useRoute()\nconsole.log(route.params.userInfo) // { name: 'Tom', age: 20 }\n\n// 持久化存储（H5 刷新后仍可读取）\nawait router.push({\n path: '/pages/detail/detail',\n params: { bigData: largeObject },\n
+				persistent: true\n})
+			</view>
+		</view>
+
+		<view class="section">
+			<view class="section-title">查询参数增强 - queryInt / queryNumber / queryBool</view>
+			<view class="info-text">RouteLocation 提供三个便捷方法，自动解析 query 参数为指定类型。</view>
+			<view class="btn" @click="pushWithNumericQuery">push - 数值类型查询参数</view>
+			<view class="btn btn-success" @click="pushWithBoolQuery">push - 布尔类型查询参数</view>
+			<view class="code-block">
+				// URL: /pages/detail/detail?id=123&price=19.99\nroute.queryInt('id') // 123\nroute.queryNumber('price') // 19.99\n\n// URL: /pages/detail/detail?enabled=true\nroute.queryBool('enabled') // true\n\n//
+				带默认值\nroute.queryInt('page', 1) // 1（参数不存在时）
+			</view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">TabBar 页面导航</view>
 			<view class="info-text">TabBar 页面使用 push/replace 均会自动调用 switchTab</view>
 			<view class="btn btn-success" @click="goTabBar">跳转到关于页 (TabBar)</view>
@@ -57,7 +80,9 @@
 			<view class="section-title">EventChannel - 页面间通信</view>
 			<view class="info-text">push 支持 events 参数和 eventChannel 返回值，实现页面间双向通信</view>
 			<view class="btn" @click="goEventChannel">查看 EventChannel 演示</view>
-			<view class="code-block"> const { eventChannel } = await router.push({\n  path: '/pages/detail/detail',\n  events: {\n    receiveData: (data) => console.log(data)\n  }\n})\neventChannel.emit('fromOpener', { msg: 'hello' }) </view>
+			<view class="code-block">
+				const { eventChannel } = await router.push({\n path: '/pages/detail/detail',\n events: {\n receiveData: (data) => console.log(data)\n }\n})\neventChannel.emit('fromOpener', { msg: 'hello' })
+			</view>
 		</view>
 
 		<view class="section">
@@ -90,18 +115,26 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">RouterLink - params 与 persistent</view>
+			<view class="info-text">通过 params 属性传递复杂数据，通过 persistent 属性控制是否持久化到 storage。</view>
+			<RouterLink :to="{ path: '/pages/detail/detail', query: { id: 'link-params' } }" :params="{ orderInfo: { orderId: 'A001', amount: 99.9 } }" custom>
+				<view class="btn">RouterLink - 带 params 跳转</view>
+			</RouterLink>
+			<RouterLink :to="{ path: '/pages/detail/detail', query: { id: 'link-persistent' } }" :params="{ config: { theme: 'dark' } }" persistent custom>
+				<view class="btn btn-success">RouterLink - params 持久化</view>
+			</RouterLink>
+			<view class="code-block"> &lt;RouterLink\n :to="{ path: '/pages/detail/detail' }"\n :params="{ orderInfo: { orderId: 'A001' } }"\n persistent\n&gt;\n 持久化参数跳转\n&lt;/RouterLink&gt; </view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">RouterLink - events 与 navigated</view>
 			<view class="info-text">通过 events 属性监听目标页面事件，通过 @navigated 获取 eventChannel 向目标页面发送数据。</view>
-			<RouterLink
-				:to="{ path: '/pages/detail/detail', query: { id: 'link-ec' } }"
-				:events="{ receiveData: (data) => onReceiveData(data) }"
-				custom
-				@navigated="onNavigated"
-				@error="onRouterLinkError"
-			>
+			<RouterLink :to="{ path: '/pages/detail/detail', query: { id: 'link-ec' } }" :events="{ receiveData: data => onReceiveData(data) }" custom @navigated="onNavigated" @error="onRouterLinkError">
 				<view class="btn btn-success">RouterLink - events + navigated</view>
 			</RouterLink>
-			<view class="code-block"> &lt;RouterLink\n  :to="{ path: '/pages/detail/detail', query: { id: '1' } }"\n  :events="{ receiveData: (data) => console.log(data) }"\n  @navigated="onNavigated"\n&gt;\n  查看详情\n&lt;/RouterLink&gt; </view>
+			<view class="code-block">
+				&lt;RouterLink\n :to="{ path: '/pages/detail/detail', query: { id: '1' } }"\n :events="{ receiveData: (data) => console.log(data) }"\n @navigated="onNavigated"\n&gt;\n 查看详情\n&lt;/RouterLink&gt;
+			</view>
 			<view v-if="routerLinkLog" class="info-text" style="color: #34c759">{{ routerLinkLog }}</view>
 		</view>
 
@@ -115,7 +148,10 @@
 			<view class="btn btn-success" @click="interceptedSwitchTab">uni.switchTab（被拦截转为 push）</view>
 			<view class="btn btn-danger" @click="interceptedReLaunch">uni.reLaunch（被拦截转为 relaunch）</view>
 			<view class="btn btn-gray" @click="interceptedNavigateBack">uni.navigateBack（被拦截转为 back）</view>
-			<view class="code-block"> // 启用 interceptUniApi: true 后\nuni.navigateTo({ url: '/pages/detail/detail?id=1' })\n// => 自动转为 router.push({ path: '/pages/detail/detail', query: { id: '1' } })\n// 守卫链（beforeEach → beforeResolve → afterEach）照常执行\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链 </view>
+			<view class="code-block">
+				// 启用 interceptUniApi: true 后\nuni.navigateTo({ url: '/pages/detail/detail?id=1' })\n// => 自动转为 router.push({ path: '/pages/detail/detail', query: { id: '1' } })\n// 守卫链（beforeEach → beforeResolve →
+				afterEach）照常执行\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链
+			</view>
 		</view>
 	</view>
 </template>
@@ -199,6 +235,37 @@ function pushWithAnimation() {
 
 function backWithAnimation() {
 	router.back(1, { type: 'slide-out-left', duration: 500 })
+}
+
+function pushWithParams() {
+	router.push({
+		path: '/pages/detail/detail',
+		query: { id: 'params-demo' },
+		params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
+	})
+}
+
+function pushWithParamsPersistent() {
+	router.push({
+		path: '/pages/detail/detail',
+		query: { id: 'persistent-demo' },
+		params: { bigData: { items: [1, 2, 3], total: 3 } },
+		persistent: true
+	})
+}
+
+function pushWithNumericQuery() {
+	router.push({
+		path: '/pages/detail/detail',
+		query: { id: 123, price: 19.99 }
+	})
+}
+
+function pushWithBoolQuery() {
+	router.push({
+		path: '/pages/detail/detail',
+		query: { id: 'bool-demo', enabled: true, visible: false }
+	})
 }
 
 function goEventChannel() {

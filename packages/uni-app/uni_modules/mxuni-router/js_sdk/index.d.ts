@@ -48,6 +48,20 @@ interface NavigationAnimation {
     duration?: number;
 }
 /**
+ * 查询参数值类型（输入时支持 string / number / boolean，内部统一转为 string）
+ */
+type QueryValue = string | number | boolean;
+/**
+ * 页面参数值类型（仅支持 JSON 可序列化数据）
+ */
+type ParamValue = string | number | boolean | null | ParamObject | ParamValue[];
+/**
+ * 页面参数对象类型
+ */
+interface ParamObject {
+    [key: string]: ParamValue;
+}
+/**
  * 路由名称映射表
  *
  * 用于为路由名称和路径提供 TypeScript 类型提示。
@@ -115,6 +129,8 @@ interface RouteLocation {
     meta: RouteMeta;
     /** 查询参数 */
     query: Record<string, string>;
+    /** 页面参数（从内存或 storage 中读取，只读） */
+    params: Readonly<ParamObject>;
     /** 完整路径（含查询参数） */
     fullPath: string;
     /**
@@ -127,6 +143,34 @@ interface RouteLocation {
      * @internal 内部标记，不应在应用代码中依赖此字段
      */
     _synced?: boolean;
+    /**
+     * 将查询参数解析为整数
+     *
+     * @param key - 查询参数键名
+     * @param defaultValue - 参数不存在或解析失败时的默认值
+     * @returns 解析后的整数值，参数不存在或解析失败时返回 defaultValue（未提供则为 undefined）
+     */
+    queryInt(key: string, defaultValue?: number): number | undefined;
+    /**
+     * 将查询参数解析为数值（支持浮点数）
+     *
+     * @param key - 查询参数键名
+     * @param defaultValue - 参数不存在或解析失败时的默认值
+     * @returns 解析后的数值，参数不存在或解析失败时返回 defaultValue（未提供则为 undefined）
+     */
+    queryNumber(key: string, defaultValue?: number): number | undefined;
+    /**
+     * 将查询参数解析为布尔值
+     *
+     * - `'true'` / `'1'` → `true`
+     * - `'false'` / `'0'` → `false`
+     * - 其他值 → 返回 defaultValue（未提供则为 undefined）
+     *
+     * @param key - 查询参数键名
+     * @param defaultValue - 参数不存在或无法识别时的默认值
+     * @returns 解析后的布尔值，参数不存在或无法识别时返回 defaultValue（未提供则为 undefined）
+     */
+    queryBool(key: string, defaultValue?: boolean): boolean | undefined;
 }
 /**
  * 页面间通信事件通道
@@ -177,8 +221,12 @@ interface NavigationResult extends RouteLocation {
 interface RouteLocationPathRaw {
     /** 目标路径 */
     path: RoutePath;
-    /** 查询参数 */
-    query?: Record<string, string>;
+    /** 查询参数，值支持 string / number / boolean，内部自动序列化为字符串 */
+    query?: Record<string, QueryValue>;
+    /** 页面参数，支持复杂数据（仅 JSON 可序列化值） */
+    params?: ParamObject;
+    /** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
+    persistent?: boolean;
     /** 导航动画（仅 App 端生效），覆盖 meta.animation */
     animation?: NavigationAnimation;
     /**
@@ -195,8 +243,12 @@ interface RouteLocationPathRaw {
 interface RouteLocationNamedRaw {
     /** 目标路由名称 */
     name: RouteName;
-    /** 查询参数 */
-    query?: Record<string, string>;
+    /** 查询参数，值支持 string / number / boolean，内部自动序列化为字符串 */
+    query?: Record<string, QueryValue>;
+    /** 页面参数，支持复杂数据（仅 JSON 可序列化值） */
+    params?: ParamObject;
+    /** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
+    persistent?: boolean;
     /** 导航动画（仅 App 端生效），覆盖 meta.animation */
     animation?: NavigationAnimation;
     /**
@@ -286,6 +338,15 @@ interface RouterOptions {
      * @default 0
      */
     readyTimeout?: number;
+    /**
+     * 页面参数持久化默认值
+     *
+     * 设为 true 时，所有 params 默认通过 uni.setStorageSync 持久化存储，
+     * H5 刷新后仍可读取。单次导航可通过 persistent 选项覆盖此默认值。
+     *
+     * @default false
+     */
+    paramsPersistent?: boolean;
 }
 /**
  * 路由器实例接口，提供路由导航、守卫注册和状态查询能力
@@ -515,4 +576,4 @@ declare class NavigationFailure extends RouterError {
     constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: unknown);
 }
 
-export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationResult, type PostNavigationGuard, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, createRouter, useRoute, useRouter };
+export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationResult, type ParamObject, type ParamValue, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, createRouter, useRoute, useRouter };

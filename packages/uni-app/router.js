@@ -6,7 +6,8 @@ const router = createRouter({
 	strict: true,
 	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫始终生效
 	guardTimeout: 15000, // 守卫超时 15 秒，适用于异步请求较慢的场景
-	readyTimeout: 5000 // 路由器就绪超时 5 秒，防止初始化异常时 isReady() 永久挂起
+	readyTimeout: 5000, // 路由器就绪超时 5 秒，防止初始化异常时 isReady() 永久挂起
+	paramsPersistent: false // params 持久化默认值，设为 true 时所有 params 默认持久化到 storage
 })
 
 // ===== 等待路由器初始化完成 =====

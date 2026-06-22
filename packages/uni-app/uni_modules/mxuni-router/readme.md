@@ -21,7 +21,10 @@
 - **uni API 拦截** - 拦截 `uni.navigateTo` 等原生导航 API，确保守卫始终生效（`interceptUniApi`）
 - **路由状态同步** - `syncRoute()` 将路由状态与实际页面栈同步，处理物理返回键等非路由器导航
 - **路由变化监听** - `onRouteChange()` 订阅路由状态变化，包括导航完成和状态同步
-- **RouterLink 组件** - 声明式导航组件，支持 `push` / `replace` / `relaunch` 模式、`events` 页面间通信、`animation` 导航动画、`@navigated` / `@error` 事件
+- **页面参数传递** - `params` 支持传递复杂数据（对象、数组等），不暴露在 URL 中，目标页面通过 `route.params` 读取
+- **参数持久化** - `persistent: true` 将 params 持久化到 storage，H5 刷新后仍可读取；`paramsPersistent` 全局默认值
+- **查询参数增强** - `queryInt` / `queryNumber` / `queryBool` 便捷方法，自动解析 query 参数为指定类型
+- **RouterLink 组件** - 声明式导航组件，支持 `push` / `replace` / `relaunch` 模式、`params` 参数传递、`events` 页面间通信、`animation` 导航动画、`@navigated` / `@error` 事件
 - **页面间通信** - `push` 支持 `events` 参数和 `eventChannel` 返回值，实现页面间双向通信（对应 uni.navigateTo 的 EventChannel 机制）
 - **TypeScript 类型提示** - 通过模块增强为路由名称和路径提供自动补全和类型检查
 - **错误处理** - 完整的 `RouterError` / `NavigationFailure` 体系，支持 `onError` 全局捕获
@@ -126,6 +129,35 @@ await router.back(1, { type: 'slide-out-left' }) // 返回并指定动画
 // 关闭所有页面并打开目标页面（对应 uni.reLaunch）
 await router.relaunch('/pages/index/index')
 await router.relaunch({ name: 'login', query: { redirect: '/about' } })
+
+// 带 params 跳转（传递复杂数据，不暴露在 URL 中）
+await router.push({
+	path: '/pages/detail/detail',
+	query: { id: '1' },
+	params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
+})
+
+// 带 params 持久化跳转（H5 刷新后仍可读取）
+await router.push({
+	path: '/pages/detail/detail',
+	params: { bigData: largeObject },
+	persistent: true
+})
+
+// 目标页面读取 params
+const route = useRoute()
+console.log(route.params.userInfo) // { name: 'Tom', age: 20 }
+
+// 查询参数增强方法
+// URL: /pages/detail/detail?id=123&price=19.99
+route.queryInt('id') // 123
+route.queryNumber('price') // 19.99
+
+// URL: /pages/detail/detail?enabled=true
+route.queryBool('enabled') // true
+
+// 带默认值
+route.queryInt('page', 1) // 1（参数不存在时）
 ```
 
 ### 3. 路由守卫
@@ -261,13 +293,14 @@ const router = createRouter({ routes })
 
 ### RouterOptions 配置项
 
-| 选项              | 类型            | 默认值  | 说明                                                                                                                                                                     |
-| ----------------- | --------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `routes`          | `RouteConfig[]` | -       | 路由配置列表，需与 `pages.json` 中的页面声明保持一致                                                                                                                     |
-| `strict`          | `boolean`       | `true`  | 是否启用严格模式，启用后未匹配的命名路由将抛出异常                                                                                                                       |
-| `interceptUniApi` | `boolean`       | `false` | 是否拦截 `uni.navigateTo` / `uni.redirectTo` / `uni.switchTab` / `uni.reLaunch` / `uni.navigateBack` 原生导航 API，启用后直接调用 uni API 将转由路由器处理，确保守卫生效 |
-| `guardTimeout`    | `number`        | `10000` | 守卫超时时间（毫秒），超时后自动中止导航并输出警告，设为 `0` 可禁用                                                                                                      |
-| `readyTimeout`    | `number`        | `0`     | 路由器就绪超时时间（毫秒），超时后 `isReady()` 将 reject，防止 Promise 永久挂起，设为 `0` 可禁用                                                                         |
+| 选项               | 类型            | 默认值  | 说明                                                                                                                                                                     |
+| ------------------ | --------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `routes`           | `RouteConfig[]` | -       | 路由配置列表，需与 `pages.json` 中的页面声明保持一致                                                                                                                     |
+| `strict`           | `boolean`       | `true`  | 是否启用严格模式，启用后未匹配的命名路由将抛出异常                                                                                                                       |
+| `interceptUniApi`  | `boolean`       | `false` | 是否拦截 `uni.navigateTo` / `uni.redirectTo` / `uni.switchTab` / `uni.reLaunch` / `uni.navigateBack` 原生导航 API，启用后直接调用 uni API 将转由路由器处理，确保守卫生效 |
+| `guardTimeout`     | `number`        | `10000` | 守卫超时时间（毫秒），超时后自动中止导航并输出警告，设为 `0` 可禁用                                                                                                      |
+| `readyTimeout`     | `number`        | `0`     | 路由器就绪超时时间（毫秒），超时后 `isReady()` 将 reject，防止 Promise 永久挂起，设为 `0` 可禁用                                                                         |
+| `paramsPersistent` | `boolean`       | `false` | 页面参数持久化默认值，设为 true 时所有 params 默认通过 `uni.setStorageSync` 持久化存储，H5 刷新后仍可读取，单次导航可通过 `persistent` 选项覆盖                          |
 
 ### RouterLink 组件
 
@@ -313,6 +346,8 @@ function onNavigated(eventChannel) {
 | `to`                   | `RouteLocationRaw`    | -                   | 目标路由位置                                                                 |
 | `replace`              | `boolean`             | `false`             | 是否使用替换模式导航                                                         |
 | `relaunch`             | `boolean`             | `false`             | 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面），优先级高于 replace |
+| `params`               | `ParamObject`         | `undefined`         | 页面参数，支持复杂数据（仅 JSON 可序列化值），不暴露在 URL 中                |
+| `persistent`           | `boolean`             | `undefined`         | 页面参数是否持久化到 storage，H5 刷新后仍可读取                              |
 | `animation`            | `NavigationAnimation` | `undefined`         | 导航动画（仅 App 端生效），覆盖 meta.animation                               |
 | `events`               | `EventListeners`      | `undefined`         | 监听被打开页面通过 eventChannel 发送的事件                                   |
 | `hoverClass`           | `string`              | `'navigator-hover'` | 按下时的样式类                                                               |
@@ -354,8 +389,19 @@ function onNavigated(eventChannel) {
 | `name`         | `string \| undefined`       | 路由名称                       |
 | `meta`         | `RouteMeta`                 | 路由元信息                     |
 | `query`        | `Record<string, string>`    | 查询参数                       |
+| `params`       | `Readonly<ParamObject>`     | 页面参数（只读）               |
 | `fullPath`     | `string`                    | 完整路径（含查询参数）         |
 | `eventChannel` | `EventChannel \| undefined` | 页面间通信通道，仅 push 时可用 |
+
+### RouteLocation 路由位置
+
+`useRoute()` 返回的响应式路由位置，包含以下查询参数增强方法：
+
+| 方法                              | 说明                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------ |
+| `queryInt(key, defaultValue?)`    | 将查询参数解析为整数，解析失败返回 `defaultValue`                              |
+| `queryNumber(key, defaultValue?)` | 将查询参数解析为数值（支持浮点），解析失败返回 `defaultValue`                  |
+| `queryBool(key, defaultValue?)`   | 将查询参数解析为布尔值（`'true'`/`'1'` → `true`），无法识别返回 `defaultValue` |
 
 ### Options API
 

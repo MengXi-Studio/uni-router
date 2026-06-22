@@ -20,9 +20,31 @@
 				<text class="info-label">meta.title</text>
 				<text class="info-value">{{ currentRoute.meta?.title || '-' }}</text>
 			</view>
-			<view class="info-row" v-if="currentRoute.query">
+			<view class="info-row" v-if="currentRoute.query && Object.keys(currentRoute.query).length">
 				<text class="info-label">query</text>
 				<text class="info-value">{{ queryStr }}</text>
+			</view>
+			<view class="info-row" v-if="hasParams">
+				<text class="info-label">params</text>
+				<text class="info-value">{{ paramsStr }}</text>
+			</view>
+		</view>
+
+		<!-- 查询参数增强 -->
+		<view class="card" v-if="hasQuery">
+			<text class="card-title">查询参数增强方法</text>
+			<text class="hint">RouteLocation 提供 queryInt / queryNumber / queryBool 便捷方法</text>
+			<view class="info-row" v-if="currentRoute.query.id">
+				<text class="info-label">queryInt('id')</text>
+				<text class="info-value">{{ queryIntResult }}</text>
+			</view>
+			<view class="info-row" v-if="currentRoute.query.price">
+				<text class="info-label">queryNumber('price')</text>
+				<text class="info-value">{{ queryNumberResult }}</text>
+			</view>
+			<view class="info-row" v-if="currentRoute.query.enabled">
+				<text class="info-label">queryBool('enabled')</text>
+				<text class="info-value">{{ queryBoolResult }}</text>
 			</view>
 		</view>
 
@@ -73,6 +95,31 @@ export default {
 			const q = this.currentRoute.query
 			if (!q || !Object.keys(q).length) return '-'
 			return JSON.stringify(q)
+		},
+		hasParams() {
+			const p = this.currentRoute.params
+			return p && Object.keys(p).length > 0
+		},
+		paramsStr() {
+			const p = this.currentRoute.params
+			if (!p || !Object.keys(p).length) return '{}'
+			return JSON.stringify(p)
+		},
+		hasQuery() {
+			const q = this.currentRoute.query
+			return q && Object.keys(q).length > 0
+		},
+		queryIntResult() {
+			const route = router.currentRoute?.value || router.currentRoute
+			return route.queryInt ? route.queryInt('id') : '-'
+		},
+		queryNumberResult() {
+			const route = router.currentRoute?.value || router.currentRoute
+			return route.queryNumber ? route.queryNumber('price') : '-'
+		},
+		queryBoolResult() {
+			const route = router.currentRoute?.value || router.currentRoute
+			return route.queryBool ? route.queryBool('enabled') : '-'
 		}
 	},
 	onLoad() {
@@ -91,7 +138,8 @@ export default {
 				name: route.name || '',
 				meta: route.meta || {},
 				query: route.query || {},
-				fullPath: route.fullPath || ''
+				fullPath: route.fullPath || '',
+				params: route.params || {}
 			}
 		},
 		initEventChannel() {
@@ -101,7 +149,7 @@ export default {
 				this.openerEventChannel = eventChannel
 
 				// 监听发起页发来的事件
-				eventChannel.on('fromOpener', (data) => {
+				eventChannel.on('fromOpener', data => {
 					this.eventChannelMessages.push(`收到 fromOpener: ${JSON.stringify(data)}`)
 					uni.showToast({ title: `收到: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
 				})

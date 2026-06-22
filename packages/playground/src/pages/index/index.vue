@@ -15,6 +15,7 @@
 				<text class="tag tag-orange">命名路由</text>
 				<text class="tag tag-red">错误处理</text>
 				<text class="tag tag-purple">EventChannel</text>
+				<text class="tag tag-blue">params 参数传递</text>
 			</view>
 		</view>
 
@@ -23,6 +24,7 @@
 			<view class="btn" @click="goNavigation">查看导航示例</view>
 			<view class="btn btn-success" @click="goDetail">push 带参数跳转详情</view>
 			<view class="btn btn-warn" @click="goDetailByName">命名路由跳转详情</view>
+			<view class="btn" @click="goDetailWithParams">push 带 params 跳转</view>
 		</view>
 
 		<view class="section">
@@ -54,7 +56,7 @@
 			<view class="section-title">当前路由信息</view>
 			<view class="code-block">
 				path: {{ currentRoute.path }}\nname: {{ currentRoute.name || '-' }}\nfullPath: {{ currentRoute.fullPath }}\nmeta.title: {{ currentRoute.meta.title || '-' }}\nmeta.isTab:
-				{{ currentRoute.meta.isTab ?? '-' }}\nmeta.requireAuth: {{ currentRoute.meta.requireAuth ?? '-' }}
+				{{ currentRoute.meta.isTab ?? '-' }}\nmeta.requireAuth: {{ currentRoute.meta.requireAuth ?? '-' }}\nparams: {{ Object.keys(currentRoute.params).length ? JSON.stringify(currentRoute.params) : '{}' }}
 			</view>
 		</view>
 	</view>
@@ -83,6 +85,14 @@ function goDetailByName() {
 	router.push({
 		name: 'pagesDetailDetail',
 		query: { id: '99', source: 'named-route' }
+	})
+}
+
+function goDetailWithParams() {
+	router.push({
+		path: '/pages/detail/detail',
+		query: { id: 'params-from-index' },
+		params: { fromIndex: true, message: '来自首页的 params' }
 	})
 }
 

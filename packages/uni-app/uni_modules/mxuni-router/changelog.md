@@ -1,3 +1,22 @@
+## 1.6.0（2026-06-23）
+
+### 新增
+
+- **页面参数传递（params）** - `push` / `replace` / `relaunch` 支持 `params` 参数，传递复杂数据（对象、数组等），不暴露在 URL 中，目标页面通过 `route.params` 读取
+  - `RouteLocationPathRaw.params` / `RouteLocationNamedRaw.params` - 导航时传入页面参数，支持 JSON 可序列化数据
+  - `RouteLocation.params` - 解析后的路由位置新增 `params` 字段（`Readonly<ParamObject>`），目标页面可直接读取
+  - `ParamObject` / `ParamValue` 类型 - 页面参数类型定义，支持嵌套对象和数组
+  - `QueryValue` 类型 - 查询参数值类型（`string | number | boolean`），用于 `query` 字段的输入类型
+- **参数持久化存储** - `persistent` 选项将 params 持久化到 `uni.setStorageSync`，H5 刷新后仍可读取
+  - `RouteLocationPathRaw.persistent` / `RouteLocationNamedRaw.persistent` - 单次导航指定是否持久化
+  - `RouterOptions.paramsPersistent` - 全局默认值，设为 `true` 时所有 params 默认持久化，单次导航可通过 `persistent` 覆盖
+- **查询参数增强方法** - `RouteLocation` 提供三个便捷方法，自动解析 query 参数为指定类型
+  - `queryInt(key, defaultValue?)` - 将查询参数解析为整数，解析失败返回 `defaultValue`
+  - `queryNumber(key, defaultValue?)` - 将查询参数解析为数值（支持浮点），解析失败返回 `defaultValue`
+  - `queryBool(key, defaultValue?)` - 将查询参数解析为布尔值（`'true'`/`'1'` → `true`，`'false'`/`'0'` → `false`），无法识别返回 `defaultValue`
+- **RouterLink `params` prop** - 声明式导航支持传递页面参数，对应 `push` 的 `params` 选项
+- **RouterLink `persistent` prop** - 声明式导航支持参数持久化，对应 `push` 的 `persistent` 选项
+
 ## 1.5.0（2026-06-18）
 
 ### 新增

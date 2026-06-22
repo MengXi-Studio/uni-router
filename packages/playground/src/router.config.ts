@@ -1,6 +1,6 @@
 /**
  * @plugin generate-router
- * @date 2026-06-21 23:01:28
+ * @date 2026-06-23 00:07:04
  * @version 0.2.2
  */
 
