@@ -103,8 +103,8 @@ importers:
         specifier: 3.0.0-4050720250324001
         version: 3.0.0-4050720250324001(@vueuse/core@12.8.2(typescript@5.9.3))(postcss@8.5.15)(rollup@4.62.2)(vite@6.4.3(@types/node@25.9.4)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))(vue@3.5.38(typescript@5.9.3))
       '@meng-xi/vite-plugin':
-        specifier: ^0.2.2
-        version: 0.2.2(vite@6.4.3(@types/node@25.9.4)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+        specifier: ^0.2.3
+        version: 0.2.3(vite@6.4.3(@types/node@25.9.4)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -188,8 +188,8 @@ importers:
         specifier: 3.0.0-4080720251210001
         version: 3.0.0-4080720251210001(@vueuse/core@12.8.2(typescript@5.9.3))(postcss@8.5.15)(rollup@4.62.2)(vite@5.2.8(@types/node@25.9.4)(terser@5.48.0))(vue@3.5.38(typescript@5.9.3))
       '@meng-xi/vite-plugin':
-        specifier: ^0.2.2
-        version: 0.2.2(vite@5.2.8(@types/node@25.9.4)(terser@5.48.0))
+        specifier: ^0.2.3
+        version: 0.2.3(vite@5.2.8(@types/node@25.9.4)(terser@5.48.0))
       '@vue/runtime-core':
         specifier: ^3.5.29
         version: 3.5.38
@@ -2336,8 +2336,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@meng-xi/vite-plugin@0.2.2':
-    resolution: {integrity: sha512-5tEh6tonbrkBSTYbXS+RR9IGAXocS9cYur84yDka0g5nI2msaO+l2acGHE1M6hmg4HlMQ2pSMbw/0PhEfg5fBw==}
+  '@meng-xi/vite-plugin@0.2.3':
+    resolution: {integrity: sha512-rU3PNamdC8aTQAPcJDO5r66bcR534G7gfh3+A7mJBmQnaEZ6qWFQVSd4SuAMoQm/B/v7eO/43RmowQttsSkAdw==}
     peerDependencies:
       vite: '>=5.0.0 <8.0.0'
 
@@ -6761,7 +6761,7 @@ snapshots:
       '@babel/parser': 7.29.7
       '@babel/template': 7.29.7
       '@babel/types': 7.29.7
-      debug: 4.4.3
+      debug: 4.3.7
     transitivePeerDependencies:
       - supports-color
 
@@ -8888,14 +8888,14 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@meng-xi/vite-plugin@0.2.2(vite@5.2.8(@types/node@25.9.4)(terser@5.48.0))':
+  '@meng-xi/vite-plugin@0.2.3(vite@5.2.8(@types/node@25.9.4)(terser@5.48.0))':
     dependencies:
       vite: 5.2.8(@types/node@25.9.4)(terser@5.48.0)
     optionalDependencies:
       sharp: 0.33.5
       svgo: 3.3.3
 
-  '@meng-xi/vite-plugin@0.2.2(vite@6.4.3(@types/node@25.9.4)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))':
+  '@meng-xi/vite-plugin@0.2.3(vite@6.4.3(@types/node@25.9.4)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))':
     dependencies:
       vite: 6.4.3(@types/node@25.9.4)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
     optionalDependencies:

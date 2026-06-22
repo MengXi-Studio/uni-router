@@ -13,15 +13,15 @@ Writing route configurations manually is error-prone and difficult to keep in sy
 ::: code-group
 
 ```bash [pnpm]
-pnpm add @meng-xi/vite-plugin@^0.2.2 -D
+pnpm add @meng-xi/vite-plugin@^0.2.3 -D
 ```
 
 ```bash [npm]
-npm install @meng-xi/vite-plugin@^0.2.2 -D
+npm install @meng-xi/vite-plugin@^0.2.3 -D
 ```
 
 ```bash [yarn]
-yarn add @meng-xi/vite-plugin@^0.2.2 -D
+yarn add @meng-xi/vite-plugin@^0.2.3 -D
 ```
 
 :::
@@ -148,6 +148,34 @@ Additionally, the plugin automatically infers the following meta fields (not aff
 
 - **`isTab`**: Automatically marked based on `tabBar.list` in `pages.json`, no manual configuration needed
 
+### Page-Level Meta Configuration
+
+Starting from `@meng-xi/vite-plugin@0.2.3`, you can directly configure the `meta` field for pages in `pages.json`, without relying on `metaMapping`:
+
+```json
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": { "navigationBarTitleText": "Home" },
+			"meta": { "requireAuth": true, "customField": "value" }
+		}
+	]
+}
+```
+
+::: info
+The `meta` field takes priority over `metaMapping`, allowing page-level overrides.
+:::
+
+**Meta extraction priority:**
+
+| Priority | Source              | Description                                                        |
+| -------- | ------------------- | ------------------------------------------------------------------ |
+| 1 (high) | `pageConfig.meta`   | Meta field directly configured in pages.json                      |
+| 2        | `metaMapping`       | Extracted from style field mapping                                |
+| 3 (low)  | TabBar inference    | Automatically identifies tabBar pages and sets `isTab: true`      |
+
 ## Type Hints
 
 Starting from `@meng-xi/vite-plugin@0.2.2`, the `generateRouter` plugin supports auto-generating TypeScript type declaration files, providing type-safe autocompletion for route navigation.
@@ -252,7 +280,7 @@ When `fileHeader` is enabled, a standardized comment header is added at the top 
 /**
  * @plugin generate-router
  * @date 2026-06-18 14:30:00
- * @version 0.2.2
+ * @version 0.2.3
  */
 
 import type { RouteConfig } from '@meng-xi/uni-router'
