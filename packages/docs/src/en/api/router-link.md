@@ -85,6 +85,30 @@ type EventListeners = Record<string, (...args: any[]) => void>
 </RouterLink>
 ```
 
+### params
+
+- **Type**: `ParamObject | undefined`
+- **Default**: `undefined`
+- **Description**: Page parameters, supports passing complex data (objects, arrays, and other JSON-serializable values) without exposing in the URL. Stored via internal Map, target page reads via `route.params`.
+
+```vue
+<RouterLink :to="{ path: 'pages/detail/detail' }" :params="{ id: 123, info: { name: 'Tom' } }">
+  <text>View Details</text>
+</RouterLink>
+```
+
+### persistent
+
+- **Type**: `boolean | undefined`
+- **Default**: `undefined`
+- **Description**: Whether to persist page parameters to storage. When set to `true`, parameters are persisted via `uni.setStorageSync`, readable after H5 refresh. Falls back to `RouterOptions.paramsPersistent` default when not specified.
+
+```vue
+<RouterLink :to="{ path: 'pages/detail/detail' }" :params="{ id: 123 }" persistent>
+  <text>View Details (Persistent)</text>
+</RouterLink>
+```
+
 ### hoverClass
 
 - **Type**: `string`
@@ -242,6 +266,8 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `hover-class`        | ❌                 | ✅                 |
 | `animation`          | ❌                 | ✅                 |
 | `events`             | ❌                 | ✅                 |
+| `params`             | ❌                 | ✅                 |
+| `persistent`         | ❌                 | ✅                 |
 | `error` event        | ❌                 | ✅                 |
 | `navigated` event    | ❌                 | ✅                 |
 

@@ -48,5 +48,6 @@ console.log(route.value.meta.title)
 	<!-- 模板中自动解包，无需 .value -->
 	<text>当前路径：{{ route.path }}</text>
 	<text>查询参数：{{ route.query.id }}</text>
+	<text>页面参数：{{ route.params.id }}</text>
 </template>
 ```

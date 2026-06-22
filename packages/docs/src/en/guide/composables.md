@@ -42,6 +42,7 @@ console.log(route.value.meta)
 	<!-- Auto-unwrapped in template, no .value needed -->
 	<text>Current path: {{ route.path }}</text>
 	<text>Query: {{ route.query.id }}</text>
+	<text>Page params: {{ route.params.id }}</text>
 </template>
 ```
 
@@ -49,6 +50,11 @@ console.log(route.value.meta)
 `useRoute()` returns `Ref<RouteLocation>`, which automatically updates when the route changes,
 triggering component re-render. The same router instance shares the same reactive ref,
 ensuring all components get consistent route state.
+:::
+
+::: info
+`RouteLocation` provides `queryInt()` / `queryNumber()` / `queryBool()` convenience methods for auto-parsing query parameters.
+See [RouteLocation type](../api/type-route-location) for details.
 :::
 
 ## Using with Options API

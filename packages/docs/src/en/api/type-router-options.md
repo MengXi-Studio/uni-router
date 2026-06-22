@@ -11,6 +11,7 @@ interface RouterOptions {
 	interceptUniApi?: boolean
 	guardTimeout?: number
 	readyTimeout?: number
+	paramsPersistent?: boolean
 }
 ```
 
@@ -72,6 +73,25 @@ const router = createRouter({
   routes: [...],
   readyTimeout: 5000 // Reject isReady() Promise if not ready within 5 seconds
 })
+```
+
+### paramsPersistent
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Default value for page parameter persistence
+  - `true`: All `params` are persisted via `uni.setStorageSync` by default, readable after H5 refresh
+  - `false`: `params` are stored in memory only, lost when the page is closed
+  - Per-navigation `persistent` option can override this default
+
+```ts
+const router = createRouter({
+  routes: [...],
+  paramsPersistent: true // All params persisted by default
+})
+
+// Override per navigation
+await router.push({ path: '/detail', params: { id: 123 }, persistent: false }) // Not persisted
 ```
 
 ## Example

@@ -42,12 +42,18 @@ console.log(route.value.meta)
 	<!-- 模板中自动解包，无需 .value -->
 	<text>当前路径：{{ route.path }}</text>
 	<text>查询参数：{{ route.query.id }}</text>
+	<text>页面参数：{{ route.params.id }}</text>
 </template>
 ```
 
 ::: tip
 `useRoute()` 返回 `Ref<RouteLocation>`，当路由发生变化时会自动更新，组件会重新渲染。
 同一路由器实例共享同一个响应式 ref，确保所有组件获取一致的路由状态。
+:::
+
+::: info
+`RouteLocation` 提供 `queryInt()` / `queryNumber()` / `queryBool()` 便捷方法，自动解析 query 参数。
+详见 [RouteLocation 类型](../api/type-route-location)。
 :::
 
 ## 在选项式 API 中使用

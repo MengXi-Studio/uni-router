@@ -10,8 +10,12 @@ interface RouteLocation {
 	name?: string
 	meta: RouteMeta
 	query: Record<string, string>
+	params: Readonly<ParamObject>
 	fullPath: string
 	_synced?: boolean
+	queryInt(key: string, defaultValue?: number): number | undefined
+	queryNumber(key: string, defaultValue?: number): number | undefined
+	queryBool(key: string, defaultValue?: boolean): boolean | undefined
 }
 ```
 
@@ -42,6 +46,21 @@ interface RouteLocation {
 - **类型**: `string`
 - **说明**: 完整路径（含查询参数），如 `/pages/about/about?id=1`。查询参数按键名字母序排列，确保相同参数生成一致的 fullPath。
 
+### params
+
+- **类型**: `Readonly<ParamObject>`
+- **说明**: 页面参数（从内存或 storage 中读取，只读）。通过导航时的 `params` 选项传入，不暴露在 URL 中，支持复杂数据（对象、数组等 JSON 可序列化值）。未传参数时为空对象 `{}`。
+
+```ts
+// 导航时传入 params
+await router.push({ path: '/pages/detail/detail', params: { id: 123, info: { name: 'Tom' } } })
+
+// 目标页面读取
+const route = useRoute()
+console.log(route.params.id)    // 123
+console.log(route.params.info)  // { name: 'Tom' }
+```
+
 ### \_synced
 
 - **类型**: `boolean | undefined`
@@ -51,6 +70,69 @@ interface RouteLocation {
 `_synced` 为内部标记，不应在应用代码中依赖此字段。如需区分完整导航和状态同步，
 可在 `onRouteChange` 监听器中检查此字段。
 :::
+
+## 方法
+
+### queryInt()
+
+将查询参数解析为整数。
+
+```ts
+queryInt(key: string, defaultValue?: number): number | undefined
+```
+
+- **key**: 查询参数键名
+- **defaultValue**: 参数不存在或解析失败时的默认值
+- **返回值**: 解析后的整数值，参数不存在或解析失败时返回 `defaultValue`（未提供则为 `undefined`）
+
+```ts
+// URL: /pages/detail/detail?id=123
+route.queryInt('id')           // 123
+route.queryInt('page', 1)      // 1（默认值）
+route.queryInt('invalid', 0)   // 0（解析失败时使用默认值）
+```
+
+### queryNumber()
+
+将查询参数解析为数值（支持浮点数）。
+
+```ts
+queryNumber(key: string, defaultValue?: number): number | undefined
+```
+
+- **key**: 查询参数键名
+- **defaultValue**: 参数不存在或解析失败时的默认值
+- **返回值**: 解析后的数值，参数不存在或解析失败时返回 `defaultValue`（未提供则为 `undefined`）
+
+```ts
+// URL: /pages/detail/detail?price=19.99
+route.queryNumber('price')         // 19.99
+route.queryNumber('price', 0)      // 19.99
+route.queryNumber('missing', 0)    // 0（默认值）
+```
+
+### queryBool()
+
+将查询参数解析为布尔值。
+
+```ts
+queryBool(key: string, defaultValue?: boolean): boolean | undefined
+```
+
+- **key**: 查询参数键名
+- **defaultValue**: 参数不存在或无法识别时的默认值
+- **返回值**: 解析后的布尔值，参数不存在或无法识别时返回 `defaultValue`（未提供则为 `undefined`）
+
+识别规则：
+- `'true'` / `'1'` → `true`
+- `'false'` / `'0'` → `false`
+- 其他值 → 返回 `defaultValue`
+
+```ts
+// URL: /pages/detail/detail?enabled=true
+route.queryBool('enabled')         // true
+route.queryBool('visible', false)  // false（默认值）
+```
 
 ## 相关类型
 
@@ -69,7 +151,9 @@ type RouteLocationRaw = string | RouteLocationPathRaw | RouteLocationNamedRaw
 ```ts
 interface RouteLocationPathRaw {
 	path: string
-	query?: Record<string, string>
+	query?: Record<string, QueryValue>
+	params?: ParamObject
+	persistent?: boolean
 	animation?: NavigationAnimation
 	events?: EventListeners
 }
@@ -82,7 +166,9 @@ interface RouteLocationPathRaw {
 ```ts
 interface RouteLocationNamedRaw {
 	name: string
-	query?: Record<string, string>
+	query?: Record<string, QueryValue>
+	params?: ParamObject
+	persistent?: boolean
 	animation?: NavigationAnimation
 	events?: EventListeners
 }
@@ -134,6 +220,32 @@ interface EventChannel {
 type EventListeners = Record<string, (...args: any[]) => void>
 ```
 
+### QueryValue
+
+查询参数值类型（输入时支持 `string` / `number` / `boolean`，内部统一转为 `string`）：
+
+```ts
+type QueryValue = string | number | boolean
+```
+
+### ParamValue
+
+页面参数值类型（仅支持 JSON 可序列化数据）：
+
+```ts
+type ParamValue = string | number | boolean | null | ParamObject | ParamValue[]
+```
+
+### ParamObject
+
+页面参数对象类型：
+
+```ts
+interface ParamObject {
+	[key: string]: ParamValue
+}
+```
+
 ::: info
 源码中 `path` 的类型为 `RoutePath`，`name` 的类型为 `RouteName`，它们通过 `RouteNameMap` 接口提供类型提示。
 当使用 `@meng-xi/vite-plugin` 的 `dts` 功能生成类型声明后，`name` 和 `path` 将获得自动补全和类型检查。
@@ -149,6 +261,7 @@ const location = router.resolve({ name: 'about', query: { id: '1' } })
 //   name: 'about',
 //   meta: { requireAuth: true },
 //   query: { id: '1' },
+//   params: {},
 //   fullPath: '/pages/about/about?id=1'
 // }
 ```

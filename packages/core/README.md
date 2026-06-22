@@ -29,6 +29,8 @@
 - **导航动画** - 支持 `push` / `replace` / `back` 时传入动画参数，支持路由级 `meta.animation` 默认动画，仅 App 端生效
 - **页面间通信** - `push` 支持 `events` 参数和 `eventChannel` 返回值，实现页面间双向通信（对应 uni.navigateTo 的 EventChannel）
 - **路由状态同步** - `syncRoute()` 方法确保路由状态与页面栈一致，处理浏览器后退、物理返回键等场景
+- **页面参数传递** - `params` 支持传递复杂数据（对象、数组等），不暴露在 URL 中；支持 `persistent` 持久化到 storage，H5 刷新后仍可读取
+- **查询参数增强** - `queryInt()` / `queryNumber()` / `queryBool()` 便捷方法，自动解析 query 参数为整数、数值、布尔值
 
 📖 **完整文档：[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
@@ -90,9 +92,10 @@ import App from './App.vue'
 const router = createRouter({
 	routes,
 	strict: true,
-	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫生效
+	interceptUniApi: true, // 拦截 uni 原生导航 API（navigateTo / redirectTo / switchTab / navigateBack / reLaunch），确保守卫生效
 	guardTimeout: 15000, // 守卫超时时间（毫秒），默认 10000
-	readyTimeout: 5000 // 路由器就绪超时时间（毫秒），默认 0（永不超时）
+	readyTimeout: 5000, // 路由器就绪超时时间（毫秒），默认 0（永不超时）
+	paramsPersistent: false // 页面参数持久化默认值，设为 true 时所有 params 默认通过 storage 持久化
 })
 
 export function createApp() {
@@ -117,6 +120,12 @@ await router.push({ path: '/pages/about/about', query: { id: '1' } })
 
 // 命名导航
 await router.push({ name: 'about' })
+
+// 页面参数传递（params 不暴露在 URL 中，支持复杂数据）
+await router.push({ path: '/pages/detail/detail', params: { id: 123, info: { name: 'Tom' } } })
+
+// 持久化页面参数（H5 刷新后仍可读取）
+await router.push({ path: '/pages/detail/detail', params: { bigData: largeObject }, persistent: true })
 
 // 返回（执行完整守卫链）
 await router.back()
@@ -162,7 +171,53 @@ eventChannel.on('init', data => {
 eventChannel.emit('update', { result: '处理完成' })
 ```
 
-### 5. 导航动画
+### 5. 页面参数传递（params）
+
+`params` 用于传递不暴露在 URL 中的复杂数据（对象、数组等），支持 JSON 可序列化值。数据通过内部 Map 存储，目标页面通过 `route.params` 读取。
+
+```typescript
+// 导航时传递 params
+await router.push({
+	path: '/pages/detail/detail',
+	query: { id: '1' }, // query 仍正常暴露在 URL 中
+	params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
+})
+
+// 目标页面读取 params
+const route = useRoute()
+console.log(route.params.userInfo) // { name: 'Tom', age: 20 }
+console.log(route.params.tags) // ['vip', 'active']
+```
+
+**持久化存储**：默认 params 仅存储在内存中，页面关闭后数据丢失。设置 `persistent: true` 可将数据持久化到 `uni.setStorageSync`，H5 刷新后仍可读取。
+
+```typescript
+// 单次导航持久化
+await router.push({
+	path: '/pages/detail/detail',
+	params: { bigData: largeObject },
+	persistent: true
+})
+
+// 全局默认持久化（所有 params 默认持久化）
+const router = createRouter({
+	routes,
+	paramsPersistent: true
+})
+```
+
+**查询参数增强**：`RouteLocation` 提供 `queryInt` / `queryNumber` / `queryBool` 便捷方法，自动解析 query 参数：
+
+```typescript
+const route = useRoute()
+
+// 假设 URL 为 /pages/detail/detail?id=123&enabled=true
+route.queryInt('id') // 123
+route.queryNumber('price', 0) // 默认值 0
+route.queryBool('enabled') // true
+```
+
+### 6. 导航动画
 
 导航动画仅 App 端生效，其他平台自动忽略。优先级：`调用时传入` > `meta.animation` > `uni 默认值`。
 
@@ -186,7 +241,7 @@ const routes = [
 // <RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">关于页面</RouterLink>
 ```
 
-### 6. 路由守卫
+### 7. 路由守卫
 
 ```typescript
 // 全局前置守卫 - 登录验证
@@ -209,7 +264,7 @@ router.onRouteChange((to, from) => {
 })
 ```
 
-### 7. 声明式导航
+### 8. 声明式导航
 
 ```vue
 <template>
@@ -218,6 +273,8 @@ router.onRouteChange((to, from) => {
 	<RouterLink :to="{ name: 'admin' }" @error="onNavError">管理后台</RouterLink>
 	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">底部滑入</RouterLink>
 	<RouterLink to="/pages/index/index" relaunch>返回首页</RouterLink>
+	<RouterLink to="/pages/detail/detail" :params="{ id: 123 }">详情页</RouterLink>
+	<RouterLink to="/pages/detail/detail" :params="{ id: 123 }" persistent>详情页（持久化）</RouterLink>
 </template>
 
 <script setup>
@@ -277,6 +334,9 @@ function onNavError(error) {
 | `EventChannel`        | 页面间通信事件通道，支持 `emit` / `on` / `off`             |
 | `EventListeners`      | 事件监听器集合，`Record<string, (...args: any[]) => void>` |
 | `NavigationAnimation` | 导航动画配置，含 `type` 和可选 `duration`                  |
+| `QueryValue`          | 查询参数值类型，`string \| number \| boolean`              |
+| `ParamValue`          | 页面参数值类型，支持 JSON 可序列化数据                     |
+| `ParamObject`         | 页面参数对象类型，`{ [key: string]: ParamValue }`          |
 
 ## TypeScript 类型提示
 

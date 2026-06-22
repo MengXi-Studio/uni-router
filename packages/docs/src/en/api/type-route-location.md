@@ -10,8 +10,12 @@ interface RouteLocation {
 	name?: string
 	meta: RouteMeta
 	query: Record<string, string>
+	params: Readonly<ParamObject>
 	fullPath: string
 	_synced?: boolean
+	queryInt(key: string, defaultValue?: number): number | undefined
+	queryNumber(key: string, defaultValue?: number): number | undefined
+	queryBool(key: string, defaultValue?: boolean): boolean | undefined
 }
 ```
 
@@ -42,6 +46,21 @@ interface RouteLocation {
 - **Type**: `string`
 - **Description**: Full path (including query parameters), e.g. `/pages/about/about?id=1`. Query parameters are sorted alphabetically by key to ensure consistent fullPath generation.
 
+### params
+
+- **Type**: `Readonly<ParamObject>`
+- **Description**: Page parameters (read from memory or storage, read-only). Passed in via the `params` option during navigation, not exposed in the URL, supports complex data (objects, arrays, and other JSON-serializable values). Empty object `{}` when no params are passed.
+
+```ts
+// Pass params when navigating
+await router.push({ path: '/pages/detail/detail', params: { id: 123, info: { name: 'Tom' } } })
+
+// Read in target page
+const route = useRoute()
+console.log(route.params.id)    // 123
+console.log(route.params.info)  // { name: 'Tom' }
+```
+
 ### \_synced
 
 - **Type**: `boolean | undefined`
@@ -53,6 +72,69 @@ interface RouteLocation {
 If you need to distinguish complete navigation from state synchronization, check this field in
 `onRouteChange` listeners.
 :::
+
+## Methods
+
+### queryInt()
+
+Parse a query parameter as an integer.
+
+```ts
+queryInt(key: string, defaultValue?: number): number | undefined
+```
+
+- **key**: Query parameter key name
+- **defaultValue**: Default value when the parameter doesn't exist or fails to parse
+- **Returns**: Parsed integer value, or `defaultValue` when the parameter doesn't exist or fails to parse (or `undefined` if no default provided)
+
+```ts
+// URL: /pages/detail/detail?id=123
+route.queryInt('id')           // 123
+route.queryInt('page', 1)      // 1 (default value)
+route.queryInt('invalid', 0)   // 0 (default value on parse failure)
+```
+
+### queryNumber()
+
+Parse a query parameter as a number (supports floating point).
+
+```ts
+queryNumber(key: string, defaultValue?: number): number | undefined
+```
+
+- **key**: Query parameter key name
+- **defaultValue**: Default value when the parameter doesn't exist or fails to parse
+- **Returns**: Parsed number value, or `defaultValue` when the parameter doesn't exist or fails to parse (or `undefined` if no default provided)
+
+```ts
+// URL: /pages/detail/detail?price=19.99
+route.queryNumber('price')         // 19.99
+route.queryNumber('price', 0)      // 19.99
+route.queryNumber('missing', 0)    // 0 (default value)
+```
+
+### queryBool()
+
+Parse a query parameter as a boolean.
+
+```ts
+queryBool(key: string, defaultValue?: boolean): boolean | undefined
+```
+
+- **key**: Query parameter key name
+- **defaultValue**: Default value when the parameter doesn't exist or is unrecognized
+- **Returns**: Parsed boolean value, or `defaultValue` when the parameter doesn't exist or is unrecognized (or `undefined` if no default provided)
+
+Recognition rules:
+- `'true'` / `'1'` → `true`
+- `'false'` / `'0'` → `false`
+- Other values → returns `defaultValue`
+
+```ts
+// URL: /pages/detail/detail?enabled=true
+route.queryBool('enabled')         // true
+route.queryBool('visible', false)  // false (default value)
+```
 
 ## Related Types
 
@@ -71,7 +153,9 @@ Path-based raw route location:
 ```ts
 interface RouteLocationPathRaw {
 	path: string
-	query?: Record<string, string>
+	query?: Record<string, QueryValue>
+	params?: ParamObject
+	persistent?: boolean
 	animation?: NavigationAnimation
 	events?: EventListeners
 }
@@ -84,7 +168,9 @@ Name-based raw route location:
 ```ts
 interface RouteLocationNamedRaw {
 	name: string
-	query?: Record<string, string>
+	query?: Record<string, QueryValue>
+	params?: ParamObject
+	persistent?: boolean
 	animation?: NavigationAnimation
 	events?: EventListeners
 }
@@ -136,6 +222,32 @@ Event listener collection, used for the `events` field in `RouteLocationPathRaw`
 type EventListeners = Record<string, (...args: any[]) => void>
 ```
 
+### QueryValue
+
+Query parameter value type (supports `string` / `number` / `boolean` on input, internally converted to `string`):
+
+```ts
+type QueryValue = string | number | boolean
+```
+
+### ParamValue
+
+Page parameter value type (supports JSON-serializable data only):
+
+```ts
+type ParamValue = string | number | boolean | null | ParamObject | ParamValue[]
+```
+
+### ParamObject
+
+Page parameter object type:
+
+```ts
+interface ParamObject {
+	[key: string]: ParamValue
+}
+```
+
 ::: info
 In the source code, the type of `path` is `RoutePath` and the type of `name` is `RouteName`, which provide type hints through the `RouteNameMap` interface.
 When using the `dts` feature of `@meng-xi/vite-plugin` to generate type declarations, `name` and `path` will have autocompletion and type checking.
@@ -151,6 +263,7 @@ const location = router.resolve({ name: 'about', query: { id: '1' } })
 //   name: 'about',
 //   meta: { requireAuth: true },
 //   query: { id: '1' },
+//   params: {},
 //   fullPath: '/pages/about/about?id=1'
 // }
 ```

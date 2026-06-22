@@ -228,14 +228,18 @@ type EventListeners = Record<string, (...args: any[]) => void>
 ```ts
 interface RouteLocationPathRaw {
 	path: string
-	query?: Record<string, string>
+	query?: Record<string, QueryValue>
+	params?: ParamObject
+	persistent?: boolean
 	animation?: NavigationAnimation
 	events?: EventListeners
 }
 
 interface RouteLocationNamedRaw {
 	name: string
-	query?: Record<string, string>
+	query?: Record<string, QueryValue>
+	params?: ParamObject
+	persistent?: boolean
 	animation?: NavigationAnimation
 	events?: EventListeners
 }
@@ -244,6 +248,92 @@ interface RouteLocationNamedRaw {
 ::: info
 `NavigationResult` extends `RouteLocation`, so existing code like `const route = await router.push(...)` works without modification. `eventChannel` is an optional field.
 :::
+
+## Page Params
+
+`params` is used to pass complex data (objects, arrays, etc.) without exposing it in the URL. It supports JSON-serializable values. Data is stored in an internal Map, and the target page reads it via `route.params`.
+
+### Basic Usage
+
+```ts
+// Pass params when navigating
+await router.push({
+	path: 'pages/detail/detail',
+	query: { id: '1' }, // query is still exposed in URL as normal
+	params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
+})
+
+// Read params in the target page
+const route = useRoute()
+console.log(route.params.userInfo) // { name: 'Tom', age: 20 }
+console.log(route.params.tags)     // ['vip', 'active']
+```
+
+### Persistent Storage
+
+By default, `params` are stored in memory only and lost when the page is closed. Set `persistent: true` to persist data via `uni.setStorageSync`, making it readable after H5 refresh.
+
+```ts
+// Per-navigation persistence
+await router.push({
+	path: 'pages/detail/detail',
+	params: { bigData: largeObject },
+	persistent: true
+})
+
+// Global default persistence (all params persisted by default)
+const router = createRouter({
+	routes: [...],
+	paramsPersistent: true
+})
+```
+
+::: warning
+`params` only supports JSON-serializable values. Non-serializable values (like `Date`, `Function`, `undefined`) will output a warning and will be lost during storage/retrieval.
+:::
+
+### Parameter Cleanup
+
+- **Lazy cleanup**: When reading `params`, if the corresponding page is no longer in the page stack, the parameter is automatically deleted
+- **Sync cleanup**: Calling `syncRoute()` cleans up all parameters whose pages are no longer in the stack
+- **Startup cleanup**: When the router initializes, all residual `params` are cleaned up (including data in storage)
+
+## Query Enhancement
+
+`RouteLocation` provides three convenience methods for auto-parsing `query` parameters:
+
+### queryInt()
+
+Parse a query parameter as an integer:
+
+```ts
+// URL: /pages/detail/detail?id=123
+route.queryInt('id')           // 123
+route.queryInt('page', 1)      // 1 (default value)
+route.queryInt('invalid', 0)   // 0 (default value on parse failure)
+```
+
+### queryNumber()
+
+Parse a query parameter as a number (supports floating point):
+
+```ts
+// URL: /pages/detail/detail?price=19.99
+route.queryNumber('price')         // 19.99
+route.queryNumber('missing', 0)    // 0 (default value)
+```
+
+### queryBool()
+
+Parse a query parameter as a boolean:
+
+```ts
+// URL: /pages/detail/detail?enabled=true
+route.queryBool('enabled')         // true
+route.queryBool('visible', false)  // false (default value)
+```
+
+Recognition rules: `'true'` / `'1'` → `true`, `'false'` / `'0'` → `false`, other values → returns `defaultValue`.
 
 ## Navigation Animation
 

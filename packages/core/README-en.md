@@ -29,6 +29,8 @@
 - **Navigation Animation** - Support animation params in `push` / `replace` / `back`, with route-level `meta.animation` defaults. App only, other platforms auto-ignore
 - **Page Communication** - `push` supports `events` param and `eventChannel` return value for bidirectional page communication (corresponds to uni.navigateTo EventChannel)
 - **Route State Sync** - `syncRoute()` method keeps route state consistent with the page stack, handling browser back, physical back button, etc.
+- **Page Params** - `params` supports passing complex data (objects, arrays, etc.) without exposing in URL; supports `persistent` for storage persistence, readable after H5 refresh
+- **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()` convenience methods for auto-parsing query params to integer, number, or boolean
 
 📖 **Full Documentation: [https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
@@ -90,9 +92,10 @@ import App from './App.vue'
 const router = createRouter({
 	routes,
 	strict: true,
-	interceptUniApi: true, // Intercept uni native navigation APIs to ensure guards work
+	interceptUniApi: true, // Intercept uni native navigation APIs (navigateTo / redirectTo / switchTab / navigateBack / reLaunch) to ensure guards work
 	guardTimeout: 15000, // Guard timeout in ms, default 10000
-	readyTimeout: 5000 // Router ready timeout in ms, default 0 (never timeout)
+	readyTimeout: 5000, // Router ready timeout in ms, default 0 (never timeout)
+	paramsPersistent: false // Default params persistence, set true to persist all params via storage
 })
 
 export function createApp() {
@@ -117,6 +120,12 @@ await router.push({ path: '/pages/about/about', query: { id: '1' } })
 
 // Named navigation
 await router.push({ name: 'about' })
+
+// Page params (params not exposed in URL, supports complex data)
+await router.push({ path: '/pages/detail/detail', params: { id: 123, info: { name: 'Tom' } } })
+
+// Persistent page params (readable after H5 refresh)
+await router.push({ path: '/pages/detail/detail', params: { bigData: largeObject }, persistent: true })
 
 // Go back (executes full guard chain)
 await router.back()
@@ -162,7 +171,53 @@ eventChannel.on('init', data => {
 eventChannel.emit('update', { result: 'Processing complete' })
 ```
 
-### 5. Navigation Animation
+### 5. Page Params
+
+`params` is used to pass complex data (objects, arrays, etc.) without exposing it in the URL. It supports JSON-serializable values. Data is stored in an internal Map, and the target page reads it via `route.params`.
+
+```typescript
+// Pass params when navigating
+await router.push({
+	path: '/pages/detail/detail',
+	query: { id: '1' }, // query is still exposed in URL as normal
+	params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
+})
+
+// Read params in the target page
+const route = useRoute()
+console.log(route.params.userInfo) // { name: 'Tom', age: 20 }
+console.log(route.params.tags) // ['vip', 'active']
+```
+
+**Persistent Storage**: By default, params are stored in memory only and lost when the page is closed. Set `persistent: true` to persist data via `uni.setStorageSync`, making it readable after H5 refresh.
+
+```typescript
+// Per-navigation persistence
+await router.push({
+	path: '/pages/detail/detail',
+	params: { bigData: largeObject },
+	persistent: true
+})
+
+// Global default persistence (all params persisted by default)
+const router = createRouter({
+	routes,
+	paramsPersistent: true
+})
+```
+
+**Query Enhancement**: `RouteLocation` provides `queryInt` / `queryNumber` / `queryBool` convenience methods for auto-parsing query params:
+
+```typescript
+const route = useRoute()
+
+// Assuming URL is /pages/detail/detail?id=123&enabled=true
+route.queryInt('id') // 123
+route.queryNumber('price', 0) // default 0
+route.queryBool('enabled') // true
+```
+
+### 6. Navigation Animation
 
 Navigation animation only takes effect on App, other platforms auto-ignore. Priority: `inline param` > `meta.animation` > `uni default`.
 
@@ -186,7 +241,7 @@ const routes = [
 // <RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">About</RouterLink>
 ```
 
-### 6. Route Guards
+### 7. Route Guards
 
 ```typescript
 // Global before guard - auth check
@@ -209,7 +264,7 @@ router.onRouteChange((to, from) => {
 })
 ```
 
-### 7. Declarative Navigation
+### 8. Declarative Navigation
 
 ```vue
 <template>
@@ -218,6 +273,8 @@ router.onRouteChange((to, from) => {
 	<RouterLink :to="{ name: 'admin' }" @error="onNavError">Admin Panel</RouterLink>
 	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">Slide In Bottom</RouterLink>
 	<RouterLink to="/pages/index/index" relaunch>Back to Home</RouterLink>
+	<RouterLink to="/pages/detail/detail" :params="{ id: 123 }">Detail</RouterLink>
+	<RouterLink to="/pages/detail/detail" :params="{ id: 123 }" persistent>Detail (Persistent)</RouterLink>
 </template>
 
 <script setup>
@@ -277,6 +334,9 @@ function onNavError(error) {
 | `EventChannel`        | Page communication event channel, supports `emit` / `on` / `off`      |
 | `EventListeners`      | Event listener collection, `Record<string, (...args: any[]) => void>` |
 | `NavigationAnimation` | Navigation animation config, with `type` and optional `duration`      |
+| `QueryValue`          | Query param value type, `string \| number \| boolean`                 |
+| `ParamValue`          | Page param value type, supports JSON-serializable data                |
+| `ParamObject`         | Page param object type, `{ [key: string]: ParamValue }`               |
 
 ## TypeScript Type Hints
 

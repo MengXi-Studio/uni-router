@@ -12,6 +12,7 @@
 ```ts
 router.currentRoute.path
 router.currentRoute.query
+router.currentRoute.params
 router.currentRoute.meta
 router.currentRoute.fullPath
 ```

@@ -227,14 +227,18 @@ type EventListeners = Record<string, (...args: any[]) => void>
 ```ts
 interface RouteLocationPathRaw {
 	path: string
-	query?: Record<string, string>
+	query?: Record<string, QueryValue>
+	params?: ParamObject
+	persistent?: boolean
 	animation?: NavigationAnimation
 	events?: EventListeners
 }
 
 interface RouteLocationNamedRaw {
 	name: string
-	query?: Record<string, string>
+	query?: Record<string, QueryValue>
+	params?: ParamObject
+	persistent?: boolean
 	animation?: NavigationAnimation
 	events?: EventListeners
 }
@@ -243,6 +247,92 @@ interface RouteLocationNamedRaw {
 ::: info
 `NavigationResult` 继承自 `RouteLocation`，原有代码 `const route = await router.push(...)` 无需修改，`eventChannel` 为可选字段。
 :::
+
+## 页面参数传递（params）
+
+`params` 用于传递不暴露在 URL 中的复杂数据（对象、数组等），支持 JSON 可序列化值。数据通过内部 Map 存储，目标页面通过 `route.params` 读取。
+
+### 基本用法
+
+```ts
+// 导航时传递 params
+await router.push({
+	path: 'pages/detail/detail',
+	query: { id: '1' }, // query 仍正常暴露在 URL 中
+	params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
+})
+
+// 目标页面读取 params
+const route = useRoute()
+console.log(route.params.userInfo) // { name: 'Tom', age: 20 }
+console.log(route.params.tags)     // ['vip', 'active']
+```
+
+### 持久化存储
+
+默认 `params` 仅存储在内存中，页面关闭后数据丢失。设置 `persistent: true` 可将数据持久化到 `uni.setStorageSync`，H5 刷新后仍可读取。
+
+```ts
+// 单次导航持久化
+await router.push({
+	path: 'pages/detail/detail',
+	params: { bigData: largeObject },
+	persistent: true
+})
+
+// 全局默认持久化（所有 params 默认持久化）
+const router = createRouter({
+	routes: [...],
+	paramsPersistent: true
+})
+```
+
+::: warning
+`params` 仅支持 JSON 可序列化值。传入不可序列化的值（如 `Date`、`Function`、`undefined`）时将输出警告，这些值在存储/读取过程中会丢失。
+:::
+
+### 参数清理
+
+- **惰性清理**：读取 `params` 时，若对应页面已不在页面栈中，将自动删除该参数
+- **同步清理**：调用 `syncRoute()` 时，会清理所有已不在页面栈中的参数
+- **启动清理**：路由器初始化时，会清理所有残留的 `params`（包括 storage 中的数据）
+
+## 查询参数增强
+
+`RouteLocation` 提供三个便捷方法，自动解析 `query` 参数为指定类型：
+
+### queryInt()
+
+将查询参数解析为整数：
+
+```ts
+// URL: /pages/detail/detail?id=123
+route.queryInt('id')           // 123
+route.queryInt('page', 1)      // 1（默认值）
+route.queryInt('invalid', 0)   // 0（解析失败时使用默认值）
+```
+
+### queryNumber()
+
+将查询参数解析为数值（支持浮点数）：
+
+```ts
+// URL: /pages/detail/detail?price=19.99
+route.queryNumber('price')         // 19.99
+route.queryNumber('missing', 0)    // 0（默认值）
+```
+
+### queryBool()
+
+将查询参数解析为布尔值：
+
+```ts
+// URL: /pages/detail/detail?enabled=true
+route.queryBool('enabled')         // true
+route.queryBool('visible', false)  // false（默认值）
+```
+
+识别规则：`'true'` / `'1'` → `true`，`'false'` / `'0'` → `false`，其他值 → 返回 `defaultValue`。
 
 ## 导航动画
 

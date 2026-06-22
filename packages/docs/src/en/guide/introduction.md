@@ -22,6 +22,8 @@ Uni Router wraps a layer on top of uni-app's native routing APIs, solving the ab
 
 - 🧭 **Route Navigation** — `push()` / `replace()` / `relaunch()` / `back()`, automatically detect TabBar pages
 - 🛡️ **Route Guards** — `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
+- 📦 **Params Passing** — `params` supports complex data (objects, arrays, etc.) without exposing in URL, with persistent storage support
+- 🔢 **Query Enhancement** — `queryInt()` / `queryNumber()` / `queryBool()` convenience methods for auto-parsing query parameters
 - 📋 **Route Meta** — `title` / `isTab` / `requireAuth` and custom extension fields
 - 📡 **Page Communication** — `push()` supports `events` param and `eventChannel` return value for bidirectional page communication
 - 🌐 **Multi-Platform** — Built on uni-app native APIs, compatible with all uni-app target platforms

@@ -84,6 +84,30 @@ type EventListeners = Record<string, (...args: any[]) => void>
 </RouterLink>
 ```
 
+### params
+
+- **类型**: `ParamObject | undefined`
+- **默认值**: `undefined`
+- **说明**: 页面参数，支持传递复杂数据（对象、数组等 JSON 可序列化值），不暴露在 URL 中。通过内部 Map 存储，目标页面通过 `route.params` 读取。
+
+```vue
+<RouterLink :to="{ path: 'pages/detail/detail' }" :params="{ id: 123, info: { name: 'Tom' } }">
+  <text>查看详情</text>
+</RouterLink>
+```
+
+### persistent
+
+- **类型**: `boolean | undefined`
+- **默认值**: `undefined`
+- **说明**: 页面参数是否持久化到 storage。设为 `true` 时，参数通过 `uni.setStorageSync` 持久化存储，H5 刷新后仍可读取。未指定时使用 `RouterOptions.paramsPersistent` 的默认值。
+
+```vue
+<RouterLink :to="{ path: 'pages/detail/detail' }" :params="{ id: 123 }" persistent>
+  <text>查看详情（持久化）</text>
+</RouterLink>
+```
+
 ### hoverClass
 
 - **类型**: `string`
@@ -241,6 +265,8 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `hover-class`        | ❌                 | ✅                 |
 | `animation`          | ❌                 | ✅                 |
 | `events`             | ❌                 | ✅                 |
+| `params`             | ❌                 | ✅                 |
+| `persistent`         | ❌                 | ✅                 |
 | `error` 事件         | ❌                 | ✅                 |
 | `navigated` 事件     | ❌                 | ✅                 |
 

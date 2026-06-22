@@ -48,5 +48,6 @@ console.log(route.value.meta.title)
 	<!-- Auto-unwrapped in template, no .value needed -->
 	<text>Current path: {{ route.path }}</text>
 	<text>Query: {{ route.query.id }}</text>
+	<text>Page params: {{ route.params.id }}</text>
 </template>
 ```

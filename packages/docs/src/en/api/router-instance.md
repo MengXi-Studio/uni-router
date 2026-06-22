@@ -12,6 +12,7 @@ The router instance returned by `createRouter()`, providing route navigation, gu
 ```ts
 router.currentRoute.path
 router.currentRoute.query
+router.currentRoute.params
 router.currentRoute.meta
 router.currentRoute.fullPath
 ```

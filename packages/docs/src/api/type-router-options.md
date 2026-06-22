@@ -11,6 +11,7 @@ interface RouterOptions {
 	interceptUniApi?: boolean
 	guardTimeout?: number
 	readyTimeout?: number
+	paramsPersistent?: boolean
 }
 ```
 
@@ -70,6 +71,25 @@ const router = createRouter({
   routes: [...],
   readyTimeout: 5000 // 5 秒内未就绪则 reject isReady() Promise
 })
+```
+
+### paramsPersistent
+
+- **类型**: `boolean`
+- **默认值**: `false`
+- **说明**: 页面参数持久化默认值
+  - `true`：所有 `params` 默认通过 `uni.setStorageSync` 持久化存储，H5 刷新后仍可读取
+  - `false`：`params` 仅存储在内存中，页面关闭后数据丢失
+  - 单次导航可通过 `persistent` 选项覆盖此默认值
+
+```ts
+const router = createRouter({
+  routes: [...],
+  paramsPersistent: true // 所有 params 默认持久化
+})
+
+// 单次导航覆盖
+await router.push({ path: '/detail', params: { id: 123 }, persistent: false }) // 不持久化
 ```
 
 ## 示例

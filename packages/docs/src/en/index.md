@@ -26,15 +26,15 @@ features:
   - icon: 🛡️
     title: Route Guards
     details: Global beforeEach / beforeResolve / afterEach and per-route beforeEnter guards, with native API interception
+  - icon: 📦
+    title: Params & Query Enhancement
+    details: params for complex data with persistent storage, queryInt / queryNumber / queryBool convenience methods
   - icon: 📡
     title: Page Communication
     details: push supports events param and eventChannel return value for bidirectional page communication
   - icon: 🎬
     title: Navigation Animation
     details: Support inline animation params and route-level meta.animation defaults. App only, other platforms auto-ignore
-  - icon: 📋
-    title: Route Meta
-    details: Support title, isTab, requireAuth and custom extension fields for flexible page property management
   - icon: 💪
     title: TypeScript First
     details: Complete type definitions and composables, useRouter() / useRoute() seamlessly integrate with Vue 3
