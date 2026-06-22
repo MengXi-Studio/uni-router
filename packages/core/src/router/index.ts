@@ -8,7 +8,7 @@ import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/n
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
 import { installInterceptors, removeInterceptors } from '@/interceptor'
-import { buildFullPath, warn } from '@/utils'
+import { buildFullPath, createRouteLocation, warn } from '@/utils'
 
 /**
  * 最大重定向深度，超过此值将取消导航以防止无限循环
@@ -574,7 +574,7 @@ class UniRouter implements Router {
 		const meta: RouteMeta = config?.meta ?? {}
 		const query = getCurrentPageQuery()
 		const fullPath = buildFullPath(currentPath, query)
-		const to: RouteLocation = { path: currentPath, meta, query, fullPath, _synced: true }
+		const to = createRouteLocation({ path: currentPath, meta, query, fullPath, _synced: true })
 		this.routeState.setCurrentRoute(to)
 	}
 }

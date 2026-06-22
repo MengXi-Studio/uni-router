@@ -1,5 +1,5 @@
 import type { RouteLocation, RouteMeta } from '@/types/route'
-import { buildFullPath } from '@/utils/path'
+import { buildFullPath, createRouteLocation, createStartLocation } from '@/utils'
 
 /**
  * 路由变化监听器函数类型
@@ -11,12 +11,7 @@ type RouteChangeListener = (to: RouteLocation, from: RouteLocation) => void
 /**
  * 路由初始位置，表示路由器尚未初始化时的默认状态
  */
-const START_LOCATION: RouteLocation = Object.freeze({
-	path: '/',
-	meta: Object.freeze({}),
-	query: Object.freeze({}),
-	fullPath: '/'
-})
+const START_LOCATION: RouteLocation = createStartLocation()
 
 /** `onReady` 默认超时时间（毫秒），设为 0 表示永不超时 */
 const DEFAULT_READY_TIMEOUT = 0
@@ -56,10 +51,13 @@ export function createRouteState(readyTimeout: number = DEFAULT_READY_TIMEOUT) {
 	 */
 	function setCurrentRoute(route: RouteLocation): void {
 		const from = currentRoute
-		currentRoute = Object.freeze({
-			...route,
+		currentRoute = createRouteLocation({
+			path: route.path,
+			name: route.name,
 			meta: Object.freeze({ ...route.meta }),
-			query: Object.freeze({ ...route.query })
+			query: Object.freeze({ ...route.query }),
+			fullPath: route.fullPath,
+			...(route._synced !== undefined && { _synced: route._synced })
 		})
 
 		if (!ready) {
@@ -88,7 +86,7 @@ export function createRouteState(readyTimeout: number = DEFAULT_READY_TIMEOUT) {
 	 */
 	function initCurrentRoute(path: string, meta: RouteMeta, query: Record<string, string>): void {
 		const fullPath = buildFullPath(path, query)
-		setCurrentRoute({ path, meta, query, fullPath })
+		setCurrentRoute(createRouteLocation({ path, meta, query, fullPath }))
 	}
 
 	/**

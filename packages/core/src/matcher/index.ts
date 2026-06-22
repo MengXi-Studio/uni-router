@@ -1,7 +1,7 @@
 import type { RouteConfig, RouteLocation, RouteLocationNamedRaw, RouteLocationPathRaw, RouteLocationRaw, RouteMeta } from '@/types/route'
 import { RouterErrorCode } from '@/types/error'
 import { RouterError } from '@/errors'
-import { buildFullPath, parseQuery, normalizePath } from '@/utils/path'
+import { buildFullPath, parseQuery, normalizePath, createRouteLocation, serializeQuery } from '@/utils'
 import { warn, isObject } from '@/utils/general'
 
 /**
@@ -100,13 +100,13 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean): Rout
 		const query = queryString ? parseQuery(queryString) : {}
 		const meta: RouteMeta = config?.meta ?? {}
 
-		return {
+		return createRouteLocation({
 			path: normalizedPath,
 			name: config?.name,
 			meta,
 			query,
 			fullPath: buildFullPath(normalizedPath, query)
-		}
+		})
 	}
 
 	/**
@@ -116,16 +116,16 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean): Rout
 	function resolveFromPathRaw(location: RouteLocationPathRaw): RouteLocation {
 		const normalizedPath = normalizePath(location.path)
 		const config = pathMap.get(normalizedPath)
-		const query = location.query ?? {}
+		const query = serializeQuery(location.query)
 		const meta: RouteMeta = config?.meta ?? {}
 
-		return {
+		return createRouteLocation({
 			path: normalizedPath,
 			name: config?.name,
 			meta,
 			query,
 			fullPath: buildFullPath(normalizedPath, query)
-		}
+		})
 	}
 
 	/**
@@ -140,25 +140,25 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean): Rout
 				throw new RouterError(RouterErrorCode.ROUTE_NOT_FOUND, `Route name "${location.name}" not found`)
 			}
 			warn(`Route name "${location.name}" not found`)
-			const query = location.query ?? {}
+			const query = serializeQuery(location.query)
 			const path = `/${location.name}`
-			return {
+			return createRouteLocation({
 				path,
 				meta: {},
 				query,
 				fullPath: buildFullPath(path, query)
-			}
+			})
 		}
 
-		const query = location.query ?? {}
+		const query = serializeQuery(location.query)
 		const resolvedPath = normalizePath(config.path)
-		return {
+		return createRouteLocation({
 			path: resolvedPath,
 			name: config.name,
 			meta: config.meta ?? {},
 			query,
 			fullPath: buildFullPath(resolvedPath, query)
-		}
+		})
 	}
 
 	return {

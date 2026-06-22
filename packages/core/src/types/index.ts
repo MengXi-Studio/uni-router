@@ -12,7 +12,8 @@ export type {
 	UniAnimationType,
 	EventChannel,
 	EventListeners,
-	NavigationResult
+	NavigationResult,
+	QueryValue
 } from './route'
 export { DEFAULT_ANIMATION_DURATION } from './route'
 

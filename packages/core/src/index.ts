@@ -20,7 +20,8 @@ export type {
 	PostNavigationGuard,
 	RouterOnError,
 	RouterOptions,
-	Router
+	Router,
+	QueryValue
 } from '@/types'
 export { RouterError, NavigationFailure } from '@/errors'
 export { RouterErrorCode, DEFAULT_ANIMATION_DURATION } from '@/types'

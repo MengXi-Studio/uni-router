@@ -1,18 +1,21 @@
 /**
  * 将路径和查询参数组合为完整的路径字符串
  * @param path - 路径部分
- * @param query - 查询参数键值对
+ * @param query - 查询参数键值对，值支持 string / number / boolean
  * @returns 包含查询参数的完整路径，无参数时返回原始路径
  */
-export function buildFullPath(path: string, query: Record<string, string>): string {
+export function buildFullPath(path: string, query: Record<string, string | number | boolean>): string {
 	const keys = Object.keys(query)
 	if (keys.length === 0) return path
 
 	// 确保参数顺序确定性，避免相同 query 生成不同的 fullPath
 	keys.sort()
-	const qs = keys.map(key => `${encodeURIComponent(key)}=${encodeURIComponent(query[key])}`).join('&')
+	const qs = keys
+		.filter(key => query[key] !== undefined && query[key] !== null)
+		.map(key => `${encodeURIComponent(key)}=${encodeURIComponent(String(query[key]))}`)
+		.join('&')
 
-	return `${path}?${qs}`
+	return qs ? `${path}?${qs}` : path
 }
 
 /**
