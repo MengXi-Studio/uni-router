@@ -43,7 +43,7 @@ jobs:
 
       # 配置 GitHub Pages
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       # 安装依赖
       - name: Install dependencies
@@ -55,7 +55,7 @@ jobs:
 
       # 上传构建产物
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./packages/docs/.vitepress/dist
 
