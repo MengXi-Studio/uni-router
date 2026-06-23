@@ -93,20 +93,24 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 				},
 				{
 					text: '进阶',
-					items: [
-						{
-							text: '错误处理',
-							link: '/guide/error-handling'
-						},
-						{
-							text: '平台兼容性',
-							link: '/guide/compatibility'
-						},
-						{
-							text: '与 vue-router 的差异',
-							link: '/guide/differences'
-						}
-					]
+				items: [
+					{
+						text: '自动生成路由配置',
+						link: '/guide/auto-generate'
+					},
+					{
+						text: '错误处理',
+						link: '/guide/error-handling'
+					},
+					{
+						text: '平台兼容性',
+						link: '/guide/compatibility'
+					},
+					{
+						text: '与 vue-router 的差异',
+						link: '/guide/differences'
+					}
+				]
 				}
 			],
 			'/api/': [

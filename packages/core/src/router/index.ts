@@ -327,6 +327,9 @@ class UniRouter implements Router {
 				app.onUnmount(() => removeInterceptors())
 			}
 		}
+
+		// 在 install 时标记路由器就绪，确保 isReady() 回调在所有插件安装完成后执行
+		this.routeState.markReady()
 	}
 
 	/**

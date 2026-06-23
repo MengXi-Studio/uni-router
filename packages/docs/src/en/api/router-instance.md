@@ -201,6 +201,10 @@ isReady(): Promise<void>
 ```
 
 ::: tip
+The router is marked as ready during `app.use(router)` installation, so `isReady()` callbacks execute after all plugins are installed, making it safe to use installed plugins (e.g., Pinia).
+:::
+
+::: warning
 When `readyTimeout` is configured (non-zero), if the router fails to initialize within the timeout, this Promise will be rejected to prevent permanent hanging.
 :::
 
@@ -275,3 +279,4 @@ The installation registers the following:
 - **`$router`** — Global property, accessible via `this.$router`
 - **`$route`** — Global property (computed), accessible via `this.$route` for current route location
 - **provide** — Injects the router instance via `provide(ROUTER_SYMBOL, router)`, enabling `useRouter()` / `useRoute()`
+- **markReady** — Marks the router as ready, resolving all pending `isReady()` Promises

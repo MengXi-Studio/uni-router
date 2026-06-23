@@ -601,21 +601,22 @@ function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
       params: route.params,
       ...route._synced !== void 0 && { _synced: route._synced }
     });
-    if (!ready) {
-      ready = true;
-      if (readyTimer) {
-        clearTimeout(readyTimer);
-        readyTimer = null;
-      }
-      for (const resolve of readyResolvers) {
-        resolve();
-      }
-      readyResolvers.length = 0;
-      readyRejecters.length = 0;
-    }
     for (const listener of listeners) {
       listener(currentRoute, from);
     }
+  }
+  function markReady() {
+    if (ready) return;
+    ready = true;
+    if (readyTimer) {
+      clearTimeout(readyTimer);
+      readyTimer = null;
+    }
+    for (const resolve of readyResolvers) {
+      resolve();
+    }
+    readyResolvers.length = 0;
+    readyRejecters.length = 0;
   }
   function initCurrentRoute(path, meta, query) {
     const fullPath = buildFullPath(path, query);
@@ -653,6 +654,7 @@ function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
   return {
     getCurrentRoute,
     setCurrentRoute,
+    markReady,
     initCurrentRoute,
     isReady,
     onReady,
@@ -1153,6 +1155,7 @@ var UniRouter = class {
         app.onUnmount(() => removeInterceptors());
       }
     }
+    this.routeState.markReady();
   }
   /**
    * 根据当前页面栈初始化路由状态

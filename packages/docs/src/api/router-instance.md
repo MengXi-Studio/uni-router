@@ -199,6 +199,10 @@ isReady(): Promise<void>
 ```
 
 ::: tip
+路由器在 `app.use(router)` 安装时标记为就绪，因此 `isReady()` 的回调在所有插件安装完成后执行，可安全使用已安装的插件（如 Pinia）。
+:::
+
+::: warning
 当配置了 `readyTimeout`（非 0）时，若路由器在超时时间内未完成初始化，此 Promise 将被 reject，防止永久挂起。
 :::
 
@@ -271,3 +275,4 @@ install(app: App): void
 - **`$router`** — 全局属性，可通过 `this.$router` 访问路由器实例
 - **`$route`** — 全局属性（计算属性），可通过 `this.$route` 访问当前路由位置
 - **provide** — 通过 `provide(ROUTER_SYMBOL, router)` 注入路由器实例，使 `useRouter()` / `useRoute()` 可用
+- **markReady** — 标记路由器为就绪状态，所有等待中的 `isReady()` Promise 将被 resolve
