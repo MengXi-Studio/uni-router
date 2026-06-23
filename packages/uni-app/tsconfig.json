@@ -1,0 +1,16 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"target": "ESNext",
+		"lib": ["ESNext", "DOM"],
+		"jsx": "preserve",
+		"esModuleInterop": true,
+		"paths": {
+			"@/*": ["./src/*"],
+			"@meng-xi/uni-router": ["./uni_modules/mxuni-router/js_sdk/index"]
+		},
+		"types": ["@dcloudio/types"]
+	},
+	"include": ["**/*.ts", "**/*.d.ts", "**/*.vue"],
+	"exclude": ["node_modules", "dist", "unpackage"]
+}

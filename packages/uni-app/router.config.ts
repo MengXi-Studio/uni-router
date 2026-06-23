@@ -1,10 +1,10 @@
 /**
  * @plugin generate-router
- * @date 2026-06-21 23:15:04
- * @version 0.2.2
+ * @date 2026-06-23 22:49:20
+ * @version 0.2.3
  */
 
-import type { RouteConfig } from './uni_modules/mxuni-router/js_sdk'
+import type { RouteConfig } from '@meng-xi/uni-router'
 
 /**
  * 路由配置列表
@@ -19,11 +19,7 @@ export const routes: RouteConfig[] = [
 	{
 		path: '/pages/guards/index',
 		name: 'pagesGuardsIndex',
-		meta: { title: '路由守卫' },
-		beforeEnter(to, from, next) {
-			console.log(`[beforeEnter] 路由独享守卫: ${from.path} → ${to.path}`)
-			next()
-		}
+		meta: { title: '路由守卫' }
 	},
 	{
 		path: '/pages/about/index',
