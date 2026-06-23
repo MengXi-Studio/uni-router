@@ -28,7 +28,11 @@ yarn add @meng-xi/uni-router
 
 :::
 
-也可以通过 [uni-app 插件市场](https://ext.dcloud.net.cn/plugin?id=28271) 安装。
+## uni-app 插件市场
+
+如果你使用 uni-app 项目，可以通过插件市场一键安装：
+
+[插件市场地址](https://ext.dcloud.net.cn/plugin?id=28271)
 
 ## 对等依赖
 

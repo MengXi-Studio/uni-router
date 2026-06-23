@@ -14,46 +14,7 @@
 
 ## 一、性能优化与代码质量
 
-### 1. `isSameQuery` 缺少空对象快速路径
-
-**文件**: `src/router/index.ts` L440-446
-
-每次 `push` 都会执行 `isSameRouteLocation` 检测，而大多数场景下 query 为空对象 `{}`。
-
-```ts
-private isSameQuery(a: Record<string, string>, b: Record<string, string>): boolean {
-    if (a === b) return true
-    const keysA = Object.keys(a)
-    const keysB = Object.keys(b)
-    if (keysA.length === 0 && keysB.length === 0) return true
-    if (keysA.length !== keysB.length) return false
-    return keysA.every(key => a[key] === b[key])
-}
-```
-
-### 2. `setCurrentRoute` 每次 `Object.freeze` 的开销
-
-**文件**: `src/state/index.ts` L59-63
-
-每次路由变化都执行两次 `Object.freeze` + 两次对象展开。小程序平台对性能更敏感，建议生产模式下跳过冻结：
-
-```ts
-function setCurrentRoute(route: RouteLocation): void {
-	const from = currentRoute
-	if (__DEV__) {
-		currentRoute = Object.freeze({
-			...route,
-			meta: Object.freeze({ ...route.meta }),
-			query: Object.freeze({ ...route.query })
-		})
-	} else {
-		currentRoute = { ...route, meta: { ...route.meta }, query: { ...route.query } }
-	}
-	// ...
-}
-```
-
-### 3. `NavigationFailure.cause` 类型为 `unknown` 过于宽泛
+### 1. `NavigationFailure.cause` 类型为 `unknown` 过于宽泛
 
 **文件**: `src/types/error.ts` L20
 
@@ -69,13 +30,13 @@ interface NavigationFailure extends RouterError {
 }
 ```
 
-### 4. `syncCurrentRoute` 的 `_from` 参数未使用
+### 2. `syncCurrentRoute` 的 `_from` 参数未使用
 
 **文件**: `src/router/index.ts` L463
 
 `syncCurrentRoute(_from: RouteLocation)` 接收 `from` 参数但未使用。`back()` 调用时传入的 `from` 值被浪费。如果需要基于 `from` 做判断（如区分 back 和 push 的同步），当前设计无法支持。
 
-### 5. 缺少开发模式专用警告
+### 3. 缺少开发模式专用警告
 
 以下场景应在 `__DEV__` 模式下输出警告：
 
@@ -84,23 +45,23 @@ interface NavigationFailure extends RouterError {
 - `syncRoute()` 在 `onHide` 而非 `onShow` 中调用
 - `push` 到 TabBar 页面时携带了 query 参数（`uni.switchTab` 不支持 query）
 
-### 6. 缺少导航调试模式
+### 4. 缺少导航调试模式
 
 建议增加 `RouterOptions.debug` 选项，开启后输出完整的导航流程日志（守卫执行、API 调用、状态变更），方便小程序开发者工具中排查导航问题。
 
 ---
 
-## 三、非 uni-app 原生支持的能力（暂不考虑）
+## 二、非 uni-app 原生支持的能力（暂不考虑）
 
 以下功能在 uni-app 中无原生对应或需大量额外适配，建议放在最后考虑：
 
-### 7. 导航取消机制（AbortController 风格）
+### 5. 导航取消机制（AbortController 风格）
 
 当前导航一旦开始无法从外部取消。`AbortController` 风格的取消机制在 uni-app 中没有原生支持，需要自行实现超时和状态管理。
 
 **不优先的原因**: uni-app 的导航 API 本身不支持取消（`uni.navigateTo` 无 abort 能力），实现取消仅能阻止守卫链继续执行，无法真正取消已发出的原生 API 调用。实际收益有限。
 
-### 8. `UniRouter` 类职责拆分
+### 6. `UniRouter` 类职责拆分
 
 `UniRouter` 类（523 行）承担了导航执行、守卫协调、状态同步、拦截器管理、Vue 插件安装等职责。
 
@@ -112,11 +73,9 @@ interface NavigationFailure extends RouterError {
 
 | 优先级 | 编号 | 优化点                               | 类型       |
 | ------ | ---- | ------------------------------------ | ---------- |
-| P3     | 1    | `isSameQuery` 空对象快速路径         | 性能       |
-| P3     | 2    | `Object.freeze` 生产模式优化         | 性能       |
-| P3     | 3    | `NavigationFailure.cause` 类型宽泛   | 类型安全   |
-| P3     | 4    | `syncCurrentRoute` 的 `_from` 未使用 | 代码质量   |
-| P3     | 5    | 开发模式专用警告                     | 调试       |
-| P3     | 6    | 导航调试模式                         | 调试       |
-| P4     | 7    | 导航取消机制                         | 需额外适配 |
-| P4     | 8    | `UniRouter` 类职责拆分               | 架构优化   |
+| P3     | 1    | `NavigationFailure.cause` 类型宽泛   | 类型安全   |
+| P3     | 2    | `syncCurrentRoute` 的 `_from` 未使用 | 代码质量   |
+| P3     | 3    | 开发模式专用警告                     | 调试       |
+| P3     | 4    | 导航调试模式                         | 调试       |
+| P4     | 5    | 导航取消机制                         | 需额外适配 |
+| P4     | 6    | `UniRouter` 类职责拆分               | 架构优化   |

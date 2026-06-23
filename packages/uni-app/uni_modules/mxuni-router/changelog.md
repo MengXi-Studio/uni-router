@@ -1,3 +1,10 @@
+## 1.6.1（2026-06-23）
+
+### 优化
+
+- **`isSameQuery` 空对象快速路径** - 添加引用相等（`a === b`）和双空对象（`keysA.length === 0`）快速返回，避免高频调用场景下不必要的 `Object.keys` 和 `every` 开销
+- **`Object.freeze` 逻辑集中化** - 将 `meta`、`query`、`params` 的冻结逻辑从 `setCurrentRoute` 和 `createStartLocation` 集中到 `createRouteLocation` 工厂函数中，消除重复代码，后续条件冻结只需改一处
+
 ## 1.6.0（2026-06-23）
 
 ### 新增

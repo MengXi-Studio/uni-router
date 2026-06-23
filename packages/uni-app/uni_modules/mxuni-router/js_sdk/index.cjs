@@ -537,12 +537,12 @@ function serializeQuery(query) {
   return result;
 }
 function createRouteLocation(base) {
-  const query = base.query;
+  const query = Object.freeze(base.query);
   const params = base.params ? Object.freeze({ ...base.params }) : Object.freeze({});
   return {
     path: base.path,
     name: base.name,
-    meta: base.meta,
+    meta: Object.freeze({ ...base.meta }),
     query,
     params,
     fullPath: base.fullPath,
@@ -571,8 +571,8 @@ function createRouteLocation(base) {
 function createStartLocation() {
   return createRouteLocation({
     path: "/",
-    meta: Object.freeze({}),
-    query: Object.freeze({}),
+    meta: {},
+    query: {},
     fullPath: "/"
   });
 }
@@ -595,8 +595,8 @@ function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
     currentRoute = createRouteLocation({
       path: route.path,
       name: route.name,
-      meta: Object.freeze({ ...route.meta }),
-      query: Object.freeze({ ...route.query }),
+      meta: { ...route.meta },
+      query: { ...route.query },
       fullPath: route.fullPath,
       params: route.params,
       ...route._synced !== void 0 && { _synced: route._synced }
@@ -727,6 +727,23 @@ function createParamsManager(defaultPersistent) {
     }
     return void 0;
   }
+  function peek(key) {
+    if (memoryMap.has(key)) {
+      return memoryMap.get(key);
+    }
+    try {
+      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
+      if (raw) {
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return void 0;
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
   function remove(key) {
     memoryMap.delete(key);
     try {
@@ -765,7 +782,7 @@ function createParamsManager(defaultPersistent) {
     } catch {
     }
   }
-  return { set, get, remove, cleanupStale, cleanupAll };
+  return { set, get, peek, remove, cleanupStale, cleanupAll };
 }
 
 // src/matcher/index.ts
@@ -877,7 +894,7 @@ function createRouteMatcher(routes, strict, paramsManager) {
     const key = query[PARAMS_KEY];
     if (!key) return void 0;
     delete query[PARAMS_KEY];
-    return paramsManager.get(decodeURIComponent(key));
+    return paramsManager.peek(decodeURIComponent(key));
   }
   return {
     getRoutes,
@@ -1313,9 +1330,11 @@ var UniRouter = class {
    * @returns 键值对完全一致时返回 true
    */
   isSameQuery(a, b) {
+    if (a === b) return true;
     const keysA = Object.keys(a);
     const keysB = Object.keys(b);
     if (keysA.length !== keysB.length) return false;
+    if (keysA.length === 0) return true;
     return keysA.every((key) => a[key] === b[key]);
   }
   /**
@@ -1397,7 +1416,7 @@ var UniRouter = class {
     let params = {};
     const paramsKey = query[PARAMS_KEY];
     if (paramsKey) {
-      const resolved = this.paramsManager.get(decodeURIComponent(paramsKey));
+      const resolved = this.paramsManager.peek(decodeURIComponent(paramsKey));
       if (resolved) params = resolved;
     }
     const to = createRouteLocation({ path: currentPath, meta, query, fullPath, params, _synced: true });

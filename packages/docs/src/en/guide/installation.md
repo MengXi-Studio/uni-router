@@ -28,7 +28,11 @@ yarn add @meng-xi/uni-router
 
 :::
 
-You can also install via the [uni-app Plugin Market](https://ext.dcloud.net.cn/plugin?id=28271).
+## uni-app Plugin Market
+
+If you are using a uni-app project, you can install it directly from the plugin market:
+
+[Plugin Market](https://ext.dcloud.net.cn/plugin?id=28271)
 
 ## Peer Dependencies
 

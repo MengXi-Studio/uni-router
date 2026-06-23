@@ -45,12 +45,12 @@ export function serializeQuery(query?: Record<string, QueryValue>): Record<strin
  * @returns 完整的 RouteLocation 对象
  */
 export function createRouteLocation(base: { path: string; name?: string; meta: RouteMeta; query: Record<string, string>; fullPath: string; params?: ParamObject; _synced?: boolean }): RouteLocation {
-	const query = base.query
+	const query = Object.freeze(base.query)
 	const params: Readonly<ParamObject> = base.params ? Object.freeze({ ...base.params }) : Object.freeze({})
 	return {
 		path: base.path,
 		name: base.name,
-		meta: base.meta,
+		meta: Object.freeze({ ...base.meta }),
 		query,
 		params,
 		fullPath: base.fullPath,
@@ -88,8 +88,8 @@ export function createRouteLocation(base: { path: string; name?: string; meta: R
 export function createStartLocation(): RouteLocation {
 	return createRouteLocation({
 		path: '/',
-		meta: Object.freeze({}),
-		query: Object.freeze({}),
+		meta: {},
+		query: {},
 		fullPath: '/'
 	})
 }

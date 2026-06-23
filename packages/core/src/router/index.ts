@@ -549,9 +549,11 @@ class UniRouter implements Router {
 	 * @returns 键值对完全一致时返回 true
 	 */
 	private isSameQuery(a: Record<string, string>, b: Record<string, string>): boolean {
+		if (a === b) return true
 		const keysA = Object.keys(a)
 		const keysB = Object.keys(b)
 		if (keysA.length !== keysB.length) return false
+		if (keysA.length === 0) return true
 		return keysA.every(key => a[key] === b[key])
 	}
 
