@@ -99,20 +99,24 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 				},
 				{
 					text: 'Advanced',
-					items: [
-						{
-							text: 'Error Handling',
-							link: '/en/guide/error-handling'
-						},
-						{
-							text: 'Platform Compatibility',
-							link: '/en/guide/compatibility'
-						},
-						{
-							text: 'Differences from vue-router',
-							link: '/en/guide/differences'
-						}
-					]
+				items: [
+					{
+						text: 'Auto-Generating Route Config',
+						link: '/en/guide/auto-generate'
+					},
+					{
+						text: 'Error Handling',
+						link: '/en/guide/error-handling'
+					},
+					{
+						text: 'Platform Compatibility',
+						link: '/en/guide/compatibility'
+					},
+					{
+						text: 'Differences from vue-router',
+						link: '/en/guide/differences'
+					}
+				]
 				}
 			],
 			'/en/api/': [

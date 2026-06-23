@@ -1,3 +1,9 @@
+## 1.6.2（2026-06-24）
+
+### 修复
+
+- **`isReady()` 执行时机修正** - `markReady()` 从 `setCurrentRoute()` 移到 `install()` 方法中，确保 `isReady()` 回调在所有插件（如 Pinia）安装完成后执行，而非在 `createRouter()` 构造时立即触发
+
 ## 1.6.1（2026-06-23）
 
 ### 优化

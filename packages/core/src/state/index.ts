@@ -45,7 +45,6 @@ export function createRouteState(readyTimeout: number = DEFAULT_READY_TIMEOUT) {
 	 * 设置当前路由位置，并通知所有监听器
 	 *
 	 * 路由对象及其嵌套的 meta、query 属性会被深度冻结以确保不可变性。
-	 * 首次调用时将路由器标记为就绪状态，并 resolve 所有等待中的 onReady Promise。
 	 *
 	 * @param route - 新的路由位置
 	 */
@@ -61,22 +60,28 @@ export function createRouteState(readyTimeout: number = DEFAULT_READY_TIMEOUT) {
 			...(route._synced !== undefined && { _synced: route._synced })
 		})
 
-		if (!ready) {
-			ready = true
-			if (readyTimer) {
-				clearTimeout(readyTimer)
-				readyTimer = null
-			}
-			for (const resolve of readyResolvers) {
-				resolve()
-			}
-			readyResolvers.length = 0
-			readyRejecters.length = 0
-		}
-
 		for (const listener of listeners) {
 			listener(currentRoute, from)
 		}
+	}
+
+	/**
+	 * 将路由器标记为就绪状态，并 resolve 所有等待中的 onReady Promise
+	 *
+	 * 仅在 install() 时调用，确保 isReady() 回调在所有插件安装完成后执行。
+	 */
+	function markReady(): void {
+		if (ready) return
+		ready = true
+		if (readyTimer) {
+			clearTimeout(readyTimer)
+			readyTimer = null
+		}
+		for (const resolve of readyResolvers) {
+			resolve()
+		}
+		readyResolvers.length = 0
+		readyRejecters.length = 0
 	}
 
 	/**
@@ -147,6 +152,7 @@ export function createRouteState(readyTimeout: number = DEFAULT_READY_TIMEOUT) {
 	return {
 		getCurrentRoute,
 		setCurrentRoute,
+		markReady,
 		initCurrentRoute,
 		isReady,
 		onReady,
