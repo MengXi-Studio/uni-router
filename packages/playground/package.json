@@ -1,6 +1,6 @@
 {
 	"name": "@meng-xi/uni-router-playground",
-	"version": "1.6.2",
+	"version": "1.6.3",
 	"private": true,
 	"description": "uni-router 核心模块功能演示应用",
 	"scripts": {
