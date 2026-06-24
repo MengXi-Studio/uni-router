@@ -342,8 +342,9 @@ function installInterceptors(router) {
         if (activeManager?.isRouterCall()) {
           return args;
         }
+        const result = handleInterceptedNavigation(api, args);
         if ("url" in args) args.url = "";
-        return handleInterceptedNavigation(api, args);
+        return result;
       }
     });
   }

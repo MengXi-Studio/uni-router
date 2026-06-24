@@ -213,10 +213,12 @@ export function installInterceptors(router: Router): void {
 				if (activeManager?.isRouterCall()) {
 					return args
 				}
+				// 先处理拦截逻辑（在 URL 被清空前解析路径并触发路由器导航）
+				const result = handleInterceptedNavigation(api, args)
 				// 双重保险：修改 URL 防止低版本基础库忽略返回值
 				// 部分低版本小程序基础库可能忽略 invoke 返回的 false 而继续执行原始 API
 				if ('url' in args) args.url = ''
-				return handleInterceptedNavigation(api, args)
+				return result
 			}
 		})
 	}
