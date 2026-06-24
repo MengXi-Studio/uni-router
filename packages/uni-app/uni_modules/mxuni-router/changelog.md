@@ -1,3 +1,11 @@
+## 1.6.3（2026-06-24）
+
+### 修复
+
+- **`interceptUniApi` 导致 H5 端 TabBar 无法点击** - 拦截器 `invoke` 钩子中 `args.url = ''` 在 `handleInterceptedNavigation()` 之前执行，导致 `parseUniUrl('')` 返回空路径，`switchTab`
+  导航被吞掉。H5 端 TabBar 是 Vue 组件，点击时调用 `uni.switchTab` 触发拦截器后 URL 被提前清空；小程序端 TabBar 是原生组件，点击不经过
+  `uni.switchTab`，故不受影响。现已调换执行顺序，先解析 URL 并触发路由器导航，再清空 URL 作为双重保险，同时恢复 `switchTab` 走守卫链
+
 ## 1.6.2（2026-06-24）
 
 ### 修复
