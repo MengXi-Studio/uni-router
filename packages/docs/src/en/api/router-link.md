@@ -8,10 +8,28 @@ Navigation component that triggers route navigation on click. Built on uni-app's
 import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 ```
 
-::: info
-`RouterLink` is a standalone Vue component file. You need to import the `.vue` file path directly,
-not from the package entry.
+::: info Direct .vue file import
+`RouterLink` is a standalone Vue component file. You need to import the `.vue` file path directly, not from the package entry. It's recommended to configure auto-import in `pages.json`'s `easycom`, or register it globally in `main.ts`.
 :::
+
+### Global Registration (Recommended)
+
+```ts
+// src/main.ts
+import { createSSRApp } from 'vue'
+import App from './App.vue'
+import router from './router'
+import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+
+export function createApp() {
+  const app = createSSRApp(App)
+  app.use(router)
+  app.component('RouterLink', RouterLink) // Global registration
+  return { app }
+}
+```
+
+After registration, you can use `<RouterLink>` directly in any component without importing each time.
 
 ## Props
 
@@ -24,6 +42,21 @@ not from the package entry.
   - Path object: `{ path: 'pages/about/about', query: { id: '1' } }`
   - Named object: `{ name: 'about', query: { id: '1' } }`
 
+```vue
+<!-- Path string -->
+<RouterLink to="pages/about/about">About</RouterLink>
+
+<!-- Path object (requires :to binding) -->
+<RouterLink :to="{ path: 'pages/about/about', query: { id: '1' } }">Details</RouterLink>
+
+<!-- Named route (recommended) -->
+<RouterLink :to="{ name: 'about', query: { id: '1' } }">Details</RouterLink>
+```
+
+::: warning Object form requires :to binding
+When passing an object to the `to` prop, use `:to` binding (`v-bind:to`), not the string attribute `to`. The string form `to="pages/about/about"` can be used directly.
+:::
+
 ### replace
 
 - **Type**: `boolean`
@@ -31,6 +64,13 @@ not from the package entry.
 - **Description**: Whether to use replace mode for navigation
   - `false` → calls `router.push(to)`
   - `true` → calls `router.replace(to)`
+
+```vue
+<!-- Navigate from login page, avoid leaving login page in stack -->
+<RouterLink to="pages/home/home" replace>
+  <text>Login</text>
+</RouterLink>
+```
 
 ### relaunch
 
@@ -41,6 +81,12 @@ not from the package entry.
   - Takes priority over `replace`; when both `relaunch` and `replace` are set, `relaunch` is used
 
 ```vue
+<!-- Logout, clear stack -->
+<RouterLink to="pages/login/login" relaunch>
+  <text>Logout</text>
+</RouterLink>
+
+<!-- Return to home from a deep page -->
 <RouterLink to="pages/index/index" relaunch>
   <text>Back to Home</text>
 </RouterLink>
@@ -63,7 +109,15 @@ interface NavigationAnimation {
 <RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom' }">
   <text>Slide In Bottom</text>
 </RouterLink>
+
+<RouterLink to="pages/about/about" :animation="{ type: 'fade-in', duration: 500 }">
+  <text>Fade In (500ms)</text>
+</RouterLink>
 ```
+
+::: warning Platform limitations
+Animation **only works on App**. Navigation animations on mini-programs and H5 are system-controlled and cannot be customized. `relaunch` does not support animation even on App.
+:::
 
 ### events
 
@@ -92,10 +146,26 @@ type EventListeners = Record<string, (...args: any[]) => void>
 - **Description**: Page parameters, supports passing complex data (objects, arrays, and other JSON-serializable values) without exposing in the URL. Stored via internal Map, target page reads via `route.params`.
 
 ```vue
-<RouterLink :to="{ path: 'pages/detail/detail' }" :params="{ id: 123, info: { name: 'Tom' } }">
+<!-- Pass simple data -->
+<RouterLink :to="{ path: 'pages/detail/detail' }" :params="{ id: 123 }">
+  <text>View Details</text>
+</RouterLink>
+
+<!-- Pass complex data -->
+<RouterLink
+  :to="{ path: 'pages/detail/detail' }"
+  :params="{ id: 123, info: { name: 'Tom', age: 20 }, tags: ['a', 'b'] }"
+>
   <text>View Details</text>
 </RouterLink>
 ```
+
+::: tip params vs query
+- `query`: Appended to URL, supports strings only, suitable for simple params (e.g., id, page)
+- `params`: In-memory storage, supports complex data, not exposed in URL, suitable for large objects
+
+TabBar pages can only use `params` (`switchTab` does not support query).
+:::
 
 ### persistent
 
@@ -104,8 +174,9 @@ type EventListeners = Record<string, (...args: any[]) => void>
 - **Description**: Whether to persist page parameters to storage. When set to `true`, parameters are persisted via `uni.setStorageSync`, readable after H5 refresh. Falls back to `RouterOptions.paramsPersistent` default when not specified.
 
 ```vue
+<!-- Persist per navigation -->
 <RouterLink :to="{ path: 'pages/detail/detail' }" :params="{ id: 123 }" persistent>
-  <text>View Details (Persistent)</text>
+  <text>View Details (survives H5 refresh)</text>
 </RouterLink>
 ```
 
@@ -150,16 +221,24 @@ type EventListeners = Record<string, (...args: any[]) => void>
 import { NavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
 
 function onNavError(error: NavigationFailure) {
-	switch (error.code) {
-		case RouterErrorCode.NAVIGATION_ABORTED:
-			console.log('Navigation aborted by guard')
-			break
-		case RouterErrorCode.NAVIGATION_DUPLICATED:
-			console.log('Already on this page')
-			break
-	}
+  switch (error.code) {
+    case RouterErrorCode.NAVIGATION_ABORTED:
+      console.log('Navigation aborted by guard')
+      break
+    case RouterErrorCode.NAVIGATION_DUPLICATED:
+      console.log('Already on this page')
+      break
+    case RouterErrorCode.NAVIGATION_API_ERROR:
+      uni.showToast({ title: 'Navigation failed', icon: 'none' })
+      console.error('Original error:', error.cause)
+      break
+  }
 }
 ```
+
+::: tip Recommend listening to the error event
+When the `error` event is not listened to, navigation failures are silently handled (no unhandled Promise rejection). However, it's recommended to listen and handle errors in production to improve user experience.
+:::
 
 ### navigated
 
@@ -191,7 +270,16 @@ Default slot for the navigation link content:
 
 ```vue
 <RouterLink to="pages/about/about">
-  <text>About Us</text>
+  <text>Go to About</text>
+</RouterLink>
+
+<!-- Complex content -->
+<RouterLink :to="{ name: 'detail', query: { id: item.id } }">
+  <view class="card">
+    <image :src="item.cover" />
+    <text>{{ item.title }}</text>
+    <text>{{ item.desc }}</text>
+  </view>
 </RouterLink>
 ```
 
@@ -201,9 +289,9 @@ Default slot for the navigation link content:
 
 ```vue
 <template>
-	<RouterLink to="pages/about/about">
-		<text>About Us</text>
-	</RouterLink>
+  <RouterLink to="pages/about/about">
+    <text>About Us</text>
+  </RouterLink>
 </template>
 
 <script setup lang="ts">
@@ -214,32 +302,75 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 ### Replace Mode
 
 ```vue
-<RouterLink to="pages/login/login" replace>
+<!-- After successful login, navigate to home, avoid leaving login page in stack -->
+<RouterLink to="pages/home/home" replace>
   <text>Login</text>
+</RouterLink>
+```
+
+### Relaunch Mode
+
+```vue
+<!-- Logout, clear all pages -->
+<RouterLink to="pages/login/login" relaunch>
+  <text>Logout</text>
 </RouterLink>
 ```
 
 ### With Query Parameters
 
 ```vue
-<RouterLink to="pages/about/about?id=1">
+<!-- String form -->
+<RouterLink to="pages/about/about?id=1&tab=info">
+  <text>Article Detail</text>
+</RouterLink>
+
+<!-- Object form (recommended) -->
+<RouterLink :to="{ name: 'about', query: { id: '1', tab: 'info' } }">
   <text>Article Detail</text>
 </RouterLink>
 ```
 
-### Named Route
+### With Page Parameters (params)
 
 ```vue
-<RouterLink :to="{ name: 'about', query: { id: '1' } }">
-  <text>Article Detail</text>
+<!-- Pass complex data -->
+<RouterLink
+  :to="{ path: 'pages/detail/detail' }"
+  :params="{ id: 123, info: { name: 'Tom', age: 20 } }"
+>
+  <text>View Details</text>
 </RouterLink>
 ```
 
-### Path Object
+### Page Communication
 
 ```vue
-<RouterLink :to="{ path: 'pages/about/about', query: { id: '1' } }">
-  <text>Article Detail</text>
+<RouterLink
+  :to="{ path: 'pages/detail/detail', query: { id: '1' } }"
+  :events="{ update: handleUpdate }"
+  @navigated="onNavigated"
+>
+  <text>View Details</text>
+</RouterLink>
+
+<script setup lang="ts">
+function handleUpdate(data: any) {
+  console.log('Received update from target page:', data)
+}
+
+function onNavigated(eventChannel: any) {
+  // Send init data to the target page
+  eventChannel?.emit('init', { message: 'Init data' })
+}
+</script>
+```
+
+### Custom Animation
+
+```vue
+<RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom', duration: 500 }">
+  <text>Slide In Bottom</text>
 </RouterLink>
 ```
 
@@ -249,6 +380,25 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 <RouterLink :to="{ name: 'admin' }" @error="onNavError">
   <text>Admin Panel</text>
 </RouterLink>
+```
+
+### List Scenario
+
+```vue
+<template>
+  <view class="list">
+    <RouterLink
+      v-for="item in list"
+      :key="item.id"
+      :to="{ name: 'detail', query: { id: item.id } }"
+      :params="{ item }"
+    >
+      <view class="card">
+        <text>{{ item.title }}</text>
+      </view>
+    </RouterLink>
+  </view>
+</template>
 ```
 
 ## Differences from vue-router RouterLink
@@ -271,6 +421,31 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 | `error` event        | ❌                 | ✅                 |
 | `navigated` event    | ❌                 | ✅                 |
 
-::: warning
-When passing an object to the `to` prop, use `:to` binding (`v-bind:to`) instead of the string attribute `to`.
-:::
+### Why active-class is not supported
+
+vue-router's `active-class` relies on real-time browser URL matching, while uni-app's navigation is managed by the native page stack, and components cannot perceive the current page state. To highlight the link corresponding to the current page, manually check via `useRoute()`:
+
+```vue
+<script setup lang="ts">
+import { useRoute } from '@meng-xi/uni-router'
+
+const route = useRoute()
+const isActive = (name: string) => route.value.name === name
+</script>
+
+<template>
+  <RouterLink to="pages/home/home">
+    <text :class="{ active: isActive('home') }">Home</text>
+  </RouterLink>
+</template>
+```
+
+### Why custom is not supported
+
+vue-router's `custom` allows fully custom rendering logic, relying on `<a>` tags and browser navigation. uni-app's `<navigator>` is a native component and cannot be fully customized for rendering. To trigger custom navigation, use APIs like `router.push()`.
+
+## Next Steps
+
+- [Router Instance](./router-instance) — Programmatic navigation API
+- [Route Navigation](../guide/navigation) — Deep dive into the four navigation modes
+- [RouteLocationRaw Type](./type-route-location) — Type definition of the `to` prop

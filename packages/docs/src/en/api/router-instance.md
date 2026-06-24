@@ -1,59 +1,81 @@
 # Router Instance
 
-The router instance returned by `createRouter()`, providing route navigation, guard registration, and state query capabilities.
+The router instance returned by `createRouter()`, providing route navigation, guard registration, and state query capabilities. This chapter lists all available properties and methods.
 
 ## Properties
 
 ### currentRoute
 
 - **Type**: `Readonly<RouteLocation>`
-- **Description**: Current route location (read-only)
+- **Description**: Current route location (read-only). Reflects the route state the router is currently in
 
 ```ts
-router.currentRoute.path
-router.currentRoute.query
-router.currentRoute.params
-router.currentRoute.meta
-router.currentRoute.fullPath
+router.currentRoute.path       // '/pages/about/about'
+router.currentRoute.query      // { id: '1' }
+router.currentRoute.params     // { info: {...} }
+router.currentRoute.meta       // { title: 'About', requireAuth: true }
+router.currentRoute.fullPath   // '/pages/about/about?id=1'
+router.currentRoute.name       // 'about'
 ```
 
-## Methods
+::: warning Not real-time synced
+`currentRoute` is **not automatically updated** on physical back button or browser back (these operations bypass the router). Call `syncRoute()` in the page's `onShow` to sync state. See [syncRoute()](#syncroute).
+:::
+
+## Navigation Methods
 
 ### push()
 
-Navigate to a new page.
+Navigate to a new page, pushing a new page onto the page stack.
 
 ```ts
 push(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 - Regular page → `uni.navigateTo`
-- TabBar page → `uni.switchTab`
-- Throws `NAVIGATION_DUPLICATED` on duplicate navigation
+- TabBar page (`meta.isTab: true`) → `uni.switchTab`
+- Duplicate navigation (same path, name, and query) throws `NAVIGATION_DUPLICATED`
 - Returns `NavigationResult` (extends `RouteLocation`), includes optional `eventChannel` for page communication
 
 ```ts
+// Path string
 await router.push('pages/about/about')
+
+// Path object + query params
 await router.push({ path: 'pages/about/about', query: { id: '1' } })
-await router.push({ name: 'about' })
+
+// Named route (recommended)
+await router.push({ name: 'about', query: { id: '1' } })
+
+// Use params to pass complex data
+await router.push({
+  path: 'pages/detail/detail',
+  params: { id: 123, info: { name: 'Tom' } }
+})
 
 // Use EventChannel for page communication
 const { eventChannel } = await router.push({
-	path: 'pages/detail/detail',
-	events: {
-		update(data) { console.log('Received update:', data) }
-	}
+  path: 'pages/detail/detail',
+  events: {
+    update(data) { console.log('Received update:', data) }
+  }
 })
 eventChannel.emit('init', { message: 'Init data' })
 ```
 
-::: info
+::: info NavigationResult backward compatibility
 `NavigationResult` extends `RouteLocation`, so existing code like `const route = await router.push(...)` works without modification. `eventChannel` is only available in `push` mode; `replace` / `relaunch` return `undefined` for `eventChannel`.
 :::
 
+::: warning TabBar page limitations
+When the target route has `meta.isTab: true`, `push` uses `uni.switchTab`, and `query` / `animation` / `events` are all ignored. To pass parameters to a TabBar page, use `params`.
+:::
+
+See [Route Navigation](../guide/navigation#push-stack-navigation).
+
 ### replace()
 
-Replace the current page.
+Replace the current page without increasing stack depth. Commonly used to replace the login page after login, or replace a form page after form submission.
 
 ```ts
 replace(location: RouteLocationRaw): Promise<RouteLocation>
@@ -61,15 +83,26 @@ replace(location: RouteLocationRaw): Promise<RouteLocation>
 
 - Regular page → `uni.redirectTo`
 - TabBar page → `uni.switchTab`
+- **No duplicate navigation detection** (can replace to the current page, useful for refresh)
+- Does not return `eventChannel`
 
 ```ts
-await router.replace('pages/login/login')
-await router.replace({ name: 'login' })
+// Replace login page after successful login
+await router.replace({ name: 'home' })
+
+// Replace with detail page after form submission
+await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
 ```
+
+::: tip When to use replace instead of push
+- After successful login: avoid leaving the login page in the stack
+- After form submission: avoid users going back to the form and resubmitting
+- Redirect scenarios: `next(location, { mode: 'replace' })` in guards
+:::
 
 ### relaunch()
 
-Close all pages and open the target page.
+Close all pages and open the target page, resetting the entire page stack.
 
 ```ts
 relaunch(location: RouteLocationRaw): Promise<RouteLocation>
@@ -77,24 +110,35 @@ relaunch(location: RouteLocationRaw): Promise<RouteLocation>
 
 - Regular page → `uni.reLaunch`
 - TabBar page → `uni.switchTab`
-- No duplicate navigation detection (the target page may be the current page in stack-clearing scenarios)
+- **No duplicate navigation detection** (in stack-clearing scenarios the target page may be the current page)
 - `uni.reLaunch` does not support animation parameters; a warning is output when provided
 
 ```ts
-await router.relaunch('pages/index/index')
+// Logout
+await router.relaunch({ name: 'login' })
+
+// Return to home from a deep page
 await router.relaunch({ name: 'home' })
+
+// With redirect parameter
 await router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' } })
 ```
 
+::: tip When to use relaunch
+- Logout: clear all pages, users cannot go back to protected pages
+- Return to home from deep pages: better UX than multiple `back()` calls
+- Insufficient permissions: clear stack back to home, preventing users from going back to unauthorized pages
+:::
+
 ### back()
 
-Go back to the previous page or multiple pages, executing the full navigation guard chain.
+Go back to the previous page or multiple pages. This is the only "back" operation that executes the full guard chain.
 
 ```ts
 back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
 ```
 
-- **delta**: Number of pages to go back, defaults to 1
+- **delta**: Number of pages to go back, defaults to `1`
 - **animation**: Navigation animation (App only), overrides `meta.animation`. Falls back to the target page's `meta.animation` when not specified
 - Executes `beforeEach` → `beforeResolve` guard chain; guards can abort or redirect the back operation
 - Throws `NavigationFailure` (`NAVIGATION_CANCELLED`) when page stack is insufficient
@@ -102,21 +146,30 @@ back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
 - Returns the synchronized current route location, allowing the caller to get the target page info
 
 ```ts
+// Go back one page
 await router.back()
+
+// Go back two pages
 await router.back(2)
+
+// Custom animation
 await router.back(1, { type: 'slide-out-right', duration: 500 })
 ```
 
-::: warning
-`back()` only intercepts programmatic calls. Physical back button and browser back directly trigger
-native `navigateBack`, bypassing the router, so guards cannot intercept them.
-For native back, call `syncRoute()` in the page's `onShow` to sync state, and handle post-processing
-in `afterEach`.
+::: warning Physical back button cannot be intercepted
+`back()` only intercepts **programmatic** calls. Physical back button (Android), browser back (H5), and mini-program top-left back **directly trigger native `navigateBack`**, bypassing the router, so guards cannot intercept them.
+
+Mitigation:
+1. Call `router.syncRoute()` in the page's `onShow` to sync state
+2. Do post-processing in `onRouteChange`
+3. On App, listen to `onBackPress` to intercept the physical back button
 :::
+
+## Guard Registration Methods
 
 ### beforeEach()
 
-Register a global before guard.
+Register a global before guard, executed before each navigation.
 
 ```ts
 beforeEach(guard: NavigationGuard): () => void
@@ -126,22 +179,48 @@ beforeEach(guard: NavigationGuard): () => void
 
 ```ts
 const remove = router.beforeEach((to, from, next) => {
-	next()
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    next({ name: 'login' })
+  } else {
+    next()
+  }
 })
+
+// Remove when no longer needed
 remove()
 ```
 
+::: tip Guard execution order
+Multiple guards of the same type execute in **registration order**. If any guard aborts or redirects, subsequent guards do not execute.
+:::
+
+See [Route Guards](../guide/guards).
+
 ### beforeResolve()
 
-Register a global resolve guard.
+Register a global resolve guard, executed after all before guards and route-specific guards complete.
 
 ```ts
 beforeResolve(guard: NavigationGuard): () => void
 ```
 
+```ts
+router.beforeResolve(async (to, from, next) => {
+  // All before checks have passed, safe to prefetch data
+  if (to.name === 'detail') {
+    await store.fetchDetail(to.query.id)
+  }
+  next()
+})
+```
+
+::: tip beforeResolve vs beforeEach
+`beforeResolve` runs after `beforeEach` and `beforeEnter`, suitable for "all guards agreed" final logic like data prefetching. The only difference from `beforeEach` is execution timing.
+:::
+
 ### afterEach()
 
-Register a global after hook.
+Register a global after hook, executed after navigation completes.
 
 ```ts
 afterEach(guard: PostNavigationGuard): () => void
@@ -149,17 +228,25 @@ afterEach(guard: PostNavigationGuard): () => void
 
 ```ts
 router.afterEach((to, from) => {
-	if (to.meta.title) {
-		uni.setNavigationBarTitle({ title: to.meta.title as string })
-	}
+  // Set page title
+  if (to.meta.title) {
+    uni.setNavigationBarTitle({ title: to.meta.title as string })
+  }
+  // Analytics tracking
+  trackPageView(to.path, from.path)
 })
 ```
 
-::: tip
-`afterEach` is only triggered after a complete navigation (through before guards).
-State synchronization via `syncRoute()` / `syncCurrentRoute()` does not trigger `afterEach`,
-but will notify `onRouteChange` listeners.
+::: warning Scenarios where afterEach is not triggered
+`afterEach` is only triggered after a **complete navigation** (through before guards). The following scenarios **do not trigger** `afterEach`:
+
+1. State sync via `syncRoute()` / `syncCurrentRoute()`
+2. Physical back button, browser back (bypass the router)
+
+To listen to all route changes (including state sync), use [`onRouteChange()`](#onroutechange).
 :::
+
+## Route Query Methods
 
 ### getRoutes()
 
@@ -171,6 +258,12 @@ getRoutes(): RouteConfig[]
 
 - **Returns**: Shallow copy of the route config array
 
+```ts
+const routes = router.getRoutes()
+console.log(routes.map(r => r.name))
+// ['home', 'about', 'user', 'login']
+```
+
 ### hasRoute()
 
 Check if a route with the given name exists.
@@ -179,38 +272,67 @@ Check if a route with the given name exists.
 hasRoute(name: string): boolean
 ```
 
+```ts
+if (router.hasRoute('admin')) {
+  await router.push({ name: 'admin' })
+} else {
+  uni.showToast({ title: 'Page does not exist', icon: 'none' })
+}
+```
+
 ### resolve()
 
-Resolve a route location to a full `RouteLocation` object without executing navigation.
+Resolve a route location to a full `RouteLocation` object **without executing navigation**.
 
 ```ts
 resolve(location: RouteLocationRaw): RouteLocation
 ```
 
 ```ts
+// Resolve named route
 const location = router.resolve({ name: 'about', query: { id: '1' } })
-console.log(location.fullPath)
+console.log(location.fullPath) // '/pages/about/about?id=1'
+console.log(location.path)     // '/pages/about/about'
+console.log(location.meta)     // { requireAuth: true }
+
+// Resolve path string
+const loc = router.resolve('pages/about/about?id=1&tab=info')
+console.log(loc.query) // { id: '1', tab: 'info' }
 ```
+
+::: tip Use cases
+- Generate navigation URLs (for `<navigator>` component or share links)
+- Check if a route exists without navigating
+- Get a route's meta info
+:::
+
+## State and Lifecycle
 
 ### isReady()
 
-Wait for the router to be initialized.
+Wait for the router to finish initializing.
 
 ```ts
 isReady(): Promise<void>
 ```
 
-::: tip
+```ts
+// In scenarios that require the router to be ready
+await router.isReady()
+console.log(router.currentRoute.path)
+```
+
+::: tip Ready timing
 The router is marked as ready during `app.use(router)` installation, so `isReady()` callbacks execute after all plugins are installed, making it safe to use installed plugins (e.g., Pinia).
 :::
 
-::: warning
-When `readyTimeout` is configured (non-zero), if the router fails to initialize within the timeout, this Promise will be rejected to prevent permanent hanging.
+::: warning Timeout protection
+When `readyTimeout` is configured (non-zero), if the router fails to initialize within the timeout, this Promise will be rejected, preventing permanent hanging.
 :::
 
 ### onRouteChange()
 
-Register a route change listener.
+Register a route change listener to subscribe to route state changes.
 
 ```ts
 onRouteChange(listener: (to: RouteLocation, from: RouteLocation) => void): () => void
@@ -218,19 +340,36 @@ onRouteChange(listener: (to: RouteLocation, from: RouteLocation) => void): () =>
 
 - **Returns**: A function to remove this listener
 
-The listener is called when the route state changes (including navigation completion and state synchronization). Unlike `afterEach`, this method subscribes to route state changes and does not participate in navigation
-flow control.
+The listener is called when the route state changes (including navigation completion and state sync). Unlike `afterEach`, this method subscribes to route state changes and **does not participate in navigation flow control**.
 
 ```ts
 const remove = router.onRouteChange((to, from) => {
-	console.log('Route changed:', from.path, '→', to.path)
-	// Can distinguish complete navigation from state sync via to._synced
-	if (to._synced) {
-		console.log('State sync (not a complete navigation)')
-	}
+  console.log('Route changed:', from.path, '→', to.path)
+
+  // Distinguish complete navigation from state sync via to._synced
+  if (to._synced) {
+    console.log('State sync (not a complete navigation, possibly physical back)')
+    handleBackNavigation(to, from)
+  } else {
+    console.log('Complete navigation')
+    trackPageView(to.path)
+  }
 })
+
+// Remove when no longer needed
 remove()
 ```
+
+::: tip onRouteChange vs afterEach
+| Scenario | `afterEach` | `onRouteChange` |
+| --- | --- | --- |
+| Complete navigation (`push` / `replace`, etc.) | ✅ Triggered | ✅ Triggered |
+| `syncRoute()` state sync | ❌ Not triggered | ✅ Triggered |
+| `syncRoute()` in `onShow` after physical back | ❌ Not triggered | ✅ Triggered |
+| Participates in navigation control (can abort) | ✅ | ❌ |
+
+Use `onRouteChange` to listen to **all** route changes (including physical back).
+:::
 
 ### onError()
 
@@ -242,9 +381,27 @@ onError(handler: RouterOnError): () => void
 
 ```ts
 router.onError((error, to, from) => {
-	console.error(error.code, error.message)
+  console.error(error.code, error.message)
+
+  // Handle by error code
+  switch (error.code) {
+    case 'NAVIGATION_ABORTED':
+      // Guard aborted, usually no action needed
+      break
+    case 'NAVIGATION_DUPLICATED':
+      // Duplicate navigation, ignore
+      break
+    case 'NAVIGATION_API_ERROR':
+      uni.showToast({ title: 'Navigation failed', icon: 'none' })
+      console.error('Original error:', error.cause)
+      break
+  }
 })
 ```
+
+::: tip Global error handling
+`onError` catches all errors during navigation, including guard exceptions and API call failures. It's recommended to register a global error handler in production for log reporting.
+:::
 
 ### syncRoute()
 
@@ -254,21 +411,36 @@ Synchronize route state with the actual page stack.
 syncRoute(): void
 ```
 
-When a page is switched via browser back, physical back button, or other non-router methods, the router's `currentRoute` may be out of sync with the actual page. Calling this method reads the current page info from the
-uni-app page stack and updates the route state.
-
-It is recommended to call this method in each page's `onShow` lifecycle.
+When a page is switched via browser back, physical back button, or other non-router methods, the router's `currentRoute` may be out of sync with the actual page. Calling this method reads the current page info from the uni-app page stack and updates the route state.
 
 ```ts
-// In a page
+import { onShow } from '@dcloudio/uni-app'
+import { useRouter } from '@meng-xi/uni-router'
+
+const router = useRouter()
+
+// Recommended: call in each page's onShow
 onShow(() => {
-	router.syncRoute()
+  router.syncRoute()
 })
 ```
 
+::: warning Scenarios that require manual sync
+`currentRoute` is **not** automatically updated in the following scenarios; you **must** call `syncRoute()` to sync:
+
+1. **Physical back button** (Android / App)
+2. **Browser back** (H5)
+3. **Mini-program top-left back**
+4. **Direct `uni.navigateBack` call** (when `interceptUniApi` is not enabled)
+
+Failure to sync will cause `currentRoute` to be inconsistent with the actual page, and `useRoute()` will return stale values.
+:::
+
+## Installation Method
+
 ### install()
 
-Install the router to a Vue app instance (called internally by `app.use(router)`).
+Install the router to a Vue app instance (called internally by `app.use(router)`, usually no need to call manually).
 
 ```ts
 install(app: App): void
@@ -280,3 +452,29 @@ The installation registers the following:
 - **`$route`** — Global property (computed), accessible via `this.$route` for current route location
 - **provide** — Injects the router instance via `provide(ROUTER_SYMBOL, router)`, enabling `useRouter()` / `useRoute()`
 - **markReady** — Marks the router as ready, resolving all pending `isReady()` Promises
+
+## Method Overview
+
+| Method | Purpose | Return Value |
+| --- | --- | --- |
+| `push()` | Stack navigation | `Promise<NavigationResult>` |
+| `replace()` | Replace current page | `Promise<RouteLocation>` |
+| `relaunch()` | Clear stack then push | `Promise<RouteLocation>` |
+| `back()` | Go back | `Promise<RouteLocation>` |
+| `beforeEach()` | Register before guard | Remove function |
+| `beforeResolve()` | Register resolve guard | Remove function |
+| `afterEach()` | Register after hook | Remove function |
+| `getRoutes()` | Get all routes | `RouteConfig[]` |
+| `hasRoute()` | Check route exists | `boolean` |
+| `resolve()` | Resolve route location | `RouteLocation` |
+| `isReady()` | Wait for ready | `Promise<void>` |
+| `onRouteChange()` | Listen to route changes | Remove function |
+| `onError()` | Register error handler | Remove function |
+| `syncRoute()` | Sync state | `void` |
+| `install()` | Install to Vue | `void` |
+
+## Next Steps
+
+- [useRouter()](./use-router) — Get the router instance in components
+- [Route Navigation](../guide/navigation) — Deep dive into the four navigation modes
+- [Route Guards](../guide/guards) — Guard mechanism and practical patterns

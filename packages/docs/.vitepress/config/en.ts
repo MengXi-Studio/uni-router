@@ -63,12 +63,12 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 							link: '/en/guide/introduction'
 						},
 						{
-							text: 'Quick Start',
-							link: '/en/guide/getting-started'
-						},
-						{
 							text: 'Installation',
 							link: '/en/guide/installation'
+						},
+						{
+							text: 'Quick Start',
+							link: '/en/guide/getting-started'
 						}
 					]
 				},
@@ -98,25 +98,46 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 					]
 				},
 				{
+					text: 'Principles In Depth',
+					items: [
+						{
+							text: 'Navigation Flow',
+							link: '/en/guide/navigation-flow'
+						},
+						{
+							text: 'Interceptor Mechanism',
+							link: '/en/guide/interceptor'
+						},
+						{
+							text: 'Error Handling',
+							link: '/en/guide/error-handling'
+						}
+					]
+				},
+				{
 					text: 'Advanced',
-				items: [
-					{
-						text: 'Auto-Generating Route Config',
-						link: '/en/guide/auto-generate'
-					},
-					{
-						text: 'Error Handling',
-						link: '/en/guide/error-handling'
-					},
-					{
-						text: 'Platform Compatibility',
-						link: '/en/guide/compatibility'
-					},
-					{
-						text: 'Differences from vue-router',
-						link: '/en/guide/differences'
-					}
-				]
+					items: [
+						{
+							text: 'Auto-Generating Route Config',
+							link: '/en/guide/auto-generate'
+						},
+						{
+							text: 'Platform Compatibility',
+							link: '/en/guide/compatibility'
+						},
+						{
+							text: 'Differences from vue-router',
+							link: '/en/guide/differences'
+						},
+						{
+							text: 'Recipes',
+							link: '/en/guide/recipes'
+						},
+						{
+							text: 'FAQ',
+							link: '/en/guide/faq'
+						}
+					]
 				}
 			],
 			'/en/api/': [

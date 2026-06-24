@@ -57,12 +57,12 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 							link: '/guide/introduction'
 						},
 						{
-							text: '快速开始',
-							link: '/guide/getting-started'
-						},
-						{
 							text: '安装',
 							link: '/guide/installation'
+						},
+						{
+							text: '快速开始',
+							link: '/guide/getting-started'
 						}
 					]
 				},
@@ -92,25 +92,46 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 					]
 				},
 				{
+					text: '原理深入',
+					items: [
+						{
+							text: '导航流程原理',
+							link: '/guide/navigation-flow'
+						},
+						{
+							text: '拦截器机制',
+							link: '/guide/interceptor'
+						},
+						{
+							text: '错误处理',
+							link: '/guide/error-handling'
+						}
+					]
+				},
+				{
 					text: '进阶',
-				items: [
-					{
-						text: '自动生成路由配置',
-						link: '/guide/auto-generate'
-					},
-					{
-						text: '错误处理',
-						link: '/guide/error-handling'
-					},
-					{
-						text: '平台兼容性',
-						link: '/guide/compatibility'
-					},
-					{
-						text: '与 vue-router 的差异',
-						link: '/guide/differences'
-					}
-				]
+					items: [
+						{
+							text: '自动生成路由配置',
+							link: '/guide/auto-generate'
+						},
+						{
+							text: '平台兼容性',
+							link: '/guide/compatibility'
+						},
+						{
+							text: '与 vue-router 的差异',
+							link: '/guide/differences'
+						},
+						{
+							text: '实战指南',
+							link: '/guide/recipes'
+						},
+						{
+							text: '常见问题',
+							link: '/guide/faq'
+						}
+					]
 				}
 			],
 			'/api/': [
