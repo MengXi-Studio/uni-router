@@ -4,6 +4,9 @@
 	<a href="https://github.com/MengXi-Studio/uni-router">
 		<img alt="MengXi Studio Logo" width="215" src="https://github.com/MengXi-Studio/uni-router/blob/master/packages/docs/src/public/logo.png">
 	</a>
+	<a href="https://github.com/MengXi-Studio/uni-router">
+		<img alt="WeChat Public Account QR Code" width="215" src="https://github.com/MengXi-Studio/uni-router/blob/master/packages/docs/src/public/QR_code.jpg">
+	</a>
 	<br>
 	<h1>@meng-xi/uni-router</h1>
 	<p>A vue-router-style routing management system for uni-app</p>

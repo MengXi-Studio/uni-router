@@ -4,6 +4,9 @@
 	<a href="https://github.com/MengXi-Studio/uni-router">
 		<img alt="梦曦工作室 Logo" width="215" src="https://github.com/MengXi-Studio/uni-router/blob/master/packages/docs/src/public/logo.png">
 	</a>
+	<a href="https://github.com/MengXi-Studio/uni-router">
+		<img alt="微信公众号 二维码" width="215" src="https://github.com/MengXi-Studio/uni-router/blob/master/packages/docs/src/public/QR_code.jpg">
+	</a>
 	<br>
 	<h1>@meng-xi/uni-router</h1>
 	<p>为 uni-app 提供类似 vue-router 风格的路由管理系统</p>
