@@ -32,7 +32,8 @@ removeGuard()
 
 - `next()` — Allow navigation
 - `next(false)` — Abort navigation
-- `next(location)` — Redirect to a new location
+- `next(location)` — Redirect to a new location (uses the original navigation mode)
+- `next(location, { mode })` — Redirect to a new location with a specified navigation mode (`push` / `replace` / `relaunch`)
 
 ::: warning
 Each guard must call `next()` exactly once. Multiple calls or no call will cause navigation to hang.
@@ -166,6 +167,36 @@ router.beforeEach((to, from, next) => {
 Redirects trigger a new navigation flow, including re-executing all guards.
 To prevent infinite loops, the maximum redirect depth is 10.
 Exceeding this limit cancels the navigation and throws a `NAVIGATION_CANCELLED` error.
+:::
+
+### Specifying the Redirect Mode
+
+By default, redirects use the original navigation mode that triggered the guard (e.g., a guard triggered by `router.push` still uses `push` for redirection). You can explicitly specify the navigation mode for redirection via `next(location, { mode })`:
+
+```ts
+router.beforeEach((to, from, next) => {
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		// Force replace redirect to login page regardless of original push/replace mode
+		// Avoids extra history pages after the login page
+		next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
+	} else {
+		next()
+	}
+})
+```
+
+Available `mode` values:
+
+| Value | Method | uni API | Description |
+|-------|--------|---------|-------------|
+| `'push'` | `router.push()` | `uni.navigateTo` | Keep current page, navigate to a new page |
+| `'replace'` | `router.replace()` | `uni.redirectTo` | Close current page, navigate to a new page |
+| `'relaunch'` | `router.relaunch()` | `uni.reLaunch` | Close all pages, open a new page |
+
+::: tip
+- When `mode` is not specified, the original navigation mode is used (fully backward compatible)
+- When the original navigation is `back` and `mode` is not specified, it falls back to `relaunch` (since `back` cannot navigate to targets outside the page stack)
+- The redirect mode only affects the choice of navigation API; guard chain, animation, events, etc. remain consistent
 :::
 
 ## Aborting Navigation

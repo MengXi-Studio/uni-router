@@ -1,3 +1,14 @@
+## 1.7.0（2026-06-25）
+
+### 新增
+
+- **守卫重定向方式可控** - `next()` 回调新增可选 `options` 参数，支持在守卫重定向时指定导航方式
+  - `NavigationGuardNextOptions` - `next()` 回调的可选参数类型，包含 `mode` 字段
+  - `NavigationRedirectMode` - 重定向方式类型（`'push' | 'replace' | 'relaunch'`）
+  - `next(location, { mode })` - 重定向时指定使用 `push` / `replace` / `relaunch` 方式
+  - 未指定 `mode` 时沿用触发守卫的原始导航方式（向后兼容）
+  - 原始导航为 `back` 时，未指定 `mode` 则回退为 `relaunch`（因 `back` 无法跳转到页面栈外目标）
+
 ## 1.6.3（2026-06-24）
 
 ### 修复

@@ -32,7 +32,8 @@ removeGuard()
 
 - `next()` — 放行导航
 - `next(false)` — 中止导航
-- `next(location)` — 重定向到新位置
+- `next(location)` — 重定向到新位置（沿用原始导航方式）
+- `next(location, { mode })` — 重定向到新位置，并指定导航方式（`push` / `replace` / `relaunch`）
 
 ::: warning
 每个守卫必须且只能调用一次 `next()`。多次调用或未调用都会导致导航挂起。如果守卫在超时时间内（默认 10 秒，可通过 `guardTimeout` 配置）既未调用 `next()` 也未返回 rejected Promise，将自动中止导航并输出警告。
@@ -161,6 +162,36 @@ router.beforeEach((to, from, next) => {
 ::: warning
 重定向会触发新的导航流程，包括重新执行所有守卫。为防止无限循环，最大重定向深度为 10 次。
 超过限制时导航将被取消并抛出 `NAVIGATION_CANCELLED` 错误。
+:::
+
+### 指定重定向方式
+
+默认情况下，重定向沿用触发守卫的原始导航方式（如 `router.push` 触发的守卫重定向时仍用 `push`）。通过 `next(location, { mode })` 可显式指定重定向使用的导航方式：
+
+```ts
+router.beforeEach((to, from, next) => {
+	if (to.meta.requireAuth && !isLoggedIn()) {
+		// 无论原导航是 push 还是 replace，强制用 replace 重定向到登录页
+		// 避免登录页之后出现多余的历史页面
+		next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
+	} else {
+		next()
+	}
+})
+```
+
+`mode` 可选值为：
+
+| 值 | 对应方法 | uni API | 说明 |
+|----|----------|---------|------|
+| `'push'` | `router.push()` | `uni.navigateTo` | 保留当前页面，跳转到新页面 |
+| `'replace'` | `router.replace()` | `uni.redirectTo` | 关闭当前页面，跳转到新页面 |
+| `'relaunch'` | `router.relaunch()` | `uni.reLaunch` | 关闭所有页面，打开新页面 |
+
+::: tip
+- 未指定 `mode` 时沿用原始导航方式，完全向后兼容
+- 原始导航为 `back` 时，未指定 `mode` 会回退为 `relaunch`（因 `back` 无法跳转到页面栈外目标）
+- 重定向方式仅影响跳转 API 的选择，守卫链、动画、事件等行为保持一致
 :::
 
 ## 中止导航

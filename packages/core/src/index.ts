@@ -16,6 +16,8 @@ export type {
 	EventListeners,
 	NavigationResult,
 	NavigationGuardNext,
+	NavigationGuardNextOptions,
+	NavigationRedirectMode,
 	NavigationGuard,
 	PostNavigationGuard,
 	RouterOnError,
