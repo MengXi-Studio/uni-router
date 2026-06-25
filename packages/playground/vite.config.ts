@@ -19,7 +19,7 @@ export default defineConfig({
 				navigationBarTitleText: 'title',
 				requireAuth: 'requireAuth'
 			},
-			fileHeader: true,
+			headerTemplate: true,
 			dts: true
 		})
 	]
