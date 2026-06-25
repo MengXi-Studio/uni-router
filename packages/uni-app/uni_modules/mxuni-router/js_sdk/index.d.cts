@@ -1,10 +1,31 @@
 import { App, Ref } from 'vue';
 
 /**
+ * 导航守卫重定向方式
+ *
+ * 用于 next(location, options) 的 options.mode，指定重定向使用的导航方式。
+ * 未指定时沿用触发守卫的原始导航方式。
+ */
+type NavigationRedirectMode = 'push' | 'replace' | 'relaunch';
+/**
+ * 导航守卫 next 回调的可选参数
+ */
+interface NavigationGuardNextOptions {
+    /**
+     * 重定向使用的导航方式
+     *
+     * 仅在 next(location) 重定向时生效。
+     * 未指定时沿用触发守卫的原始导航方式（push/replace/relaunch）；
+     * 原始导航为 back 时，重定向回退为 relaunch。
+     */
+    mode?: NavigationRedirectMode;
+}
+/**
  * 导航守卫的 next 回调函数
  * @param to - 传入 false 中断导航，传入路由位置重定向，不传参数则放行
+ * @param options - 重定向选项，仅在传入 location 重定向时生效
  */
-type NavigationGuardNext = (to?: RouteLocationRaw | false) => void;
+type NavigationGuardNext = (to?: RouteLocationRaw | false, options?: NavigationGuardNextOptions) => void;
 /**
  * 前置导航守卫函数类型
  * @param to - 即将进入的目标路由
@@ -576,4 +597,4 @@ declare class NavigationFailure extends RouterError {
     constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: unknown);
 }
 
-export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationResult, type ParamObject, type ParamValue, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, createRouter, useRoute, useRouter };
+export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationGuardNextOptions, type NavigationRedirectMode, type NavigationResult, type ParamObject, type ParamValue, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, createRouter, useRoute, useRouter };

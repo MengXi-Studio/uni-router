@@ -70,14 +70,14 @@ function runGuard(guard, to, from, timeout) {
   return new Promise((resolve) => {
     let resolved = false;
     let timer;
-    const next = (location) => {
+    const next = (location, options) => {
       if (resolved) return;
       resolved = true;
       if (timer) clearTimeout(timer);
       if (location === false) {
         resolve({ type: "abort", code: "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */ });
       } else if (location) {
-        resolve({ type: "next", redirect: location });
+        resolve({ type: "next", redirect: location, mode: options?.mode });
       } else {
         resolve({ type: "next" });
       }
@@ -215,6 +215,9 @@ function normalizePath(path) {
 
 // src/interceptor/index.ts
 var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
+function isWebPlatform() {
+  return typeof window !== "undefined" && typeof document !== "undefined";
+}
 var InterceptorManager = class {
   constructor() {
     /** 路由器内部发起的 uni API 调用计数器，用于区分路由器调用和外部调用 */
@@ -323,6 +326,18 @@ function handleInterceptedNavigation(api, args) {
   }
   return false;
 }
+function handleWebSwitchTab(args) {
+  const router = activeManager?.getRouter();
+  if (!router) return args;
+  const originalSuccess = args.success;
+  args.success = function(res) {
+    router.syncRoute();
+    if (typeof originalSuccess === "function") {
+      originalSuccess(res);
+    }
+  };
+  return args;
+}
 function installInterceptors(router) {
   if (typeof uni.addInterceptor !== "function") {
     console.warn("[uni-router] uni.addInterceptor is not available, interceptUniApi option will be ignored");
@@ -339,6 +354,9 @@ function installInterceptors(router) {
       invoke(args) {
         if (activeManager?.isRouterCall()) {
           return args;
+        }
+        if (api === "switchTab" && isWebPlatform()) {
+          return handleWebSwitchTab(args);
         }
         const result = handleInterceptedNavigation(api, args);
         if ("url" in args) args.url = "";
@@ -1278,6 +1296,9 @@ var UniRouter = class {
    * - next + redirect: 递归执行重定向导航
    * - next: 继续执行后续守卫
    *
+   * 重定向方式优先级：守卫通过 next(location, { mode }) 指定的 mode > 原始导航方式。
+   * 原始导航为 back 时无法重定向（目标不在页面栈中），回退为 relaunch。
+   *
    * @param result - 守卫执行结果
    * @param to - 目标路由
    * @param from - 来源路由
@@ -1296,7 +1317,8 @@ var UniRouter = class {
       const redirectAnimation = this.extractAnimation(result.redirect) ?? animation;
       const redirectEvents = this.extractEvents(result.redirect) ?? events;
       const redirectTarget = this.matcher.resolve(result.redirect);
-      return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1, redirectAnimation, redirectEvents);
+      const redirectMode = result.mode ?? (mode === "back" ? "relaunch" : mode);
+      return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, redirectAnimation, redirectEvents);
     }
     return null;
   }

@@ -148,9 +148,14 @@
 			<view class="btn btn-success" @click="interceptedSwitchTab">uni.switchTab（被拦截转为 push）</view>
 			<view class="btn btn-danger" @click="interceptedReLaunch">uni.reLaunch（被拦截转为 relaunch）</view>
 			<view class="btn btn-gray" @click="interceptedNavigateBack">uni.navigateBack（被拦截转为 back）</view>
+			<view class="info-text" style="color: #ff9500; margin-top: 16rpx">
+				⚠️ H5 平台特殊处理：在 H5 平台下，uni.switchTab 不会被拦截转为 push，而是放行原始调用并在 success 回调中同步路由状态。这是因为同步阻止 switchTab 会导致 H5 TabBar 组件状态卡死。因此 H5 平台下外部 uni.switchTab
+				调用不经过前置守卫，TabBar 页面的权限控制需在页面 onShow 生命周期中处理。小程序和 App 平台则走完整的拦截 + 转发流程。
+			</view>
 			<view class="code-block">
 				// 启用 interceptUniApi: true 后\nuni.navigateTo({ url: '/pages/detail/detail?id=1' })\n// => 自动转为 router.push({ path: '/pages/detail/detail', query: { id: '1' } })\n// 守卫链（beforeEach → beforeResolve →
-				afterEach）照常执行\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链
+				afterEach）照常执行\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链\n\n// H5 平台下的 switchTab 特殊处理\nuni.switchTab({ url: '/pages/index/index' })\n// 小程序/App: 拦截转为
+				router.push，守卫正常执行\n// H5: 放行原始调用，在 success 中 syncRoute()，不经过守卫
 			</view>
 		</view>
 	</view>
@@ -285,7 +290,8 @@ function interceptedRedirectTo() {
 }
 
 function interceptedSwitchTab() {
-	// 会被拦截，自动转为 router.push('/pages/index/index')
+	// 小程序/App: 会被拦截，自动转为 router.push('/pages/index/index')
+	// H5: 放行原始调用，在 success 中 syncRoute()，不经过守卫
 	uni.switchTab({ url: '/pages/index/index' })
 }
 

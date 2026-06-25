@@ -14,11 +14,14 @@ const router = createRouter({
 
 // ===== 等待路由器初始化完成 =====
 // isReady() 在路由器完成初始化后 resolve；若配置了 readyTimeout 且超时则 reject
-router.isReady().then(() => {
-	console.log('[isReady] 路由器初始化完成')
-}).catch((error: Error) => {
-	console.error('[isReady] 路由器初始化超时:', error.message)
-})
+router
+	.isReady()
+	.then(() => {
+		console.log('[isReady] 路由器初始化完成')
+	})
+	.catch((error: Error) => {
+		console.error('[isReady] 路由器初始化超时:', error.message)
+	})
 
 // ===== 全局前置守卫 =====
 router.beforeEach((to, from, next) => {
@@ -27,7 +30,8 @@ router.beforeEach((to, from, next) => {
 	// 需要登录认证的页面
 	if (to.meta.requireAuth && !isLoggedIn.value) {
 		console.log('[beforeEach] 需要登录，重定向到登录页')
-		next({ name: 'pagesLoginLogin', query: { redirect: to.fullPath } })
+		// 使用 replace 模式重定向，避免登录页之后残留受保护页面的历史
+		next({ name: 'pagesLoginLogin', query: { redirect: to.fullPath } }, { mode: 'replace' })
 		return
 	}
 

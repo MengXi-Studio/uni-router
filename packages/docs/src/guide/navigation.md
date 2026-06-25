@@ -1,353 +1,363 @@
 # 路由导航
 
-Uni Router 提供四种导航方式，分别对应 uni-app 的原生导航 API。
+路由导航是 Uni Router 的核心能力。本章将深入讲解四种导航方式的工作原理、uni-app 底层限制、以及如何利用库的特性实现特殊用法。
 
-## push()
+## 四种导航方式总览
 
-导航到新页面。根据目标页面的 `meta.isTab` 自动选择 uni API：
+| 方法 | 栈操作 | 对应 uni API | 重复检测 | 动画 | events | 返回值 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `push()` | 入栈 +1 | `navigateTo` / `switchTab` | ✅ | ✅ | ✅ | `NavigationResult` |
+| `replace()` | 替换栈顶 | `redirectTo` / `switchTab` | ❌ | ✅ | ❌ | `RouteLocation` |
+| `relaunch()` | 清栈后入栈 | `reLaunch` / `switchTab` | ❌ | ❌ | ❌ | `RouteLocation` |
+| `back()` | 出栈 -n | `navigateBack` | ❌ | ✅ | ❌ | `RouteLocation` |
 
-- 普通页面 → `uni.navigateTo`
-- TabBar 页面 → `uni.switchTab`
+::: tip TabBar 页面自动识别
+当目标路由的 `meta.isTab` 为 `true` 时，`push` / `replace` / `relaunch` 都会自动改用 `uni.switchTab`。你无需手动判断，只需在路由配置中正确声明 `isTab`。
+:::
+
+## push — 入栈导航
+
+`push` 是最常用的导航方式，向页面栈压入新页面。
 
 ```ts
-router.push('pages/about/about')
-router.push({ path: 'pages/about/about' })
-router.push({ path: 'pages/about/about', query: { id: '1' } })
-router.push({ name: 'about' })
-router.push({ name: 'about', query: { id: '1' } })
+router.push(location: RouteLocationRaw): Promise<NavigationResult>
 ```
+
+### 基本用法
+
+```ts
+// 路径字符串
+await router.push('pages/about/about')
+
+// 路径对象 + 查询参数
+await router.push({ path: 'pages/about/about', query: { id: '1' } })
+
+// 命名路由（推荐，重构友好）
+await router.push({ name: 'about', query: { id: '1' } })
+
+// 字符串带 query
+await router.push('pages/about/about?id=1&tab=info')
+```
+
+### 返回值 NavigationResult
+
+`push` 返回 `NavigationResult`，继承自 `RouteLocation`，额外包含 `eventChannel`：
+
+```ts
+const result = await router.push({ name: 'detail', query: { id: '1' } })
+console.log(result.path)       // '/pages/detail/detail'
+console.log(result.query.id)   // '1'
+console.log(result.eventChannel) // EventChannel 实例（仅 push 可用）
+```
+
+::: info 向后兼容
+`NavigationResult` 继承自 `RouteLocation`，原有代码 `const route = await router.push(...)` 无需修改。
+:::
 
 ### 重复导航检测
 
-当 `push()` 到与当前路径相同的页面时，会抛出 `NAVIGATION_DUPLICATED` 错误：
+`push` 会检测目标是否与当前位置完全相同（路径、名称、查询参数均一致），相同时抛出 `NAVIGATION_DUPLICATED`：
 
 ```ts
-try {
-	await router.push('/pages/index/index')
-} catch (error) {
-	if (error.code === 'NAVIGATION_DUPLICATED') {
-		console.log('已在当前页面')
-	}
-}
+// 当前已在 /pages/about/about?id=1
+await router.push({ name: 'about', query: { id: '1' } })
+// → 抛出 NavigationFailure (NAVIGATION_DUPLICATED)
 ```
 
-::: tip
-可通过 `router.onError()` 全局捕获此类错误，避免每次调用都需要 try-catch。
+::: warning 仅 push 检测重复
+`replace` / `relaunch` / `back` **不检测重复**。这是因为 `replace` 常用于刷新当前页，`relaunch` 常用于重置到当前页（如退出登录后回到首页），`back` 返回的页面本就可能与当前相同。
 :::
 
-### TabBar 页面注意事项
+### TabBar 页面的限制
 
-导航到 TabBar 页面时，`uni.switchTab` 不支持查询参数。如果传入了 query 参数，会输出警告并忽略：
+当目标是 TabBar 页面（`meta.isTab: true`）时，`push` 改用 `uni.switchTab`，此时以下限制生效：
 
-```ts
-router.push({ name: 'user', query: { tab: 'settings' } })
-// ⚠️ 警告：uni.switchTab does not support query parameters. They will be ignored.
-```
-
-## replace()
-
-替换当前页面。根据目标页面的 `meta.isTab` 自动选择 uni API：
-
-- 普通页面 → `uni.redirectTo`
-- TabBar 页面 → `uni.switchTab`
+| 特性 | 普通页面 | TabBar 页面 |
+| --- | --- | --- |
+| `query` | ✅ 拼接到 URL | ❌ 被忽略并警告 |
+| `animation` | ✅ 生效 | ❌ 被忽略并警告 |
+| `events` | ✅ 生效 | ❌ 被忽略 |
+| `eventChannel` | ✅ 返回 | ❌ `undefined` |
 
 ```ts
-router.replace('pages/login/login')
-router.replace({ name: 'login' })
-router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
+// TabBar 页面，query 会被忽略
+await router.push({ name: 'user', query: { tab: 'profile' } })
+// ⚠️ 警告: uni.switchTab does not support query parameters. They will be ignored.
 ```
 
-::: warning
-替换到 TabBar 页面时，`uni.switchTab` 会关闭所有非 Tab 页面，而非仅替换当前页面。此行为由 uni-app 框架决定。
+::: warning 这是 uni-app 的硬限制
+`uni.switchTab` 由小程序规范决定，不支持 URL 参数。如需向 TabBar 页面传参，使用 `params`（见下文特殊用法）。
 :::
 
-## relaunch()
+## replace — 替换导航
 
-关闭所有页面并打开目标页面。根据目标页面的 `meta.isTab` 自动选择 uni API：
-
-- 普通页面 → `uni.reLaunch`
-- TabBar 页面 → `uni.switchTab`
-
-常用于退出登录后跳转登录页、从深层页面返回首页、重置整个页面栈等场景。
+`replace` 替换当前页面，不增加栈深度。常用于登录后替换登录页、表单提交后替换表单页。
 
 ```ts
-router.relaunch('pages/index/index')
-router.relaunch({ name: 'home' })
-router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' } })
+router.replace(location: RouteLocationRaw): Promise<RouteLocation>
 ```
 
-::: info
-`relaunch()` 不进行重复导航检测。因为清栈场景下目标页面可能就是当前页面（如"返回首页"），不应拒绝。
+```ts
+// 登录成功后替换登录页
+await router.replace({ name: 'home' })
+
+// 表单提交后替换为详情页
+await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
+```
+
+### 与 push 的差异
+
+- **不检测重复**：可替换到当前页（用于刷新）
+- **不返回 eventChannel**：`redirectTo` 不支持页面通信
+- **events 被忽略**：传入 `events` 会输出警告
+- **TabBar 限制相同**：`meta.isTab` 时改用 `switchTab`
+
+## relaunch — 重置导航
+
+`relaunch` 关闭所有页面后打开目标页面，常用于退出登录、返回首页、重置整个流程。
+
+```ts
+router.relaunch(location: RouteLocationRaw): Promise<RouteLocation>
+```
+
+```ts
+// 退出登录
+await router.relaunch({ name: 'login' })
+
+// 从深层页面返回首页
+await router.relaunch({ name: 'home' })
+
+// 带重定向参数
+await router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' } })
+```
+
+### 特殊限制
+
+::: warning reLaunch 不支持动画
+`uni.reLaunch` 不接受动画参数。传入 `animation` 时会输出警告并被忽略。这是因为 `reLaunch` 会关闭所有页面，动画语义不明确。
+
+但 TabBar 页面走 `switchTab`，同样不支持动画。
 :::
 
-::: warning
-`uni.reLaunch` 不支持动画参数。如果传入了 animation 参数，会输出警告并忽略：
+### 不检测重复的原因
+
+`relaunch` 常用于"重置到当前页"的场景，例如：
+
+- 用户在首页点击"回到首页"按钮
+- 退出登录后目标页恰好是当前页
+
+因此 `relaunch` 不做重复检测，确保这类场景能正常执行。
+
+## back — 返回导航
+
+`back` 返回上一页或多级页面，是唯一执行完整守卫链的"后退"操作。
 
 ```ts
-router.relaunch({ path: 'pages/index/index', animation: { type: 'fade-in' } })
-// ⚠️ 警告：uni.reLaunch does not support animation parameters. The animation option will be ignored.
+router.back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
 ```
-:::
-
-## back()
-
-返回上一页或多级页面，执行完整的导航守卫链，对应 `uni.navigateBack`：
 
 ```ts
-router.back() // 返回上一页
-router.back(2) // 返回上两页
-router.back(1, { type: 'slide-out-right', duration: 500 }) // 返回并指定动画
+// 返回上一页
+await router.back()
+
+// 返回两级
+await router.back(2)
+
+// 自定义动画
+await router.back(1, { type: 'slide-out-right', duration: 500 })
 ```
 
-### 守卫执行
+### 工作原理
 
-`back()` 会执行完整的守卫链（`beforeEach` → `beforeResolve`），守卫可中止或重定向返回操作：
+`back` 通过 `getCurrentPages()` 读取页面栈，计算目标页面：
+
+```
+当前栈: [A, B, C, D]  (D 是当前页)
+back(2) → 目标是 B (index = 4-1-2 = 1)
+→ 调用 uni.navigateBack({ delta: 2 })
+→ 同步 currentRoute 为 B
+```
+
+若页面栈不足（`targetIndex < 0`），抛出 `NAVIGATION_CANCELLED`。
+
+### 守卫拦截
+
+`back` 执行完整的守卫链（`beforeEach` → `beforeResolve`），守卫可以：
+
+- `next()` 放行返回
+- `next(false)` 阻止返回（如"表单未保存"提示）
+- `next(location)` 重定向到其他页面
 
 ```ts
 router.beforeEach((to, from, next) => {
-	// 返回时也会触发守卫
-	if (to.meta.requireAuth && !isLoggedIn()) {
-		next({ name: 'login' }) // 重定向到登录页
-	} else {
-		next()
-	}
+  if (from.meta.dirty && !confirm('未保存的修改将丢失，确认离开？')) {
+    next(false) // 阻止返回
+  } else {
+    next()
+  }
 })
 ```
 
-### 错误处理
+::: warning 物理返回键无法拦截
+`back()` 仅拦截**编程式**调用。物理返回键（Android）、浏览器后退（H5）、小程序左上角返回**直接触发原生 `navigateBack`**，不经过路由器，守卫无法拦截。
 
-- 页面栈不足时抛出 `NavigationFailure`（`NAVIGATION_CANCELLED`）
-- 守卫中止时抛出 `NavigationFailure`
-
-```ts
-try {
-	await router.back()
-} catch (error) {
-	if (error.code === 'NAVIGATION_ABORTED') {
-		console.log('返回被中止')
-	}
-}
-```
-
-::: warning
-`back()` 仅拦截编程式调用。物理返回键和浏览器后退直接触发原生 `navigateBack`，
-不经过路由器，守卫无法拦截。对于原生返回，需在页面 `onShow` 中调用
-`router.syncRoute()` 同步状态。
+应对方案：
+1. 在页面 `onShow` 中调用 `router.syncRoute()` 同步状态
+2. 在 `onRouteChange` 中做事后处理
+3. App 端可监听 `onBackPress` 拦截物理返回键
 :::
 
-## RouteLocationRaw
+## 路由位置 RouteLocationRaw
 
-导航方法接受三种形式的路由位置参数：
+所有导航方法接受 `RouteLocationRaw` 类型，支持三种形式：
 
-### 字符串路径
+### 字符串形式
 
 ```ts
 router.push('pages/about/about')
-router.push('pages/about/about?id=1')
+router.push('pages/about/about?id=1&tab=info')
 ```
+
+路径会自动规范化（补全前导 `/`）。字符串中的 query 会被解析。
 
 ### 路径对象
 
 ```ts
-router.push({ path: 'pages/about/about', query: { id: '1' } })
+router.push({
+  path: 'pages/about/about',
+  query: { id: '1', tab: 'info' },
+  params: { detail: { name: 'Tom' } },
+  animation: { type: 'slide-in-right' },
+  events: { update(data) { /* ... */ } }
+})
 ```
 
 ### 命名对象
 
 ```ts
-router.push({ name: 'about', query: { id: '1' } })
-```
-
-## 并发导航
-
-当存在未完成的导航时，新的导航请求会等待前一次导航完成后再执行：
-
-```ts
-router.push('/about')
-router.push('/user')
-// 第二次 push 会等第一次完成后再执行
-```
-
-## 页面间通信（EventChannel）
-
-`push()` 支持 `events` 参数和 `eventChannel` 返回值，对应 uni-app 原生 `uni.navigateTo` 的 EventChannel 机制，实现页面间双向通信。仅 `push` 模式支持，`replace` / `relaunch` 传入 `events` 时会输出警告并忽略。
-
-### 基本用法
-
-```ts
-// 页面 A：导航并监听被打开页面发来的事件
-const { eventChannel } = await router.push({
-	path: 'pages/detail/detail',
-	query: { id: '1' },
-	events: {
-		// 监听被打开页面发来的 update 事件
-		update(data) {
-			console.log('收到更新:', data)
-		}
-	}
+router.push({
+  name: 'about',
+  query: { id: '1' },
+  params: { detail: { name: 'Tom' } }
 })
-
-// 向被打开页面发送事件
-eventChannel.emit('init', { message: '来自页面A的初始化数据' })
 ```
 
-```ts
-// 页面 B（detail）：获取 EventChannel 并通信
-const instance = getCurrentInstance()
-const eventChannel = instance.proxy.getOpenerEventChannel()
-
-// 监听来自发起页面的 init 事件
-eventChannel.on('init', (data) => {
-	console.log('收到初始化数据:', data)
-})
-
-// 向发起页面发送 update 事件
-eventChannel.emit('update', { result: '处理完成' })
-```
-
-### 类型定义
-
-```ts
-interface NavigationResult extends RouteLocation {
-	eventChannel?: EventChannel
-}
-
-interface EventChannel {
-	emit(event: string, ...args: any[]): EventChannel
-	on(event: string, callback: (...args: any[]) => void): EventChannel
-	once(event: string, callback: (...args: any[]) => void): EventChannel
-	off(event: string, callback?: (...args: any[]) => void): EventChannel
-}
-
-type EventListeners = Record<string, (...args: any[]) => void>
-```
-
-### RouteLocationRaw 中的 events
-
-```ts
-interface RouteLocationPathRaw {
-	path: string
-	query?: Record<string, QueryValue>
-	params?: ParamObject
-	persistent?: boolean
-	animation?: NavigationAnimation
-	events?: EventListeners
-}
-
-interface RouteLocationNamedRaw {
-	name: string
-	query?: Record<string, QueryValue>
-	params?: ParamObject
-	persistent?: boolean
-	animation?: NavigationAnimation
-	events?: EventListeners
-}
-```
-
-::: info
-`NavigationResult` 继承自 `RouteLocation`，原有代码 `const route = await router.push(...)` 无需修改，`eventChannel` 为可选字段。
+::: tip 推荐使用命名路由
+命名路由解耦了路径，重构时只需修改路由配置中的 `path`，无需全局搜索替换字符串。配合 `@meng-xi/vite-plugin` 的 `dts` 功能，还能获得类型检查和自动补全。
 :::
 
-## 页面参数传递（params）
+## 特殊用法：params 传递复杂数据
 
-`params` 用于传递不暴露在 URL 中的复杂数据（对象、数组等），支持 JSON 可序列化值。数据通过内部 Map 存储，目标页面通过 `route.params` 读取。
+uni-app 原生导航仅支持 URL query（字符串）。Uni Router 的 `params` 突破了这一限制：
 
-### 基本用法
+### 传递任意 JSON 数据
 
 ```ts
-// 导航时传递 params
+// 传递对象
 await router.push({
-	path: 'pages/detail/detail',
-	query: { id: '1' }, // query 仍正常暴露在 URL 中
-	params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
+  path: 'pages/detail/detail',
+  params: {
+    id: 123,
+    info: { name: 'Tom', age: 20 },
+    tags: ['a', 'b', 'c']
+  }
 })
 
-// 目标页面读取 params
+// 目标页面读取
 const route = useRoute()
-console.log(route.params.userInfo) // { name: 'Tom', age: 20 }
-console.log(route.params.tags)     // ['vip', 'active']
+console.log(route.params.id)      // 123
+console.log(route.params.info)    // { name: 'Tom', age: 20 }
+console.log(route.params.tags)    // ['a', 'b', 'c']
 ```
 
-### 持久化存储
+### 实现原理
 
-默认 `params` 仅存储在内存中，页面关闭后数据丢失。设置 `persistent: true` 可将数据持久化到 `uni.setStorageSync`，H5 刷新后仍可读取。
+`params` 不暴露在 URL 中，而是通过内部 `Map` 存储，并将一个随机 key 注入到 URL query 中（`__params_key`）。目标页面通过 key 从 Map 中读取。
+
+```
+导航时:
+  params: { id: 123, info: {...} }
+  → 存入 ParamsManager (key: "abc123")
+  → URL: /pages/detail/detail?__params_key=abc123
+
+目标页面:
+  → 从 query 读取 __params_key
+  → 从 ParamsManager 取出 params
+  → route.params = { id: 123, info: {...} }
+```
+
+### 持久化（H5 刷新不丢失）
+
+默认 `params` 存在内存中，页面关闭后丢失。设置 `persistent: true` 可持久化到 storage，H5 刷新后仍可读取：
 
 ```ts
 // 单次导航持久化
 await router.push({
-	path: 'pages/detail/detail',
-	params: { bigData: largeObject },
-	persistent: true
+  path: 'pages/detail/detail',
+  params: { id: 123 },
+  persistent: true
 })
 
-// 全局默认持久化（所有 params 默认持久化）
+// 全局默认持久化
 const router = createRouter({
-	routes: [...],
-	paramsPersistent: true
+  routes,
+  paramsPersistent: true // 所有 params 默认持久化
 })
 ```
 
-::: warning
-`params` 仅支持 JSON 可序列化值。传入不可序列化的值（如 `Date`、`Function`、`undefined`）时将输出警告，这些值在存储/读取过程中会丢失。
+::: warning params 的局限
+1. **不支持函数、Symbol 等非 JSON 可序列化值**
+2. **TabBar 页面**：由于 `switchTab` 不支持 query，`__params_key` 无法传递，TabBar 页面无法接收 params
+3. **页面栈同步**：`back()` 后目标页面的 params 通过 `peek` 读取（避免误删）
 :::
 
-### 参数清理
+## 特殊用法：页面间通信
 
-- **惰性清理**：读取 `params` 时，若对应页面已不在页面栈中，将自动删除该参数
-- **同步清理**：调用 `syncRoute()` 时，会清理所有已不在页面栈中的参数
-- **启动清理**：路由器初始化时，会清理所有残留的 `params`（包括 storage 中的数据）
-
-## 查询参数增强
-
-`RouteLocation` 提供三个便捷方法，自动解析 `query` 参数为指定类型：
-
-### queryInt()
-
-将查询参数解析为整数：
+`push` 支持 `events` + `eventChannel` 双向通信，对应 `uni.navigateTo` 的 EventChannel 机制：
 
 ```ts
-// URL: /pages/detail/detail?id=123
-route.queryInt('id')           // 123
-route.queryInt('page', 1)      // 1（默认值）
-route.queryInt('invalid', 0)   // 0（解析失败时使用默认值）
+// 发起页
+const { eventChannel } = await router.push({
+  path: 'pages/detail/detail',
+  events: {
+    // 监听目标页面发来的事件
+    update(data) { console.log('收到更新:', data) }
+  }
+})
+
+// 向目标页面发送事件
+eventChannel.emit('init', { message: '初始化数据' })
 ```
-
-### queryNumber()
-
-将查询参数解析为数值（支持浮点数）：
 
 ```ts
-// URL: /pages/detail/detail?price=19.99
-route.queryNumber('price')         // 19.99
-route.queryNumber('missing', 0)    // 0（默认值）
+// 目标页面
+import { getCurrentPages } from 'uni-app'
+
+const pages = getCurrentPages()
+const currentPage = pages[pages.length - 1]
+const eventChannel = currentPage.getOpenerEventChannel()
+
+eventChannel.on('init', (data) => {
+  console.log('收到初始化:', data)
+})
+
+// 向发起页发送事件
+eventChannel.emit('update', { status: 'loaded' })
 ```
 
-### queryBool()
+::: warning 仅 push 支持通信
+`replace` / `relaunch` / `back` 不支持 `events`，传入时会被忽略并警告。这是因为 `redirectTo` / `reLaunch` / `navigateBack` 不创建 EventChannel。
+:::
 
-将查询参数解析为布尔值：
+## 特殊用法：导航动画
 
-```ts
-// URL: /pages/detail/detail?enabled=true
-route.queryBool('enabled')         // true
-route.queryBool('visible', false)  // false（默认值）
+App 端支持自定义导航动画，三级优先级：
+
+```
+调用时传入 animation > meta.animation > uni 默认值
 ```
 
-识别规则：`'true'` / `'1'` → `true`，`'false'` / `'0'` → `false`，其他值 → 返回 `defaultValue`。
-
-## 导航动画
-
-导航动画仅 App 端生效，其他平台自动忽略。优先级：`调用时传入` > `meta.animation` > `uni 默认值`。
-
-### 方式一：导航时传入动画
-
-```ts
-await router.push({ path: '/pages/about/about', animation: { type: 'slide-in-bottom' } })
-await router.back(1, { type: 'slide-out-right', duration: 500 })
-```
-
-### 方式二：路由级默认动画
-
-在路由配置中设置 `meta.animation`，该路由的所有导航将使用此动画作为默认值：
+### 路由级默认动画
 
 ```ts
 const routes = [
@@ -359,52 +369,177 @@ const routes = [
 ]
 ```
 
-### 方式三：RouterLink 组件
-
-```vue
-<RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom' }">
-  <text>底部滑入</text>
-</RouterLink>
-```
-
-### NavigationAnimation
+### 调用时覆盖
 
 ```ts
-interface NavigationAnimation {
-  type: UniAnimationType
-  duration?: number // 默认 300ms
+await router.push({ name: 'about', animation: { type: 'slide-in-bottom', duration: 500 } })
+await router.back(1, { type: 'slide-out-right', duration: 500 })
+```
+
+### 动画类型
+
+`type` 对应 `uni.navigateTo` 的 `animationType`，App 端可选值：
+
+| 值 | 说明 |
+| --- | --- |
+| `'auto'` | 自动选择 |
+| `'none'` | 无动画 |
+| `'slide-in-right'` | 从右滑入（默认） |
+| `'slide-in-left'` | 从左滑入 |
+| `'slide-in-top'` | 从顶部滑入 |
+| `'slide-in-bottom'` | 从底部滑入 |
+| `'fade-in'` | 淡入 |
+| `'zoom-fade-in'` | 缩放淡入 |
+| `'zoom-out'` | 缩出 |
+
+::: warning 平台限制
+动画**仅 App 端生效**。小程序和 H5 的导航动画由系统控制，无法自定义。`reLaunch` 即使在 App 端也不支持动画。
+:::
+
+## 并发导航处理
+
+Uni Router 内置并发导航排队机制：
+
+```ts
+// 连续两次导航
+router.push({ name: 'a' })  // 立即执行
+router.push({ name: 'b' })  // 等待第一次完成后再执行
+```
+
+```
+时间线:
+  t0: push(a) 开始执行
+  t1: push(b) 进入等待（pendingNavigation 存在）
+  t2: push(a) 完成 → push(b) 开始执行
+  t3: push(b) 完成
+```
+
+::: tip 避免导航冲突
+并发导航排队确保同一时刻只有一个导航在进行，避免页面栈混乱。但建议避免在守卫中触发新导航，可能导致死锁。
+:::
+
+## 重定向深度保护
+
+守卫中的 `next(location)` 会触发重定向，Uni Router 限制最大重定向深度为 **10 层**，超过时抛出 `NAVIGATION_CANCELLED`：
+
+```ts
+// 错误示例：A→B→A→B→... 无限重定向
+router.beforeEach((to, from, next) => {
+  if (to.name === 'a') next({ name: 'b' })
+  else if (to.name === 'b') next({ name: 'a' })
+})
+```
+
+```
+→ push(a) → beforeEach 重定向到 b
+→ push(b) → beforeEach 重定向到 a
+→ ... (10 次后)
+→ 抛出 NAVIGATION_CANCELLED: Maximum redirect depth (10) exceeded
+```
+
+## 导航失败处理
+
+所有导航方法返回 Promise，失败时 reject `NavigationFailure`：
+
+```ts
+import { NavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+
+try {
+  await router.push({ name: 'about' })
+} catch (error) {
+  if (error instanceof NavigationFailure) {
+    switch (error.code) {
+      case RouterErrorCode.NAVIGATION_ABORTED:
+        console.log('被守卫中止')
+        break
+      case RouterErrorCode.NAVIGATION_DUPLICATED:
+        console.log('重复导航，已在当前页')
+        break
+      case RouterErrorCode.NAVIGATION_CANCELLED:
+        console.log('被取消（重定向超限或栈不足）')
+        break
+      case RouterErrorCode.NAVIGATION_API_ERROR:
+        console.error('uni API 失败', error.cause)
+        break
+    }
+  }
 }
 ```
 
-### UniAnimationType
+也可通过 `onError` 全局捕获：
 
-显示动画（navigateTo）：
-- `slide-in-right` / `slide-in-left` / `slide-in-top` / `slide-in-bottom`
-- `pop-in` / `fade-in` / `zoom-out` / `zoom-fade-out`
-- `none` / `auto`
+```ts
+router.onError((error, to, from) => {
+  // 上报错误日志
+  trackError(error.code, { to: to.path, from: from.path })
+})
+```
 
-关闭动画（navigateBack）：
-- `slide-out-right` / `slide-out-left` / `slide-out-top` / `slide-out-bottom`
-- `pop-out` / `fade-out` / `zoom-in` / `zoom-fade-in`
-- `none` / `auto`
+详见[错误处理](./error-handling)。
 
-::: info
-动画类型对应 uni-app 的 `animationType` 参数，详见 [uni-app 导航动画文档](https://uniapp.dcloud.net.cn/api/router.html#animation)。
-:::
+## 最佳实践
 
-## 导航与守卫
+### 1. 统一使用命名路由
 
-导航过程中会依次执行路由守卫，详见 [路由守卫](./guards) 章节。导航的完整流程为：
+```ts
+// ✅ 推荐
+router.push({ name: 'detail', query: { id: '1' } })
 
-1. 解析路由位置
-2. 重复导航检测（仅 push）
-3. 执行全局前置守卫 `beforeEach`
-4. 执行路由独享守卫 `beforeEnter`
-5. 执行全局解析守卫 `beforeResolve`
-6. 调用 uni 导航 API
-7. 更新路由状态
-8. 执行全局后置钩子 `afterEach`
+// ❌ 不推荐（路径硬编码）
+router.push('pages/detail/detail?id=1')
+```
 
-::: info
-`relaunch()` 同样走完整的守卫链，但跳过步骤 2（重复导航检测）。
-:::
+### 2. TabBar 页面用 params 传参
+
+```ts
+// ✅ TabBar 页面用 params（query 会被 switchTab 忽略）
+router.push({ name: 'user', params: { tab: 'profile' } })
+
+// ❌ query 会被忽略
+router.push({ name: 'user', query: { tab: 'profile' } })
+```
+
+### 3. 退出登录用 relaunch
+
+```ts
+// ✅ 清空栈，用户无法返回受保护页面
+await router.relaunch({ name: 'login' })
+
+// ❌ replace 后用户仍可返回
+await router.replace({ name: 'login' })
+```
+
+### 4. 深层页面返回首页用 relaunch
+
+```ts
+// 当前栈: [home, list, detail, comment]
+// 从 comment 直接回 home
+
+// ✅ 清栈，避免 back 多次
+await router.relaunch({ name: 'home' })
+
+// ❌ 多次 back，体验差且可能栈不足
+await router.back(3)
+```
+
+### 5. 表单页用 back 守卫拦截
+
+```ts
+router.beforeEach((to, from, next) => {
+  if (from.meta.dirty) {
+    uni.showModal({
+      title: '提示',
+      content: '未保存的修改将丢失，确认离开？',
+      success: (res) => res.confirm ? next() : next(false)
+    })
+  } else {
+    next()
+  }
+})
+```
+
+## 下一步
+
+- [路由守卫](./guards) — 掌握守卫机制与可控重定向
+- [导航流程原理](./navigation-flow) — 理解从 push 到页面展示的完整流程
+- [实战指南](./recipes) — 登录认证、权限控制等完整方案

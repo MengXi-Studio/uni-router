@@ -16,26 +16,24 @@
 
 </div>
 
+## Introduction
+
+`@meng-xi/uni-router` is a routing management library for uni-app that provides a vue-router-style API, bringing the familiar navigation experience to uni-app.
+
 ## Features
 
-- **vue-router-style API** - Familiar `push` / `replace` / `relaunch` / `back` navigation, zero learning curve
-- **Route Guards** - Global `beforeEach`, `beforeResolve`, `afterEach`, and per-route `beforeEnter`
-- **Named Routes** - Navigate by `name` instead of hardcoded path strings
-- **Route Meta** - `meta` field for page titles, auth flags, TabBar indicators, and custom data
-- **TypeScript Type Hints** - Autocompletion and type checking for route names and paths via module augmentation
-- **Error Handling** - Complete `RouterError` / `NavigationFailure` system with `onError` global capture
-- **Composables** - `useRouter()` / `useRoute()` for convenient router access in components, `useRoute()` returns a reactive ref that auto-updates on route changes
-- **RouterLink Component** - Declarative navigation component based on uni-app `navigator`, with `error` event for navigation failure handling
+- **vue-router-style API** - `push` / `replace` / `relaunch` / `back`, zero learning curve
+- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
+- **Named Routes & Route Meta** - Navigate by `name`, carry custom data via `meta`
+- **TypeScript Type Hints** - Autocompletion and type checking for route names and paths
 - **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
-- **Guard Timeout Protection** - Configurable `guardTimeout` to prevent navigation from hanging when guards don't call `next()`
-- **Ready Timeout Protection** - Configurable `readyTimeout` to prevent `isReady()` from hanging when router initialization fails
-- **Navigation Animation** - Support animation params in `push` / `replace` / `back`, with route-level `meta.animation` defaults. App only, other platforms auto-ignore
-- **Page Communication** - `push` supports `events` param and `eventChannel` return value for bidirectional page communication (corresponds to uni.navigateTo EventChannel)
-- **Route State Sync** - `syncRoute()` method keeps route state consistent with the page stack, handling browser back, physical back button, etc.
-- **Page Params** - `params` supports passing complex data (objects, arrays, etc.) without exposing in URL; supports `persistent` for storage persistence, readable after H5 refresh
-- **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()` convenience methods for auto-parsing query params to integer, number, or boolean
-
-📖 **Full Documentation: [https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
+- **Page Communication** - `push` supports `events` and `eventChannel` (corresponds to uni EventChannel)
+- **Page Params** - `params` passes complex data without exposing in URL, supports `persistent` storage
+- **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()` convenience methods
+- **Navigation Animation** - `push` / `replace` / `back` support animation params, App only
+- **Route State Sync** - `syncRoute()` handles browser back, physical back button, etc.
+- **Error Handling** - Complete `RouterError` / `NavigationFailure` system with `onError` global capture
+- **Composables** - `useRouter()` / `useRoute()` for reactive router access
 
 ## Installation
 
@@ -50,7 +48,7 @@ yarn add @meng-xi/uni-router
 pnpm add @meng-xi/uni-router
 ```
 
-Optionally use [`@meng-xi/vite-plugin`](https://github.com/MengXi-Studio/vite-plugin) to auto-generate route config and type declarations:
+Optionally use [`@meng-xi/vite-plugin`](https://github.com/MengXi-Studio/vite-plugin) to auto-generate route config and type declarations from `pages.json`:
 
 ```bash
 pnpm add @meng-xi/vite-plugin -D
@@ -59,8 +57,6 @@ pnpm add @meng-xi/vite-plugin -D
 ## Quick Start
 
 ### 1. Configure vite.config.ts
-
-Use the `generateRouter` plugin to auto-generate route config from `pages.json`:
 
 ```typescript
 import { defineConfig } from 'vite'
@@ -73,7 +69,7 @@ export default defineConfig({
 		generateRouter({
 			pagesJsonPath: 'src/pages.json',
 			outputPath: 'src/router.config.ts',
-			dts: true, // Auto-generate type declarations for name/path hints
+			dts: true, // Auto-generate type declarations
 			metaMapping: {
 				navigationBarTitleText: 'title',
 				requireAuth: 'requireAuth'
@@ -95,10 +91,8 @@ import App from './App.vue'
 const router = createRouter({
 	routes,
 	strict: true,
-	interceptUniApi: true, // Intercept uni native navigation APIs (navigateTo / redirectTo / switchTab / navigateBack / reLaunch) to ensure guards work
-	guardTimeout: 15000, // Guard timeout in ms, default 10000
-	readyTimeout: 5000, // Router ready timeout in ms, default 0 (never timeout)
-	paramsPersistent: false // Default params persistence, set true to persist all params via storage
+	interceptUniApi: true, // Intercept uni native navigation APIs to ensure guards work
+	guardTimeout: 15000 // Guard timeout in ms, default 10000
 })
 
 export function createApp() {
@@ -113,259 +107,40 @@ export function createApp() {
 ```typescript
 import { useRouter, useRoute } from '@meng-xi/uni-router'
 
-// Use in component setup
 const router = useRouter()
-const route = useRoute() // Returns Ref<RouteLocation>, auto-updates on route changes
+const route = useRoute() // Returns reactive ref, auto-updates on route changes
 
 // Path navigation
-await router.push('/pages/about/about')
 await router.push({ path: '/pages/about/about', query: { id: '1' } })
 
 // Named navigation
 await router.push({ name: 'about' })
 
-// Page params (params not exposed in URL, supports complex data)
-await router.push({ path: '/pages/detail/detail', params: { id: 123, info: { name: 'Tom' } } })
-
-// Persistent page params (readable after H5 refresh)
-await router.push({ path: '/pages/detail/detail', params: { bigData: largeObject }, persistent: true })
+// Page params (not exposed in URL, supports complex data)
+await router.push({ path: '/pages/detail/detail', params: { info: { name: 'Tom' } } })
 
 // Go back (executes full guard chain)
 await router.back()
-await router.back(2) // Go back two levels
-await router.back(1, { type: 'slide-out-left' }) // Go back with animation
-
-// Close all pages and open target page (corresponds to uni.reLaunch)
-await router.relaunch('/pages/index/index')
-await router.relaunch({ name: 'login', query: { redirect: '/about' } })
 ```
 
-### 4. Page Communication (EventChannel)
-
-`push` supports `events` param and `eventChannel` return value, corresponding to uni-app's native `uni.navigateTo` EventChannel mechanism. Only `push` mode supports this.
+### 4. Route Guards
 
 ```typescript
-// Page A: navigate and listen for events from the opened page
-const { eventChannel } = await router.push({
-	path: '/pages/detail/detail',
-	query: { id: '1' },
-	events: {
-		// Listen for the update event from the opened page
-		update(data) {
-			console.log('Received update:', data)
-		}
-	}
-})
-
-// Send event to the opened page
-eventChannel.emit('init', { message: 'Init data from Page A' })
-
-// Page B (detail): get EventChannel and communicate
-// <script setup>
-const instance = getCurrentInstance()
-const eventChannel = instance.proxy.getOpenerEventChannel()
-
-// Listen for the init event from the opener page
-eventChannel.on('init', data => {
-	console.log('Received init data:', data)
-})
-
-// Send update event to the opener page
-eventChannel.emit('update', { result: 'Processing complete' })
-```
-
-### 5. Page Params
-
-`params` is used to pass complex data (objects, arrays, etc.) without exposing it in the URL. It supports JSON-serializable values. Data is stored in an internal Map, and the target page reads it via `route.params`.
-
-```typescript
-// Pass params when navigating
-await router.push({
-	path: '/pages/detail/detail',
-	query: { id: '1' }, // query is still exposed in URL as normal
-	params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
-})
-
-// Read params in the target page
-const route = useRoute()
-console.log(route.params.userInfo) // { name: 'Tom', age: 20 }
-console.log(route.params.tags) // ['vip', 'active']
-```
-
-**Persistent Storage**: By default, params are stored in memory only and lost when the page is closed. Set `persistent: true` to persist data via `uni.setStorageSync`, making it readable after H5 refresh.
-
-```typescript
-// Per-navigation persistence
-await router.push({
-	path: '/pages/detail/detail',
-	params: { bigData: largeObject },
-	persistent: true
-})
-
-// Global default persistence (all params persisted by default)
-const router = createRouter({
-	routes,
-	paramsPersistent: true
-})
-```
-
-**Query Enhancement**: `RouteLocation` provides `queryInt` / `queryNumber` / `queryBool` convenience methods for auto-parsing query params:
-
-```typescript
-const route = useRoute()
-
-// Assuming URL is /pages/detail/detail?id=123&enabled=true
-route.queryInt('id') // 123
-route.queryNumber('price', 0) // default 0
-route.queryBool('enabled') // true
-```
-
-### 6. Navigation Animation
-
-Navigation animation only takes effect on App, other platforms auto-ignore. Priority: `inline param` > `meta.animation` > `uni default`.
-
-```typescript
-import type { NavigationAnimation } from '@meng-xi/uni-router'
-
-// Option 1: Pass animation when navigating
-await router.push({ path: '/pages/about/about', animation: { type: 'slide-in-bottom' } })
-await router.back(1, { type: 'slide-out-right', duration: 500 })
-
-// Option 2: Route-level default animation (set meta.animation in route config)
-const routes = [
-	{
-		path: 'pages/about/about',
-		name: 'about',
-		meta: { animation: { type: 'fade-in', duration: 300 } }
-	}
-]
-
-// Option 3: RouterLink animation prop
-// <RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">About</RouterLink>
-```
-
-### 7. Route Guards
-
-```typescript
-// Global before guard - auth check
 router.beforeEach((to, from, next) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		next({ name: 'login', query: { redirect: to.fullPath } })
+		// Use replace mode to avoid extra history pages after the login page
+		next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
 	} else {
 		next()
 	}
 })
-
-// Global after hook
-router.afterEach((to, from) => {
-	console.log(`Navigation complete: ${from.path} → ${to.path}`)
-})
-
-// Route change listener (includes navigation and state sync)
-router.onRouteChange((to, from) => {
-	console.log(`Route changed: ${from.path} → ${to.path}`)
-})
 ```
 
-### 8. Declarative Navigation
+## Documentation
 
-```vue
-<template>
-	<RouterLink to="/pages/about/about">About Page</RouterLink>
-	<RouterLink :to="{ name: 'about' }" replace>Replace Navigation</RouterLink>
-	<RouterLink :to="{ name: 'admin' }" @error="onNavError">Admin Panel</RouterLink>
-	<RouterLink to="/pages/about/about" :animation="{ type: 'slide-in-bottom' }">Slide In Bottom</RouterLink>
-	<RouterLink to="/pages/index/index" relaunch>Back to Home</RouterLink>
-	<RouterLink to="/pages/detail/detail" :params="{ id: 123 }">Detail</RouterLink>
-	<RouterLink to="/pages/detail/detail" :params="{ id: 123 }" persistent>Detail (Persistent)</RouterLink>
-</template>
+For complete API reference, usage guides, and examples, please visit the official website:
 
-<script setup>
-import { RouterLink } from '@meng-xi/uni-router/components/RouterLink.vue'
-
-function onNavError(error) {
-	console.log('Navigation failed:', error.code)
-}
-</script>
-```
-
-## API Overview
-
-### Core
-
-| API                     | Description                               |
-| ----------------------- | ----------------------------------------- |
-| `createRouter(options)` | Create a router instance                  |
-| `useRouter()`           | Get router instance (composable)          |
-| `useRoute()`            | Get current route location (reactive ref) |
-| `RouterLink`            | Declarative navigation component          |
-
-### Router Instance Methods
-
-| Method                            | Description                                                                 |
-| --------------------------------- | --------------------------------------------------------------------------- |
-| `router.push(location)`           | Navigate to a new page, returns `NavigationResult` (with `eventChannel`)    |
-| `router.replace(location)`        | Replace the current page                                                    |
-| `router.relaunch(location)`       | Close all pages and open target page                                        |
-| `router.back(delta?, animation?)` | Go back one or more pages (with guard chain), returns target route location |
-| `router.beforeEach(guard)`        | Register global before guard                                                |
-| `router.beforeResolve(guard)`     | Register global resolve guard                                               |
-| `router.afterEach(guard)`         | Register global after hook                                                  |
-| `router.onRouteChange(fn)`        | Register route change listener                                              |
-| `router.onError(handler)`         | Register error handler                                                      |
-| `router.syncRoute()`              | Sync route state with page stack                                            |
-| `router.resolve(location)`        | Resolve route location (no navigation)                                      |
-| `router.getRoutes()`              | Get all route configs                                                       |
-| `router.hasRoute(name)`           | Check if a route exists                                                     |
-
-### Error Codes
-
-| Code                    | Description                                                       |
-| ----------------------- | ----------------------------------------------------------------- |
-| `NAVIGATION_ABORTED`    | Navigation aborted by guard or guard timeout                      |
-| `NAVIGATION_CANCELLED`  | Navigation cancelled (guard exception or redirect limit exceeded) |
-| `NAVIGATION_DUPLICATED` | Redundant navigation to current location                          |
-| `ROUTE_NOT_FOUND`       | No matching route found                                           |
-| `NAVIGATION_API_ERROR`  | uni navigation API call failed                                    |
-| `SETUP_ERROR`           | Router initialization or usage error                              |
-
-### Exported Types
-
-| Type                  | Description                                                           |
-| --------------------- | --------------------------------------------------------------------- |
-| `NavigationResult`    | `push` return type, extends `RouteLocation`, includes `eventChannel`  |
-| `EventChannel`        | Page communication event channel, supports `emit` / `on` / `off`      |
-| `EventListeners`      | Event listener collection, `Record<string, (...args: any[]) => void>` |
-| `NavigationAnimation` | Navigation animation config, with `type` and optional `duration`      |
-| `QueryValue`          | Query param value type, `string \| number \| boolean`                 |
-| `ParamValue`          | Page param value type, supports JSON-serializable data                |
-| `ParamObject`         | Page param object type, `{ [key: string]: ParamValue }`               |
-
-## TypeScript Type Hints
-
-With `dts: true` enabled, the plugin auto-generates type declarations for type-safe route navigation:
-
-```typescript
-// Route name autocompletion
-router.push({ name: 'pagesIndexIndex' }) // ✅ Autocompletes
-router.push({ name: 'invalidName' }) // ❌ Type error
-
-// Path autocompletion
-router.push({ path: '/pages/index/index' }) // ✅ Autocompletes
-router.push({ path: '/invalid/path' }) // ❌ Type error
-```
-
-## Relationship with pages.json
-
-Uni Router does **not replace** `pages.json`, but works alongside it:
-
-| Responsibility    | pages.json          | Uni Router                       |
-| ----------------- | ------------------- | -------------------------------- |
-| Page registration | Required            | Not responsible                  |
-| Route navigation  | uni.navigateTo etc. | push / replace / relaunch / back |
-| Route guards      | Not supported       | beforeEach etc.                  |
-| Route meta        | Not supported       | meta field                       |
-| Named routes      | Not supported       | name field                       |
+📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
 ## License
 

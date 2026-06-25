@@ -1,11 +1,14 @@
-import type { NavigationGuard, NavigationGuardNext, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw } from '@/types'
+import type { NavigationGuard, NavigationGuardNext, NavigationGuardNextOptions, NavigationRedirectMode, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw } from '@/types'
 import { RouterErrorCode } from '@/types/error'
 import { warn } from '@/utils/general'
 
 /**
  * 守卫执行结果，表示导航是被放行、重定向还是中止
+ *
+ * redirect 时的 mode 表示使用者通过 next(location, { mode }) 指定的重定向方式，
+ * 未指定时为 undefined，由路由器沿用原始导航方式。
  */
-export type GuardResult = { type: 'next'; redirect?: RouteLocationRaw } | { type: 'abort'; code: RouterErrorCode }
+export type GuardResult = { type: 'next'; redirect?: RouteLocationRaw; mode?: NavigationRedirectMode } | { type: 'abort'; code: RouterErrorCode }
 
 /**
  * 守卫默认超时时间（毫秒）
@@ -81,6 +84,7 @@ export interface GuardManager {
  * - 调用 `next()` 放行导航
  * - 调用 `next(false)` 中止导航
  * - 调用 `next(location)` 重定向到新位置
+ * - 调用 `next(location, { mode })` 重定向并指定导航方式（push/replace/relaunch）
  * - 抛出异常或返回 rejected Promise 将取消导航
  *
  * @param guard - 导航守卫函数
@@ -93,7 +97,7 @@ function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation
 		let resolved = false
 		let timer: ReturnType<typeof setTimeout> | undefined
 
-		const next: NavigationGuardNext = (location?: RouteLocationRaw | false) => {
+		const next: NavigationGuardNext = (location?: RouteLocationRaw | false, options?: NavigationGuardNextOptions) => {
 			if (resolved) return
 			resolved = true
 			if (timer) clearTimeout(timer)
@@ -101,7 +105,7 @@ function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation
 			if (location === false) {
 				resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_ABORTED })
 			} else if (location) {
-				resolve({ type: 'next', redirect: location })
+				resolve({ type: 'next', redirect: location, mode: options?.mode })
 			} else {
 				resolve({ type: 'next' })
 			}

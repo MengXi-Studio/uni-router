@@ -1,354 +1,363 @@
 # Navigation
 
-Uni Router provides four navigation methods, corresponding to uni-app's native navigation APIs.
+Route navigation is Uni Router's core capability. This chapter dives deep into the four navigation methods, their working principles, uni-app's underlying limitations, and how to leverage the library's features for special use cases.
 
-## push()
+## Four Navigation Methods Overview
 
-Navigate to a new page. Automatically selects the uni API based on the target page's `meta.isTab`:
+| Method | Stack Operation | uni API | Duplicate Check | Animation | events | Return Value |
+| --- | --- | --- | --- | --- | --- | --- |
+| `push()` | Push +1 | `navigateTo` / `switchTab` | ✅ | ✅ | ✅ | `NavigationResult` |
+| `replace()` | Replace top | `redirectTo` / `switchTab` | ❌ | ✅ | ❌ | `RouteLocation` |
+| `relaunch()` | Clear then push | `reLaunch` / `switchTab` | ❌ | ❌ | ❌ | `RouteLocation` |
+| `back()` | Pop -n | `navigateBack` | ❌ | ✅ | ❌ | `RouteLocation` |
 
-- Regular page → `uni.navigateTo`
-- TabBar page → `uni.switchTab`
+::: tip TabBar Page Auto-Detection
+When the target route's `meta.isTab` is `true`, `push` / `replace` / `relaunch` all automatically switch to `uni.switchTab`. You don't need to manually check—just declare `isTab` correctly in the route config.
+:::
+
+## push — Stack Navigation
+
+`push` is the most common navigation method, pushing a new page onto the page stack.
 
 ```ts
-router.push('pages/about/about')
-router.push({ path: 'pages/about/about' })
-router.push({ path: 'pages/about/about', query: { id: '1' } })
-router.push({ name: 'about' })
-router.push({ name: 'about', query: { id: '1' } })
+router.push(location: RouteLocationRaw): Promise<NavigationResult>
 ```
+
+### Basic Usage
+
+```ts
+// Path string
+await router.push('pages/about/about')
+
+// Path object + query params
+await router.push({ path: 'pages/about/about', query: { id: '1' } })
+
+// Named route (recommended, refactor-friendly)
+await router.push({ name: 'about', query: { id: '1' } })
+
+// String with query
+await router.push('pages/about/about?id=1&tab=info')
+```
+
+### Return Value NavigationResult
+
+`push` returns `NavigationResult`, which extends `RouteLocation` and additionally includes `eventChannel`:
+
+```ts
+const result = await router.push({ name: 'detail', query: { id: '1' } })
+console.log(result.path)         // '/pages/detail/detail'
+console.log(result.query.id)     // '1'
+console.log(result.eventChannel) // EventChannel instance (push only)
+```
+
+::: info Backward Compatible
+`NavigationResult` extends `RouteLocation`, so existing code `const route = await router.push(...)` works without modification.
+:::
 
 ### Duplicate Navigation Detection
 
-When `push()` navigates to the same path as the current page, a `NAVIGATION_DUPLICATED` error is thrown:
+`push` checks if the target is exactly the same as the current position (path, name, query all match), and throws `NAVIGATION_DUPLICATED` when they match:
 
 ```ts
-try {
-	await router.push('/pages/index/index')
-} catch (error) {
-	if (error.code === 'NAVIGATION_DUPLICATED') {
-		console.log('Already on this page')
-	}
-}
+// Currently at /pages/about/about?id=1
+await router.push({ name: 'about', query: { id: '1' } })
+// → Throws NavigationFailure (NAVIGATION_DUPLICATED)
 ```
 
-::: tip
-You can use `router.onError()` to globally catch such errors, avoiding the need for try-catch on every call.
+::: warning Only push Checks Duplicates
+`replace` / `relaunch` / `back` **don't check duplicates**. This is because `replace` is often used to refresh the current page, `relaunch` to reset to the current page (like returning home after logout), and `back` may return to a page that's the same as current.
 :::
 
-### TabBar Page Notes
+### TabBar Page Limitations
 
-When navigating to a TabBar page, `uni.switchTab` does not support query parameters. If query params are provided, a warning is output and they are ignored:
+When the target is a TabBar page (`meta.isTab: true`), `push` switches to `uni.switchTab`, and these limitations apply:
+
+| Feature | Regular Page | TabBar Page |
+| --- | --- | --- |
+| `query` | ✅ Appended to URL | ❌ Ignored with warning |
+| `animation` | ✅ Works | ❌ Ignored with warning |
+| `events` | ✅ Works | ❌ Ignored |
+| `eventChannel` | ✅ Returned | ❌ `undefined` |
 
 ```ts
-router.push({ name: 'user', query: { tab: 'settings' } })
+// TabBar page, query will be ignored
+await router.push({ name: 'user', query: { tab: 'profile' } })
 // ⚠️ Warning: uni.switchTab does not support query parameters. They will be ignored.
 ```
 
-## replace()
-
-Replace the current page. Automatically selects the uni API based on the target page's `meta.isTab`:
-
-- Regular page → `uni.redirectTo`
-- TabBar page → `uni.switchTab`
-
-```ts
-router.replace('pages/login/login')
-router.replace({ name: 'login' })
-router.replace({ path: 'pages/login/login', query: { redirect: '/about' } })
-```
-
-::: warning
-When replacing to a TabBar page, `uni.switchTab` closes all non-tab pages instead of just replacing
-the current page. This behavior is determined by the uni-app framework.
+::: warning This is a uni-app hard limitation
+`uni.switchTab` is determined by the mini-program spec and doesn't support URL parameters. To pass params to TabBar pages, use `params` (see special usage below).
 :::
 
-## relaunch()
+## replace — Replace Navigation
 
-Close all pages and open the target page. Automatically selects the uni API based on the target page's `meta.isTab`:
-
-- Regular page → `uni.reLaunch`
-- TabBar page → `uni.switchTab`
-
-Commonly used for scenarios like redirecting to the login page after logout, returning to the home page from a deep page, or resetting the entire page stack.
+`replace` replaces the current page without increasing stack depth. Commonly used to replace the login page after login, or replace the form page after form submission.
 
 ```ts
-router.relaunch('pages/index/index')
-router.relaunch({ name: 'home' })
-router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' } })
+router.replace(location: RouteLocationRaw): Promise<RouteLocation>
 ```
 
-::: info
-`relaunch()` does not perform duplicate navigation detection. In stack-clearing scenarios, the target page may be the current page (e.g., "return to home"), so it should not be rejected.
+```ts
+// Replace login page after successful login
+await router.replace({ name: 'home' })
+
+// Replace with detail page after form submission
+await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
+```
+
+### Differences from push
+
+- **No duplicate check**: Can replace to current page (for refresh)
+- **No eventChannel return**: `redirectTo` doesn't support page communication
+- **events ignored**: Passing `events` outputs a warning
+- **Same TabBar limitations**: Switches to `switchTab` when `meta.isTab`
+
+## relaunch — Reset Navigation
+
+`relaunch` closes all pages then opens the target page. Commonly used for logout, returning home, or resetting an entire flow.
+
+```ts
+router.relaunch(location: RouteLocationRaw): Promise<RouteLocation>
+```
+
+```ts
+// Logout
+await router.relaunch({ name: 'login' })
+
+// Return home from deep page
+await router.relaunch({ name: 'home' })
+
+// With redirect param
+await router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' } })
+```
+
+### Special Limitations
+
+::: warning reLaunch Doesn't Support Animation
+`uni.reLaunch` doesn't accept animation params. Passing `animation` outputs a warning and is ignored. This is because `reLaunch` closes all pages, making animation semantics unclear.
+
+TabBar pages go through `switchTab`, which also doesn't support animation.
 :::
 
-::: warning
-`uni.reLaunch` does not support animation parameters. If an animation parameter is provided, a warning is output and it is ignored:
+### Why No Duplicate Check
+
+`relaunch` is often used in "reset to current page" scenarios, such as:
+
+- User clicks "return home" button while on home page
+- Target page after logout happens to be the current page
+
+So `relaunch` doesn't do duplicate checking to ensure these scenarios work normally.
+
+## back — Back Navigation
+
+`back` returns to the previous page or multiple pages. It's the only "back" operation that executes the full guard chain.
 
 ```ts
-router.relaunch({ path: 'pages/index/index', animation: { type: 'fade-in' } })
-// ⚠️ Warning: uni.reLaunch does not support animation parameters. The animation option will be ignored.
+router.back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
 ```
-:::
-
-## back()
-
-Go back to the previous page or multiple pages, executing the full navigation guard chain, corresponding to `uni.navigateBack`:
 
 ```ts
-router.back() // Go back one page
-router.back(2) // Go back two pages
-router.back(1, { type: 'slide-out-right', duration: 500 }) // Go back with animation
+// Return one page
+await router.back()
+
+// Return two pages
+await router.back(2)
+
+// Custom animation
+await router.back(1, { type: 'slide-out-right', duration: 500 })
 ```
 
-### Guard Execution
+### How It Works
 
-`back()` executes the full guard chain (`beforeEach` → `beforeResolve`), guards can abort or redirect the back operation:
+`back` reads the page stack via `getCurrentPages()` and calculates the target page:
+
+```
+Current stack: [A, B, C, D]  (D is current page)
+back(2) → target is B (index = 4-1-2 = 1)
+→ calls uni.navigateBack({ delta: 2 })
+→ syncs currentRoute to B
+```
+
+If the page stack is insufficient (`targetIndex < 0`), throws `NAVIGATION_CANCELLED`.
+
+### Guard Interception
+
+`back` executes the full guard chain (`beforeEach` → `beforeResolve`), guards can:
+
+- `next()` to allow the return
+- `next(false)` to block the return (like "unsaved form" prompt)
+- `next(location)` to redirect to another page
 
 ```ts
 router.beforeEach((to, from, next) => {
-	// Guards are also triggered on back
-	if (to.meta.requireAuth && !isLoggedIn()) {
-		next({ name: 'login' }) // Redirect to login page
-	} else {
-		next()
-	}
+  if (from.meta.dirty && !confirm('Unsaved changes will be lost. Leave anyway?')) {
+    next(false) // Block return
+  } else {
+    next()
+  }
 })
 ```
 
-### Error Handling
+::: warning Physical Back Button Cannot Be Intercepted
+`back()` only intercepts **programmatic** calls. Physical back button (Android), browser back (H5), mini-program top-left return **directly trigger native `navigateBack`**, bypassing the router, so guards cannot intercept them.
 
-- Throws `NavigationFailure` (`NAVIGATION_CANCELLED`) when page stack is insufficient
-- Throws `NavigationFailure` when guards abort the navigation
-
-```ts
-try {
-	await router.back()
-} catch (error) {
-	if (error.code === 'NAVIGATION_ABORTED') {
-		console.log('Back aborted')
-	}
-}
-```
-
-::: warning
-`back()` only intercepts programmatic calls. Physical back button and browser back directly trigger
-native `navigateBack`, bypassing the router, so guards cannot intercept them.
-For native back, call `router.syncRoute()` in the page's `onShow` to sync state.
+Solutions:
+1. Call `router.syncRoute()` in page `onShow` to sync state
+2. Do after-the-fact handling in `onRouteChange`
+3. App can listen to `onBackPress` to intercept physical back
 :::
 
 ## RouteLocationRaw
 
-Navigation methods accept three forms of route location parameters:
+All navigation methods accept the `RouteLocationRaw` type, supporting three forms:
 
-### String Path
+### String Form
 
 ```ts
 router.push('pages/about/about')
-router.push('pages/about/about?id=1')
+router.push('pages/about/about?id=1&tab=info')
 ```
+
+Paths are auto-normalized (leading `/` added). Query in the string is parsed.
 
 ### Path Object
 
 ```ts
-router.push({ path: 'pages/about/about', query: { id: '1' } })
+router.push({
+  path: 'pages/about/about',
+  query: { id: '1', tab: 'info' },
+  params: { detail: { name: 'Tom' } },
+  animation: { type: 'slide-in-right' },
+  events: { update(data) { /* ... */ } }
+})
 ```
 
 ### Named Object
 
 ```ts
-router.push({ name: 'about', query: { id: '1' } })
-```
-
-## Concurrent Navigation
-
-When there is an unfinished navigation, new navigation requests will wait for the previous one to complete before executing:
-
-```ts
-router.push('/about')
-router.push('/user')
-// The second push waits for the first to complete
-```
-
-## Page Communication (EventChannel)
-
-`push()` supports `events` param and `eventChannel` return value, corresponding to uni-app's native `uni.navigateTo` EventChannel mechanism for bidirectional page communication. Only `push` mode supports this; `replace` / `relaunch` will output a warning and ignore `events` when provided.
-
-### Basic Usage
-
-```ts
-// Page A: navigate and listen for events from the opened page
-const { eventChannel } = await router.push({
-	path: 'pages/detail/detail',
-	query: { id: '1' },
-	events: {
-		// Listen for the update event from the opened page
-		update(data) {
-			console.log('Received update:', data)
-		}
-	}
+router.push({
+  name: 'about',
+  query: { id: '1' },
+  params: { detail: { name: 'Tom' } }
 })
-
-// Send event to the opened page
-eventChannel.emit('init', { message: 'Init data from Page A' })
 ```
 
-```ts
-// Page B (detail): get EventChannel and communicate
-const instance = getCurrentInstance()
-const eventChannel = instance.proxy.getOpenerEventChannel()
-
-// Listen for the init event from the opener page
-eventChannel.on('init', (data) => {
-	console.log('Received init data:', data)
-})
-
-// Send update event to the opener page
-eventChannel.emit('update', { result: 'Processing complete' })
-```
-
-### Type Definitions
-
-```ts
-interface NavigationResult extends RouteLocation {
-	eventChannel?: EventChannel
-}
-
-interface EventChannel {
-	emit(event: string, ...args: any[]): EventChannel
-	on(event: string, callback: (...args: any[]) => void): EventChannel
-	once(event: string, callback: (...args: any[]) => void): EventChannel
-	off(event: string, callback?: (...args: any[]) => void): EventChannel
-}
-
-type EventListeners = Record<string, (...args: any[]) => void>
-```
-
-### events in RouteLocationRaw
-
-```ts
-interface RouteLocationPathRaw {
-	path: string
-	query?: Record<string, QueryValue>
-	params?: ParamObject
-	persistent?: boolean
-	animation?: NavigationAnimation
-	events?: EventListeners
-}
-
-interface RouteLocationNamedRaw {
-	name: string
-	query?: Record<string, QueryValue>
-	params?: ParamObject
-	persistent?: boolean
-	animation?: NavigationAnimation
-	events?: EventListeners
-}
-```
-
-::: info
-`NavigationResult` extends `RouteLocation`, so existing code like `const route = await router.push(...)` works without modification. `eventChannel` is an optional field.
+::: tip Recommend Named Routes
+Named routes decouple from paths. When refactoring, just modify `path` in the route config—no need to search and replace strings globally. With `@meng-xi/vite-plugin`'s `dts` feature, you also get type checking and autocompletion.
 :::
 
-## Page Params
+## Special Usage: params for Complex Data
 
-`params` is used to pass complex data (objects, arrays, etc.) without exposing it in the URL. It supports JSON-serializable values. Data is stored in an internal Map, and the target page reads it via `route.params`.
+uni-app native navigation only supports URL query (strings). Uni Router's `params` breaks this limitation:
 
-### Basic Usage
+### Passing Arbitrary JSON Data
 
 ```ts
-// Pass params when navigating
+// Pass object
 await router.push({
-	path: 'pages/detail/detail',
-	query: { id: '1' }, // query is still exposed in URL as normal
-	params: { userInfo: { name: 'Tom', age: 20 }, tags: ['vip', 'active'] }
+  path: 'pages/detail/detail',
+  params: {
+    id: 123,
+    info: { name: 'Tom', age: 20 },
+    tags: ['a', 'b', 'c']
+  }
 })
 
-// Read params in the target page
+// Target page reads
 const route = useRoute()
-console.log(route.params.userInfo) // { name: 'Tom', age: 20 }
-console.log(route.params.tags)     // ['vip', 'active']
+console.log(route.params.id)      // 123
+console.log(route.params.info)    // { name: 'Tom', age: 20 }
+console.log(route.params.tags)    // ['a', 'b', 'c']
 ```
 
-### Persistent Storage
+### Implementation Principle
 
-By default, `params` are stored in memory only and lost when the page is closed. Set `persistent: true` to persist data via `uni.setStorageSync`, making it readable after H5 refresh.
+`params` is not exposed in the URL. Instead, it's stored in an internal `Map`, and a random key is injected into the URL query (`__params_key`). The target page reads from the Map using the key.
+
+```
+During navigation:
+  params: { id: 123, info: {...} }
+  → stored in ParamsManager (key: "abc123")
+  → URL: /pages/detail/detail?__params_key=abc123
+
+Target page:
+  → reads __params_key from query
+  → gets params from ParamsManager
+  → route.params = { id: 123, info: {...} }
+```
+
+### Persistence (H5 Refresh Won't Lose)
+
+By default, `params` are stored in memory and lost when the page closes. Set `persistent: true` to persist to storage, so H5 refresh can still read them:
 
 ```ts
 // Per-navigation persistence
 await router.push({
-	path: 'pages/detail/detail',
-	params: { bigData: largeObject },
-	persistent: true
+  path: 'pages/detail/detail',
+  params: { id: 123 },
+  persistent: true
 })
 
-// Global default persistence (all params persisted by default)
+// Global default persistence
 const router = createRouter({
-	routes: [...],
-	paramsPersistent: true
+  routes,
+  paramsPersistent: true // All params persisted by default
 })
 ```
 
-::: warning
-`params` only supports JSON-serializable values. Non-serializable values (like `Date`, `Function`, `undefined`) will output a warning and will be lost during storage/retrieval.
+::: warning params Limitations
+1. **Doesn't support functions, Symbols, or other non-JSON-serializable values**
+2. **TabBar pages**: Since `switchTab` doesn't support query, `__params_key` cannot be passed, so TabBar pages cannot receive params
+3. **Page stack sync**: After `back()`, the target page's params are read via `peek` (to avoid accidental deletion)
 :::
 
-### Parameter Cleanup
+## Special Usage: Page Communication
 
-- **Lazy cleanup**: When reading `params`, if the corresponding page is no longer in the page stack, the parameter is automatically deleted
-- **Sync cleanup**: Calling `syncRoute()` cleans up all parameters whose pages are no longer in the stack
-- **Startup cleanup**: When the router initializes, all residual `params` are cleaned up (including data in storage)
-
-## Query Enhancement
-
-`RouteLocation` provides three convenience methods for auto-parsing `query` parameters:
-
-### queryInt()
-
-Parse a query parameter as an integer:
+`push` supports `events` + `eventChannel` bidirectional communication, corresponding to `uni.navigateTo`'s EventChannel mechanism:
 
 ```ts
-// URL: /pages/detail/detail?id=123
-route.queryInt('id')           // 123
-route.queryInt('page', 1)      // 1 (default value)
-route.queryInt('invalid', 0)   // 0 (default value on parse failure)
+// Initiating page
+const { eventChannel } = await router.push({
+  path: 'pages/detail/detail',
+  events: {
+    // Listen for events from target page
+    update(data) { console.log('Received update:', data) }
+  }
+})
+
+// Send event to target page
+eventChannel.emit('init', { message: 'Init data' })
 ```
-
-### queryNumber()
-
-Parse a query parameter as a number (supports floating point):
 
 ```ts
-// URL: /pages/detail/detail?price=19.99
-route.queryNumber('price')         // 19.99
-route.queryNumber('missing', 0)    // 0 (default value)
+// Target page
+import { getCurrentPages } from 'uni-app'
+
+const pages = getCurrentPages()
+const currentPage = pages[pages.length - 1]
+const eventChannel = currentPage.getOpenerEventChannel()
+
+eventChannel.on('init', (data) => {
+  console.log('Received init:', data)
+})
+
+// Send event to initiating page
+eventChannel.emit('update', { status: 'loaded' })
 ```
 
-### queryBool()
+::: warning Only push Supports Communication
+`replace` / `relaunch` / `back` don't support `events`; passing them will be ignored with a warning. This is because `redirectTo` / `reLaunch` / `navigateBack` don't create EventChannel.
+:::
 
-Parse a query parameter as a boolean:
+## Special Usage: Navigation Animation
 
-```ts
-// URL: /pages/detail/detail?enabled=true
-route.queryBool('enabled')         // true
-route.queryBool('visible', false)  // false (default value)
+App supports custom navigation animation with three-level priority:
+
+```
+Inline animation param > meta.animation > uni default
 ```
 
-Recognition rules: `'true'` / `'1'` → `true`, `'false'` / `'0'` → `false`, other values → returns `defaultValue`.
-
-## Navigation Animation
-
-Navigation animation only takes effect on App, other platforms auto-ignore. Priority: `inline param` > `meta.animation` > `uni default`.
-
-### Option 1: Pass animation when navigating
-
-```ts
-await router.push({ path: '/pages/about/about', animation: { type: 'slide-in-bottom' } })
-await router.back(1, { type: 'slide-out-right', duration: 500 })
-```
-
-### Option 2: Route-level default animation
-
-Set `meta.animation` in route config. All navigation to this route will use this animation as the default:
+### Route-Level Default Animation
 
 ```ts
 const routes = [
@@ -360,52 +369,177 @@ const routes = [
 ]
 ```
 
-### Option 3: RouterLink component
-
-```vue
-<RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom' }">
-  <text>Slide In Bottom</text>
-</RouterLink>
-```
-
-### NavigationAnimation
+### Override at Call Time
 
 ```ts
-interface NavigationAnimation {
-  type: UniAnimationType
-  duration?: number // default 300ms
+await router.push({ name: 'about', animation: { type: 'slide-in-bottom', duration: 500 } })
+await router.back(1, { type: 'slide-out-right', duration: 500 })
+```
+
+### Animation Types
+
+`type` corresponds to `uni.navigateTo`'s `animationType`. App options:
+
+| Value | Description |
+| --- | --- |
+| `'auto'` | Auto select |
+| `'none'` | No animation |
+| `'slide-in-right'` | Slide in from right (default) |
+| `'slide-in-left'` | Slide in from left |
+| `'slide-in-top'` | Slide in from top |
+| `'slide-in-bottom'` | Slide in from bottom |
+| `'fade-in'` | Fade in |
+| `'zoom-fade-in'` | Zoom fade in |
+| `'zoom-out'` | Zoom out |
+
+::: warning Platform Limitation
+Animation **only works on App**. Mini-program and H5 navigation animations are system-controlled and cannot be customized. `reLaunch` doesn't support animation even on App.
+:::
+
+## Concurrent Navigation Handling
+
+Uni Router has built-in concurrent navigation queueing:
+
+```ts
+// Two consecutive navigations
+router.push({ name: 'a' })  // Executes immediately
+router.push({ name: 'b' })  // Waits for first to complete
+```
+
+```
+Timeline:
+  t0: push(a) starts executing
+  t1: push(b) enters waiting (pendingNavigation exists)
+  t2: push(a) completes → push(b) starts executing
+  t3: push(b) completes
+```
+
+::: tip Avoid Navigation Conflicts
+Concurrent navigation queueing ensures only one navigation is in progress at a time, avoiding page stack corruption. But avoid triggering new navigation in guards, which may cause deadlock.
+:::
+
+## Redirect Depth Protection
+
+`next(location)` in guards triggers a redirect. Uni Router limits max redirect depth to **10**, throwing `NAVIGATION_CANCELLED` when exceeded:
+
+```ts
+// Error example: A→B→A→B→... infinite redirect
+router.beforeEach((to, from, next) => {
+  if (to.name === 'a') next({ name: 'b' })
+  else if (to.name === 'b') next({ name: 'a' })
+})
+```
+
+```
+→ push(a) → beforeEach redirects to b
+→ push(b) → beforeEach redirects to a
+→ ... (after 10 times)
+→ Throws NAVIGATION_CANCELLED: Maximum redirect depth (10) exceeded
+```
+
+## Navigation Failure Handling
+
+All navigation methods return Promises that reject with `NavigationFailure` on failure:
+
+```ts
+import { NavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+
+try {
+  await router.push({ name: 'about' })
+} catch (error) {
+  if (error instanceof NavigationFailure) {
+    switch (error.code) {
+      case RouterErrorCode.NAVIGATION_ABORTED:
+        console.log('Aborted by guard')
+        break
+      case RouterErrorCode.NAVIGATION_DUPLICATED:
+        console.log('Duplicate navigation, already on this page')
+        break
+      case RouterErrorCode.NAVIGATION_CANCELLED:
+        console.log('Cancelled (redirect limit or stack insufficient)')
+        break
+      case RouterErrorCode.NAVIGATION_API_ERROR:
+        console.error('uni API failed', error.cause)
+        break
+    }
+  }
 }
 ```
 
-### UniAnimationType
+You can also catch globally via `onError`:
 
-Show animations (navigateTo):
-- `slide-in-right` / `slide-in-left` / `slide-in-top` / `slide-in-bottom`
-- `pop-in` / `fade-in` / `zoom-out` / `zoom-fade-out`
-- `none` / `auto`
+```ts
+router.onError((error, to, from) => {
+  // Report error logs
+  trackError(error.code, { to: to.path, from: from.path })
+})
+```
 
-Close animations (navigateBack):
-- `slide-out-right` / `slide-out-left` / `slide-out-top` / `slide-out-bottom`
-- `pop-out` / `fade-out` / `zoom-in` / `zoom-fade-in`
-- `none` / `auto`
+See [Error Handling](./error-handling).
 
-::: info
-Animation types correspond to uni-app's `animationType` parameter. See [uni-app navigation animation docs](https://uniapp.dcloud.net.cn/api/router.html#animation).
-:::
+## Best Practices
 
-## Navigation and Guards
+### 1. Consistently Use Named Routes
 
-Route guards are executed in sequence during navigation. See [Route Guards](./guards) for details. The complete navigation flow is:
+```ts
+// ✅ Recommended
+router.push({ name: 'detail', query: { id: '1' } })
 
-1. Resolve route location
-2. Duplicate navigation detection (push only)
-3. Execute global beforeEach guards
-4. Execute per-route beforeEnter guards
-5. Execute global beforeResolve guards
-6. Call uni navigation API
-7. Update route state
-8. Execute global afterEach hooks
+// ❌ Not recommended (hardcoded path)
+router.push('pages/detail/detail?id=1')
+```
 
-::: info
-`relaunch()` also goes through the full guard chain, but skips step 2 (duplicate navigation detection).
-:::
+### 2. Use params for TabBar Page Params
+
+```ts
+// ✅ TabBar pages use params (query is ignored by switchTab)
+router.push({ name: 'user', params: { tab: 'profile' } })
+
+// ❌ query will be ignored
+router.push({ name: 'user', query: { tab: 'profile' } })
+```
+
+### 3. Use relaunch for Logout
+
+```ts
+// ✅ Clear stack, user cannot return to protected pages
+await router.relaunch({ name: 'login' })
+
+// ❌ After replace, user can still go back
+await router.replace({ name: 'login' })
+```
+
+### 4. Use relaunch to Return Home from Deep Pages
+
+```ts
+// Current stack: [home, list, detail, comment]
+// Return directly to home from comment
+
+// ✅ Clear stack, avoid multiple backs
+await router.relaunch({ name: 'home' })
+
+// ❌ Multiple backs, poor UX and may have stack issues
+await router.back(3)
+```
+
+### 5. Use back Guard for Form Page Interception
+
+```ts
+router.beforeEach((to, from, next) => {
+  if (from.meta.dirty) {
+    uni.showModal({
+      title: 'Notice',
+      content: 'Unsaved changes will be lost. Leave anyway?',
+      success: (res) => res.confirm ? next() : next(false)
+    })
+  } else {
+    next()
+  }
+})
+```
+
+## Next Steps
+
+- [Route Guards](./guards) — Master guard mechanism and controllable redirects
+- [Navigation Flow](./navigation-flow) — Understand the complete flow from push to page display
+- [Recipes](./recipes) — Complete solutions for auth, permission control, etc.

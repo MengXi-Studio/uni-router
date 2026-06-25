@@ -483,6 +483,9 @@ class UniRouter implements Router {
 	 * - next + redirect: 递归执行重定向导航
 	 * - next: 继续执行后续守卫
 	 *
+	 * 重定向方式优先级：守卫通过 next(location, { mode }) 指定的 mode > 原始导航方式。
+	 * 原始导航为 back 时无法重定向（目标不在页面栈中），回退为 relaunch。
+	 *
 	 * @param result - 守卫执行结果
 	 * @param to - 目标路由
 	 * @param from - 来源路由
@@ -511,7 +514,10 @@ class UniRouter implements Router {
 			const redirectAnimation = this.extractAnimation(result.redirect) ?? animation
 			const redirectEvents = this.extractEvents(result.redirect) ?? events
 			const redirectTarget = this.matcher.resolve(result.redirect)
-			return this.executeNavigation(redirectTarget, from, mode, redirectDepth + 1, redirectAnimation, redirectEvents)
+			// 重定向方式：守卫指定优先，否则沿用原始导航方式
+			// back 无法作为重定向方式（目标不在页面栈中），回退为 relaunch
+			const redirectMode = result.mode ?? (mode === 'back' ? 'relaunch' : mode)
+			return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, redirectAnimation, redirectEvents)
 		}
 
 		return null

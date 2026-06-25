@@ -8,6 +8,9 @@ hero:
   name: '@meng-xi/uni-router'
   text: uni-app 路由管理
   tagline: 为 uni-app (Vue 3) 提供类似 vue-router 风格的路由管理系统
+  image:
+    src: /logo.svg
+    alt: Uni Router
   actions:
     - theme: brand
       text: 快速开始
@@ -22,20 +25,21 @@ hero:
 features:
   - icon: 🧭
     title: 路由导航
-    details: push / replace / relaunch / back，自动识别 TabBar 页面，声明式 RouterLink 组件
+    details: push / replace / relaunch / back 四种导航，自动识别 TabBar，声明式 RouterLink
   - icon: 🛡️
     title: 路由守卫
-    details: 全局前置/解析/后置守卫及路由独享守卫，可拦截原生 API 确保守卫生效
+    details: 全局前置/解析/后置守卫与路由独享守卫，拦截原生 API 确保全拦截
   - icon: 📦
     title: 参数传递与查询增强
-    details: params 传递复杂数据并支持持久化，queryInt / queryNumber / queryBool 便捷解析
+    details: params 传递复杂数据，queryInt / queryNumber / queryBool 便捷解析
   - icon: 📡
     title: 页面间通信
-    details: push 支持 events 参数和 eventChannel 返回值，实现页面间双向通信
+    details: push 支持 events 与 eventChannel，实现页面间双向通信
   - icon: 🎬
     title: 导航动画
-    details: 支持导航时传入动画参数和路由级 meta.animation 默认动画，仅 App 端生效
+    details: 导航动画参数与路由级 meta.animation 默认值，仅 App 端生效
   - icon: 💪
     title: TypeScript 优先
-    details: 完整类型定义与组合式 API，useRouter() / useRoute() 与 Vue 3 无缝集成
+    details: 完整类型定义与组合式 API，与 Vue 3 无缝集成
 ---
+
