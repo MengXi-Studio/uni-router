@@ -23,6 +23,6 @@ export type { NavigationGuardNext, NavigationGuardNextOptions, NavigationRedirec
 
 export type { RouterOnError, RouterOptions, Router, GuardRouteOptions } from './router'
 
-export type { RouterError, NavigationFailure } from './error'
+export type { RouterError, UniApiCause, UniApiError, NavigationFailure } from './error'
 
 export { RouterErrorCode } from './error'

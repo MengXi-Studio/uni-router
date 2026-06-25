@@ -172,7 +172,7 @@ class UniRouter implements Router {
 		// 守卫通过，执行返回
 		try {
 			await goBack(delta, effectiveAnimation)
-			this.syncCurrentRoute(from)
+			this.syncCurrentRoute()
 			this.guardManager.runAfterGuards(to, from)
 			return this.routeState.getCurrentRoute()
 		} catch (error) {
@@ -291,7 +291,7 @@ class UniRouter implements Router {
 		const currentQuery = getCurrentPageQuery()
 		// 若当前页面与路由状态一致（路径和查询参数均相同），无需更新
 		if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return
-		this.syncCurrentRoute(from)
+		this.syncCurrentRoute()
 		// 同步时清理无效 params
 		this.paramsManager.cleanupStale()
 	}
@@ -719,10 +719,8 @@ class UniRouter implements Router {
 	 *
 	 * 状态同步不是一次完整的导航（未经过前置守卫），因此不触发 afterEach 钩子，
 	 * 仅通知 onRouteChange 监听器。
-	 *
-	 * @param from - 导航前的路由位置
 	 */
-	private syncCurrentRoute(_from: RouteLocation): void {
+	private syncCurrentRoute(): void {
 		const currentPath = getCurrentPagePath()
 		const config = this.matcher.getRouteConfig(currentPath)
 		const meta: RouteMeta = config?.meta ?? {}

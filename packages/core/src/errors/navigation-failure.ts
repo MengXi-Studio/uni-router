@@ -1,5 +1,5 @@
 import type { RouteLocation } from '@/types/route'
-import type { RouterErrorCode } from '@/types/error'
+import type { RouterErrorCode, UniApiError } from '@/types/error'
 import { RouterError } from './router-error'
 
 /**
@@ -11,7 +11,7 @@ export class NavigationFailure extends RouterError {
 	/** 来源路由 */
 	readonly from: RouteLocation
 	/** 原始错误原因 */
-	readonly cause?: unknown
+	readonly cause?: UniApiError
 
 	/**
 	 * @param to - 目标路由
@@ -20,7 +20,7 @@ export class NavigationFailure extends RouterError {
 	 * @param message - 可选的错误信息，默认自动生成
 	 * @param cause - 原始错误原因
 	 */
-	constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: unknown) {
+	constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: UniApiError) {
 		super(code, message ?? `Navigation failed from "${from.fullPath}" to "${to.fullPath}"`)
 		this.name = 'NavigationFailure'
 		this.to = to

@@ -1,4 +1,5 @@
 import type { EventChannel, EventListeners, UniAnimationType } from './types/route'
+import type { UniApiCause } from './types/error'
 
 declare global {
 	/**
@@ -30,7 +31,7 @@ declare global {
 		/** 导航成功回调 */
 		success?: (res?: any) => void
 		/** 导航失败回调 */
-		fail?: (err: unknown) => void
+		fail?: (err: UniApiCause) => void
 		/** 导航完成回调（无论成功或失败） */
 		complete?: () => void
 	}
@@ -50,7 +51,7 @@ declare global {
 		/** 导航成功回调 */
 		success?: (res: UniNavigateToSuccessResult) => void
 		/** 导航失败回调 */
-		fail?: (err: unknown) => void
+		fail?: (err: UniApiCause) => void
 		/** 导航完成回调（无论成功或失败） */
 		complete?: () => void
 	}
@@ -64,7 +65,7 @@ declare global {
 		/** 导航成功回调 */
 		success?: () => void
 		/** 导航失败回调 */
-		fail?: (err: unknown) => void
+		fail?: (err: UniApiCause) => void
 		/** 导航完成回调（无论成功或失败） */
 		complete?: () => void
 	}

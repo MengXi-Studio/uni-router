@@ -24,6 +24,8 @@ export type {
 	RouterOptions,
 	Router,
 	GuardRouteOptions,
+	UniApiCause,
+	UniApiError,
 	QueryValue,
 	ParamValue,
 	ParamObject
