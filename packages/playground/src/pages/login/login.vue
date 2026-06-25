@@ -27,7 +27,7 @@ const router = useRouter()
 const route = useRoute()
 const { setLoggedIn } = useAuth()
 
-const redirectUrl = Array.isArray(route.query.redirect) ? route.query.redirect[0] : route.query.redirect || ''
+const redirectUrl = Array.isArray(route.value.query.redirect) ? route.value.query.redirect[0] : route.value.query.redirect || ''
 
 function handleLogin() {
 	setLoggedIn(true)

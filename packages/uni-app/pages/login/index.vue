@@ -66,7 +66,8 @@ export default {
 			setTimeout(() => {
 				if (this.redirectUrl) {
 					router.replace(this.redirectUrl).catch(() => {
-						uni.switchTab({ url: '/pages/index/index' })
+						// replace 失败时回退到 relaunch 关闭所有页面并回首页
+						router.relaunch('/pages/index/index')
 					})
 				} else {
 					router.back()

@@ -9,6 +9,15 @@
   - 未指定 `mode` 时沿用触发守卫的原始导航方式（向后兼容）
   - 原始导航为 `back` 时，未指定 `mode` 则回退为 `relaunch`（因 `back` 无法跳转到页面栈外目标）
 
+### 修复
+
+- **H5 平台 `interceptUniApi` 导致 TabBar 点击卡死** - 1.6.3 通过调换执行顺序恢复了 switchTab 走守卫链，但 H5 平台下同步阻止 `uni.switchTab`
+  仍会导致 TabBar 组件内部「切换中」状态无法清除，后续点击被忽略。现对 H5 平台的 switchTab 改用「放行原始调用 + success 回调同步状态」策略
+  - 新增 `isWebPlatform()` 检测 H5 平台（通过 `window` / `document` 存在性判断）
+  - 新增 `handleWebSwitchTab()` 包装 `success` 回调，在 switchTab 完成后调用 `router.syncRoute()` 同步路由状态
+  - 权衡：H5 平台下外部 `uni.switchTab` 调用不再经过前置守卫，TabBar 页面权限控制需在页面 `onShow` 生命周期中处理
+  - 小程序平台和 App 平台不受影响，仍走完整的「阻止 + 转发」流程
+
 ## 1.6.3（2026-06-24）
 
 ### 修复

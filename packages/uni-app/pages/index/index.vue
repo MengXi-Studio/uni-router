@@ -244,6 +244,10 @@
 			<view class="btn btn-secondary" @click="interceptedNavigateBack">
 				<text class="btn-text-secondary">uni.navigateBack（被拦截转为 back）</text>
 			</view>
+			<view class="warn-tip">
+				⚠️ 关于 uni.switchTab：本项目未配置 TabBar，故未提供演示。switchTab 同样会被拦截转为 router.push（TabBar 页面自动使用 switchTab 导航）。注意 H5 平台对 switchTab 有特殊处理（放行原始调用 + success
+				回调同步状态），详见官方文档。
+			</view>
 		</view>
 
 		<!-- 组合式 API -->
@@ -637,5 +641,16 @@ export default {
 .error-text {
 	font-size: 24rpx;
 	color: #ff4d4f;
+}
+
+.warn-tip {
+	background: #fff7e6;
+	border: 2rpx solid #ffd591;
+	border-radius: 12rpx;
+	padding: 20rpx;
+	margin-top: 20rpx;
+	font-size: 22rpx;
+	color: #ff9500;
+	line-height: 1.6;
 }
 </style>

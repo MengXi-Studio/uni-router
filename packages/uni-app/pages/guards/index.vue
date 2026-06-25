@@ -53,6 +53,35 @@
 				<text class="btn-text-secondary">返回</text>
 			</view>
 		</view>
+
+		<!-- 守卫重定向方式可控（1.7.0 新增） -->
+		<view class="card">
+			<text class="card-title">守卫重定向方式可控（v1.7.0 新增）</text>
+			<text class="desc">next(location, { mode }) 可在守卫重定向时指定导航方式（push / replace / relaunch）。未指定 mode 时沿用触发守卫的原始导航方式；原始导航为 back 时回退为 relaunch。</text>
+			<view class="code-block"> router.beforeEach((to, from, next) => {\n next('/pages/about/index', { mode: 'relaunch' })\n}) </view>
+			<text class="hint">点击下方按钮会临时注册一次性守卫，将 push 到受保护页面的导航重定向到关于页。观察页面栈差异：</text>
+			<view class="info-row">
+				<text class="info-label">push 模式</text>
+				<text class="info-value">about 在栈顶，可 back 回本页</text>
+			</view>
+			<view class="info-row">
+				<text class="info-label">replace 模式</text>
+				<text class="info-value">about 替换本页，无法 back</text>
+			</view>
+			<view class="info-row">
+				<text class="info-label">relaunch 模式</text>
+				<text class="info-value">清空栈，about 为唯一页面</text>
+			</view>
+			<view class="btn" @click="redirectWithPush">
+				<text class="btn-text">push 重定向到关于页</text>
+			</view>
+			<view class="btn btn-secondary" @click="redirectWithReplace">
+				<text class="btn-text-secondary">replace 重定向到关于页</text>
+			</view>
+			<view class="btn btn-secondary" @click="redirectWithRelaunch">
+				<text class="btn-text-secondary">relaunch 重定向到关于页</text>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -97,6 +126,36 @@ export default {
 		},
 		goBack() {
 			router.back()
+		},
+		// ===== 守卫重定向方式可控演示（v1.7.0 新增）=====
+		// 临时注册一次性守卫，将 push 到受保护页面的导航按指定 mode 重定向到关于页
+		redirectWithMode(mode) {
+			this.addLog(`注册一次性守卫，mode: ${mode}，即将重定向到关于页...`)
+			// 注册前置守卫，返回移除函数
+			const removeGuard = router.beforeEach((to, from, next) => {
+				// 立即移除自身，确保只生效一次
+				removeGuard()
+				if (to.path === '/pages/protected/index') {
+					this.addLog(`守卫拦截 ${to.path}，以 ${mode} 方式重定向到关于页`)
+					// next(location, { mode }) 指定重定向使用的导航方式
+					next({ path: '/pages/about/index', query: { redirectMode: mode } }, { mode })
+				} else {
+					next()
+				}
+			})
+			// 触发导航（会被守卫拦截重定向）
+			router.push('/pages/protected/index').catch(e => {
+				this.addLog(`导航结果: ${e.message || e}`)
+			})
+		},
+		redirectWithPush() {
+			this.redirectWithMode('push')
+		},
+		redirectWithReplace() {
+			this.redirectWithMode('replace')
+		},
+		redirectWithRelaunch() {
+			this.redirectWithMode('relaunch')
 		}
 	}
 }
@@ -201,5 +260,17 @@ export default {
 	color: #007aff;
 	font-size: 28rpx;
 	font-weight: 500;
+}
+
+.code-block {
+	background: #1e1e1e;
+	border-radius: 12rpx;
+	padding: 20rpx;
+	margin: 16rpx 0;
+	white-space: pre-wrap;
+	word-break: break-all;
+	color: #0f0;
+	font-size: 22rpx;
+	font-family: monospace;
 }
 </style>

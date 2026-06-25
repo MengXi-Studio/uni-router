@@ -10,7 +10,8 @@ onLaunch(() => {
 
 onShow(() => {
 	console.log('App Show')
-	// 同步路由状态，处理浏览器后退/物理返回键等非路由器导航场景
+	// 应用从后台回到前台时同步路由状态
+	// 注意：页面切换时的状态同步应在各页面的 onShow 中调用 syncRoute()
 	router.syncRoute()
 })
 
