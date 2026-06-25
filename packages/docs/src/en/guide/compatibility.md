@@ -456,6 +456,67 @@ const store = useDataStore()
 console.log(store.pendingData) // { message: 'hello' }
 ```
 
+## Limitation 10: Cold Start Bypasses Guards
+
+### Problem
+
+When a user **directly enters** a page via the following methods, the page is loaded directly by the uni-app framework, **bypassing router navigation**, and guards (`beforeEach` etc.) are not executed:
+
+| Scenario | Platform |
+| --- | --- |
+| Direct URL access | H5 |
+| QR code / scene value | Mini-program |
+| Deeplink / URL Scheme | App |
+
+```
+User accesses https://example.com/#/pages/about/about
+  → uni-app directly loads the about page (requireAuth: true)
+  → Router guards are not executed
+  → Unauthenticated user directly enters a protected page
+```
+
+### Cause
+
+uni-app's page loading is done directly by the framework during cold start. The router (based on `uni.navigateTo` interception) only takes effect in subsequent programmatic navigations. Cold start page loading does not call `navigateTo`, so neither the interceptor nor guards can intervene.
+
+### Solution: guardRoute()
+
+`router.guardRoute()` runs the guard chain against the current (or specified) route and decides whether to redirect based on guard results:
+
+```ts
+// App.vue
+import { onLaunch } from '@dcloudio/uni-app'
+import { useRouter } from '@meng-xi/uni-router'
+
+const router = useRouter()
+
+onLaunch(() => {
+  router.isReady().then(() => {
+    router.guardRoute(undefined, {
+      onAbort: (failure) => {
+        // Guard aborted (e.g., not logged in), navigate to a safe page
+        console.warn('Cold start guard aborted:', failure.code)
+        router.relaunch({ name: 'home' })
+      }
+    })
+  })
+})
+```
+
+Guard result handling:
+
+| Guard Result | Behavior |
+| --- | --- |
+| Pass (`next()`) | No navigation, resolves with the target route |
+| Redirect (`next(location)`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
+| Abort (`next(false)`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
+
+::: warning Cold start cannot truly "block entry"
+In cold start scenarios the page is already loaded, so `guardRoute()` cannot truly prevent the page from displaying. When a guard aborts, using the `onAbort` callback to execute `router.relaunch()` to navigate to a safe page is the recommended approach.
+:::
+
+See [Router Instance - guardRoute()](../api/router-instance#guardroute) and [Route Guards - Cold Start Guard Check](./guards#cold-start-guard-check).
+
 ## Cross-Platform Development Tips
 
 ### 1. Conditional Compilation

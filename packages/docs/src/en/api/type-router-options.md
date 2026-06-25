@@ -234,6 +234,47 @@ const router = createRouter({
 })
 ```
 
+## GuardRouteOptions
+
+The options type for the `router.guardRoute()` method, used for guard re-execution in cold start scenarios.
+
+### Type Definition
+
+```ts
+interface GuardRouteOptions {
+  onAbort?: (failure: NavigationFailure) => void
+}
+```
+
+### Properties
+
+#### onAbort
+
+- **Type**: `(failure: NavigationFailure) => void`
+- **Description**: Callback when the guard aborts
+
+In cold start scenarios the page is already loaded and cannot truly be "blocked from entry". When a guard calls `next(false)` to abort, this callback is invoked with a `NavigationFailure` object. Users can use this callback to execute `router.relaunch()` etc. to navigate to a safe page.
+
+```ts
+router.guardRoute(undefined, {
+  onAbort: (failure) => {
+    console.warn('Cold start guard aborted:', failure.code)
+    // Navigate to a safe page
+    router.relaunch({ name: 'home' })
+  }
+})
+```
+
+::: tip Guard Result Handling
+| Guard Result | Behavior |
+| --- | --- |
+| Pass (`next()`) | No navigation, resolves with the target route |
+| Redirect (`next(location)`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
+| Abort (`next(false)`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
+:::
+
+See [Router Instance - guardRoute()](./router-instance#guardroute) and [Route Guards - Cold Start Guard Check](../guide/guards#cold-start-guard-check).
+
 ## Next Steps
 
 - [createRouter()](./create-router) — Create a router instance

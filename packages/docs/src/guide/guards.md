@@ -604,6 +604,75 @@ router.onRouteChange((to, from) => {
 
 详见[平台兼容性](./compatibility)。
 
+## 冷启动守卫检查
+
+### 问题：冷启动绕过守卫
+
+当用户通过以下方式**直接进入**某个页面时，页面由 uni-app 框架直接加载，**不经过路由器导航**，守卫（`beforeEach` 等）未执行：
+
+| 场景 | 平台 |
+| --- | --- |
+| 直接访问 URL | H5 |
+| 扫码进入 / 场景值 | 小程序 |
+| Deeplink / URL Scheme | App |
+
+```
+用户访问 https://example.com/#/pages/about/about
+  → uni-app 直接加载 about 页
+  → 路由器守卫未执行（未经过 router.push）
+  → 未登录用户直接进入了 requireAuth 页面
+```
+
+### 解决方案：guardRoute()
+
+`router.guardRoute()` 对当前（或指定）路由补执行守卫链，按守卫结果决定是否重定向：
+
+```ts
+// App.vue
+import { onLaunch } from '@dcloudio/uni-app'
+import { useRouter } from '@meng-xi/uni-router'
+
+const router = useRouter()
+
+onLaunch(() => {
+  router.isReady().then(() => {
+    router.guardRoute(undefined, {
+      onAbort: (failure) => {
+        // 守卫中止（如未登录），跳转到安全页面
+        console.warn('冷启动守卫中止:', failure.code)
+        router.relaunch({ name: 'home' })
+      }
+    })
+  })
+})
+```
+
+### 守卫结果处理
+
+| 守卫结果 | 行为 |
+| --- | --- |
+| 放行（`next()`） | 不执行导航，resolve 目标路由 |
+| 重定向（`next(location)`） | 按守卫指定的方式（默认 `relaunch`）跳转到重定向目标 |
+| 中止（`next(false)`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
+
+::: warning 冷启动无法真正"阻止进入"
+冷启动场景下页面已加载，`guardRoute()` 无法真正阻止页面显示。当守卫中止时，通过 `onAbort` 回调执行 `router.relaunch()` 跳转到安全页面是推荐的应对方式。
+:::
+
+### 与 syncRoute 的区别
+
+| 方法 | 作用 | 执行守卫 |
+| --- | --- | --- |
+| `syncRoute()` | 同步 `currentRoute` 为真实页面栈状态 | 否 |
+| `guardRoute()` | 对当前路由补执行守卫链 | 是 |
+
+两者可配合使用：
+
+- `syncRoute`：物理返回后的状态同步
+- `guardRoute`：冷启动时的守卫补执行
+
+详见 [Router 实例 - guardRoute()](../api/router-instance#guardroute)。
+
 ## 守卫类型定义
 
 ```ts

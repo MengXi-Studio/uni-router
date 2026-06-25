@@ -234,6 +234,47 @@ const router = createRouter({
 })
 ```
 
+## GuardRouteOptions
+
+`router.guardRoute()` 方法的选项类型，用于冷启动场景的守卫补执行。
+
+### 类型定义
+
+```ts
+interface GuardRouteOptions {
+  onAbort?: (failure: NavigationFailure) => void
+}
+```
+
+### 属性
+
+#### onAbort
+
+- **类型**: `(failure: NavigationFailure) => void`
+- **说明**: 守卫中止时的回调
+
+冷启动场景下页面已加载，无法真正"阻止进入"。当守卫调用 `next(false)` 中止时，将调用此回调并传入 `NavigationFailure` 对象。用户可在此回调中执行 `router.relaunch()` 等操作跳转到安全页面。
+
+```ts
+router.guardRoute(undefined, {
+  onAbort: (failure) => {
+    console.warn('冷启动守卫中止:', failure.code)
+    // 跳转到安全页面
+    router.relaunch({ name: 'home' })
+  }
+})
+```
+
+::: tip 守卫结果处理
+| 守卫结果 | 行为 |
+| --- | --- |
+| 放行（`next()`） | 不执行导航，resolve 目标路由 |
+| 重定向（`next(location)`） | 按守卫指定的方式（默认 `relaunch`）跳转 |
+| 中止（`next(false)`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
+:::
+
+详见 [Router 实例 - guardRoute()](./router-instance#guardroute) 和 [路由守卫 - 冷启动守卫检查](../guide/guards#冷启动守卫检查)。
+
 ## 下一步
 
 - [createRouter()](./create-router) — 创建路由器实例

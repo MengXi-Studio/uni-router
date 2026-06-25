@@ -1,18 +1,18 @@
 # RouterError
 
-路由器错误类型，封装导航过程中发生的各种错误。通过 `router.onError` 捕获，或通过 `try-catch` 处理。
+路由器错误类型，封装路由/导航过程中发生的各种错误。可通过 `router.onError` 全局捕获，或通过 `try-catch` 局部处理。
 
 ## 类型定义
 
 ```ts
 class RouterError extends Error {
-  code: RouterErrorCode
-  message: string
-  to?: RouteLocationNormalized
-  from?: RouteLocationNormalized
-  cause?: unknown
+  readonly code: RouterErrorCode
+  readonly message: string
 }
 ```
+
+- 所有错误信息会自动添加 `[uni-router]` 前缀
+- `name` 属性为 `'RouterError'`
 
 ## 属性
 
@@ -22,16 +22,18 @@ class RouterError extends Error {
 - **说明**: 错误码，标识错误类型
 
 ```ts
+import { RouterErrorCode } from '@meng-xi/uni-router'
+
 router.onError((err) => {
   switch (err.code) {
-    case 'ROUTE_NOT_FOUND':
+    case RouterErrorCode.ROUTE_NOT_FOUND:
       uni.showToast({ title: '页面不存在', icon: 'none' })
       break
-    case 'GUARD_TIMEOUT':
-      uni.showToast({ title: '页面加载超时', icon: 'none' })
+    case RouterErrorCode.NAVIGATION_ABORTED:
+      // 守卫中止，通常无需提示
       break
-    case 'NAVIGATION_ABORTED':
-      // 用户主动中止，无需提示
+    case RouterErrorCode.NAVIGATION_API_ERROR:
+      uni.showToast({ title: '导航失败', icon: 'none' })
       break
   }
 })
@@ -40,50 +42,95 @@ router.onError((err) => {
 ### message
 
 - **类型**: `string`
-- **说明**: 错误描述信息
+- **说明**: 错误描述信息（含 `[uni-router]` 前缀）
 
-### to / from
+## NavigationFailure
 
-- **类型**: `RouteLocationNormalized | undefined`
-- **说明**: 发生错误时的目标路由和来源路由
+`NavigationFailure` 继承自 `RouterError`，携带导航上下文信息（来源/目标路由与原始错误原因）：
+
+```ts
+class NavigationFailure extends RouterError {
+  readonly to: RouteLocation
+  readonly from: RouteLocation
+  readonly cause?: UniApiError
+}
+```
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `to` | `RouteLocation` | 目标路由 |
+| `from` | `RouteLocation` | 来源路由 |
+| `cause` | `UniApiError \| undefined` | 原始错误原因，仅 `NAVIGATION_API_ERROR` 时存在 |
 
 ```ts
 router.onError((err) => {
-  console.error(`导航错误: ${err.from?.path} → ${err.to?.path}`)
-  console.error(`错误码: ${err.code}`)
-  console.error(`错误信息: ${err.message}`)
+  if (err.code === RouterErrorCode.NAVIGATION_API_ERROR) {
+    // err 是 NavigationFailure，可访问 to/from/cause
+    console.error(`从 ${err.from.fullPath} 到 ${err.to.fullPath} 失败`)
+    console.error('失败的 API:', err.cause?.api)
+    console.error('原始错误:', err.cause?.cause.errMsg)
+  }
 })
 ```
 
-### cause
+## UniApiError / UniApiCause
 
-- **类型**: `unknown`
-- **说明**: 原始错误对象（如网络请求错误、JSON 解析错误等）
+`NavigationFailure.cause` 的类型，封装 uni-app 导航 API 失败的详细信息。
+
+### UniApiCause
+
+uni-app API 失败时的错误原因（即 `fail` 回调接收的对象）：
+
+```ts
+interface UniApiCause {
+  errMsg: string
+}
+```
+
+### UniApiError
+
+uni-app API 调用失败的错误信息：
+
+```ts
+interface UniApiError {
+  readonly api: string          // 调用失败的 API 名称（如 'navigateTo'）
+  readonly cause: UniApiCause   // 原始错误原因
+}
+```
 
 ```ts
 router.onError((err) => {
-  if (err.cause instanceof Error) {
-    console.error('原始错误:', err.cause.message)
+  if (err.cause) {
+    console.error(`API ${err.cause.api} 调用失败`)
+    console.error(`原因: ${err.cause.cause.errMsg}`)
   }
 })
 ```
 
 ## RouterErrorCode
 
-错误码枚举：
+错误码枚举，共 6 种：
 
-| 错误码 | 说明 | 触发场景 |
-| --- | --- | --- |
-| `ROUTE_NOT_FOUND` | 路由未找到 | 命名路由不存在，且 `strict: true` |
-| `ROUTE_DUPLICATE` | 路由重复 | 同一命名路由被多次注册 |
-| `GUARD_TIMEOUT` | 守卫超时 | 守卫在 `guardTimeout` 内未完成 |
-| `GUARD_ABORTED` | 守卫中止 | 守卫返回 `false` 或抛出错误 |
-| `NAVIGATION_ABORTED` | 导航中止 | 调用方主动中止或被其他守卫拦截 |
-| `NAVIGATION_DUPLICATE` | 重复导航 | 同一目标正在导航中 |
-| `PARAMS_INVALID` | 参数无效 | params 无法序列化 |
-| `READY_TIMEOUT` | 就绪超时 | 路由器在 `readyTimeout` 内未就绪 |
-| `INTERCEPT_ERROR` | 拦截器错误 | 拦截 uni 原生 API 时出错 |
-| `UNKNOWN` | 未知错误 | 其他未分类错误 |
+| 错误码 | 说明 | 触发场景 | 是否可恢复 |
+| --- | --- | --- | --- |
+| `NAVIGATION_ABORTED` | 导航被守卫中止 | 守卫调用 `next(false)` | 是 |
+| `NAVIGATION_CANCELLED` | 导航被取消 | 守卫超时/异常、重定向超限、栈不足 | 是 |
+| `NAVIGATION_DUPLICATED` | 重复导航 | `push` 到当前已处于的页面 | 是 |
+| `ROUTE_NOT_FOUND` | 路由未找到 | 严格模式下使用未定义的命名路由 | 是 |
+| `NAVIGATION_API_ERROR` | uni API 调用失败 | `uni.navigateTo` 等调用失败（如栈溢出） | 是 |
+| `SETUP_ERROR` | 初始化/使用错误 | `useRouter()` 在 setup 外调用 | 否 |
+
+::: tip 错误码判断
+推荐使用 `RouterErrorCode` 常量而非硬编码字符串，避免拼写错误：
+
+```ts
+import { RouterErrorCode } from '@meng-xi/uni-router'
+
+if (err.code === RouterErrorCode.NAVIGATION_DUPLICATED) {
+  // 忽略重复导航
+}
+```
+:::
 
 ## 错误捕获方式
 
@@ -92,7 +139,7 @@ router.onError((err) => {
 注册全局错误处理器，捕获所有导航错误：
 
 ```ts
-router.onError((err, to, from) => {
+const remove = router.onError((err, to, from) => {
   console.error('[导航错误]', {
     code: err.code,
     message: err.message,
@@ -100,37 +147,36 @@ router.onError((err, to, from) => {
     to: to?.path
   })
 
-  // 根据错误码处理
   switch (err.code) {
-    case 'ROUTE_NOT_FOUND':
+    case RouterErrorCode.ROUTE_NOT_FOUND:
       uni.showToast({ title: '页面不存在', icon: 'none' })
       break
-    case 'GUARD_TIMEOUT':
-      uni.showToast({ title: '页面加载超时，请重试', icon: 'none' })
+    case RouterErrorCode.NAVIGATION_API_ERROR:
+      uni.showToast({ title: '导航失败', icon: 'none' })
+      console.error('原始错误:', err.cause)
       break
-    case 'NAVIGATION_ABORTED':
-      // 用户主动中止，不提示
+    case RouterErrorCode.NAVIGATION_ABORTED:
+      // 守卫中止，通常无需提示
       break
-    default:
-      uni.showToast({ title: '页面跳转失败', icon: 'none' })
   }
 })
+
+// 移除处理器
+remove()
 ```
 
 ### try-catch（局部）
 
-`router.push()` / `router.replace()` / `router.back()` 返回 Promise，可通过 `try-catch` 捕获：
+`router.push()` / `replace()` / `relaunch()` / `back()` 返回 Promise，可通过 `try-catch` 捕获：
 
 ```ts
 try {
   await router.push({ name: 'detail', query: { id: '1' } })
-  // 导航成功
 } catch (err) {
-  // 导航失败
-  if (err.code === 'ROUTE_NOT_FOUND') {
+  if (err.code === RouterErrorCode.ROUTE_NOT_FOUND) {
     uni.showToast({ title: '页面不存在', icon: 'none' })
-  } else if (err.code === 'NAVIGATION_ABORTED') {
-    // 用户主动中止，无需处理
+  } else if (err.code === RouterErrorCode.NAVIGATION_ABORTED) {
+    // 守卫中止，无需处理
   } else {
     console.error('导航失败:', err)
   }
@@ -144,220 +190,159 @@ try {
 两者**不冲突**，`onError` 触发后 Promise 仍会 reject，可被 `try-catch` 捕获。
 :::
 
-## 错误处理策略
-
-### 统一错误处理
-
-```ts
-// main.ts
-router.onError((err) => {
-  // 埋点上报
-  trackError({
-    code: err.code,
-    message: err.message,
-    path: err.to?.path
-  })
-
-  // 默认提示
-  const messages: Record<string, string> = {
-    ROUTE_NOT_FOUND: '页面不存在',
-    GUARD_TIMEOUT: '页面加载超时',
-    NAVIGATION_DUPLICATE: '请勿重复点击',
-    PARAMS_INVALID: '参数错误'
-  }
-
-  const msg = messages[err.code] || '页面跳转失败'
-  if (err.code !== 'NAVIGATION_ABORTED') {
-    uni.showToast({ title: msg, icon: 'none' })
-  }
-})
-```
-
-### 分级错误处理
-
-```ts
-router.onError((err) => {
-  // 严重错误：影响用户流程
-  const severeErrors = ['ROUTE_NOT_FOUND', 'PARAMS_INVALID', 'INTERCEPT_ERROR']
-  if (severeErrors.includes(err.code)) {
-    uni.showModal({
-      title: '出错了',
-      content: err.message,
-      showCancel: false
-    })
-    return
-  }
-
-  // 可恢复错误：提示后继续
-  const recoverableErrors = ['GUARD_TIMEOUT', 'NAVIGATION_DUPLICATE']
-  if (recoverableErrors.includes(err.code)) {
-    uni.showToast({ title: err.message, icon: 'none' })
-    return
-  }
-
-  // 静默错误：不提示
-  const silentErrors = ['NAVIGATION_ABORTED', 'GUARD_ABORTED']
-  if (silentErrors.includes(err.code)) {
-    return
-  }
-
-  // 未知错误：默认提示
-  console.error('[RouterError]', err)
-  uni.showToast({ title: '未知错误', icon: 'none' })
-})
-```
-
-### 特定场景处理
-
-```ts
-// 页面跳转按钮
-async function handleNavigate() {
-  try {
-    await router.push({ name: 'detail', query: { id: '1' } })
-  } catch (err) {
-    if (err.code === 'NAVIGATION_ABORTED') {
-      // 守卫中止，可能已重定向到登录页，无需处理
-      return
-    }
-    if (err.code === 'NAVIGATION_DUPLICATE') {
-      uni.showToast({ title: '正在跳转中...', icon: 'none' })
-      return
-    }
-    // 其他错误已由全局 onError 处理
-  }
-}
-```
-
 ## 常见错误场景
 
-### ROUTE_NOT_FOUND
-
-```ts
-// 命名路由未注册
-await router.push({ name: 'non-existent' })
-// 抛出: { code: 'ROUTE_NOT_FOUND', message: 'Route "non-existent" not found' }
-
-// strict: false 时仅警告，不抛错
-const router = createRouter({ routes, strict: false })
-await router.push({ name: 'non-existent' })
-// 警告: [uni-router] Route "non-existent" not found, fallback to path
-```
-
-### GUARD_TIMEOUT
-
-```ts
-const router = createRouter({ routes, guardTimeout: 3000 })
-
-router.beforeEach(async (to, from, next) => {
-  // 模拟慢请求
-  await new Promise(resolve => setTimeout(resolve, 5000))
-  next()
-})
-
-await router.push({ name: 'about' })
-// 3 秒后抛出: { code: 'GUARD_TIMEOUT', message: 'Guard timeout after 3000ms' }
-```
-
 ### NAVIGATION_ABORTED
+
+守卫调用 `next(false)` 中止导航：
 
 ```ts
 router.beforeEach((to, from, next) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next(false)  // 中止导航
+    next(false) // 抛出 NAVIGATION_ABORTED
   } else {
     next()
   }
 })
-
-try {
-  await router.push({ name: 'admin' })
-} catch (err) {
-  // err.code === 'NAVIGATION_ABORTED'
-  console.log('导航被守卫中止')
-}
 ```
 
-### NAVIGATION_DUPLICATE
+### NAVIGATION_CANCELLED
+
+多种场景触发：
 
 ```ts
-// 快速连续点击
-async function handleClick() {
-  try {
-    await router.push({ name: 'detail' })
-  } catch (err) {
-    if (err.code === 'NAVIGATION_DUPLICATE') {
-      // 同一目标正在导航中，忽略
-      return
-    }
-    throw err
-  }
-}
-
-// 模拟快速点击
-handleClick()  // 开始导航
-handleClick()  // 抛出 NAVIGATION_DUPLICATE
-```
-
-### PARAMS_INVALID
-
-```ts
-// 传递无法序列化的数据
-const circular = { a: 1 }
-circular.self = circular
-
-try {
-  await router.push({ name: 'detail', params: { data: circular } })
-} catch (err) {
-  // err.code === 'PARAMS_INVALID'
-  console.error('参数无法序列化:', err.cause)
-}
-```
-
-## 自定义错误
-
-在守卫中抛出自定义错误：
-
-```ts
-class PermissionError extends Error {
-  constructor(public requiredRole: string) {
-    super(`需要 ${requiredRole} 权限`)
-    this.name = 'PermissionError'
-  }
-}
-
-router.beforeEach((to, from, next) => {
-  if (to.meta.roles && !hasRole(to.meta.roles)) {
-    next(new PermissionError(to.meta.roles[0]))
-    return
-  }
+// 1. 守卫超时（超过 guardTimeout）
+router.beforeEach(async (to, from, next) => {
+  await verySlowOperation() // 超时
   next()
 })
 
+// 2. 守卫抛出未捕获异常
+router.beforeEach(() => {
+  throw new Error('守卫异常') // 转为 NAVIGATION_CANCELLED
+})
+
+// 3. 重定向超限（>10 次）
+router.beforeEach((to, from, next) => {
+  next({ name: 'a' }) // a → b → a → b ... 超过 10 次
+})
+
+// 4. back() 时栈不足
+router.back(10) // 当前栈只有 3 层
+```
+
+### NAVIGATION_DUPLICATED
+
+`push` 到当前已处于的页面（路径、名称、查询参数均相同）：
+
+```ts
+// 当前在 /pages/about/about
+await router.push({ name: 'about' }) // 抛出 NAVIGATION_DUPLICATED
+```
+
+::: tip 仅 push 检测
+`replace` / `relaunch` / `back` 不检测重复，可以跳转到当前位置。
+:::
+
+### ROUTE_NOT_FOUND
+
+严格模式下使用未定义的命名路由：
+
+```ts
+const router = createRouter({ routes, strict: true })
+await router.push({ name: 'not-exist' }) // 抛出 ROUTE_NOT_FOUND
+```
+
+### NAVIGATION_API_ERROR
+
+uni 导航 API 调用失败，`cause` 携带原始错误信息：
+
+```ts
+// 小程序页面栈已达 10 层上限
+await router.push({ name: 'page11' })
+// 抛出 NAVIGATION_API_ERROR
+// err.cause.api === 'navigateTo'
+// err.cause.cause.errMsg 包含 'limit exceed'
+
 router.onError((err) => {
-  if (err.cause instanceof PermissionError) {
-    uni.showModal({
-      title: '权限不足',
-      content: err.cause.message,
-      showCancel: false
-    })
+  if (err.code === RouterErrorCode.NAVIGATION_API_ERROR) {
+    if (String(err.cause?.cause.errMsg).includes('limit')) {
+      // 页面栈溢出，改用 relaunch 重置栈
+      await router.relaunch(err.to)
+    }
   }
 })
 ```
 
-## 错误码速查表
+### SETUP_ERROR
 
-| 错误码 | 严重程度 | 是否提示用户 | 常见原因 |
-| --- | --- | --- | --- |
-| `ROUTE_NOT_FOUND` | 高 | 是 | 路由名拼写错误、路由未注册 |
-| `ROUTE_DUPLICATE` | 中 | 否 | 路由配置重复 |
-| `GUARD_TIMEOUT` | 中 | 是 | 守卫中异步操作过慢 |
-| `GUARD_ABORTED` | 低 | 否 | 守卫主动中止（正常行为） |
-| `NAVIGATION_ABORTED` | 低 | 否 | 守卫中止或重定向 |
-| `NAVIGATION_DUPLICATE` | 低 | 否 | 重复点击导航按钮 |
-| `PARAMS_INVALID` | 高 | 是 | params 含循环引用等 |
-| `READY_TIMEOUT` | 高 | 是 | 路由器初始化失败 |
-| `INTERCEPT_ERROR` | 高 | 是 | 拦截器配置错误 |
-| `UNKNOWN` | 高 | 是 | 未分类错误 |
+路由器初始化或使用方式错误，不可恢复：
+
+```ts
+// useRouter() 在 setup 外调用
+const router = useRouter() // 抛出 SETUP_ERROR
+```
+
+## 错误处理策略
+
+### 分级处理
+
+```ts
+router.onError((err) => {
+  switch (err.code) {
+    // 静默错误：不提示用户
+    case RouterErrorCode.NAVIGATION_ABORTED:
+    case RouterErrorCode.NAVIGATION_DUPLICATED:
+      return
+
+    // 可恢复错误：轻提示
+    case RouterErrorCode.NAVIGATION_CANCELLED:
+      uni.showToast({ title: '导航取消', icon: 'none' })
+      return
+
+    // 严重错误：弹窗提示
+    case RouterErrorCode.ROUTE_NOT_FOUND:
+    case RouterErrorCode.NAVIGATION_API_ERROR:
+      uni.showModal({
+        title: '出错了',
+        content: err.message,
+        showCancel: false
+      })
+      return
+
+    // 初始化错误
+    case RouterErrorCode.SETUP_ERROR:
+      console.error('[初始化错误]', err)
+      return
+  }
+})
+```
+
+### 全局 + 局部协作
+
+```ts
+// 全局：日志和埋点
+router.onError((err, to, from) => {
+  analytics.report({
+    event: 'navigation_error',
+    code: err.code,
+    from: from?.path,
+    to: to?.path
+  })
+})
+
+// 局部：按钮 loading 状态
+async function handleNavigate() {
+  loading.value = true
+  try {
+    await router.push({ name: 'home' })
+  } catch (err) {
+    if (err.code === RouterErrorCode.NAVIGATION_DUPLICATED) return
+  } finally {
+    loading.value = false
+  }
+}
+```
 
 ## 下一步
 

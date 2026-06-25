@@ -436,6 +436,70 @@ onShow(() => {
 Failure to sync will cause `currentRoute` to be inconsistent with the actual page, and `useRoute()` will return stale values.
 :::
 
+### guardRoute()
+
+Runs the guard chain against the specified route (without performing actual navigation). Designed for **cold start** scenarios.
+
+```ts
+guardRoute(location?: RouteLocationRaw, options?: GuardRouteOptions): Promise<RouteLocation>
+```
+
+- **location**: Target route location; defaults to checking the current route if not provided
+- **options**: Options, can pass `onAbort` callback to handle guard abort
+- **Returns**: Resolves with the target route when guards pass; resolves after redirect when guards redirect; rejects on abort
+
+### Cold Start Problem
+
+When a user **directly enters** a page via H5 URL / mini-program scene value / App deeplink, the page is loaded directly by the uni-app framework, **bypassing router navigation**, and guards (`beforeEach` etc.) are not executed:
+
+```
+User accesses https://example.com/#/pages/about/about
+  → uni-app directly loads the about page
+  → Router guards are not executed (no router.push was called)
+  → Unauthenticated user directly enters a requireAuth page
+```
+
+`guardRoute()` is used to run the guard chain for such already-loaded pages:
+
+```ts
+// App.vue
+import { onLaunch } from '@dcloudio/uni-app'
+import { useRouter } from '@meng-xi/uni-router'
+
+const router = useRouter()
+
+onLaunch(() => {
+  router.isReady().then(() => {
+    router.guardRoute(undefined, {
+      onAbort: (failure) => {
+        // Guard aborted (e.g., not logged in), navigate to a safe page
+        console.warn('Cold start guard aborted:', failure.code)
+        router.relaunch({ name: 'home' })
+      }
+    })
+  })
+})
+```
+
+### Guard Result Handling
+
+| Guard Result | Behavior |
+| --- | --- |
+| Pass (`next()`) | No navigation, resolves with the target route |
+| Redirect (`next(location)`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
+| Abort (`next(false)`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
+
+::: warning Cold start cannot truly "block entry"
+In cold start scenarios the page is already loaded, so `guardRoute()` cannot truly prevent the page from displaying. When a guard aborts, using the `onAbort` callback to execute `router.relaunch()` to navigate to a safe page is the recommended approach.
+:::
+
+::: tip Difference from syncRoute
+- `syncRoute()`: Only syncs `currentRoute` state, **does not run guards**
+- `guardRoute()`: **Runs the guard chain** against the current route, for cold start re-checking
+
+Both can be used together: `syncRoute` for state sync after physical back, `guardRoute` for guard re-execution during cold start.
+:::
+
 ## Installation Method
 
 ### install()
@@ -471,6 +535,7 @@ The installation registers the following:
 | `onRouteChange()` | Listen to route changes | Remove function |
 | `onError()` | Register error handler | Remove function |
 | `syncRoute()` | Sync state | `void` |
+| `guardRoute()` | Cold start guard check | `Promise<RouteLocation>` |
 | `install()` | Install to Vue | `void` |
 
 ## Next Steps

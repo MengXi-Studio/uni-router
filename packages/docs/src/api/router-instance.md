@@ -436,6 +436,70 @@ onShow(() => {
 未同步会导致 `currentRoute` 与实际页面不一致，`useRoute()` 返回旧值。
 :::
 
+### guardRoute()
+
+对指定路由执行守卫链检查（不执行实际导航）。专为**冷启动**场景设计。
+
+```ts
+guardRoute(location?: RouteLocationRaw, options?: GuardRouteOptions): Promise<RouteLocation>
+```
+
+- **location**: 目标路由位置，不传时默认检查当前路由
+- **options**: 选项，可传入 `onAbort` 回调处理守卫中止
+- **返回值**: 守卫放行时 resolve 目标路由；重定向时跳转后 resolve；中止时 reject
+
+### 冷启动问题
+
+当用户通过 H5 URL / 小程序场景值 / App deeplink **直接进入**某个页面时，页面由 uni-app 框架直接加载，**不经过路由器导航**，守卫（`beforeEach` 等）未执行：
+
+```
+用户访问 https://example.com/#/pages/about/about
+  → uni-app 直接加载 about 页
+  → 路由器守卫未执行（未经过 router.push）
+  → 未登录用户直接进入了 requireAuth 页面
+```
+
+`guardRoute()` 用于对此类已加载页面补执行守卫链：
+
+```ts
+// App.vue
+import { onLaunch } from '@dcloudio/uni-app'
+import { useRouter } from '@meng-xi/uni-router'
+
+const router = useRouter()
+
+onLaunch(() => {
+  router.isReady().then(() => {
+    router.guardRoute(undefined, {
+      onAbort: (failure) => {
+        // 守卫中止（如未登录），跳转到安全页面
+        console.warn('冷启动守卫中止:', failure.code)
+        router.relaunch({ name: 'home' })
+      }
+    })
+  })
+})
+```
+
+### 守卫结果处理
+
+| 守卫结果 | 行为 |
+| --- | --- |
+| 放行（`next()`） | 不执行导航，resolve 目标路由 |
+| 重定向（`next(location)`） | 按守卫指定的方式（默认 `relaunch`）跳转到重定向目标 |
+| 中止（`next(false)`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
+
+::: warning 冷启动无法真正"阻止进入"
+冷启动场景下页面已加载，`guardRoute()` 无法真正阻止页面显示。当守卫中止时，通过 `onAbort` 回调执行 `router.relaunch()` 跳转到安全页面是推荐的应对方式。
+:::
+
+::: tip 与 syncRoute 的区别
+- `syncRoute()`：仅同步 `currentRoute` 状态，**不执行守卫**
+- `guardRoute()`：对当前路由**执行守卫链**，用于冷启动补校验
+
+两者可配合使用：`syncRoute` 用于物理返回后的状态同步，`guardRoute` 用于冷启动时的守卫补执行。
+:::
+
 ## 安装方法
 
 ### install()
@@ -471,6 +535,7 @@ install(app: App): void
 | `onRouteChange()` | 监听路由变化 | 移除函数 |
 | `onError()` | 注册错误处理 | 移除函数 |
 | `syncRoute()` | 同步状态 | `void` |
+| `guardRoute()` | 冷启动守卫检查 | `Promise<RouteLocation>` |
 | `install()` | 安装到 Vue | `void` |
 
 ## 下一步
