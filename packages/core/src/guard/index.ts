@@ -144,6 +144,10 @@ function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation
 						resolved = true
 						if (timer) clearTimeout(timer)
 						resolve({ type: 'next' })
+					} else {
+						// next() 已被调用且守卫返回了 Promise：两种解析模式混用
+						// next() 之后的异步错误会被静默吞掉，开发者应选择其中一种
+						warn(`Navigation guard "${guard.name || 'anonymous'}" called next() and also returned a Promise. Use either next() callback or async/await, not both.`)
 					}
 				})
 				.catch(() => {
