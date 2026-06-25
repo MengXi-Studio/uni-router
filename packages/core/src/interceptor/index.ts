@@ -10,10 +10,36 @@ import { normalizePath, parseQuery } from '@/utils/path'
  * 拦截器通过内部标记区分「路由器发起的调用」和「外部直接调用」：
  * - 路由器发起：标记放行，不重复执行守卫
  * - 外部直接调用：阻止原始调用，转由 router.push / replace / back 执行完整守卫链
+ *
+ * **switchTab 特殊处理（H5 平台）**：
+ * 仅在 H5 平台下，TabBar 是由运行时管理的组件。若同步阻止（返回 false）uni.switchTab，
+ * TabBar 组件的内部「切换中」状态无法被清除，导致后续点击失效。
+ * 因此在 H5 平台下对 switchTab 采用「放行原始调用 + success 回调同步状态」的策略，
+ * 而非阻止重定向。这意味着 H5 平台下外部 switchTab 调用不经过前置守卫，
+ * 权限控制需在页面 onShow 生命周期中处理。
+ *
+ * 说明：App 平台（含 App-vue 和 App-nvue）的 TabBar 是原生组件，
+ * 业务代码运行在 jscore/v8 逻辑层（非 webview），不存在 window/document 对象，
+ * 行为与小程序一致，走完整的「阻止 + 转发」流程，守卫正常生效。
  */
 
 /** 需要拦截的 uni 导航 API 列表 */
 const INTERCEPTED_APIS = ['navigateTo', 'redirectTo', 'switchTab', 'reLaunch', 'navigateBack'] as const
+
+/**
+ * 检测当前是否为 H5 平台
+ *
+ * 仅 H5 平台的业务代码运行在浏览器环境中，存在 window 和 document 对象；
+ * 小程序平台和 App 平台（含 App-vue / App-nvue）的业务代码均运行在 jscore/v8 逻辑层，
+ * 不存在 window/document，TabBar 为原生组件，行为与小程序一致。
+ *
+ * 在 H5 平台下阻止 uni.switchTab 会导致 TabBar 组件状态卡死，需特殊处理。
+ *
+ * @returns 当前为 H5 平台时返回 true
+ */
+function isWebPlatform(): boolean {
+	return typeof window !== 'undefined' && typeof document !== 'undefined'
+}
 
 /**
  * 拦截器管理器
@@ -162,6 +188,7 @@ function handleInterceptedNavigation(api: string, args: Record<string, any>): fa
 			break
 		}
 		case 'switchTab': {
+			// 仅小程序平台走到此处（Web 平台已在 invoke 中通过 handleWebSwitchTab 放行）
 			const { path } = parseUniUrl(args.url || '')
 			if (path) {
 				router.push(path)
@@ -185,10 +212,43 @@ function handleInterceptedNavigation(api: string, args: Record<string, any>): fa
 }
 
 /**
+ * 处理 H5 平台下被拦截的 switchTab 调用
+ *
+ * 在 H5 平台下，阻止 uni.switchTab 会导致 TabBar 组件内部状态卡死，
+ * 后续点击失效。因此采用「放行原始调用 + success 回调同步状态」策略：
+ * 不阻止原始 switchTab，而是在其 success 回调中调用 router.syncRoute() 同步路由状态。
+ *
+ * 注意：此策略下外部 switchTab 调用不经过前置守卫（beforeEach），
+ * TabBar 页面的权限控制需在页面 onShow 生命周期中处理。
+ *
+ * @param args - uni API 调用参数
+ * @returns 原始 args（放行调用），success 回调已被包装以同步状态
+ */
+function handleWebSwitchTab(args: Record<string, any>): Record<string, any> {
+	const router = activeManager?.getRouter()
+	if (!router) return args
+
+	// 包装 success 回调，在 switchTab 完成后同步路由状态
+	const originalSuccess = args.success
+	args.success = function (res: any) {
+		router.syncRoute()
+		if (typeof originalSuccess === 'function') {
+			originalSuccess(res)
+		}
+	}
+
+	return args
+}
+
+/**
  * 安装 uni API 拦截器
  *
  * 拦截 navigateTo、redirectTo、switchTab、navigateBack 四个导航 API，
  * 将外部直接调用重定向到路由器实例，确保路由守卫始终生效。
+ *
+ * **switchTab 特殊处理**：在 H5 平台下，switchTab 采用放行 + 同步策略，
+ * 避免阻止原始调用导致 TabBar 组件状态卡死。详见 {@link handleWebSwitchTab}。
+ * App 平台（App-vue / App-nvue）和小程序平台均走完整的拦截 + 转发流程。
  *
  * @param router - 路由器实例
  */
@@ -213,7 +273,14 @@ export function installInterceptors(router: Router): void {
 				if (activeManager?.isRouterCall()) {
 					return args
 				}
-				// 先处理拦截逻辑（在 URL 被清空前解析路径并触发路由器导航）
+
+				// H5 平台下 switchTab 特殊处理：放行原始调用，在 success 中同步状态
+				// 阻止 switchTab 会导致 H5 TabBar 组件状态卡死，后续点击失效
+				if (api === 'switchTab' && isWebPlatform()) {
+					return handleWebSwitchTab(args)
+				}
+
+				// 其他 API：先处理拦截逻辑（在 URL 被清空前解析路径并触发路由器导航）
 				const result = handleInterceptedNavigation(api, args)
 				// 双重保险：修改 URL 防止低版本基础库忽略返回值
 				// 部分低版本小程序基础库可能忽略 invoke 返回的 false 而继续执行原始 API

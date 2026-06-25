@@ -224,7 +224,7 @@ if (typeof uni.addInterceptor !== 'function') {
 case 'switchTab': {
   const { path } = parseUniUrl(args.url || '')
   if (path) {
-    router.push(path) // 转发到 push，路由器根据 meta.isTab 自动选择 switchTab
+    router.push(path) // 转发到 push，路由器会根据 meta.isTab 自动选择 switchTab
   }
   break
 }
@@ -234,6 +234,73 @@ case 'switchTab': {
 
 ::: warning switchTab 的 query 丢失
 `uni.switchTab` 本身不支持 query。拦截器解析 URL 时会提取 query，但由于最终仍走 `uni.switchTab`，query 会被忽略。这是 uni-app 的限制，非拦截器问题。
+:::
+
+#### H5 平台的差异化策略
+
+::: danger 关键差异
+上述「阻止 + 转发」逻辑**仅适用于小程序平台和 App 平台**。在 H5 平台下，`switchTab` 不能被同步阻止，否则会导致 TabBar 组件状态卡死。
+:::
+
+**问题现象**
+
+在 H5 平台下，若拦截器对 `uni.switchTab` 返回 `false`（同步阻止），TabBar 组件内部的「切换中」状态无法被清除。表现为：
+
+- 点击 TabBar 某个菜单后，**该菜单保持高亮**，其他菜单**无法再被点击**
+- 后续点击事件被运行时直接忽略，应用陷入"假死"状态
+
+**根本原因**
+
+H5 平台的 TabBar 是运行时管理的组件，其切换流程依赖 `uni.switchTab` 调用的完整执行。同步阻止调用会打断组件内部状态机，导致「切换中」状态无法流转到「完成」状态。
+
+> **关于 App 平台**：App 平台（含 App-vue 和 App-nvue）的业务代码运行在 jscore/v8 逻辑层，**不在 webview 中**，不存在 `window`/`document` 对象。其 TabBar 为原生组件，行为与小程序一致，走完整的「阻止 + 转发」流程，守卫正常生效。
+
+**解决方案：放行 + 同步状态**
+
+针对 H5 平台，拦截器采用差异化策略——不阻止原始调用，而在 `success` 回调中同步路由状态：
+
+```ts
+function handleWebSwitchTab(args: Record<string, any>): Record<string, any> {
+  const router = activeManager?.getRouter()
+  if (!router) return args
+
+  // 包装 success 回调，在 switchTab 完成后同步路由状态
+  const originalSuccess = args.success
+  args.success = function (res: any) {
+    router.syncRoute() // 同步路由状态，使 useRoute 等响应式 API 正常工作
+    if (typeof originalSuccess === 'function') {
+      originalSuccess(res)
+    }
+  }
+
+  return args // 放行原始调用
+}
+```
+
+平台检测通过 `window` / `document` 对象是否存在来识别 H5 平台：
+
+```ts
+function isWebPlatform(): boolean {
+  return typeof window !== 'undefined' && typeof document !== 'undefined'
+}
+```
+
+::: warning H5 平台的守卫限制
+由于 H5 平台下 `switchTab` 调用被放行，**外部 `uni.switchTab` 不会经过前置守卫（beforeEach）**。这意味着：
+
+- 通过 `uni.switchTab` 跳转的 TabBar 页面不会触发守卫的权限校验
+- 若 TabBar 页面需要权限控制，应在页面 `onShow` 生命周期中处理
+
+```ts
+// TabBar 页面权限控制示例
+onShow(() => {
+  if (!isLoggedIn()) {
+    router.replace({ name: 'login' })
+  }
+})
+```
+
+其他 API（`navigateTo` / `redirectTo` / `reLaunch` / `navigateBack`）在所有平台均走完整的拦截 + 守卫流程，不受此差异影响。
 :::
 
 ## 何时启用

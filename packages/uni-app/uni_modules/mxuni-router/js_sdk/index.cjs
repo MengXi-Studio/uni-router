@@ -217,6 +217,9 @@ function normalizePath(path) {
 
 // src/interceptor/index.ts
 var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
+function isWebPlatform() {
+  return typeof window !== "undefined" && typeof document !== "undefined";
+}
 var InterceptorManager = class {
   constructor() {
     /** 路由器内部发起的 uni API 调用计数器，用于区分路由器调用和外部调用 */
@@ -325,6 +328,18 @@ function handleInterceptedNavigation(api, args) {
   }
   return false;
 }
+function handleWebSwitchTab(args) {
+  const router = activeManager?.getRouter();
+  if (!router) return args;
+  const originalSuccess = args.success;
+  args.success = function(res) {
+    router.syncRoute();
+    if (typeof originalSuccess === "function") {
+      originalSuccess(res);
+    }
+  };
+  return args;
+}
 function installInterceptors(router) {
   if (typeof uni.addInterceptor !== "function") {
     console.warn("[uni-router] uni.addInterceptor is not available, interceptUniApi option will be ignored");
@@ -341,6 +356,9 @@ function installInterceptors(router) {
       invoke(args) {
         if (activeManager?.isRouterCall()) {
           return args;
+        }
+        if (api === "switchTab" && isWebPlatform()) {
+          return handleWebSwitchTab(args);
         }
         const result = handleInterceptedNavigation(api, args);
         if ("url" in args) args.url = "";

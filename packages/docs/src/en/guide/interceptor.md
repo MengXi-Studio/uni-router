@@ -236,6 +236,73 @@ External `uni.switchTab` calls are forwarded to `router.push`. The router will a
 `uni.switchTab` itself doesn't support query. The interceptor parses the URL and extracts query, but since it ultimately still goes through `uni.switchTab`, the query is ignored. This is a uni-app limitation, not an interceptor issue.
 :::
 
+#### Differentiated Strategy for the H5 Platform
+
+::: danger Key Difference
+The "block + forward" logic above **only applies to mini-program platforms and the App platform**. On the H5 platform, `switchTab` cannot be synchronously blocked, or it will cause the TabBar component state to freeze.
+:::
+
+**Symptom**
+
+On the H5 platform, if the interceptor returns `false` (synchronous block) for `uni.switchTab`, the TabBar component's internal "switching" state cannot be cleared. The behavior is:
+
+- After clicking a TabBar menu item, **that item stays highlighted** and other menu items **can no longer be clicked**
+- Subsequent click events are directly ignored by the runtime, leaving the app in a "frozen" state
+
+**Root Cause**
+
+On the H5 platform, TabBar is a runtime-managed component whose switching flow depends on the complete execution of the `uni.switchTab` call. Synchronously blocking the call interrupts the component's internal state machine, preventing the "switching" state from transitioning to the "completed" state.
+
+> **About the App platform**: The App platform (both App-vue and App-nvue) runs its business code in the jscore/v8 logic layer, **not in a webview**, and does not have `window`/`document` objects. Its TabBar is a native component, behaving the same as mini-programs — it goes through the full "block + forward" flow with guards working normally.
+
+**Solution: Allow + Sync State**
+
+For the H5 platform, the interceptor adopts a differentiated strategy — instead of blocking the original call, it syncs the route state in the `success` callback:
+
+```ts
+function handleWebSwitchTab(args: Record<string, any>): Record<string, any> {
+  const router = activeManager?.getRouter()
+  if (!router) return args
+
+  // Wrap success callback to sync route state after switchTab completes
+  const originalSuccess = args.success
+  args.success = function (res: any) {
+    router.syncRoute() // Sync route state so reactive APIs like useRoute work properly
+    if (typeof originalSuccess === 'function') {
+      originalSuccess(res)
+    }
+  }
+
+  return args // Allow the original call
+}
+```
+
+Platform detection identifies the H5 platform via the existence of `window` / `document` objects:
+
+```ts
+function isWebPlatform(): boolean {
+  return typeof window !== 'undefined' && typeof document !== 'undefined'
+}
+```
+
+::: warning Guard Limitations on the H5 Platform
+Since `switchTab` calls are allowed on the H5 platform, **external `uni.switchTab` does not go through the beforeEach guard**. This means:
+
+- TabBar pages navigated via `uni.switchTab` will not trigger the guard's permission checks
+- If TabBar pages require permission control, handle it in the page's `onShow` lifecycle
+
+```ts
+// TabBar page permission control example
+onShow(() => {
+  if (!isLoggedIn()) {
+    router.replace({ name: 'login' })
+  }
+})
+```
+
+Other APIs (`navigateTo` / `redirectTo` / `reLaunch` / `navigateBack`) go through the complete interception + guard flow on all platforms and are not affected by this difference.
+:::
+
 ## When to Enable
 
 ### Recommended Scenarios
