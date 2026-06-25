@@ -1,7 +1,7 @@
 /**
  * @plugin generate-router
- * @date 2026-06-23 22:49:20
- * @version 0.2.3
+ * @date 2026-06-26 00:00:00
+ * @version 0.2.6
  */
 
 import type { RouteConfig } from '@meng-xi/uni-router'
@@ -19,7 +19,13 @@ export const routes: RouteConfig[] = [
 	{
 		path: '/pages/guards/index',
 		name: 'pagesGuardsIndex',
-		meta: { title: '路由守卫' }
+		meta: { title: '路由守卫' },
+		// 路由独享守卫：进入此页面时触发，可在控制台查看日志
+		// preserveRouteChanges: true 保留此手动添加的守卫
+		beforeEnter: (_to, _from, next) => {
+			console.log('[beforeEnter] 路由独享守卫 - guards 页面')
+			next()
+		}
 	},
 	{
 		path: '/pages/about/index',
@@ -45,6 +51,11 @@ export const routes: RouteConfig[] = [
 		path: '/pages/composable/index',
 		name: 'pagesComposableIndex',
 		meta: { title: '组合式 API' }
+	},
+	{
+		path: '/pages/error/index',
+		name: 'pagesErrorIndex',
+		meta: { title: '错误处理' }
 	}
 ]
 

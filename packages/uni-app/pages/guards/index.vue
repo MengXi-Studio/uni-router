@@ -82,6 +82,37 @@
 				<text class="btn-text-secondary">relaunch 重定向到关于页</text>
 			</view>
 		</view>
+
+		<!-- beforeEnter 路由独享守卫 -->
+		<view class="card">
+			<text class="card-title">beforeEnter - 路由独享守卫</text>
+			<text class="desc">定义在路由配置上的守卫，仅对该路由生效。本页（guards）已配置 beforeEnter，进入时会输出日志。</text>
+			<view class="code-block"> // router.config.ts { path: '/pages/guards/index', name: 'pagesGuardsIndex', beforeEnter: (to, from, next) => { console.log('[beforeEnter] 路由独享守卫 - guards 页面') next() } } </view>
+			<text class="hint">执行顺序：beforeEach → beforeEnter → beforeResolve → afterEach。点击下方按钮重新进入本页，观察控制台日志。</text>
+			<view class="btn" @click="reenterGuards">
+				<text class="btn-text">replace 重新进入本页（查看控制台）</text>
+			</view>
+		</view>
+
+		<!-- guardRoute() 冷启动守卫检查 -->
+		<view class="card">
+			<text class="card-title">guardRoute() - 冷启动守卫检查</text>
+			<text class="desc">当用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，页面由 uni-app 框架直接加载，不经过路由器导航，守卫（beforeEach 等）未执行。guardRoute() 对当前已加载页面补执行守卫链。</text>
+			<view class="code-block">
+				// App.vue onLaunch 中 router.isReady().then(() => { router.guardRoute(undefined, { onAbort: (failure) => { // 守卫中止，跳转到安全页面 router.relaunch('/pages/index/index') } }) })
+			</view>
+			<text class="hint">行为：守卫放行→不执行导航；守卫重定向→按指定方式跳转；守卫中止→调用 onAbort 并 reject。</text>
+			<view class="btn" @click="testGuardRoute">
+				<text class="btn-text">测试：对当前路由执行 guardRoute()</text>
+			</view>
+			<view class="btn btn-warning" @click="testGuardRouteAbort">
+				<text class="btn-text">测试：guardRoute() 被守卫中止</text>
+			</view>
+			<view v-if="guardRouteLog" class="info-row">
+				<text class="info-label">结果</text>
+				<text class="info-value">{{ guardRouteLog }}</text>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -91,7 +122,8 @@ import router from '../../router'
 export default {
 	data() {
 		return {
-			logs: []
+			logs: [],
+			guardRouteLog: ''
 		}
 	},
 	onLoad() {
@@ -156,6 +188,44 @@ export default {
 		},
 		redirectWithRelaunch() {
 			this.redirectWithMode('relaunch')
+		},
+		// ===== beforeEnter 路由独享守卫演示 =====
+		reenterGuards() {
+			this.addLog('replace 重新进入本页，触发 beforeEnter')
+			router.replace('/pages/guards/index').catch(e => {
+				this.addLog(`导航结果: ${e.message || e}`)
+			})
+		},
+		// ===== guardRoute() 冷启动守卫检查演示 =====
+		testGuardRoute() {
+			this.guardRouteLog = ''
+			this.addLog('对当前路由执行 guardRoute()...')
+			router
+				.guardRoute()
+				.then(route => {
+					this.guardRouteLog = `守卫放行，当前路由: ${route.fullPath}`
+					this.addLog(this.guardRouteLog)
+					uni.showToast({ title: '守卫检查通过', icon: 'none' })
+				})
+				.catch(() => {})
+		},
+		testGuardRouteAbort() {
+			this.guardRouteLog = ''
+			this.addLog('注册一次性守卫调用 next(false)，再执行 guardRoute()...')
+			// 临时注册一个调用 next(false) 的守卫
+			const removeGuard = router.beforeEach((_to, _from, next) => {
+				next(false)
+				removeGuard()
+			})
+			router
+				.guardRoute(undefined, {
+					onAbort: failure => {
+						this.guardRouteLog = `守卫中止: ${failure.code}`
+						this.addLog(this.guardRouteLog)
+						uni.showToast({ title: `guardRoute 被中止: ${failure.code}`, icon: 'none' })
+					}
+				})
+				.catch(() => {})
 		}
 	}
 }

@@ -198,12 +198,15 @@
 		<!-- 错误处理 -->
 		<view class="card">
 			<text class="card-title">错误处理</text>
-			<text class="hint">导航到不存在的路由或重复导航</text>
+			<text class="hint">完整的 RouterError / NavigationFailure 错误体系演示</text>
+			<view class="btn" @click="goToError">
+				<text class="btn-text">查看错误处理演示</text>
+			</view>
 			<view class="btn btn-warning" @click="goToNotFound">
-				<text class="btn-text">导航到不存在的路由</text>
+				<text class="btn-text">快速测试：导航到不存在的路由</text>
 			</view>
 			<view class="btn btn-warning" @click="goToDuplicate">
-				<text class="btn-text">重复导航当前页面</text>
+				<text class="btn-text">快速测试：重复导航当前页面</text>
 			</view>
 			<view v-if="lastError" class="error-box">
 				<text class="error-text">{{ lastError }}</text>
@@ -371,6 +374,14 @@ export default {
 			try {
 				this.lastError = ''
 				await router.push('/pages/not-exist/index')
+			} catch (e) {
+				this.lastError = e.message || String(e)
+			}
+		},
+		async goToError() {
+			try {
+				this.lastError = ''
+				await router.push('/pages/error/index')
 			} catch (e) {
 				this.lastError = e.message || String(e)
 			}

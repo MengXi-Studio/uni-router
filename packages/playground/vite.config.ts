@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import uni from '@dcloudio/vite-plugin-uni'
-import { generateRouter } from '@meng-xi/vite-plugin'
+import { generateRouter } from '@meng-xi/vite-plugin/plugins/generate-router'
 
 export default defineConfig({
 	plugins: [
