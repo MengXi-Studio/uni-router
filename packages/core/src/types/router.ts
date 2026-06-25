@@ -1,6 +1,6 @@
 import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationAnimation, NavigationResult } from './route'
 import type { NavigationGuard, PostNavigationGuard } from './guard'
-import type { RouterError } from './error'
+import type { RouterError, NavigationFailure } from './error'
 import type { App } from 'vue'
 
 /**
@@ -10,6 +10,22 @@ import type { App } from 'vue'
  * @param from - 来源路由
  */
 export type RouterOnError = (error: RouterError, to: RouteLocation, from: RouteLocation) => void
+
+/**
+ * guardRoute 方法的选项
+ */
+export interface GuardRouteOptions {
+	/**
+	 * 守卫中止时的回调
+	 *
+	 * 冷启动场景下页面已加载，无法真正"阻止进入"。
+	 * 当守卫调用 `next(false)` 中止时，将调用此回调并传入 `NavigationFailure` 对象。
+	 * 用户可在此回调中执行 `router.relaunch()` 等操作跳转到安全页面。
+	 *
+	 * @param failure - 导航失败对象
+	 */
+	onAbort?: (failure: NavigationFailure) => void
+}
 
 /**
  * 路由器初始化选项
@@ -197,6 +213,34 @@ export interface Router {
 	 * 建议在每个页面的 onShow 生命周期中调用此方法。
 	 */
 	syncRoute(): void
+
+	/**
+	 * 对指定路由执行守卫链检查（不执行实际导航）
+	 *
+	 * 用于冷启动场景：用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，
+	 * 页面由 uni-app 框架直接加载，不经过路由器导航，守卫（beforeEach 等）未执行。
+	 * 调用此方法可对当前页面补执行守卫链，按守卫结果决定是否重定向。
+	 *
+	 * 行为：
+	 * - 守卫放行：不执行任何导航，resolve 目标路由
+	 * - 守卫重定向：按守卫指定的方式（默认 `relaunch`）跳转到重定向目标
+	 * - 守卫中止：调用 `onAbort` 回调（若提供），并 reject `NavigationFailure`
+	 *
+	 * 典型用法：
+	 * ```typescript
+	 * // App.vue onLaunch 中
+	 * router.isReady().then(() => {
+	 *   router.guardRoute(undefined, {
+	 *     onAbort: () => router.relaunch('/pages/index/index')
+	 *   })
+	 * })
+	 * ```
+	 *
+	 * @param location - 目标路由位置，不传时默认检查当前路由
+	 * @param options - 选项，可传入 onAbort 回调处理守卫中止
+	 * @returns 守卫放行时 resolve 目标路由；重定向时跳转后 resolve；中止时 reject
+	 */
+	guardRoute(location?: RouteLocationRaw, options?: GuardRouteOptions): Promise<RouteLocation>
 
 	/**
 	 * 安装路由器到 Vue 应用实例，注册全局属性和 provide

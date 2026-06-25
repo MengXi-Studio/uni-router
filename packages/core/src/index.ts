@@ -23,6 +23,7 @@ export type {
 	RouterOnError,
 	RouterOptions,
 	Router,
+	GuardRouteOptions,
 	QueryValue,
 	ParamValue,
 	ParamObject
