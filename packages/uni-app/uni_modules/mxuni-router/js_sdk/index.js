@@ -108,6 +108,8 @@ function runGuard(guard, to, from, timeout) {
           resolved = true;
           if (timer) clearTimeout(timer);
           resolve({ type: "next" });
+        } else {
+          warn(`Navigation guard "${guard.name || "anonymous"}" called next() and also returned a Promise. Use either next() callback or async/await, not both.`);
         }
       }).catch(() => {
         if (!resolved) {
@@ -1036,7 +1038,7 @@ var UniRouter = class {
     if (handledResolve) return handledResolve;
     try {
       await goBack(delta, effectiveAnimation);
-      this.syncCurrentRoute(from);
+      this.syncCurrentRoute();
       this.guardManager.runAfterGuards(to, from);
       return this.routeState.getCurrentRoute();
     } catch (error) {
@@ -1144,8 +1146,70 @@ var UniRouter = class {
     const currentPath = getCurrentPagePath();
     const currentQuery = getCurrentPageQuery();
     if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return;
-    this.syncCurrentRoute(from);
+    this.syncCurrentRoute();
     this.paramsManager.cleanupStale();
+  }
+  /**
+   * 对指定路由执行守卫链检查（不执行实际导航）
+   *
+   * 用于冷启动场景：用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，
+   * 页面由 uni-app 框架直接加载，不经过路由器导航，守卫（beforeEach 等）未执行。
+   * 调用此方法可对当前页面补执行守卫链，按守卫结果决定是否重定向。
+   *
+   * - 守卫放行：不执行任何导航，resolve 目标路由
+   * - 守卫重定向：按守卫指定的方式（默认 relaunch）跳转到重定向目标
+   * - 守卫中止：调用 onAbort 回调（若提供），并 reject NavigationFailure
+   *
+   * @param location - 目标路由位置，不传时默认检查当前路由
+   * @param options - 选项，可传入 onAbort 回调处理守卫中止
+   * @returns 守卫放行时 resolve 目标路由；重定向时跳转后 resolve；中止时 reject
+   */
+  async guardRoute(location, options) {
+    const target = location ? this.matcher.resolve(location) : this.routeState.getCurrentRoute();
+    const from = this.routeState.getCurrentRoute();
+    const beforeResult = await this.guardManager.runBeforeGuards(target, from);
+    const handled = this.handleGuardRouteResult(beforeResult, target, from, options);
+    if (handled) return handled;
+    const config = this.matcher.getRouteConfig(target.path);
+    if (config?.beforeEnter) {
+      const beforeEnterResult = await this.guardManager.runBeforeEnterGuards(target, from, config);
+      const handledEnter = this.handleGuardRouteResult(beforeEnterResult, target, from, options);
+      if (handledEnter) return handledEnter;
+    }
+    const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(target, from);
+    const handledResolve = this.handleGuardRouteResult(beforeResolveResult, target, from, options);
+    if (handledResolve) return handledResolve;
+    return target;
+  }
+  /**
+   * 处理 guardRoute 的守卫执行结果
+   *
+   * 与 handleGuardResult 不同，此方法在守卫放行时不执行导航（页面已加载），
+   * 仅在重定向时委托给 push/replace/relaunch 执行实际跳转。
+   *
+   * @param result - 守卫执行结果
+   * @param to - 目标路由
+   * @param from - 来源路由
+   * @param options - guardRoute 选项
+   * @returns 中止或重定向时返回 Promise，放行时返回 null
+   */
+  handleGuardRouteResult(result, to, from, options) {
+    if (result.type === "abort") {
+      const failure = new NavigationFailure(to, from, result.code);
+      this.triggerErrorHandlers(failure, to, from);
+      options?.onAbort?.(failure);
+      return Promise.reject(failure);
+    }
+    if (result.redirect) {
+      const mode = result.mode ?? "relaunch";
+      if (mode === "replace") {
+        return this.replace(result.redirect);
+      } else if (mode === "push") {
+        return this.push(result.redirect);
+      }
+      return this.relaunch(result.redirect);
+    }
+    return null;
   }
   /**
    * 安装路由器到 Vue 应用实例
@@ -1428,10 +1492,8 @@ var UniRouter = class {
    *
    * 状态同步不是一次完整的导航（未经过前置守卫），因此不触发 afterEach 钩子，
    * 仅通知 onRouteChange 监听器。
-   *
-   * @param from - 导航前的路由位置
    */
-  syncCurrentRoute(_from) {
+  syncCurrentRoute() {
     const currentPath = getCurrentPagePath();
     const config = this.matcher.getRouteConfig(currentPath);
     const meta = config?.meta ?? {};
