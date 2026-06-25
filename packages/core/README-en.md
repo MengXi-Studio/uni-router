@@ -28,6 +28,7 @@
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths
 - **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
 - **Page Communication** - `push` supports `events` and `eventChannel` (corresponds to uni EventChannel)
+- **Declarative Navigation** - `RouterLink` component, wraps uni `navigator`, supports navigation params, animation, page communication
 - **Page Params** - `params` passes complex data without exposing in URL, supports `persistent` storage
 - **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()` convenience methods
 - **Navigation Animation** - `push` / `replace` / `back` support animation params, App only

@@ -1,6 +1,6 @@
 {
 	"name": "@meng-xi/uni-app-demo",
-	"version": "1.7.0",
+	"version": "1.8.0",
 	"description": "在 uni-app 项目中使用 @meng-xi/uni-router 路由管理功能",
 	"main": "main.js",
 	"repository": {
@@ -44,7 +44,7 @@
 		"@dcloudio/uni-cli-shared": "3.0.0-4080720251210001",
 		"@dcloudio/uni-stacktracey": "3.0.0-4080720251210001",
 		"@dcloudio/vite-plugin-uni": "3.0.0-4080720251210001",
-		"@meng-xi/vite-plugin": "^0.2.5",
+		"@meng-xi/vite-plugin": "^0.2.6",
 		"@vue/runtime-core": "^3.5.29",
 		"vite": "5.2.8"
 	}

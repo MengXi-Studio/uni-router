@@ -73,11 +73,19 @@ interface NavigationAnimation {
  */
 type QueryValue = string | number | boolean;
 /**
- * 页面参数值类型（仅支持 JSON 可序列化数据）
+ * 页面参数值类型（JSON 可序列化数据）
+ *
+ * 对象分支使用 `object` 而非递归索引签名 `ParamObject`，
+ * 以兼容 `interface` 定义的对象类型（它们没有索引签名，无法赋值给 `{ [key: string]: ... }`）。
+ * 包含 `undefined` 用于兼容含可选属性的对象（`JSON.stringify` 会自动忽略 `undefined` 属性）。
  */
-type ParamValue = string | number | boolean | null | ParamObject | ParamValue[];
+type ParamValue = string | number | boolean | null | undefined | ParamValue[] | object;
 /**
  * 页面参数对象类型
+ *
+ * 用于 `route.params` 的读取类型，提供索引签名访问。
+ * 输入侧（如 `router.push` 的 `params`）也使用此类型，
+ * 由于 `ParamValue` 已包含 `object` 分支，`interface` 对象作为属性值时可正常赋值。
  */
 interface ParamObject {
     [key: string]: ParamValue;
@@ -295,6 +303,41 @@ interface RouterError$1 {
     readonly message: string;
 }
 /**
+ * uni-app API 失败时的错误原因
+ *
+ * uni-app 导航 API（navigateTo / redirectTo 等）的 fail 回调始终传入此结构的错误对象。
+ */
+interface UniApiCause {
+    /** 错误描述信息 */
+    errMsg: string;
+}
+/**
+ * uni-app API 调用失败的错误信息
+ *
+ * 包含失败的 API 名称和原始错误原因，作为 {@link NavigationFailure.cause} 传递。
+ */
+interface UniApiError {
+    /** 调用失败的 API 名称（如 navigateTo / redirectTo） */
+    readonly api: string;
+    /** 原始错误原因 */
+    readonly cause: UniApiCause;
+}
+/**
+ * 导航失败接口，描述导航过程中产生的失败，包含来源和目标路由信息
+ */
+interface NavigationFailure$1 extends RouterError$1 {
+    /** 目标路由 */
+    readonly to: RouteLocation;
+    /** 来源路由 */
+    readonly from: RouteLocation;
+    /**
+     * 原始错误原因
+     *
+     * 仅当 `code` 为 `NAVIGATION_API_ERROR` 时存在，包含失败的 API 名称和原始错误信息。
+     */
+    readonly cause?: UniApiError;
+}
+/**
  * 路由错误码枚举
  */
 declare enum RouterErrorCode {
@@ -319,6 +362,21 @@ declare enum RouterErrorCode {
  * @param from - 来源路由
  */
 type RouterOnError = (error: RouterError$1, to: RouteLocation, from: RouteLocation) => void;
+/**
+ * guardRoute 方法的选项
+ */
+interface GuardRouteOptions {
+    /**
+     * 守卫中止时的回调
+     *
+     * 冷启动场景下页面已加载，无法真正"阻止进入"。
+     * 当守卫调用 `next(false)` 中止时，将调用此回调并传入 `NavigationFailure` 对象。
+     * 用户可在此回调中执行 `router.relaunch()` 等操作跳转到安全页面。
+     *
+     * @param failure - 导航失败对象
+     */
+    onAbort?: (failure: NavigationFailure$1) => void;
+}
 /**
  * 路由器初始化选项
  */
@@ -486,6 +544,33 @@ interface Router {
      */
     syncRoute(): void;
     /**
+     * 对指定路由执行守卫链检查（不执行实际导航）
+     *
+     * 用于冷启动场景：用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，
+     * 页面由 uni-app 框架直接加载，不经过路由器导航，守卫（beforeEach 等）未执行。
+     * 调用此方法可对当前页面补执行守卫链，按守卫结果决定是否重定向。
+     *
+     * 行为：
+     * - 守卫放行：不执行任何导航，resolve 目标路由
+     * - 守卫重定向：按守卫指定的方式（默认 `relaunch`）跳转到重定向目标
+     * - 守卫中止：调用 `onAbort` 回调（若提供），并 reject `NavigationFailure`
+     *
+     * 典型用法：
+     * ```typescript
+     * // App.vue onLaunch 中
+     * router.isReady().then(() => {
+     *   router.guardRoute(undefined, {
+     *     onAbort: () => router.relaunch('/pages/index/index')
+     *   })
+     * })
+     * ```
+     *
+     * @param location - 目标路由位置，不传时默认检查当前路由
+     * @param options - 选项，可传入 onAbort 回调处理守卫中止
+     * @returns 守卫放行时 resolve 目标路由；重定向时跳转后 resolve；中止时 reject
+     */
+    guardRoute(location?: RouteLocationRaw, options?: GuardRouteOptions): Promise<RouteLocation>;
+    /**
      * 安装路由器到 Vue 应用实例，注册全局属性和 provide
      * @param app - Vue 应用实例
      */
@@ -586,7 +671,7 @@ declare class NavigationFailure extends RouterError {
     /** 来源路由 */
     readonly from: RouteLocation;
     /** 原始错误原因 */
-    readonly cause?: unknown;
+    readonly cause?: UniApiError;
     /**
      * @param to - 目标路由
      * @param from - 来源路由
@@ -594,7 +679,7 @@ declare class NavigationFailure extends RouterError {
      * @param message - 可选的错误信息，默认自动生成
      * @param cause - 原始错误原因
      */
-    constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: unknown);
+    constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: UniApiError);
 }
 
-export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationGuardNextOptions, type NavigationRedirectMode, type NavigationResult, type ParamObject, type ParamValue, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, createRouter, useRoute, useRouter };
+export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type GuardRouteOptions, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationGuardNextOptions, type NavigationRedirectMode, type NavigationResult, type ParamObject, type ParamValue, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, type UniApiCause, type UniApiError, createRouter, useRoute, useRouter };

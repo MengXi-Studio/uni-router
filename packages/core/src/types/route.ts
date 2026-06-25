@@ -55,12 +55,20 @@ export interface NavigationAnimation {
 export type QueryValue = string | number | boolean
 
 /**
- * 页面参数值类型（仅支持 JSON 可序列化数据）
+ * 页面参数值类型（JSON 可序列化数据）
+ *
+ * 对象分支使用 `object` 而非递归索引签名 `ParamObject`，
+ * 以兼容 `interface` 定义的对象类型（它们没有索引签名，无法赋值给 `{ [key: string]: ... }`）。
+ * 包含 `undefined` 用于兼容含可选属性的对象（`JSON.stringify` 会自动忽略 `undefined` 属性）。
  */
-export type ParamValue = string | number | boolean | null | ParamObject | ParamValue[]
+export type ParamValue = string | number | boolean | null | undefined | ParamValue[] | object
 
 /**
  * 页面参数对象类型
+ *
+ * 用于 `route.params` 的读取类型，提供索引签名访问。
+ * 输入侧（如 `router.push` 的 `params`）也使用此类型，
+ * 由于 `ParamValue` 已包含 `object` 分支，`interface` 对象作为属性值时可正常赋值。
  */
 export interface ParamObject {
 	[key: string]: ParamValue

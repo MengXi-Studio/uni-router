@@ -1,20 +1,22 @@
 import '@meng-xi/uni-router'
 
 declare module '@meng-xi/uni-router' {
-  interface RouteNameMap {
-    /** 首页 */
-    pagesIndexIndex: { path: '/pages/index/index'; meta: { title: string } }
-    /** 路由守卫 */
-    pagesGuardsIndex: { path: '/pages/guards/index'; meta: { title: string } }
-    /** 关于 */
-    pagesAboutIndex: { path: '/pages/about/index'; meta: { title: string } }
-    /** 受保护页面 */
-    pagesProtectedIndex: { path: '/pages/protected/index'; meta: { title: string; requireAuth: true } }
-    /** 登录 */
-    pagesLoginIndex: { path: '/pages/login/index'; meta: { title: string } }
-    /** 页面间通信 */
-    pagesEventChannelIndex: { path: '/pages/event-channel/index'; meta: { title: string } }
-    /** 组合式 API */
-    pagesComposableIndex: { path: '/pages/composable/index'; meta: { title: string } }
-  }
+	interface RouteNameMap {
+		/** 首页 */
+		pagesIndexIndex: { path: '/pages/index/index'; meta: { title: string } }
+		/** 路由守卫 */
+		pagesGuardsIndex: { path: '/pages/guards/index'; meta: { title: string } }
+		/** 关于 */
+		pagesAboutIndex: { path: '/pages/about/index'; meta: { title: string } }
+		/** 受保护页面 */
+		pagesProtectedIndex: { path: '/pages/protected/index'; meta: { title: string; requireAuth: true } }
+		/** 登录 */
+		pagesLoginIndex: { path: '/pages/login/index'; meta: { title: string } }
+		/** 页面间通信 */
+		pagesEventChannelIndex: { path: '/pages/event-channel/index'; meta: { title: string } }
+		/** 组合式 API */
+		pagesComposableIndex: { path: '/pages/composable/index'; meta: { title: string } }
+		/** 错误处理 */
+		pagesErrorIndex: { path: '/pages/error/index'; meta: { title: string } }
+	}
 }

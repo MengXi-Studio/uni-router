@@ -1,4 +1,5 @@
 import type { RouteMeta, NavigationAnimation, EventChannel, EventListeners } from '@/types/route'
+import type { UniApiCause, UniApiError as UniApiErrorType } from '@/types/error'
 import { buildFullPath } from '@/utils/path'
 import { warn } from '@/utils/general'
 import { markRouterCall } from '@/interceptor'
@@ -31,13 +32,13 @@ class UniApiError extends Error {
 	/** 调用失败的 API 名称 */
 	readonly api: string
 	/** 原始错误原因 */
-	readonly cause: unknown
+	readonly cause: UniApiCause
 
 	/**
 	 * @param api - 失败的 uni API 名称
 	 * @param cause - 原始错误对象
 	 */
-	constructor(api: string, cause: unknown) {
+	constructor(api: string, cause: UniApiCause) {
 		super(`[uni-router] uni.${api} failed`)
 		this.name = 'UniApiError'
 		this.api = api
@@ -51,9 +52,9 @@ class UniApiError extends Error {
  * @param executor - 包含 success/fail 回调的执行函数
  * @returns Promise，成功时 resolve，失败时 reject 并封装为 UniApiError
  */
-function promisifyUniApi(api: string, executor: (resolve: () => void, reject: (err: unknown) => void) => void): Promise<void> {
+function promisifyUniApi(api: string, executor: (resolve: () => void, reject: (err: UniApiCause) => void) => void): Promise<void> {
 	return new Promise((resolve, reject) => {
-		executor(resolve, (err: unknown) => reject(new UniApiError(api, err)))
+		executor(resolve, (err: UniApiCause) => reject(new UniApiError(api, err)))
 	})
 }
 
@@ -75,7 +76,7 @@ function uniNavigateTo(path: string, query?: Record<string, string>, animation?:
 			...(animation?.type && { animationType: animation.type }),
 			...(animation?.duration != null && { animationDuration: animation.duration }),
 			success: res => resolve(res.eventChannel),
-			fail: (err: unknown) => reject(new UniApiError('navigateTo', err))
+			fail: (err: UniApiCause) => reject(new UniApiError('navigateTo', err))
 		})
 	})
 }
@@ -229,6 +230,6 @@ export function relaunchTo(options: UniNavigationOptions): Promise<void> {
  * @param error - 待检查的值
  * @returns 是 UniApiError 时返回 true
  */
-export function isUniApiError(error: unknown): boolean {
+export function isUniApiError(error: unknown): error is UniApiErrorType {
 	return error instanceof UniApiError
 }

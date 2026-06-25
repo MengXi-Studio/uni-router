@@ -23,7 +23,20 @@ Navigation failure class, extending `RouterError`, with additional source and ta
 class NavigationFailure extends RouterError {
 	readonly to: RouteLocation
 	readonly from: RouteLocation
-	readonly cause?: unknown
+	readonly cause?: UniApiError
+}
+```
+
+The `cause` type is `UniApiError`, encapsulating the failed uni-app API information:
+
+```ts
+interface UniApiError {
+	readonly api: string          // Name of the failed API (e.g., 'navigateTo')
+	readonly cause: UniApiCause    // Original error cause
+}
+
+interface UniApiCause {
+	errMsg: string                // Error description message
 }
 ```
 

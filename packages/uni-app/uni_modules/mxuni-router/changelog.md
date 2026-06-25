@@ -1,3 +1,31 @@
+## 1.8.0（2026-06-26）
+
+### 新增
+
+- **冷启动守卫检查 `guardRoute()`** - 解决用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，页面由 uni-app 框架直接加载、不经过路由器导航、守卫（beforeEach 等）未执行的问题
+  - `Router.guardRoute(location?, options?)` - 对指定路由执行守卫链检查（不执行实际导航），按守卫结果决定是否重定向
+  - `GuardRouteOptions` - 选项类型，包含 `onAbort` 回调，守卫中止时触发并传入 `NavigationFailure`
+  - 行为：守卫放行 → 不执行导航，resolve 目标路由；守卫重定向 → 按守卫指定方式（默认 `relaunch`，清空栈避免返回受保护页面）跳转；守卫中止 → 调用 `onAbort` 回调并 reject `NavigationFailure`
+  - 执行完整守卫链：`beforeEach` → `beforeEnter` → `beforeResolve`
+  - 典型用法：在 `App.vue` 的 `onLaunch` 中 `router.isReady().then(() => router.guardRoute(undefined, { onAbort: () => router.relaunch('/pages/index/index') }))`
+- **`UniApiError` / `UniApiCause` 类型导出** - 将原本内部的 uni API 错误类型导出，提升 `NavigationFailure.cause` 的类型可读性
+  - `UniApiCause` - uni 导航 API `fail` 回调的错误原因类型（`{ errMsg: string }`）
+  - `UniApiError` - 接口，包含 `api`（失败的 API 名称，如 `navigateTo`）和 `cause`（原始错误原因）字段
+  - `NavigationFailure.cause` 类型从 `unknown` 收紧为 `UniApiError`，仅在 `NAVIGATION_API_ERROR` 时存在
+  - `isUniApiError()` 改为类型守卫（`error is UniApiError`），便于 `instanceof` 后的类型收窄
+
+### 优化
+
+- **`ParamValue` 类型兼容性增强** - 对象分支从递归 `ParamObject` 改为 `object`，兼容 `interface` 定义的对象类型（它们没有索引签名，无法赋值给 `{ [key: string]: ... }`）；添加 `undefined`
+  分支，兼容含可选属性的对象（`JSON.stringify` 会自动忽略 `undefined` 属性）
+- **`RouterLink` 组件重构** - 将 location 计算逻辑提取为 `computed`，无附加选项（animation/events/persistent 均未传）时直接使用 `to`，避免无谓的对象包装
+- **uni API `fail` 回调类型收紧** - `env.d.ts` 中各导航 API（`navigateTo` / `redirectTo` / `switchTab` / `reLaunch` / `navigateBack`）的 `fail` 回调参数类型从 `unknown` 收紧为 `UniApiCause`
+
+### 修复
+
+- **守卫混用模式警告** - 当守卫同时调用 `next()` 并返回 Promise 时输出警告（`next()` 之后的异步错误会被静默吞掉，开发者应选择其中一种解析模式：`next()` 回调或 `async/await`，不可混用）
+- **`syncCurrentRoute` 参数清理** - 移除 `syncRoute()` 内部未使用的 `_from` 参数
+
 ## 1.7.0（2026-06-25）
 
 ### 新增

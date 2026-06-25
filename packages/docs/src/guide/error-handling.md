@@ -23,7 +23,20 @@ class RouterError extends Error {
 class NavigationFailure extends RouterError {
   readonly to: RouteLocation       // 目标路由
   readonly from: RouteLocation     // 来源路由
-  readonly cause?: unknown         // 原始错误（如 uni API 错误）
+  readonly cause?: UniApiError     // 原始错误（仅 NAVIGATION_API_ERROR 时存在）
+}
+```
+
+`cause` 类型为 `UniApiError`，封装了失败的 uni-app API 信息：
+
+```ts
+interface UniApiError {
+  readonly api: string          // 调用失败的 API 名称（如 'navigateTo'）
+  readonly cause: UniApiCause    // 原始错误原因
+}
+
+interface UniApiCause {
+  errMsg: string                // 错误描述信息
 }
 ```
 
@@ -102,7 +115,9 @@ await router.push({ name: 'not-exist' }) // 抛出 ROUTE_NOT_FOUND
 ```ts
 // uni API 调用失败（如页面栈溢出）
 await router.push({ name: 'page11' }) // 小程序页面栈已达 10 层
-// 抛出 NAVIGATION_API_ERROR，cause 为 uni 的错误信息
+// 抛出 NAVIGATION_API_ERROR，cause 携带失败的 API 信息
+// err.cause.api === 'navigateTo'
+// err.cause.cause.errMsg 包含 'limit exceed'
 ```
 
 ## 错误处理方式
@@ -249,10 +264,11 @@ router.onError((error, to) => {
 router.onError(async (error, to) => {
   if (error.code === 'NAVIGATION_API_ERROR') {
     console.error('导航失败，目标:', to.fullPath)
-    console.error('原始错误:', error.cause)
+    console.error('失败 API:', error.cause?.api)
+    console.error('原始错误:', error.cause?.cause.errMsg)
 
     // 页面栈溢出时，改用 relaunch
-    if (String(error.cause).includes('limit exceed')) {
+    if (String(error.cause?.cause.errMsg).includes('limit')) {
       await router.relaunch(to)
     }
   }

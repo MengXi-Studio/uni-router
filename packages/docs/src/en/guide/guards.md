@@ -604,6 +604,75 @@ router.onRouteChange((to, from) => {
 
 See [Platform Compatibility](./compatibility).
 
+## Cold Start Guard Check
+
+### Problem: Cold Start Bypasses Guards
+
+When a user **directly enters** a page via the following methods, the page is loaded directly by the uni-app framework, **bypassing router navigation**, and guards (`beforeEach` etc.) are not executed:
+
+| Scenario | Platform |
+| --- | --- |
+| Direct URL access | H5 |
+| QR code / scene value | Mini-program |
+| Deeplink / URL Scheme | App |
+
+```
+User accesses https://example.com/#/pages/about/about
+  → uni-app directly loads the about page
+  → Router guards are not executed (no router.push was called)
+  → Unauthenticated user directly enters a requireAuth page
+```
+
+### Solution: guardRoute()
+
+`router.guardRoute()` runs the guard chain against the current (or specified) route and decides whether to redirect based on guard results:
+
+```ts
+// App.vue
+import { onLaunch } from '@dcloudio/uni-app'
+import { useRouter } from '@meng-xi/uni-router'
+
+const router = useRouter()
+
+onLaunch(() => {
+  router.isReady().then(() => {
+    router.guardRoute(undefined, {
+      onAbort: (failure) => {
+        // Guard aborted (e.g., not logged in), navigate to a safe page
+        console.warn('Cold start guard aborted:', failure.code)
+        router.relaunch({ name: 'home' })
+      }
+    })
+  })
+})
+```
+
+### Guard Result Handling
+
+| Guard Result | Behavior |
+| --- | --- |
+| Pass (`next()`) | No navigation, resolves with the target route |
+| Redirect (`next(location)`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
+| Abort (`next(false)`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
+
+::: warning Cold start cannot truly "block entry"
+In cold start scenarios the page is already loaded, so `guardRoute()` cannot truly prevent the page from displaying. When a guard aborts, using the `onAbort` callback to execute `router.relaunch()` to navigate to a safe page is the recommended approach.
+:::
+
+### Difference from syncRoute
+
+| Method | Purpose | Runs Guards |
+| --- | --- | --- |
+| `syncRoute()` | Syncs `currentRoute` to the real page stack state | No |
+| `guardRoute()` | Runs the guard chain against the current route | Yes |
+
+Both can be used together:
+
+- `syncRoute`: State sync after physical back
+- `guardRoute`: Guard re-execution during cold start
+
+See [Router Instance - guardRoute()](../api/router-instance#guardroute) for details.
+
 ## Guard Type Definitions
 
 ```ts
