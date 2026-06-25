@@ -28,6 +28,7 @@
 - **TypeScript 类型提示** - 路由名称和路径自动补全与类型检查
 - **uni API 拦截** - 可选拦截原生导航 API，统一守卫流程
 - **页面间通信** - `push` 支持 `events` 和 `eventChannel`（对应 uni EventChannel）
+- **声明式导航** - `RouterLink` 组件，基于 uni `navigator` 封装，支持导航参数、动画、页面通信
 - **页面参数传递** - `params` 传递复杂数据，不暴露在 URL，支持 `persistent` 持久化
 - **查询参数增强** - `queryInt()` / `queryNumber()` / `queryBool()` 便捷解析
 - **导航动画** - `push` / `replace` / `back` 支持动画参数，仅 App 端生效
