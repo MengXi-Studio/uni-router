@@ -28,7 +28,8 @@ export type {
 	UniApiError,
 	QueryValue,
 	ParamValue,
-	ParamObject
+	ParamObject,
+	ParamsInput
 } from '@/types'
 export { RouterError, NavigationFailure } from '@/errors'
 export { RouterErrorCode, DEFAULT_ANIMATION_DURATION } from '@/types'
