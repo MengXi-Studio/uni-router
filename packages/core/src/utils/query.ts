@@ -1,4 +1,4 @@
-import type { QueryValue, RouteLocation, RouteMeta, ParamObject } from '@/types/route'
+import type { QueryValue, RouteLocation, RouteMeta, ParamObject } from '@/types'
 
 /**
  * 将 QueryValue 序列化为字符串

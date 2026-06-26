@@ -1,4 +1,4 @@
-import type { RouteLocation } from './route'
+import type { RouteLocation } from './route-location'
 
 /**
  * 路由错误接口，描述路由过程中产生的错误

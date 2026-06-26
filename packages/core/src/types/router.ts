@@ -1,4 +1,6 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationAnimation, NavigationResult, UniEventChannel, NavigationId } from './route'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationResult } from './route-location'
+import type { NavigationAnimation } from './animation'
+import type { UniEventChannel, NavigationId } from './event-channel'
 import type { NavigationGuard, PostNavigationGuard } from './guard'
 import type { RouterError, NavigationFailure } from './error'
 import type { App } from 'vue'

@@ -1,14 +1,10 @@
 import type {
 	RouteConfig,
 	RouteLocation,
-	RouteLocationPathRaw,
-	RouteLocationNamedRaw,
 	RouteLocationRaw,
 	RouteMeta,
 	NavigationAnimation,
 	NavigationResult,
-	EventChannel,
-	EventListeners,
 	UniEventChannel,
 	NavigationId,
 	Router,
@@ -21,20 +17,19 @@ import type { App } from 'vue'
 import { RouterErrorCode } from '@/types/error'
 import { NavigationFailure, RouterError } from '@/errors'
 import { createGuardManager, type GuardResult } from '@/guard'
-import { navigateTo, replaceTo, relaunchTo, goBack, isUniApiError } from '@/navigation'
+import { goBack, isUniApiError } from '@/navigation'
 import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/navigation/context'
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
-import { installInterceptors, removeInterceptors } from '@/interceptor'
-import { createParamsManager, PARAMS_KEY, NAV_ID_KEY } from '@/params'
+import { installInterceptors } from '@/interceptor'
+import { createParamsManager, PARAMS_KEY } from '@/params'
 import type { ParamsManager } from '@/params'
 import { createChannelManager, type ChannelManager } from '@/channel'
-import { buildFullPath, createRouteLocation, warn } from '@/utils'
-
-/**
- * 最大重定向深度，超过此值将取消导航以防止无限循环
- */
-const MAX_REDIRECT_DEPTH = 10
+import { buildFullPath, createRouteLocation } from '@/utils'
+import { isSameQuery } from './location-processor'
+import { installRouterPlugin } from './vue-plugin'
+import { performNavigation, runGuardChain, type NavigationContext } from './navigation-orchestrator'
+export { ROUTER_SYMBOL } from './symbol'
 
 /**
  * uni-app 路由器实现类
@@ -83,6 +78,32 @@ class UniRouter implements Router {
 	}
 
 	/**
+	 * 构建导航编排器所需的上下文
+	 *
+	 * 通过闭包访问私有字段，编排器在无需暴露内部状态的前提下即可读写
+	 * pendingNavigation 并调用错误处理器。各管理器为稳定的单例引用，
+	 * 直接按值捕获即可。
+	 */
+	private createNavigationContext(): NavigationContext {
+		const self = this
+		return {
+			useUniEventChannel: this._useUniEventChannel,
+			guardManager: this.guardManager,
+			matcher: this.matcher,
+			routeState: this.routeState,
+			paramsManager: this.paramsManager,
+			channelManager: this.channelManager,
+			get pendingNavigation() {
+				return self.pendingNavigation
+			},
+			set pendingNavigation(value) {
+				self.pendingNavigation = value
+			},
+			triggerErrorHandlers: (error, to, from) => self.triggerErrorHandlers(error, to, from)
+		}
+	}
+
+	/**
 	 * 导航到新页面
 	 *
 	 * 对应 uni.navigateTo（普通页面）或 uni.switchTab（TabBar 页面）。
@@ -97,7 +118,7 @@ class UniRouter implements Router {
 	 * @throws {NavigationFailure} 导航被守卫中止、重复或 API 调用失败时抛出
 	 */
 	push(location: RouteLocationRaw): Promise<NavigationResult> {
-		return this.performNavigation(location, 'push')
+		return performNavigation(this.createNavigationContext(), location, 'push')
 	}
 
 	/**
@@ -111,7 +132,7 @@ class UniRouter implements Router {
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
 	replace(location: RouteLocationRaw): Promise<RouteLocation> {
-		return this.performNavigation(location, 'replace')
+		return performNavigation(this.createNavigationContext(), location, 'replace')
 	}
 
 	/**
@@ -126,7 +147,7 @@ class UniRouter implements Router {
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
 	relaunch(location: RouteLocationRaw): Promise<RouteLocation> {
-		return this.performNavigation(location, 'relaunch')
+		return performNavigation(this.createNavigationContext(), location, 'relaunch')
 	}
 
 	/**
@@ -167,14 +188,9 @@ class UniRouter implements Router {
 		// 动画优先级：调用时传入 > 目标页面 meta.animation > uni 默认值
 		const effectiveAnimation = animation ?? to.meta.animation
 
-		// 执行守卫链
-		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
-		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0, effectiveAnimation)
-		if (handled) return handled as unknown as Promise<RouteLocation>
-
-		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
-		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'back', 0, effectiveAnimation)
-		if (handledResolve) return handledResolve as unknown as Promise<RouteLocation>
+		// 执行守卫链（back 跳过 beforeEnter，不传 config）
+		const guardResult = await runGuardChain(this.createNavigationContext(), to, from, 'back', 0, effectiveAnimation)
+		if (guardResult) return guardResult as unknown as Promise<RouteLocation>
 
 		// 守卫通过，执行返回
 		try {
@@ -297,7 +313,7 @@ class UniRouter implements Router {
 		const currentPath = getCurrentPagePath()
 		const currentQuery = getCurrentPageQuery()
 		// 若当前页面与路由状态一致（路径和查询参数均相同），无需更新
-		if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return
+		if (currentPath === from.path && isSameQuery(currentQuery, from.query)) return
 		this.syncCurrentRoute()
 		// 同步时清理无效 params
 		this.paramsManager.cleanupStale()
@@ -427,45 +443,11 @@ class UniRouter implements Router {
 	 * @param app - Vue 应用实例
 	 */
 	install(app: App): void {
-		// 通过 provide/inject 机制提供路由器，使 useRouter()/useRoute() 可用
-		app.provide(ROUTER_SYMBOL, this)
-
-		// 仅在 $router 和 $route 未被定义时设置全局属性
-		// 避免与 uni-app H5 内置的 vue-router 冲突
-		if (!('$router' in app.config.globalProperties)) {
-			app.config.globalProperties.$router = this
-		}
-		if (!('$route' in app.config.globalProperties)) {
-			Object.defineProperty(app.config.globalProperties, '$route', {
-				enumerable: true,
-				configurable: true,
-				get: () => this.currentRoute
-			})
-		}
-
-		if (this._interceptUniApi) {
-			// app.onUnmount 是 Vue 3.5+ API，uni-app 可能不支持
-			// 在 uni-app 中应用不会真正卸载，拦截器无需清理
-			if (typeof app.onUnmount === 'function') {
-				app.onUnmount(() => removeInterceptors())
-			}
-		}
-
-		// 启用内置通信管理器时，注入页面 onUnload mixin 自动清理通道监听器
-		// 避免页面销毁后 uni.$on 注册的监听器残留导致内存泄漏
-		if (this._useUniEventChannel) {
-			app.mixin({
-				onUnload(this: { $route?: { params?: ParamObject }; $router?: Router }) {
-					const navId = this.$route?.params?.[NAV_ID_KEY] as NavigationId | undefined
-					if (navId && this.$router) {
-						this.$router.destroyChannel(navId)
-					}
-				}
-			})
-		}
-
-		// 在 install 时标记路由器就绪，确保 isReady() 回调在所有插件安装完成后执行
-		this.routeState.markReady()
+		installRouterPlugin(app, this, {
+			interceptUniApi: this._interceptUniApi,
+			useUniEventChannel: this._useUniEventChannel,
+			markReady: () => this.routeState.markReady()
+		})
 	}
 
 	/**
@@ -488,200 +470,6 @@ class UniRouter implements Router {
 	}
 
 	/**
-	 * 执行导航流程
-	 *
-	 * 处理并发导航排队、重复导航检测，并委托 executeNavigation 执行完整的守卫链和导航操作。
-	 *
-	 * @param location - 目标路由位置
-	 * @param mode - 导航模式，push、replace 或 relaunch
-	 * @returns 导航结果（push 模式包含 eventChannel）
-	 * @throws {NavigationFailure} 导航失败时抛出
-	 */
-	private async performNavigation(location: RouteLocationRaw, mode: 'push' | 'replace' | 'relaunch'): Promise<NavigationResult> {
-		// 等待前一次导航完成（无论成功或失败），避免并发导航
-		// 错误已通过 onError 机制通知，此处无需再处理
-		if (this.pendingNavigation) {
-			await this.pendingNavigation.catch(() => {})
-		}
-
-		// 从原始路由位置中提取事件监听器（resolve 会丢弃这些字段）
-		const events = this.extractEvents(location)
-
-		// 启用内置通信管理器时：创建通道并注入 navId 到 location.params
-		// navId 随 params 存储（强制 persistent，解决 H5 刷新丢失问题）
-		let channel: UniEventChannel | undefined
-		let locationForEnrich = location
-		if (this._useUniEventChannel) {
-			const created = this.channelManager.createChannel(events)
-			channel = created.channel
-			locationForEnrich = this.injectNavId(location, created.navigationId)
-		}
-
-		// 在 resolve 前处理 params：存入 ParamsManager 并将 key 注入 location
-		const enrichedLocation = this.enrichLocationWithParams(locationForEnrich)
-
-		const to = this.matcher.resolve(enrichedLocation)
-		const from = this.routeState.getCurrentRoute()
-		// 从原始路由位置中提取动画参数（resolve 会丢弃这些字段）
-		const animation = this.extractAnimation(location)
-
-		// events 仅在 push 模式下有效，其他模式发出警告并忽略
-		if (events && mode !== 'push') {
-			warn(`uni.${mode === 'replace' ? 'redirectTo' : 'reLaunch'} does not support events. The events option will be ignored.`)
-		}
-
-		if (mode === 'push' && this.isSameRouteLocation(to, from)) {
-			// 重复导航：销毁刚创建的通道，避免泄漏
-			if (channel) this.channelManager.destroyChannel(channel.navigationId)
-			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_DUPLICATED, `Avoided redundant navigation to current location: "${to.fullPath}"`)
-			this.triggerErrorHandlers(failure, to, from)
-			return Promise.reject(failure)
-		}
-
-		// 启用管理器时 events 由管理器接管，不传给原生 uni.navigateTo
-		const effectiveEvents = this._useUniEventChannel ? undefined : (mode === 'push' ? events : undefined)
-		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, effectiveEvents)
-		this.pendingNavigation = navigationPromise
-
-		try {
-			const result = await navigationPromise
-			// 启用管理器时用管理器 channel 覆盖返回值（替代原生 EventChannel）
-			if (this._useUniEventChannel && channel) {
-				return { ...result, eventChannel: channel }
-			}
-			return result
-		} finally {
-			if (this.pendingNavigation === navigationPromise) {
-				this.pendingNavigation = null
-			}
-		}
-	}
-
-	/**
-	 * 执行完整的导航流程，包括守卫链和 uni API 调用
-	 *
-	 * 依次执行：全局前置守卫 → 路由独享守卫 → 全局解析守卫 → uni 导航 API → 全局后置钩子。
-	 * 支持守卫重定向，但重定向深度超过 {@link MAX_REDIRECT_DEPTH} 时将取消导航。
-	 *
-	 * @param to - 目标路由
-	 * @param from - 来源路由
-	 * @param mode - 导航模式
-	 * @param redirectDepth - 当前重定向深度
-	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
-	 * @param events - 页面间通信事件监听器（仅 push 时生效）
-	 * @returns 导航结果（push 模式包含 eventChannel）
-	 * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
-	 */
-	private async executeNavigation(
-		to: RouteLocation,
-		from: RouteLocation,
-		mode: 'push' | 'replace' | 'relaunch' | 'back',
-		redirectDepth: number,
-		animation?: NavigationAnimation,
-		events?: EventListeners
-	): Promise<NavigationResult> {
-		if (redirectDepth > MAX_REDIRECT_DEPTH) {
-			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
-			this.triggerErrorHandlers(failure, to, from)
-			return Promise.reject(failure)
-		}
-
-		const config = this.matcher.getRouteConfig(to.path)
-
-		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
-		const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation, events)
-		if (handled) return handled
-
-		const beforeEnterResult = config ? await this.guardManager.runBeforeEnterGuards(to, from, config) : { type: 'next' as const }
-		const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation, events)
-		if (handledEnter) return handledEnter
-
-		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
-		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation, events)
-		if (handledResolve) return handledResolve
-
-		try {
-			const navOptions = {
-				path: to.path,
-				meta: to.meta,
-				query: to.query,
-				animation,
-				events
-			}
-
-			let eventChannel: EventChannel | undefined
-			if (mode === 'push') {
-				eventChannel = await navigateTo(navOptions)
-			} else if (mode === 'replace') {
-				await replaceTo(navOptions)
-			} else {
-				await relaunchTo(navOptions)
-			}
-
-			this.routeState.setCurrentRoute(to)
-			this.guardManager.runAfterGuards(to, from)
-
-			return { ...to, eventChannel }
-		} catch (error) {
-			const code = RouterErrorCode.NAVIGATION_API_ERROR
-			const cause = isUniApiError(error) ? error : undefined
-			const failure = new NavigationFailure(to, from, code, undefined, cause)
-			this.triggerErrorHandlers(failure, to, from)
-			return Promise.reject(failure)
-		}
-	}
-
-	/**
-	 * 处理守卫执行结果
-	 *
-	 * 根据守卫返回的结果决定后续行为：
-	 * - abort: 中止导航并抛出 NavigationFailure
-	 * - next + redirect: 递归执行重定向导航
-	 * - next: 继续执行后续守卫
-	 *
-	 * 重定向方式优先级：守卫通过 next(location, { mode }) 指定的 mode > 原始导航方式。
-	 * 原始导航为 back 时无法重定向（目标不在页面栈中），回退为 relaunch。
-	 *
-	 * @param result - 守卫执行结果
-	 * @param to - 目标路由
-	 * @param from - 来源路由
-	 * @param mode - 导航模式
-	 * @param redirectDepth - 当前重定向深度
-	 * @param animation - 当前导航的动画参数
-	 * @returns 中止或重定向时返回 Promise\<RouteLocation\>，放行时返回 null
-	 */
-	private handleGuardResult(
-		result: GuardResult,
-		to: RouteLocation,
-		from: RouteLocation,
-		mode: 'push' | 'replace' | 'relaunch' | 'back',
-		redirectDepth: number,
-		animation?: NavigationAnimation,
-		events?: EventListeners
-	): Promise<NavigationResult> | null {
-		if (result.type === 'abort') {
-			const failure = new NavigationFailure(to, from, result.code)
-			this.triggerErrorHandlers(failure, to, from)
-			return Promise.reject(failure)
-		}
-
-		if (result.redirect) {
-			// 重定向时提取新位置的动画参数和事件监听器，未指定则沿用当前值
-			const redirectAnimation = this.extractAnimation(result.redirect) ?? animation
-			// 启用内置通信管理器时，重定向的 events 由管理器接管，不传给原生
-			// 注：重定向目标不会创建新 channel（守卫重定向为异常流程，通信需求低）
-			const redirectEvents = this._useUniEventChannel ? undefined : (this.extractEvents(result.redirect) ?? events)
-			const redirectTarget = this.matcher.resolve(result.redirect)
-			// 重定向方式：守卫指定优先，否则沿用原始导航方式
-			// back 无法作为重定向方式（目标不在页面栈中），回退为 relaunch
-			const redirectMode = result.mode ?? (mode === 'back' ? 'relaunch' : mode)
-			return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, redirectAnimation, redirectEvents)
-		}
-
-		return null
-	}
-
-	/**
 	 * 触发所有已注册的错误处理器
 	 * @param error - 路由错误对象
 	 * @param to - 目标路由
@@ -695,122 +483,6 @@ class UniRouter implements Router {
 				// error handlers should not throw
 			}
 		}
-	}
-
-	/**
-	 * 判断两个路由位置是否相同
-	 * @param a - 第一个路由位置
-	 * @param b - 第二个路由位置
-	 * @returns 路径和查询参数均相同时返回 true
-	 */
-	private isSameRouteLocation(a: RouteLocation, b: RouteLocation): boolean {
-		if (a.path !== b.path) return false
-		if (a.name !== b.name) return false
-		return this.isSameQuery(a.query, b.query)
-	}
-
-	/**
-	 * 判断两组查询参数是否相同
-	 * @param a - 第一组查询参数
-	 * @param b - 第二组查询参数
-	 * @returns 键值对完全一致时返回 true
-	 */
-	private isSameQuery(a: Record<string, string>, b: Record<string, string>): boolean {
-		if (a === b) return true
-		const keysA = Object.keys(a)
-		const keysB = Object.keys(b)
-		if (keysA.length !== keysB.length) return false
-		if (keysA.length === 0) return true
-		return keysA.every(key => a[key] === b[key])
-	}
-
-	/**
-	 * 从原始路由位置中提取动画参数
-	 *
-	 * resolve() 会丢弃 animation 字段，因此需要在解析前提取。
-	 * 字符串形式的路由位置不包含动画参数。
-	 *
-	 * @param location - 原始路由位置
-	 * @returns 动画配置，不存在时返回 undefined
-	 */
-	private extractAnimation(location: RouteLocationRaw): NavigationAnimation | undefined {
-		if (typeof location === 'string') return undefined
-		if (typeof location === 'object' && 'animation' in location) return location.animation
-		return undefined
-	}
-
-	/**
-	 * 从原始路由位置中提取事件监听器
-	 *
-	 * resolve() 会丢弃 events 字段，因此需要在解析前提取。
-	 * 字符串形式的路由位置不包含事件监听器。
-	 *
-	 * @param location - 原始路由位置
-	 * @returns 事件监听器，不存在时返回 undefined
-	 */
-	private extractEvents(location: RouteLocationRaw): EventListeners | undefined {
-		if (typeof location === 'string') return undefined
-		if (typeof location === 'object' && 'events' in location) return location.events
-		return undefined
-	}
-
-	/**
-	 * 将 navigationId 注入到路由位置的 params 中
-	 *
-	 * 启用内置通信管理器时调用，使目标页面能通过 `route.params.__navId`
-	 * 拿到与调用方配对的通道标识。
-	 *
-	 * 字符串形式的位置会被转为对象形式（`{ path, params: { __navId } }`）。
-	 *
-	 * @param location - 原始路由位置
-	 * @param navigationId - 通信通道标识
-	 * @returns 注入 __navId 后的路由位置
-	 */
-	private injectNavId(location: RouteLocationRaw, navigationId: NavigationId): RouteLocationRaw {
-		if (typeof location === 'string') {
-			return { path: location, params: { [NAV_ID_KEY]: navigationId } } as RouteLocationPathRaw
-		}
-		const existingParams = ('params' in location ? (location as { params?: ParamObject }).params : undefined) ?? {}
-		return { ...location, params: { ...existingParams, [NAV_ID_KEY]: navigationId } } as RouteLocationRaw
-	}
-
-	/**
-	 * 从原始路由位置中提取 params 和 persistent，存入 ParamsManager 并将 key 注入 location
-	 *
-	 * params 在 resolve 前处理，因为需要将 key 拼入 query 以便目标页面读取。
-	 *
-	 * @param location - 原始路由位置
-	 * @returns 注入 __params_key 后的路由位置
-	 */
-	private enrichLocationWithParams(location: RouteLocationRaw): RouteLocationRaw {
-		if (typeof location === 'string') return location
-
-		// 检查是否有 params
-		const hasParams = 'params' in location && (location as { params?: ParamObject }).params
-		if (!hasParams || Object.keys((location as { params: ParamObject }).params).length === 0) return location
-
-		const params = (location as { params: ParamObject }).params
-		const persistent = 'persistent' in location ? (location as { persistent?: boolean }).persistent : undefined
-		const key = this.paramsManager.set(params, persistent)
-
-		// 将 key 注入 query
-		if ('path' in location) {
-			const pathLoc = location as RouteLocationPathRaw
-			return {
-				...pathLoc,
-				query: { ...pathLoc.query, [PARAMS_KEY]: key }
-			}
-		}
-
-		if ('name' in location) {
-			const namedLoc = location as RouteLocationNamedRaw
-			return {
-				...namedLoc,
-				query: { ...namedLoc.query, [PARAMS_KEY]: key }
-			}
-		}
-
-		return location
 	}
 
 	/**
@@ -843,13 +515,6 @@ class UniRouter implements Router {
 		this.routeState.setCurrentRoute(to)
 	}
 }
-
-/**
- * 路由器注入键，用于 Vue 的 provide/inject 机制
- *
- * @internal 内部使用，不应在应用代码中直接引用
- */
-export const ROUTER_SYMBOL = Symbol('uni-router')
 
 /**
  * 创建 uni-app 路由器实例

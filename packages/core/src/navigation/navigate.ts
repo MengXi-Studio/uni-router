@@ -1,4 +1,4 @@
-import type { RouteMeta, NavigationAnimation, EventChannel, EventListeners } from '@/types/route'
+import type { RouteMeta, NavigationAnimation, EventChannel, EventListeners } from '@/types'
 import type { UniApiCause, UniApiError as UniApiErrorType } from '@/types/error'
 import { buildFullPath } from '@/utils/path'
 import { warn } from '@/utils/general'

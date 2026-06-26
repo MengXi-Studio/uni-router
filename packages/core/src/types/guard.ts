@@ -1,4 +1,4 @@
-import type { RouteLocation, RouteLocationRaw } from './route'
+import type { RouteLocation, RouteLocationRaw } from './route-location'
 
 /**
  * 导航守卫重定向方式

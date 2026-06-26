@@ -6,7 +6,7 @@
  *
  * @returns 页面栈数组，非 uni-app 环境返回空数组
  */
-function safeGetCurrentPages(): UniPage[] {
+export function safeGetCurrentPages(): UniPage[] {
 	if (typeof getCurrentPages !== 'function') return []
 	return getCurrentPages()
 }
