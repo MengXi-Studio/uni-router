@@ -1,3 +1,14 @@
+## 1.8.1（2026-06-26）
+
+### 修复
+
+- **`interface` 对象无法赋值给 `params` 字段** - 解决 v1.8.0 中 `router.push({ params })` 传入 `interface` 定义的对象时类型报错的问题
+  - **问题**：v1.8.0 中 `RouteLocationPathRaw.params` / `RouteLocationNamedRaw.params` 的类型为 `interface ParamObject`（带索引签名 `{ [key: string]: ParamValue }`）。TypeScript 严格模式下，`interface` 定义的对象类型没有显式索引签名，无法赋值给带索引签名的类型，导致 `const params: MyInterface = {...}; router.push({ params })` 报错“缺少类型 'string' 的索引签名”
+  - **修复**：新增 `ParamsInput` 类型（`object`）作为输入侧类型，`params` 字段改用 `ParamsInput`，通过结构子类型兼容任意 `interface` 对象；输出侧 `ParamObject` 从 `interface` 改为 `type` 别名（`Record<string, ParamValue>`），保留索引签名访问
+  - **设计说明**：参考 vue-router 的 `RouteParamsRawGeneric`（`Record<string, RouteParamValueRaw | ...[]>`）调研，发现其值类型仅含原始类型（`string | number | null | undefined`），原始类型属性的 `interface` 对象可通过结构子类型兼容 `Record`；而 mxuni-router 的 `ParamValue` 包含 `object` / `ParamValue[]` 分支（支持复杂数据传递），此场景下 `Record<string, ParamValue>` 在 vue-tsc 严格模式下仍不兼容 `interface` 对象，必须使用 `object`
+  - 运行时由 `ParamsManager` 校验 JSON 可序列化性
+  - 新增 `ParamsInput` 类型导出
+
 ## 1.8.0（2026-06-26）
 
 ### 新增
