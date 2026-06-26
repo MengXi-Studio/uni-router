@@ -1,4 +1,4 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationAnimation, NavigationResult } from './route'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationAnimation, NavigationResult, UniEventChannel, NavigationId } from './route'
 import type { NavigationGuard, PostNavigationGuard } from './guard'
 import type { RouterError, NavigationFailure } from './error'
 import type { App } from 'vue'
@@ -81,6 +81,27 @@ export interface RouterOptions {
 	 * @default false
 	 */
 	paramsPersistent?: boolean
+
+	/**
+	 * 是否使用内置通信管理器替代 uni.navigateTo 原生 EventChannel
+	 *
+	 * - false（默认）：`push` 使用原生 EventChannel（框架托管时序），其他导航方式不支持 events
+	 * - true：所有导航方式均使用内置通信管理器（基于 `uni.$emit` / `uni.$on`），
+	 *   支持 `push` / `replace` / `relaunch` 的页面间通信，目标页面通过 `usePageChannel()` 接收
+	 *
+	 * 启用后：
+	 * - 调用方通过返回值的 `eventChannel.emit` 发送事件
+	 * - 目标页面通过 `usePageChannel()` 获取通道接收事件
+	 * - 自动将 `__navId` 注入 `route.params` 并强制持久化（解决 H5 刷新丢失 navId 问题）
+	 *
+	 * 已知限制（与原生 EventChannel 一致）：
+	 * - H5 刷新后调用方→目标的事件失效（调用方监听器为内存引用，刷新后丢失）
+	 * - `replace` / `relaunch` 后调用方页面销毁，反向通信无接收者
+	 * - `back` 不支持 events（目标页面已 onLoad，无法注入新 navId）
+	 *
+	 * @default false
+	 */
+	useUniEventChannel?: boolean
 }
 
 /**
@@ -213,6 +234,40 @@ export interface Router {
 	 * 建议在每个页面的 onShow 生命周期中调用此方法。
 	 */
 	syncRoute(): void
+
+	/**
+	 * 获取目标页面对应的通信通道（接收侧）
+	 *
+	 * 用于 `usePageChannel()` 内部实现：目标页面根据 `route.params.__navId`
+	 * 拿到与调用方配对的通道，从而接收调用方发送的事件。
+	 *
+	 * 当 `useUniEventChannel: false` 或 navId 不存在时，返回 no-op 通道（优雅降级）。
+	 *
+	 * @param navigationId - 导航标识，来自 `route.params.__navId`
+	 * @returns 通信通道实例，无匹配时为 no-op
+	 */
+	getChannelReceiver(navigationId: NavigationId): UniEventChannel
+
+	/**
+	 * 创建空操作通道
+	 *
+	 * 用于无 navigationId 场景下的优雅降级（如直接 URL 进入、刷新后丢失 navId）。
+	 * 所有方法静默忽略，不抛错。
+	 *
+	 * @returns no-op 通道实例
+	 */
+	createNoOpChannel(): UniEventChannel
+
+	/**
+	 * 销毁指定导航标识对应的通信通道
+	 *
+	 * 移除该通道在 `uni.$on` 上注册的所有监听器，避免内存泄漏。
+	 * 页面卸载时自动调用（通过 `usePageChannel()` 的 `onUnmounted`）。
+	 * 幂等，重复调用无副作用。
+	 *
+	 * @param navigationId - 导航标识
+	 */
+	destroyChannel(navigationId: NavigationId): void
 
 	/**
 	 * 对指定路由执行守卫链检查（不执行实际导航）

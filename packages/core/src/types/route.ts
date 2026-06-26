@@ -255,6 +255,37 @@ export interface EventChannel {
 export type EventListeners = Record<string, (...args: any[]) => void>
 
 /**
+ * 内置通信管理器生成的唯一导航标识
+ *
+ * 用于隔离不同导航产生的事件通道，事件名格式：`uni-router:<navigationId>:<eventName>`。
+ * 由 `ChannelManager` 在 `router.push` / `replace` / `relaunch` 时自动生成，
+ * 注入到 `route.params.__navId`，目标页面通过 `usePageChannel()` 读取。
+ */
+export type NavigationId = string
+
+/**
+ * 基于 uni.$emit / uni.$on 的内置通信通道
+ *
+ * 与原生 `EventChannel` 接口完全一致（`emit` / `on` / `once` / `off`，链式返回），
+ * 底层通过全局事件总线转发，配合唯一 navigationId 隔离通道。
+ *
+ * 启用 `useUniEventChannel` 后，`push` / `replace` / `relaunch` 的返回值
+ * `eventChannel` 即为此类型实例。
+ */
+export interface UniEventChannel extends EventChannel {
+	/** 当前通道的导航标识 */
+	readonly navigationId: NavigationId
+}
+
+/**
+ * 页面侧通信通道（目标页面通过 `usePageChannel()` 获取）
+ *
+ * 与 `UniEventChannel` 接口一致，语义为"接收侧"。
+ * 无 navigationId 时返回 no-op 实例（优雅降级，不报错）。
+ */
+export type PageChannel = UniEventChannel
+
+/**
  * 导航结果
  *
  * push 导航完成后的返回值，包含目标路由位置和可选的页面间通信通道。

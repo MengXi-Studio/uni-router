@@ -1,5 +1,5 @@
 export { createRouter, ROUTER_SYMBOL } from '@/router'
-export { useRouter, useRoute } from '@/composables'
+export { useRouter, useRoute, usePageChannel } from '@/composables'
 export type {
 	RouteNameMap,
 	RouteName,
@@ -15,6 +15,9 @@ export type {
 	EventChannel,
 	EventListeners,
 	NavigationResult,
+	NavigationId,
+	UniEventChannel,
+	PageChannel,
 	NavigationGuardNext,
 	NavigationGuardNextOptions,
 	NavigationRedirectMode,

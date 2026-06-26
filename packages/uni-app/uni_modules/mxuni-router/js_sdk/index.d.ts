@@ -246,6 +246,34 @@ interface EventChannel {
  */
 type EventListeners = Record<string, (...args: any[]) => void>;
 /**
+ * 内置通信管理器生成的唯一导航标识
+ *
+ * 用于隔离不同导航产生的事件通道，事件名格式：`uni-router:<navigationId>:<eventName>`。
+ * 由 `ChannelManager` 在 `router.push` / `replace` / `relaunch` 时自动生成，
+ * 注入到 `route.params.__navId`，目标页面通过 `usePageChannel()` 读取。
+ */
+type NavigationId = string;
+/**
+ * 基于 uni.$emit / uni.$on 的内置通信通道
+ *
+ * 与原生 `EventChannel` 接口完全一致（`emit` / `on` / `once` / `off`，链式返回），
+ * 底层通过全局事件总线转发，配合唯一 navigationId 隔离通道。
+ *
+ * 启用 `useUniEventChannel` 后，`push` / `replace` / `relaunch` 的返回值
+ * `eventChannel` 即为此类型实例。
+ */
+interface UniEventChannel extends EventChannel {
+    /** 当前通道的导航标识 */
+    readonly navigationId: NavigationId;
+}
+/**
+ * 页面侧通信通道（目标页面通过 `usePageChannel()` 获取）
+ *
+ * 与 `UniEventChannel` 接口一致，语义为"接收侧"。
+ * 无 navigationId 时返回 no-op 实例（优雅降级，不报错）。
+ */
+type PageChannel = UniEventChannel;
+/**
  * 导航结果
  *
  * push 导航完成后的返回值，包含目标路由位置和可选的页面间通信通道。
@@ -445,6 +473,26 @@ interface RouterOptions {
      * @default false
      */
     paramsPersistent?: boolean;
+    /**
+     * 是否使用内置通信管理器替代 uni.navigateTo 原生 EventChannel
+     *
+     * - false（默认）：`push` 使用原生 EventChannel（框架托管时序），其他导航方式不支持 events
+     * - true：所有导航方式均使用内置通信管理器（基于 `uni.$emit` / `uni.$on`），
+     *   支持 `push` / `replace` / `relaunch` 的页面间通信，目标页面通过 `usePageChannel()` 接收
+     *
+     * 启用后：
+     * - 调用方通过返回值的 `eventChannel.emit` 发送事件
+     * - 目标页面通过 `usePageChannel()` 获取通道接收事件
+     * - 自动将 `__navId` 注入 `route.params` 并强制持久化（解决 H5 刷新丢失 navId 问题）
+     *
+     * 已知限制（与原生 EventChannel 一致）：
+     * - H5 刷新后调用方→目标的事件失效（调用方监听器为内存引用，刷新后丢失）
+     * - `replace` / `relaunch` 后调用方页面销毁，反向通信无接收者
+     * - `back` 不支持 events（目标页面已 onLoad，无法注入新 navId）
+     *
+     * @default false
+     */
+    useUniEventChannel?: boolean;
 }
 /**
  * 路由器实例接口，提供路由导航、守卫注册和状态查询能力
@@ -563,6 +611,37 @@ interface Router {
      */
     syncRoute(): void;
     /**
+     * 获取目标页面对应的通信通道（接收侧）
+     *
+     * 用于 `usePageChannel()` 内部实现：目标页面根据 `route.params.__navId`
+     * 拿到与调用方配对的通道，从而接收调用方发送的事件。
+     *
+     * 当 `useUniEventChannel: false` 或 navId 不存在时，返回 no-op 通道（优雅降级）。
+     *
+     * @param navigationId - 导航标识，来自 `route.params.__navId`
+     * @returns 通信通道实例，无匹配时为 no-op
+     */
+    getChannelReceiver(navigationId: NavigationId): UniEventChannel;
+    /**
+     * 创建空操作通道
+     *
+     * 用于无 navigationId 场景下的优雅降级（如直接 URL 进入、刷新后丢失 navId）。
+     * 所有方法静默忽略，不抛错。
+     *
+     * @returns no-op 通道实例
+     */
+    createNoOpChannel(): UniEventChannel;
+    /**
+     * 销毁指定导航标识对应的通信通道
+     *
+     * 移除该通道在 `uni.$on` 上注册的所有监听器，避免内存泄漏。
+     * 页面卸载时自动调用（通过 `usePageChannel()` 的 `onUnmounted`）。
+     * 幂等，重复调用无副作用。
+     *
+     * @param navigationId - 导航标识
+     */
+    destroyChannel(navigationId: NavigationId): void;
+    /**
      * 对指定路由执行守卫链检查（不执行实际导航）
      *
      * 用于冷启动场景：用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，
@@ -667,6 +746,40 @@ declare function useRouter(): Router;
  * ```
  */
 declare function useRoute(): Ref<RouteLocation>;
+/**
+ * 获取当前页面的通信通道（目标页面侧）
+ *
+ * 必须在 Vue 组件的 setup() 中调用。读取当前路由的 `params.__navId` 并返回对应的 PageChannel。
+ *
+ * 行为：
+ * - 存在 navId（启用 `useUniEventChannel` 且由路由器导航进入）：返回真实通道，
+ *   组件可通过 `on` / `once` 监听调用方事件，通过 `emit` 向调用方发送事件
+ * - 不存在 navId（如直接通过 URL 进入、H5 刷新后丢失、`useUniEventChannel: false`）：
+ *   返回 no-op 通道，所有方法静默忽略，不报错
+ *
+ * 自动清理：组件 onUnmounted 时自动调用 `destroyChannel`，移除该通道的所有监听器，
+ * 避免内存泄漏。与 install 时注入的 onUnload mixin 互为补充（均幂等）。
+ *
+ * @returns PageChannel 实例（可能为 no-op）
+ *
+ * @example
+ * ```ts
+ * import { usePageChannel } from '@meng-xi/uni-router'
+ *
+ * const channel = usePageChannel()
+ *
+ * // 监听调用方事件
+ * channel.on('init', (data: { from: string }) => {
+ *   console.log('收到调用方初始化：', data)
+ * })
+ *
+ * // 向调用方发送事件
+ * function onConfirm() {
+ *   channel.emit('confirm', { ok: true })
+ * }
+ * ```
+ */
+declare function usePageChannel(): PageChannel;
 
 /**
  * 路由错误类，表示路由过程中产生的错误
@@ -701,4 +814,4 @@ declare class NavigationFailure extends RouterError {
     constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: UniApiError);
 }
 
-export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type GuardRouteOptions, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationGuardNextOptions, type NavigationRedirectMode, type NavigationResult, type ParamObject, type ParamValue, type ParamsInput, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, type UniApiCause, type UniApiError, createRouter, useRoute, useRouter };
+export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type GuardRouteOptions, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationGuardNextOptions, type NavigationId, type NavigationRedirectMode, type NavigationResult, type PageChannel, type ParamObject, type ParamValue, type ParamsInput, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, type UniApiCause, type UniApiError, type UniEventChannel, createRouter, usePageChannel, useRoute, useRouter };

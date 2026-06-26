@@ -1,4 +1,4 @@
-import { inject, ref } from 'vue';
+import { inject, onUnmounted, ref } from 'vue';
 
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -684,6 +684,7 @@ function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
 // src/params/index.ts
 var PARAMS_STORAGE_PREFIX = "__uni_router_params__";
 var PARAMS_KEY = "__params_key";
+var NAV_ID_KEY = "__navId";
 function generateKey() {
   const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
   return `pk_${hex}`;
@@ -703,7 +704,8 @@ function isPageInStack(key) {
 function createParamsManager(defaultPersistent) {
   const memoryMap = /* @__PURE__ */ new Map();
   function set(params, persistent) {
-    const useStorage = persistent ?? defaultPersistent;
+    const forcePersistent = NAV_ID_KEY in params;
+    const useStorage = forcePersistent || (persistent ?? defaultPersistent);
     const key = generateKey();
     try {
       JSON.stringify(params);
@@ -925,6 +927,146 @@ function createRouteMatcher(routes, strict, paramsManager) {
   };
 }
 
+// src/channel/uni-event-channel.ts
+var UniEventChannel = class {
+  /**
+   * @param navigationId - 导航标识
+   * @param isReceiver - 是否为接收侧（目标页面）
+   */
+  constructor(navigationId, isReceiver = false) {
+    /** 当前通道的导航标识，用于事件名隔离 */
+    __publicField(this, "navigationId");
+    /**
+     * 是否为接收侧（目标页面）
+     *
+     * 仅用于日志区分，emit/on 行为对称，均通过全局 $emit/$on 转发
+     */
+    __publicField(this, "isReceiver");
+    this.navigationId = navigationId;
+    this.isReceiver = isReceiver;
+  }
+  /**
+   * 生成隔离后的事件名
+   */
+  eventKey(eventName) {
+    return `uni-router:${this.navigationId}:${eventName}`;
+  }
+  /**
+   * 向对端发送事件
+   *
+   * 注：对端尚未通过 `on` 注册监听时，事件将丢失（与原生 EventChannel 行为一致）
+   */
+  emit(eventName, ...args) {
+    uni.$emit(this.eventKey(eventName), ...args);
+    return this;
+  }
+  /**
+   * 监听对端事件
+   *
+   * 同一 eventName 可注册多个 callback，按注册顺序触发
+   */
+  on(eventName, callback) {
+    uni.$on(this.eventKey(eventName), callback);
+    return this;
+  }
+  /**
+   * 监听一次后自动移除
+   */
+  once(eventName, callback) {
+    const wrapper = (...args) => {
+      this.off(eventName, wrapper);
+      callback(...args);
+    };
+    this.on(eventName, wrapper);
+    return this;
+  }
+  /**
+   * 取消监听
+   *
+   * 不传 callback 时移除该 eventName 的所有监听器
+   */
+  off(eventName, callback) {
+    if (callback) {
+      uni.$off(this.eventKey(eventName), callback);
+    } else {
+      uni.$off(this.eventKey(eventName));
+    }
+    return this;
+  }
+};
+var NoOpUniEventChannel = class extends UniEventChannel {
+  constructor() {
+    super("noop", true);
+  }
+  emit() {
+    return this;
+  }
+  on() {
+    return this;
+  }
+  once() {
+    return this;
+  }
+  off() {
+    return this;
+  }
+};
+
+// src/channel/channel-manager.ts
+function generateNavId() {
+  const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+  const time = Date.now().toString(36);
+  return `nav_${time}_${hex}`;
+}
+function createChannelManager() {
+  const registeredEvents = /* @__PURE__ */ new Map();
+  const channelCache = /* @__PURE__ */ new Map();
+  let noOpChannel = null;
+  function createChannel(events) {
+    const navigationId = generateNavId();
+    const channel = new UniEventChannel(navigationId, false);
+    channelCache.set(navigationId, channel);
+    registeredEvents.set(navigationId, /* @__PURE__ */ new Set());
+    if (events) {
+      for (const [eventName, callback] of Object.entries(events)) {
+        channel.on(eventName, callback);
+        registeredEvents.get(navigationId).add(eventName);
+      }
+    }
+    return { navigationId, channel };
+  }
+  function getReceiverChannel(navigationId) {
+    const cached = channelCache.get(navigationId);
+    if (cached) return cached;
+    return getNoOpChannel();
+  }
+  function getNoOpChannel() {
+    if (!noOpChannel) {
+      noOpChannel = new NoOpUniEventChannel();
+    }
+    return noOpChannel;
+  }
+  function destroyChannel(navigationId) {
+    const events = registeredEvents.get(navigationId);
+    if (events) {
+      const channel = channelCache.get(navigationId);
+      if (channel) {
+        for (const eventName of events) {
+          channel.off(eventName);
+        }
+      }
+      registeredEvents.delete(navigationId);
+    }
+    channelCache.delete(navigationId);
+  }
+  function destroyAll() {
+    for (const navId of registeredEvents.keys()) {
+      destroyChannel(navId);
+    }
+  }
+  return { createChannel, getReceiverChannel, getNoOpChannel, destroyChannel, destroyAll };
+}
+
 // src/router/index.ts
 var MAX_REDIRECT_DEPTH = 10;
 var UniRouter = class {
@@ -935,16 +1077,20 @@ var UniRouter = class {
     __publicField(this, "routeState", createRouteState());
     __publicField(this, "guardManager", createGuardManager());
     __publicField(this, "paramsManager", createParamsManager(false));
+    __publicField(this, "channelManager", createChannelManager());
     __publicField(this, "matcher", createRouteMatcher([], true, this.paramsManager));
     __publicField(this, "errorHandlers", []);
     __publicField(this, "pendingNavigation", null);
     __publicField(this, "_interceptUniApi");
+    __publicField(this, "_useUniEventChannel");
     this.guardManager = createGuardManager(options.guardTimeout);
     this.paramsManager = createParamsManager(options.paramsPersistent ?? false);
     this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager);
     this.routeState = createRouteState(options.readyTimeout);
     this._interceptUniApi = options.interceptUniApi ?? false;
+    this._useUniEventChannel = options.useUniEventChannel ?? false;
     this.paramsManager.cleanupAll();
+    this.channelManager.destroyAll();
     this.initRoute();
     if (this._interceptUniApi) {
       installInterceptors(this);
@@ -1150,6 +1296,43 @@ var UniRouter = class {
     this.paramsManager.cleanupStale();
   }
   /**
+   * 获取目标页面对应的通信通道（接收侧）
+   *
+   * 用于 `usePageChannel()` 内部实现：目标页面根据 `route.params.__navId`
+   * 拿到与调用方配对的通道，从而接收调用方发送的事件。
+   *
+   * 当 `useUniEventChannel: false` 或 navId 不存在时，返回 no-op 通道（优雅降级）。
+   *
+   * @param navigationId - 导航标识，来自 `route.params.__navId`
+   * @returns 通信通道实例，无匹配时为 no-op
+   */
+  getChannelReceiver(navigationId) {
+    return this.channelManager.getReceiverChannel(navigationId);
+  }
+  /**
+   * 创建空操作通道
+   *
+   * 用于无 navigationId 场景下的优雅降级（如直接 URL 进入、刷新后丢失 navId）。
+   * 所有方法静默忽略，不抛错。
+   *
+   * @returns no-op 通道实例
+   */
+  createNoOpChannel() {
+    return this.channelManager.getNoOpChannel();
+  }
+  /**
+   * 销毁指定导航标识对应的通信通道
+   *
+   * 移除该通道在 `uni.$on` 上注册的所有监听器，避免内存泄漏。
+   * 页面卸载时自动调用（通过 `usePageChannel()` 的 `onUnmounted`）。
+   * 幂等，重复调用无副作用。
+   *
+   * @param navigationId - 导航标识
+   */
+  destroyChannel(navigationId) {
+    this.channelManager.destroyChannel(navigationId);
+  }
+  /**
    * 对指定路由执行守卫链检查（不执行实际导航）
    *
    * 用于冷启动场景：用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，
@@ -1236,6 +1419,16 @@ var UniRouter = class {
         app.onUnmount(() => removeInterceptors());
       }
     }
+    if (this._useUniEventChannel) {
+      app.mixin({
+        onUnload() {
+          const navId = this.$route?.params?.[NAV_ID_KEY];
+          if (navId && this.$router) {
+            this.$router.destroyChannel(navId);
+          }
+        }
+      });
+    }
     this.routeState.markReady();
   }
   /**
@@ -1270,23 +1463,35 @@ var UniRouter = class {
       await this.pendingNavigation.catch(() => {
       });
     }
-    const enrichedLocation = this.enrichLocationWithParams(location);
+    const events = this.extractEvents(location);
+    let channel;
+    let locationForEnrich = location;
+    if (this._useUniEventChannel) {
+      const created = this.channelManager.createChannel(events);
+      channel = created.channel;
+      locationForEnrich = this.injectNavId(location, created.navigationId);
+    }
+    const enrichedLocation = this.enrichLocationWithParams(locationForEnrich);
     const to = this.matcher.resolve(enrichedLocation);
     const from = this.routeState.getCurrentRoute();
     const animation = this.extractAnimation(location);
-    const events = this.extractEvents(location);
     if (events && mode !== "push") {
       warn(`uni.${mode === "replace" ? "redirectTo" : "reLaunch"} does not support events. The events option will be ignored.`);
     }
     if (mode === "push" && this.isSameRouteLocation(to, from)) {
+      if (channel) this.channelManager.destroyChannel(channel.navigationId);
       const failure = new NavigationFailure(to, from, "NAVIGATION_DUPLICATED" /* NAVIGATION_DUPLICATED */, `Avoided redundant navigation to current location: "${to.fullPath}"`);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
-    const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, mode === "push" ? events : void 0);
+    const effectiveEvents = this._useUniEventChannel ? void 0 : mode === "push" ? events : void 0;
+    const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, effectiveEvents);
     this.pendingNavigation = navigationPromise;
     try {
       const result = await navigationPromise;
+      if (this._useUniEventChannel && channel) {
+        return { ...result, eventChannel: channel };
+      }
       return result;
     } finally {
       if (this.pendingNavigation === navigationPromise) {
@@ -1379,7 +1584,7 @@ var UniRouter = class {
     }
     if (result.redirect) {
       const redirectAnimation = this.extractAnimation(result.redirect) ?? animation;
-      const redirectEvents = this.extractEvents(result.redirect) ?? events;
+      const redirectEvents = this._useUniEventChannel ? void 0 : this.extractEvents(result.redirect) ?? events;
       const redirectTarget = this.matcher.resolve(result.redirect);
       const redirectMode = result.mode ?? (mode === "back" ? "relaunch" : mode);
       return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, redirectAnimation, redirectEvents);
@@ -1452,6 +1657,25 @@ var UniRouter = class {
     if (typeof location === "string") return void 0;
     if (typeof location === "object" && "events" in location) return location.events;
     return void 0;
+  }
+  /**
+   * 将 navigationId 注入到路由位置的 params 中
+   *
+   * 启用内置通信管理器时调用，使目标页面能通过 `route.params.__navId`
+   * 拿到与调用方配对的通道标识。
+   *
+   * 字符串形式的位置会被转为对象形式（`{ path, params: { __navId } }`）。
+   *
+   * @param location - 原始路由位置
+   * @param navigationId - 通信通道标识
+   * @returns 注入 __navId 后的路由位置
+   */
+  injectNavId(location, navigationId) {
+    if (typeof location === "string") {
+      return { path: location, params: { [NAV_ID_KEY]: navigationId } };
+    }
+    const existingParams = ("params" in location ? location.params : void 0) ?? {};
+    return { ...location, params: { ...existingParams, [NAV_ID_KEY]: navigationId } };
   }
   /**
    * 从原始路由位置中提取 params 和 persistent，存入 ParamsManager 并将 key 注入 location
@@ -1540,8 +1764,20 @@ function useRoute() {
   const router = useRouter();
   return getReactiveRoute(router);
 }
+function usePageChannel() {
+  const router = useRouter();
+  const route = useRoute();
+  const navId = route.value.params?.[NAV_ID_KEY];
+  const channel = navId ? router.getChannelReceiver(navId) : router.createNoOpChannel();
+  onUnmounted(() => {
+    if (navId) {
+      router.destroyChannel(navId);
+    }
+  });
+  return channel;
+}
 
 // src/types/route.ts
 var DEFAULT_ANIMATION_DURATION = 300;
 
-export { DEFAULT_ANIMATION_DURATION, NavigationFailure, ROUTER_SYMBOL, RouterError, RouterErrorCode, createRouter, useRoute, useRouter };
+export { DEFAULT_ANIMATION_DURATION, NavigationFailure, ROUTER_SYMBOL, RouterError, RouterErrorCode, createRouter, usePageChannel, useRoute, useRouter };

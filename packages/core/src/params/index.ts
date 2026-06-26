@@ -7,6 +7,9 @@ const PARAMS_STORAGE_PREFIX = '__uni_router_params__'
 /** URL query 中传递 params key 的字段名 */
 export const PARAMS_KEY = '__params_key'
 
+/** 内置通信管理器注入到 params 的导航标识字段名 */
+export const NAV_ID_KEY = '__navId'
+
 /**
  * 生成短随机 ID
  *
@@ -74,7 +77,9 @@ export function createParamsManager(defaultPersistent: boolean): ParamsManager {
 	const memoryMap = new Map<string, ParamObject>()
 
 	function set(params: ParamObject, persistent?: boolean): string {
-		const useStorage = persistent ?? defaultPersistent
+		// 含 __navId 的 params 强制持久化（解决 H5 刷新丢失 navId 导致 usePageChannel 失效问题）
+		const forcePersistent = NAV_ID_KEY in params
+		const useStorage = forcePersistent || (persistent ?? defaultPersistent)
 		const key = generateKey()
 
 		// 校验可序列化性

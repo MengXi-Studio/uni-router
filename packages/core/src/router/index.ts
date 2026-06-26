@@ -9,6 +9,8 @@ import type {
 	NavigationResult,
 	EventChannel,
 	EventListeners,
+	UniEventChannel,
+	NavigationId,
 	Router,
 	RouterOnError,
 	RouterOptions,
@@ -24,8 +26,9 @@ import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/n
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
 import { installInterceptors, removeInterceptors } from '@/interceptor'
-import { createParamsManager, PARAMS_KEY } from '@/params'
+import { createParamsManager, PARAMS_KEY, NAV_ID_KEY } from '@/params'
 import type { ParamsManager } from '@/params'
+import { createChannelManager, type ChannelManager } from '@/channel'
 import { buildFullPath, createRouteLocation, warn } from '@/utils'
 
 /**
@@ -44,10 +47,12 @@ class UniRouter implements Router {
 	private routeState = createRouteState()
 	private guardManager = createGuardManager()
 	private paramsManager: ParamsManager = createParamsManager(false)
+	private channelManager: ChannelManager = createChannelManager()
 	private matcher = createRouteMatcher([], true, this.paramsManager)
 	private errorHandlers: RouterOnError[] = []
 	private pendingNavigation: Promise<NavigationResult | RouteLocation | void> | null = null
 	private _interceptUniApi: boolean
+	private _useUniEventChannel: boolean
 
 	/**
 	 * @param options - 路由器初始化选项
@@ -58,9 +63,11 @@ class UniRouter implements Router {
 		this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager)
 		this.routeState = createRouteState(options.readyTimeout)
 		this._interceptUniApi = options.interceptUniApi ?? false
+		this._useUniEventChannel = options.useUniEventChannel ?? false
 
-		// 路由器初始化时清理所有残留 params（上次运行可能残留 storage 数据）
+		// 路由器初始化时清理所有残留 params 和通信通道（上次运行可能残留 storage 数据 / 全局监听器）
 		this.paramsManager.cleanupAll()
+		this.channelManager.destroyAll()
 
 		this.initRoute()
 		if (this._interceptUniApi) {
@@ -297,6 +304,46 @@ class UniRouter implements Router {
 	}
 
 	/**
+	 * 获取目标页面对应的通信通道（接收侧）
+	 *
+	 * 用于 `usePageChannel()` 内部实现：目标页面根据 `route.params.__navId`
+	 * 拿到与调用方配对的通道，从而接收调用方发送的事件。
+	 *
+	 * 当 `useUniEventChannel: false` 或 navId 不存在时，返回 no-op 通道（优雅降级）。
+	 *
+	 * @param navigationId - 导航标识，来自 `route.params.__navId`
+	 * @returns 通信通道实例，无匹配时为 no-op
+	 */
+	getChannelReceiver(navigationId: NavigationId): UniEventChannel {
+		return this.channelManager.getReceiverChannel(navigationId)
+	}
+
+	/**
+	 * 创建空操作通道
+	 *
+	 * 用于无 navigationId 场景下的优雅降级（如直接 URL 进入、刷新后丢失 navId）。
+	 * 所有方法静默忽略，不抛错。
+	 *
+	 * @returns no-op 通道实例
+	 */
+	createNoOpChannel(): UniEventChannel {
+		return this.channelManager.getNoOpChannel()
+	}
+
+	/**
+	 * 销毁指定导航标识对应的通信通道
+	 *
+	 * 移除该通道在 `uni.$on` 上注册的所有监听器，避免内存泄漏。
+	 * 页面卸载时自动调用（通过 `usePageChannel()` 的 `onUnmounted`）。
+	 * 幂等，重复调用无副作用。
+	 *
+	 * @param navigationId - 导航标识
+	 */
+	destroyChannel(navigationId: NavigationId): void {
+		this.channelManager.destroyChannel(navigationId)
+	}
+
+	/**
 	 * 对指定路由执行守卫链检查（不执行实际导航）
 	 *
 	 * 用于冷启动场景：用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，
@@ -404,6 +451,19 @@ class UniRouter implements Router {
 			}
 		}
 
+		// 启用内置通信管理器时，注入页面 onUnload mixin 自动清理通道监听器
+		// 避免页面销毁后 uni.$on 注册的监听器残留导致内存泄漏
+		if (this._useUniEventChannel) {
+			app.mixin({
+				onUnload(this: { $route?: { params?: ParamObject }; $router?: Router }) {
+					const navId = this.$route?.params?.[NAV_ID_KEY] as NavigationId | undefined
+					if (navId && this.$router) {
+						this.$router.destroyChannel(navId)
+					}
+				}
+			})
+		}
+
 		// 在 install 时标记路由器就绪，确保 isReady() 回调在所有插件安装完成后执行
 		this.routeState.markReady()
 	}
@@ -444,14 +504,26 @@ class UniRouter implements Router {
 			await this.pendingNavigation.catch(() => {})
 		}
 
+		// 从原始路由位置中提取事件监听器（resolve 会丢弃这些字段）
+		const events = this.extractEvents(location)
+
+		// 启用内置通信管理器时：创建通道并注入 navId 到 location.params
+		// navId 随 params 存储（强制 persistent，解决 H5 刷新丢失问题）
+		let channel: UniEventChannel | undefined
+		let locationForEnrich = location
+		if (this._useUniEventChannel) {
+			const created = this.channelManager.createChannel(events)
+			channel = created.channel
+			locationForEnrich = this.injectNavId(location, created.navigationId)
+		}
+
 		// 在 resolve 前处理 params：存入 ParamsManager 并将 key 注入 location
-		const enrichedLocation = this.enrichLocationWithParams(location)
+		const enrichedLocation = this.enrichLocationWithParams(locationForEnrich)
 
 		const to = this.matcher.resolve(enrichedLocation)
 		const from = this.routeState.getCurrentRoute()
-		// 从原始路由位置中提取动画参数和事件监听器（resolve 会丢弃这些字段）
+		// 从原始路由位置中提取动画参数（resolve 会丢弃这些字段）
 		const animation = this.extractAnimation(location)
-		const events = this.extractEvents(location)
 
 		// events 仅在 push 模式下有效，其他模式发出警告并忽略
 		if (events && mode !== 'push') {
@@ -459,16 +531,24 @@ class UniRouter implements Router {
 		}
 
 		if (mode === 'push' && this.isSameRouteLocation(to, from)) {
+			// 重复导航：销毁刚创建的通道，避免泄漏
+			if (channel) this.channelManager.destroyChannel(channel.navigationId)
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_DUPLICATED, `Avoided redundant navigation to current location: "${to.fullPath}"`)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
 		}
 
-		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, mode === 'push' ? events : undefined)
+		// 启用管理器时 events 由管理器接管，不传给原生 uni.navigateTo
+		const effectiveEvents = this._useUniEventChannel ? undefined : (mode === 'push' ? events : undefined)
+		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, effectiveEvents)
 		this.pendingNavigation = navigationPromise
 
 		try {
 			const result = await navigationPromise
+			// 启用管理器时用管理器 channel 覆盖返回值（替代原生 EventChannel）
+			if (this._useUniEventChannel && channel) {
+				return { ...result, eventChannel: channel }
+			}
 			return result
 		} finally {
 			if (this.pendingNavigation === navigationPromise) {
@@ -588,7 +668,9 @@ class UniRouter implements Router {
 		if (result.redirect) {
 			// 重定向时提取新位置的动画参数和事件监听器，未指定则沿用当前值
 			const redirectAnimation = this.extractAnimation(result.redirect) ?? animation
-			const redirectEvents = this.extractEvents(result.redirect) ?? events
+			// 启用内置通信管理器时，重定向的 events 由管理器接管，不传给原生
+			// 注：重定向目标不会创建新 channel（守卫重定向为异常流程，通信需求低）
+			const redirectEvents = this._useUniEventChannel ? undefined : (this.extractEvents(result.redirect) ?? events)
 			const redirectTarget = this.matcher.resolve(result.redirect)
 			// 重定向方式：守卫指定优先，否则沿用原始导航方式
 			// back 无法作为重定向方式（目标不在页面栈中），回退为 relaunch
@@ -670,6 +752,26 @@ class UniRouter implements Router {
 		if (typeof location === 'string') return undefined
 		if (typeof location === 'object' && 'events' in location) return location.events
 		return undefined
+	}
+
+	/**
+	 * 将 navigationId 注入到路由位置的 params 中
+	 *
+	 * 启用内置通信管理器时调用，使目标页面能通过 `route.params.__navId`
+	 * 拿到与调用方配对的通道标识。
+	 *
+	 * 字符串形式的位置会被转为对象形式（`{ path, params: { __navId } }`）。
+	 *
+	 * @param location - 原始路由位置
+	 * @param navigationId - 通信通道标识
+	 * @returns 注入 __navId 后的路由位置
+	 */
+	private injectNavId(location: RouteLocationRaw, navigationId: NavigationId): RouteLocationRaw {
+		if (typeof location === 'string') {
+			return { path: location, params: { [NAV_ID_KEY]: navigationId } } as RouteLocationPathRaw
+		}
+		const existingParams = ('params' in location ? (location as { params?: ParamObject }).params : undefined) ?? {}
+		return { ...location, params: { ...existingParams, [NAV_ID_KEY]: navigationId } } as RouteLocationRaw
 	}
 
 	/**

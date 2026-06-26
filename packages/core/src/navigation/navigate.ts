@@ -21,6 +21,10 @@ export interface UniNavigationOptions {
 	 *
 	 * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
 	 * 其他导航方式不支持 events，传入时将被忽略。
+	 *
+	 * 注：启用 `useUniEventChannel` 后，events 由内置 `ChannelManager` 接管，
+	 * 调用方在传入 events 时由 router 内部创建 `UniEventChannel` 并注册监听，
+	 * 此处 events 不会被传给原生 uni.navigateTo（传 undefined 以禁用原生 EventChannel）。
 	 */
 	events?: EventListeners
 }
