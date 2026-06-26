@@ -15,7 +15,8 @@ export type {
 	NavigationResult,
 	QueryValue,
 	ParamValue,
-	ParamObject
+	ParamObject,
+	ParamsInput
 } from './route'
 export { DEFAULT_ANIMATION_DURATION } from './route'
 

@@ -1,7 +1,7 @@
 {
 	"id": "mxuni-router",
 	"displayName": "基于 uni-app 路由管理，提供 vue-router 风格的 API",
-	"version": "1.8.0",
+	"version": "1.8.1",
 	"description": "mxuni-router 是一个基于 uni-app 的路由插件，提供 vue-router 风格的 API。",
 	"keywords": [
 		"@meng-xi/uni-router",
