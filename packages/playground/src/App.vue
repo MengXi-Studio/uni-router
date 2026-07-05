@@ -4,7 +4,7 @@ import { useRouter, RouterErrorCode } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-onLaunch(() => {
+onLaunch(options => {
 	console.log('App Launch')
 
 	// ===== 冷启动守卫检查 =====
@@ -12,8 +12,11 @@ onLaunch(() => {
 	// 页面由 uni-app 框架直接加载，不经过路由器导航，守卫（beforeEach 等）未执行。
 	// guardRoute() 对当前已加载页面补执行守卫链，确保权限校验生效。
 	router.isReady().then(() => {
+		// onLaunch 时页面栈可能为空（Page.onLoad 尚未触发），currentRoute 仍是 START_LOCATION。
+		// 优先从 launch options.path 获取真实入口路径传给 guardRoute，确保守卫校验的是实际页面。
+		const launchPath = options?.path ? `/${options.path}` : undefined
 		router
-			.guardRoute(undefined, {
+			.guardRoute(launchPath, {
 				onAbort: failure => {
 					console.warn('[guardRoute] 冷启动守卫中止:', failure.code)
 					if (failure.code === RouterErrorCode.NAVIGATION_ABORTED) {
@@ -30,8 +33,8 @@ onLaunch(() => {
 
 onShow(() => {
 	console.log('App Show')
-	// 应用从后台回到前台时同步路由状态
-	// 注意：页面切换时的状态同步应在各页面的 onShow 中调用 syncRoute()
+	// 路由状态同步已由路由器全局 mixin 自动处理（页面 onShow 时触发 syncRoute）
+	// 此处手动调用用于应用从后台回到前台时的补充同步（与 mixin 去重，安全）
 	router.syncRoute()
 })
 

@@ -279,11 +279,12 @@ class UniRouter implements Router {
 	/**
 	 * 同步路由状态与实际页面栈
 	 *
+	 * 路由器 install 时通过全局 mixin 在每个页面 onShow 自动调用此方法。
+	 * 若需在 onLoad 中获取路由信息，可手动调用（onLoad 早于 onShow）。
+	 *
 	 * 当页面通过浏览器后退、物理返回键等非路由器方式切换时，
 	 * 路由器的 currentRoute 可能与实际页面不同步。
 	 * 调用此方法将从 uni-app 页面栈中读取当前页面信息并更新路由状态。
-	 *
-	 * 建议在每个页面的 onShow 生命周期中调用此方法。
 	 */
 	syncRoute(): void {
 		const from = this.routeState.getCurrentRoute()
@@ -376,6 +377,7 @@ class UniRouter implements Router {
 	 *
 	 * 注册全局属性 `$router` 和 `$route`，并通过 provide/inject 机制
 	 * 使组件可以通过 `useRouter()` / `useRoute()` 访问路由器。
+	 * 同时注入全局 mixin，在每个页面 onShow 时自动调用 syncRoute() 同步路由状态。
 	 *
 	 * @param app - Vue 应用实例
 	 */
@@ -403,6 +405,15 @@ class UniRouter implements Router {
 				app.onUnmount(() => removeInterceptors())
 			}
 		}
+
+		// 通过全局 mixin 在页面 onShow 时自动同步路由状态
+		// syncRoute 有去重（路径+query 相同则跳过），mixin 钩子先于组件自身钩子执行
+		const router = this
+		app.mixin({
+			onShow() {
+				router.syncRoute()
+			}
+		})
 
 		// 在 install 时标记路由器就绪，确保 isReady() 回调在所有插件安装完成后执行
 		this.routeState.markReady()
@@ -452,6 +463,9 @@ class UniRouter implements Router {
 		// 从原始路由位置中提取动画参数和事件监听器（resolve 会丢弃这些字段）
 		const animation = this.extractAnimation(location)
 		const events = this.extractEvents(location)
+		// 提取 params key：matcher.resolve 会从 query 中移除 __params_key，
+		// 但实际导航 URL 需要保留它，以便 back() 时 syncCurrentRoute 能从 URL 重建 params
+		const paramsKey = this.extractParamsKey(enrichedLocation)
 
 		// events 仅在 push 模式下有效，其他模式发出警告并忽略
 		if (events && mode !== 'push') {
@@ -464,7 +478,7 @@ class UniRouter implements Router {
 			return Promise.reject(failure)
 		}
 
-		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, mode === 'push' ? events : undefined)
+		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, mode === 'push' ? events : undefined, paramsKey)
 		this.pendingNavigation = navigationPromise
 
 		try {
@@ -489,6 +503,7 @@ class UniRouter implements Router {
 	 * @param redirectDepth - 当前重定向深度
 	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
 	 * @param events - 页面间通信事件监听器（仅 push 时生效）
+	 * @param paramsKey - params 在 ParamsManager 中的 key，用于将 __params_key 拼入实际导航 URL
 	 * @returns 导航结果（push 模式包含 eventChannel）
 	 * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
 	 */
@@ -498,7 +513,8 @@ class UniRouter implements Router {
 		mode: 'push' | 'replace' | 'relaunch' | 'back',
 		redirectDepth: number,
 		animation?: NavigationAnimation,
-		events?: EventListeners
+		events?: EventListeners,
+		paramsKey?: string
 	): Promise<NavigationResult> {
 		if (redirectDepth > MAX_REDIRECT_DEPTH) {
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
@@ -520,11 +536,17 @@ class UniRouter implements Router {
 		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation, events)
 		if (handledResolve) return handledResolve
 
+		// 提前更新 currentRoute，确保目标页 onLoad/onShow 时 route.value 已是完整目标路由（含 name/params）
+		// syncRoute 的去重机制会跳过 onShow 中的重复同步，保留此处设置的完整路由信息
+		this.routeState.setCurrentRoute(to)
+
 		try {
+			// 实际导航 URL 需要将 __params_key 拼回 query（to.query 已被 matcher 清理，不含内部 key）
+			// 这样 back() 返回时 syncCurrentRoute 可从 URL 读取 key 重建 params
 			const navOptions = {
 				path: to.path,
 				meta: to.meta,
-				query: to.query,
+				query: paramsKey ? { ...to.query, [PARAMS_KEY]: paramsKey } : to.query,
 				animation,
 				events
 			}
@@ -538,11 +560,12 @@ class UniRouter implements Router {
 				await relaunchTo(navOptions)
 			}
 
-			this.routeState.setCurrentRoute(to)
 			this.guardManager.runAfterGuards(to, from)
 
 			return { ...to, eventChannel }
 		} catch (error) {
+			// 导航 API 失败，回退 currentRoute 到来源路由
+			this.routeState.setCurrentRoute(from)
 			const code = RouterErrorCode.NAVIGATION_API_ERROR
 			const cause = isUniApiError(error) ? error : undefined
 			const failure = new NavigationFailure(to, from, code, undefined, cause)
@@ -673,6 +696,25 @@ class UniRouter implements Router {
 	}
 
 	/**
+	 * 从已注入 params key 的路由位置中提取 __params_key
+	 *
+	 * enrichLocationWithParams 会将 key 写入 query，但 matcher.resolve 会将其移除。
+	 * 此方法在 resolve 之后从 enrichedLocation 中读取 key，用于拼入实际导航 URL，
+	 * 使 back() 返回时 syncCurrentRoute 可从 URL 重建 params。
+	 *
+	 * @param location - 已经过 enrichLocationWithParams 处理的路由位置
+	 * @returns params key，不存在时返回 undefined
+	 */
+	private extractParamsKey(location: RouteLocationRaw): string | undefined {
+		if (typeof location === 'string') return undefined
+		if (typeof location === 'object' && 'query' in location) {
+			const query = (location as { query?: Record<string, unknown> }).query
+			return query?.[PARAMS_KEY] as string | undefined
+		}
+		return undefined
+	}
+
+	/**
 	 * 从原始路由位置中提取 params 和 persistent，存入 ParamsManager 并将 key 注入 location
 	 *
 	 * params 在 resolve 前处理，因为需要将 key 拼入 query 以便目标页面读取。
@@ -725,9 +767,8 @@ class UniRouter implements Router {
 		const config = this.matcher.getRouteConfig(currentPath)
 		const meta: RouteMeta = config?.meta ?? {}
 		const query = getCurrentPageQuery()
-		const fullPath = buildFullPath(currentPath, query)
 
-		// 从 query 中提取 __params_key 并读取 params
+		// 从 query 中提取 __params_key 并读取 params，同时移除内部 key（不暴露给用户）
 		// 使用 peek：syncCurrentRoute 在 back() 后调用，此时目标页面已在栈中，
 		// 但 get 的惰性清理可能在某些边界情况下误删，peek 更安全
 		let params: ParamObject = {}
@@ -735,9 +776,12 @@ class UniRouter implements Router {
 		if (paramsKey) {
 			const resolved = this.paramsManager.peek(decodeURIComponent(paramsKey))
 			if (resolved) params = resolved
+			// 从用户可见的 query 中移除内部 key，fullPath 也基于清理后的 query 构建
+			delete query[PARAMS_KEY]
 		}
 
-		const to = createRouteLocation({ path: currentPath, meta, query, fullPath, params, _synced: true })
+		const fullPath = buildFullPath(currentPath, query)
+		const to = createRouteLocation({ path: currentPath, name: config?.name, meta, query, fullPath, params, _synced: true })
 		this.routeState.setCurrentRoute(to)
 	}
 }

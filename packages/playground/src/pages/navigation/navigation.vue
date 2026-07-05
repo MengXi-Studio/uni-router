@@ -111,7 +111,7 @@
 			<RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }" custom>
 				<view class="btn">RouterLink - 底部滑入动画</view>
 			</RouterLink>
-			<view class="code-block"> &lt;RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }"&gt; 底部滑入 &lt;/RouterLink&gt; </view>
+			<view class="code-block"> {{ linkAnimationCode }} </view>
 		</view>
 
 		<view class="section">
@@ -123,7 +123,7 @@
 			<RouterLink :to="{ path: '/pages/detail/detail', query: { id: 'link-persistent' } }" :params="{ config: { theme: 'dark' } }" persistent custom>
 				<view class="btn btn-success">RouterLink - params 持久化</view>
 			</RouterLink>
-			<view class="code-block"> &lt;RouterLink\n :to="{ path: '/pages/detail/detail' }"\n :params="{ orderInfo: { orderId: 'A001' } }"\n persistent\n&gt;\n 持久化参数跳转\n&lt;/RouterLink&gt; </view>
+			<view class="code-block"> {{ linkParamsCode }} </view>
 		</view>
 
 		<view class="section">
@@ -133,7 +133,7 @@
 				<view class="btn btn-success">RouterLink - events + navigated</view>
 			</RouterLink>
 			<view class="code-block">
-				&lt;RouterLink\n :to="{ path: '/pages/detail/detail', query: { id: '1' } }"\n :events="{ receiveData: (data) => console.log(data) }"\n @navigated="onNavigated"\n&gt;\n 查看详情\n&lt;/RouterLink&gt;
+				{{ linkEventsCode }}
 			</view>
 			<view v-if="routerLinkLog" class="info-text" style="color: #34c759">{{ routerLinkLog }}</view>
 		</view>
@@ -168,6 +168,11 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 
 const router = useRouter()
 const routerLinkLog = ref('')
+
+// 代码示例：含 < > 的文本需通过插值输出，避免小程序 WXML 编译器误解析为标签
+const linkAnimationCode = `<RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }"> 底部滑入 </RouterLink>`
+const linkParamsCode = `<RouterLink\\n :to="{ path: '/pages/detail/detail' }"\\n :params="{ orderInfo: { orderId: 'A001' } }"\\n persistent\\n>\\n 持久化参数跳转\\n</RouterLink>`
+const linkEventsCode = `<RouterLink\\n :to="{ path: '/pages/detail/detail', query: { id: '1' } }"\\n :events="{ receiveData: (data) => console.log(data) }"\\n @navigated="onNavigated"\\n>\\n 查看详情\\n</RouterLink>`
 
 function onReceiveData(data: Record<string, unknown>) {
 	routerLinkLog.value = `收到详情页数据: ${JSON.stringify(data)}`

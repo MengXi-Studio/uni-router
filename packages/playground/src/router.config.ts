@@ -1,7 +1,7 @@
 /**
  * @plugin generate-router
- * @date 2026-06-23 00:07:04
- * @version 0.2.2
+ * @date 2026-07-05 22:20:15
+ * @version 1.0.0
  */
 
 import type { RouteConfig } from '@meng-xi/uni-router'
@@ -24,11 +24,7 @@ export const routes: RouteConfig[] = [
 	{
 		path: '/pages/guards/guards',
 		name: 'pagesGuardsGuards',
-		meta: { title: '路由守卫' },
-		beforeEnter: (_to, _from, next) => {
-			console.log('[beforeEnter] 路由独享守卫 - guards 页面')
-			next()
-		}
+		meta: { title: '路由守卫' }
 	},
 	{
 		path: '/pages/detail/detail',

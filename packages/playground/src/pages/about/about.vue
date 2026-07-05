@@ -25,7 +25,7 @@
 
 		<view class="section">
 			<view class="section-title">当前路由信息（响应式）</view>
-			<view class="info-text">useRoute() 返回 Ref&lt;RouteLocation&gt;，路由变化时自动更新。</view>
+			<view class="info-text">useRoute() 返回 Ref{{ '<RouteLocation>' }}，路由变化时自动更新。</view>
 			<view class="code-block"> path: {{ route.path }}\nname: {{ route.name || '-' }}\nmeta.isTab: {{ route.meta.isTab ?? '-' }}\nmeta.title: {{ route.meta.title || '-' }} </view>
 		</view>
 

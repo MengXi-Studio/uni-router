@@ -27,8 +27,7 @@
 		{
 			"path": "pages/protected/protected",
 			"style": {
-				"navigationBarTitleText": "受保护页面",
-				"requireAuth": true
+				"navigationBarTitleText": "受保护页面"
 			}
 		},
 		{
@@ -75,8 +74,7 @@
 				{
 					"path": "settings/settings",
 					"style": {
-						"navigationBarTitleText": "设置",
-						"requireAuth": true
+						"navigationBarTitleText": "设置"
 					}
 				}
 			]
