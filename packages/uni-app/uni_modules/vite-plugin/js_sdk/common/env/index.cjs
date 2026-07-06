@@ -1,0 +1,2 @@
+"use strict";function parseEnvContent(o,r){const i={},c=o.split(`
+`);for(const f of c){const s=f.trim();if(!s||s.startsWith("#"))continue;const n=s.indexOf("=");if(n===-1)continue;const e=s.slice(0,n).trim();let t=s.slice(n+1).trim();(t.startsWith('"')&&t.endsWith('"')||t.startsWith("'")&&t.endsWith("'"))&&(t=t.slice(1,-1)),r?.prefix?e.startsWith(r.prefix)&&(i[e]=t):i[e]=t}return i}exports.parseEnvContent=parseEnvContent;

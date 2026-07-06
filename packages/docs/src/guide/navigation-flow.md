@@ -39,7 +39,11 @@ router.push({ name: 'about' })
 │    ├─ 2.3 runBeforeResolveGuards()                      │
 │    │      └─ 依次执行 beforeResolve 守卫                  │
 │    │                                                    │
-│    └─ 2.4 调用 uni 导航 API                              │
+│    ├─ 2.4 setCurrentRoute(to) 提前更新当前路由            │
+│    │      └─ 确保目标页 onLoad/onShow 时 route.value     │
+│    │         已是完整目标路由（含 name/params）            │
+│    │                                                    │
+│    └─ 2.5 调用 uni 导航 API                              │
 │           ├─ push → navigateTo (返回 eventChannel)       │
 │           ├─ replace → redirectTo / switchTab           │
 │           ├─ relaunch → reLaunch / switchTab            │
@@ -49,7 +53,6 @@ router.push({ name: 'about' })
   ▼
 ┌─────────────────────────────────────────────────────────┐
 │ 3. 导航完成后                                             │
-│    ├─ routeState.setCurrentRoute(to) 更新当前路由         │
 │    ├─ runAfterGuards() 执行 afterEach 钩子                │
 │    └─ 返回 NavigationResult / RouteLocation              │
 └─────────────────────────────────────────────────────────┘
@@ -202,15 +205,35 @@ push(protected) → beforeEach 重定向到 login
 
 ### 2.5 调用 uni API
 
-所有守卫通过后，根据 `mode` 调用对应的 uni API：
+所有守卫通过后，**先**调用 `setCurrentRoute(to)` 提前更新当前路由，**再**根据 `mode` 调用对应的 uni API：
 
 ```ts
-if (mode === 'push') {
-  eventChannel = await navigateTo(navOptions)  // 返回 eventChannel
-} else if (mode === 'replace') {
-  await replaceTo(navOptions)
-} else {
-  await relaunchTo(navOptions)
+// 提前更新 currentRoute，确保目标页 onLoad/onShow 时 route.value 已是完整目标路由（含 name/params）
+// syncRoute 的去重机制会跳过 onShow 中的重复同步，保留此处设置的完整路由信息
+this.routeState.setCurrentRoute(to)
+
+try {
+  const navOptions = {
+    path: to.path,
+    meta: to.meta,
+    // 实际导航 URL 需要将 __params_key 拼回 query（to.query 已被 matcher 清理，不含内部 key）
+    // 这样 back() 返回时 syncCurrentRoute 可从 URL 读取 key 重建 params
+    query: paramsKey ? { ...to.query, [PARAMS_KEY]: paramsKey } : to.query,
+    animation,
+    events
+  }
+
+  if (mode === 'push') {
+    eventChannel = await navigateTo(navOptions)  // 返回 eventChannel
+  } else if (mode === 'replace') {
+    await replaceTo(navOptions)
+  } else {
+    await relaunchTo(navOptions)
+  }
+} catch (error) {
+  // API 调用失败，回滚 currentRoute
+  this.routeState.setCurrentRoute(from)
+  throw error
 }
 ```
 
@@ -220,19 +243,15 @@ if (mode === 'push') {
 每个 uni API 调用前会执行 `markRouterCall()`，标记此次调用来自路由器。当 `interceptUniApi` 启用时，拦截器通过此标记避免循环拦截。
 :::
 
+::: warning setCurrentRoute 提前执行
+`setCurrentRoute(to)` 在 uni 导航 API 调用**之前**执行，而非之后。这样目标页 `onLoad` / `onShow` 触发时 `route.value` 已是完整目标路由（含 `name` / `params`），避免在目标页生命周期中读到旧的 `currentRoute`。
+
+全局 mixin 的 `onShow` 自动 `syncRoute()` 有去重机制（路径 + query 一致则跳过），不会覆盖此处设置的完整路由信息。若 API 调用失败，`currentRoute` 会回滚为 `from`。
+:::
+
 ## 阶段三：导航完成后
 
-### 3.1 更新当前路由
-
-```ts
-this.routeState.setCurrentRoute(to)
-```
-
-更新 `currentRoute`，同时：
-- 通知 `onRouteChange` 监听器
-- 更新 Vue 的 `$route` 计算属性
-
-### 3.2 执行后置钩子
+### 3.1 执行后置钩子
 
 ```ts
 this.guardManager.runAfterGuards(to, from)
@@ -240,7 +259,7 @@ this.guardManager.runAfterGuards(to, from)
 
 `afterEach` 钩子按注册顺序执行。注意 `afterEach` 不接受 `next` 参数，无法改变结果。
 
-### 3.3 返回结果
+### 3.2 返回结果
 
 ```ts
 return { ...to, eventChannel }  // push 模式
@@ -269,8 +288,10 @@ router.back(delta)
   │
   ├─ goBack(delta, animation) 调用 uni.navigateBack
   │
-  ├─ syncCurrentRoute(from) 同步状态
-  │   └─ 从页面栈读取真实页面，更新 currentRoute
+  ├─ syncCurrentRoute() 同步状态
+  │   ├─ 从页面栈读取真实页面，更新 currentRoute
+  │   ├─ 从 URL query 读取 __params_key，用 peek 重建 params（不删除）
+  │   ├─ 从用户可见 query 中移除内部 key
   │   └─ _synced = true（标记为状态同步）
   │
   ├─ runAfterGuards(to, from)
@@ -280,6 +301,10 @@ router.back(delta)
 
 ::: warning back 不执行 beforeEnter
 `back()` 返回到的是已存在的页面，不触发 `beforeEnter`（路由独享守卫）。仅执行全局守卫。
+:::
+
+::: tip back() 后 params 不丢失
+`back()` 返回原页面时，`syncCurrentRoute` 会从 URL query 中读取 `__params_key`，用 `peek`（不删除）从 `ParamsManager` 取出 params。由于 `push` 时已将 `__params_key` 拼入实际导航 URL（即使 `route.query` 中不可见），`back()` 后仍可重建 params。
 :::
 
 ## 状态同步机制
@@ -302,12 +327,18 @@ syncRoute(): void {
   // 路径和 query 都一致，无需更新
   if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return
 
-  this.syncCurrentRoute(from)
+  this.syncCurrentRoute()
   this.paramsManager.cleanupStale()  // 清理无效 params
 }
 ```
 
-`syncCurrentRoute` 从页面栈读取真实页面信息，构造新的 `RouteLocation`（`_synced: true`）并更新状态。
+`syncCurrentRoute` 从页面栈读取真实页面信息，构造新的 `RouteLocation`（`_synced: true`）并更新状态。期间会从 URL query 读取 `__params_key` 并用 `peek` 重建 params（不删除，便于反复读取），同时从用户可见 query 中移除该内部 key。
+
+::: tip 已通过全局 mixin 自动调用
+路由器在 `install()` 时注入了 `app.mixin({ onShow() { router.syncRoute() } })`，会在每个页面 `onShow` **自动**同步状态。mixin 钩子先于组件自身 `onShow` 执行，且 `syncRoute` 内部有去重机制（路径 + query 一致则跳过）。
+
+因此，物理返回键、浏览器后退、`uni.navigateBack` 直接调用等场景下**无需**手动调用 `syncRoute()`。仅在 `onLoad` 等早于 `onShow` 的生命周期中需要立即读取路由信息时，才需手动调用。
+:::
 
 ### 为何 afterEach 不触发
 
@@ -394,11 +425,17 @@ router.beforeEach((to, from, next) => {
 导航时:
   location.params = { id: 123 }
   → ParamsManager.set(key, { id: 123 })
-  → URL: /detail?__params_key=key
+  → 实际导航 URL: /detail?__params_key=key
+  → route.query 中不包含 __params_key（matcher 解析时已移除）
 
-目标页面读取:
+目标页面读取（push 后首次进入）:
   route.params = ParamsManager.get(key)
-  → get 是惰性清理：读取后删除该 key
+  → get 是惰性清理：读取后删除该 key（防止重复读取）
+
+back() 返回原页面:
+  → syncCurrentRoute 从 URL 读取 __params_key
+  → ParamsManager.peek(key)（不删除，可反复读取）
+  → 重建 route.params
 
 页面关闭 / syncRoute:
   → ParamsManager.cleanupStale() 清理无效 key
@@ -407,8 +444,9 @@ router.beforeEach((to, from, next) => {
   → ParamsManager.cleanupAll() 清空所有残留
 ```
 
-::: tip 惰性清理
-`get(key)` 读取后会删除该 key，防止重复读取。`back()` 后目标页面的 params 用 `peek(key)` 读取（不删除），避免误删。
+::: tip peek vs get
+- `get(key)`：读取后删除该 key，防止重复读取。适用于 `push` 后目标页首次读取。
+- `peek(key)`：仅读取不删除。适用于 `back()` 后原页面重建 params，因为用户可能反复 `back` 到同一页面。
 :::
 
 ## 完整时序示例
@@ -439,10 +477,10 @@ router.beforeEach((to, from, next) => {
    │   └─ next()
    ├─ beforeEnter: (login 路由无独享守卫)
    ├─ beforeResolve: 放行
+   ├─ setCurrentRoute(login)  ← 提前更新，确保目标页 onLoad/onShow 时 route.value 已就绪
    └─ replaceTo → uni.redirectTo(login)
 
 5. 导航完成:
-   ├─ setCurrentRoute(login)
    ├─ afterEach(login, home)
    └─ 返回 RouteLocation(login)
 

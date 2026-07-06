@@ -44,7 +44,7 @@ export default {
 		this.updateRouteInfo()
 	},
 	onShow() {
-		router.syncRoute()
+		// syncRoute() 已由路由器全局 mixin 在 onShow 自动调用
 		this.updateRouteInfo()
 	},
 	methods: {

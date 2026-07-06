@@ -578,18 +578,27 @@ onBackPress((options) => {
 })
 ```
 
-**Solution 2: Sync State in onShow**
+**Solution 2: Auto Sync State in onShow**
+
+The router registers a global mixin in `install()` that automatically calls `router.syncRoute()` in each page's `onShow` to sync `currentRoute` to the real page, **no manual call needed**:
 
 ```ts
-import { onShow } from '@dcloudio/uni-app'
-import { useRouter } from '@meng-xi/uni-router'
+// The router internally registers:
+// app.mixin({ onShow() { router.syncRoute() } })
 
-const router = useRouter()
+// So your pages usually don't need to manually sync; just read in onShow / onRouteChange
+import { onShow } from '@dcloudio/uni-app'
+import { useRoute } from '@meng-xi/uni-router'
+
+const route = useRoute()
 
 onShow(() => {
-  router.syncRoute() // Sync currentRoute to real page
+  // currentRoute has been auto-synced by the mixin
+  console.log(route.value.path, route.value.params)
 })
 ```
+
+If you need route info in `onLoad` (earlier than `onShow`), you can manually call `router.syncRoute()` once.
 
 **Solution 3: After-the-fact Handling in onRouteChange**
 
@@ -634,9 +643,14 @@ import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-onLaunch(() => {
+onLaunch((options) => {
   router.isReady().then(() => {
-    router.guardRoute(undefined, {
+    // At onLaunch, the page stack may be empty (Page.onLoad hasn't fired yet),
+    // and currentRoute is still START_LOCATION.
+    // Pass the real entry path from launch options.path to guardRoute,
+    // ensuring guards check the actual page.
+    const launchPath = options?.path ? `/${options.path}` : undefined
+    router.guardRoute(launchPath, {
       onAbort: (failure) => {
         // Guard aborted (e.g., not logged in), navigate to a safe page
         console.warn('Cold start guard aborted:', failure.code)
@@ -646,6 +660,12 @@ onLaunch(() => {
   })
 })
 ```
+
+::: warning Must pass options.path
+When `onLaunch` fires, the page stack is empty and `router.currentRoute` is still `START_LOCATION` (path `/`). If you call `guardRoute(undefined)` directly, guards will check `/` instead of the real entry page, causing guard logic based on `to.path` / `to.name` / `to.meta` to fail.
+
+`options.path` is provided by the uni-app framework in `onLaunch` (without leading `/`, needs manual prepending). It's available on all platforms.
+:::
 
 ### Guard Result Handling
 

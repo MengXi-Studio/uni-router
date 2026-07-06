@@ -44,9 +44,12 @@
 			<view class="info-text">params 支持传递复杂数据（对象、数组等），不暴露在 URL 中，目标页面通过 route.params 读取。</view>
 			<view class="btn" @click="pushWithParams">push - 带 params 跳转</view>
 			<view class="btn btn-success" @click="pushWithParamsPersistent">push - params 持久化存储</view>
+			<view class="info-text" style="color: #007aff; margin-top: 16rpx">
+				💡 back() params 不丢失：push 时实际导航 URL 会保留 __params_key（route.query 中不可见），back() 返回原页面后 syncCurrentRoute 会从 URL 读取 key 并用 peek 重建 params。详情页有完整演示。
+			</view>
 			<view class="code-block">
-				// 传递 params\nawait router.push({\n path: '/pages/detail/detail',\n query: { id: '1' },\n params: { userInfo: { name: 'Tom', age: 20 } }\n})\n\n// 目标页面读取\nconst route =
-				useRoute()\nconsole.log(route.params.userInfo) // { name: 'Tom', age: 20 }\n\n// 持久化存储（H5 刷新后仍可读取）\nawait router.push({\n path: '/pages/detail/detail',\n params: { bigData: largeObject },\n
+				// 传递 params\nawait router.push({\n path: '/pages/detail/detail',\n query: { id: '1' },\n params: { userInfo: { name: 'Tom', age: 20 } }\n})\n// → 实际 URL: /pages/detail/detail?id=1&__params_key=xxx\n// → route.query 中 __params_key 不可见，route.params.userInfo 可读\n\n// 目标页面读取\nconst route =
+				useRoute()\nconsole.log(route.params.userInfo) // { name: 'Tom', age: 20 }\n\n// back() 后 params 重建（peek，非 get 避免懒清理丢失）\nawait router.back()\n// → syncCurrentRoute 从 URL 读 __params_key，peek 重建 params\n\n// 持久化存储（H5 刷新后仍可读取）\nawait router.push({\n path: '/pages/detail/detail',\n params: { bigData: largeObject },\n
 				persistent: true\n})
 			</view>
 		</view>
@@ -111,7 +114,7 @@
 			<RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }" custom>
 				<view class="btn">RouterLink - 底部滑入动画</view>
 			</RouterLink>
-			<view class="code-block"> &lt;RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }"&gt; 底部滑入 &lt;/RouterLink&gt; </view>
+			<view class="code-block"> {{ linkAnimationCode }} </view>
 		</view>
 
 		<view class="section">
@@ -123,7 +126,7 @@
 			<RouterLink :to="{ path: '/pages/detail/detail', query: { id: 'link-persistent' } }" :params="{ config: { theme: 'dark' } }" persistent custom>
 				<view class="btn btn-success">RouterLink - params 持久化</view>
 			</RouterLink>
-			<view class="code-block"> &lt;RouterLink\n :to="{ path: '/pages/detail/detail' }"\n :params="{ orderInfo: { orderId: 'A001' } }"\n persistent\n&gt;\n 持久化参数跳转\n&lt;/RouterLink&gt; </view>
+			<view class="code-block"> {{ linkParamsCode }} </view>
 		</view>
 
 		<view class="section">
@@ -133,7 +136,7 @@
 				<view class="btn btn-success">RouterLink - events + navigated</view>
 			</RouterLink>
 			<view class="code-block">
-				&lt;RouterLink\n :to="{ path: '/pages/detail/detail', query: { id: '1' } }"\n :events="{ receiveData: (data) => console.log(data) }"\n @navigated="onNavigated"\n&gt;\n 查看详情\n&lt;/RouterLink&gt;
+				{{ linkEventsCode }}
 			</view>
 			<view v-if="routerLinkLog" class="info-text" style="color: #34c759">{{ routerLinkLog }}</view>
 		</view>
@@ -168,6 +171,11 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 
 const router = useRouter()
 const routerLinkLog = ref('')
+
+// 代码示例：含 < > 的文本需通过插值输出，避免小程序 WXML 编译器误解析为标签
+const linkAnimationCode = `<RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }"> 底部滑入 </RouterLink>`
+const linkParamsCode = `<RouterLink\\n :to="{ path: '/pages/detail/detail' }"\\n :params="{ orderInfo: { orderId: 'A001' } }"\\n persistent\\n>\\n 持久化参数跳转\\n</RouterLink>`
+const linkEventsCode = `<RouterLink\\n :to="{ path: '/pages/detail/detail', query: { id: '1' } }"\\n :events="{ receiveData: (data) => console.log(data) }"\\n @navigated="onNavigated"\\n>\\n 查看详情\\n</RouterLink>`
 
 function onReceiveData(data: Record<string, unknown>) {
 	routerLinkLog.value = `收到详情页数据: ${JSON.stringify(data)}`

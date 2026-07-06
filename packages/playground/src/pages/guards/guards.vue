@@ -57,10 +57,7 @@
 			<view class="info-text" style="color: #007aff; margin-top: 12rpx"> 本应用已在 App.vue 的 onLaunch 中调用 guardRoute()，冷启动进入受保护页面时将自动重定向到首页。 </view>
 			<view class="btn" @click="testGuardRoute">测试：对当前路由执行 guardRoute()</view>
 			<view class="btn btn-warn" @click="testGuardRouteAbort">测试：guardRoute() 被守卫中止</view>
-			<view class="code-block">
-				// App.vue onLaunch 中\nrouter.isReady().then(() => {\n router.guardRoute(undefined, {\n onAbort: (failure) => {\n // 守卫中止，跳转到安全页面\n router.relaunch({ name: 'home' })\n }\n })\n})\n\n//
-				手动调用：检查指定路由\nawait router.guardRoute({ name: 'pagesProtectedProtected' }, {\n onAbort: () => console.log('被中止')\n})
-			</view>
+			<view class="code-block"> // App.vue onLaunch 中\nonLaunch((options) => {\n router.isReady().then(() => {\n // onLaunch 时页面栈可能为空，currentRoute 仍是 START_LOCATION\n // 必须传入 options.path，否则守卫会校验 / 而非真实入口页面\n const launchPath = options?.path ? `/${options.path}` : undefined\n router.guardRoute(launchPath, {\n onAbort: (failure) => {\n // 守卫中止，跳转到安全页面\n router.relaunch({ name: 'pagesIndexIndex' })\n }\n })\n })\n})\n\n// 手动调用：检查指定路由\nawait router.guardRoute({ name: 'pagesProtectedProtected' }, {\n onAbort: () => console.log('被中止')\n}) </view>
 			<view v-if="guardRouteLog" class="info-text" style="color: #34c759; margin-top: 12rpx">{{ guardRouteLog }}</view>
 		</view>
 	</view>

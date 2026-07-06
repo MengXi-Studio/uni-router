@@ -18,8 +18,8 @@ router.currentRoute.fullPath   // '/pages/about/about?id=1'
 router.currentRoute.name       // 'about'
 ```
 
-::: warning 非实时同步
-`currentRoute` 在物理返回键、浏览器后退时**不会自动更新**（这些操作不经过路由器）。需在页面 `onShow` 中调用 `syncRoute()` 同步状态。详见 [syncRoute()](#syncroute)。
+::: tip 自动同步
+路由器在 `install()` 时已注册全局 mixin，会在每个页面 `onShow` 自动调用 `syncRoute()` 同步状态。物理返回键、浏览器后退等场景下 `currentRoute` 会自动更新，**无需手动调用**。仅在 `onLoad` 等早于 `onShow` 的生命周期中需要立即获取路由信息时，才需手动调用 `syncRoute()`。详见 [syncRoute()](#syncroute)。
 :::
 
 ## 导航方法
@@ -414,26 +414,27 @@ syncRoute(): void
 当页面通过浏览器后退、物理返回键等非路由器方式切换时，路由器的 `currentRoute` 可能与实际页面不同步。调用此方法将从 uni-app 页面栈中读取当前页面信息并更新路由状态。
 
 ```ts
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad } from '@dcloudio/uni-app'
 import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-// 建议在每个页面的 onShow 中调用
-onShow(() => {
+// onLoad 早于 onShow，如需在此阶段读取路由信息，可手动同步
+onLoad(() => {
   router.syncRoute()
+  console.log(router.currentRoute.params)
 })
 ```
 
-::: warning 必须手动同步的场景
-以下场景 `currentRoute` 不会自动更新，**必须**调用 `syncRoute()` 同步：
+::: tip 默认已自动同步
+路由器在 `install()` 时已通过 `app.mixin({ onShow() { router.syncRoute() } })` 注册全局 mixin，会在每个页面 `onShow` **自动**调用 `syncRoute()`。mixin 钩子先于组件自身钩子执行，且 `syncRoute` 内部有去重机制（路径 + query 一致则跳过），不会产生冗余更新。
 
-1. **物理返回键**（Android / App）
-2. **浏览器后退**（H5）
-3. **小程序左上角返回**
-4. **`uni.navigateBack` 直接调用**（未启用 `interceptUniApi` 时）
+通常**无需**在 `onShow` 中手动调用，仅在以下场景需要手动同步：
 
-未同步会导致 `currentRoute` 与实际页面不一致，`useRoute()` 返回旧值。
+1. **`onLoad` 等早于 `onShow` 的生命周期**中需要立即读取路由信息
+2. 通过非路由器方式修改了 URL query 且需要同步
+
+物理返回键、浏览器后退、`uni.navigateBack` 直接调用（未启用 `interceptUniApi`）等场景已被全局 mixin 自动覆盖。
 :::
 
 ### guardRoute()
@@ -468,9 +469,12 @@ import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-onLaunch(() => {
+onLaunch((options) => {
   router.isReady().then(() => {
-    router.guardRoute(undefined, {
+    // onLaunch 时页面栈可能为空（Page.onLoad 尚未触发），currentRoute 仍是 START_LOCATION。
+    // 优先从 launch options.path 获取真实入口路径传给 guardRoute，确保守卫校验的是实际页面。
+    const launchPath = options?.path ? `/${options.path}` : undefined
+    router.guardRoute(launchPath, {
       onAbort: (failure) => {
         // 守卫中止（如未登录），跳转到安全页面
         console.warn('冷启动守卫中止:', failure.code)
@@ -480,6 +484,12 @@ onLaunch(() => {
   })
 })
 ```
+
+::: warning 必须传入 options.path
+`onLaunch` 触发时页面栈为空，`router.currentRoute` 仍是 `START_LOCATION`（path 为 `/`）。若直接调用 `guardRoute(undefined)`，守卫会校验 `/` 而非真实入口页面（如 `/pages/index/index`），导致基于 `to.path` / `to.name` / `to.meta` 的守卫逻辑失效。
+
+`options.path` 是 uni-app 框架提供的真实入口路径（不含前导 `/`，需手动补全）。H5 / 小程序 / App 各端 `onLaunch` 均会传入此字段。
+:::
 
 ### 守卫结果处理
 
@@ -515,6 +525,7 @@ install(app: App): void
 - **`$router`** — 全局属性，可通过 `this.$router` 访问路由器实例
 - **`$route`** — 全局属性（计算属性），可通过 `this.$route` 访问当前路由位置
 - **provide** — 通过 `provide(ROUTER_SYMBOL, router)` 注入路由器实例，使 `useRouter()` / `useRoute()` 可用
+- **全局 mixin** — 注入 `onShow` 钩子，在每个页面 `onShow` 时自动调用 `router.syncRoute()` 同步路由状态（mixin 钩子先于组件自身钩子执行，`syncRoute` 内部有去重机制）
 - **markReady** — 标记路由器为就绪状态，所有等待中的 `isReady()` Promise 将被 resolve
 
 ## 方法总览

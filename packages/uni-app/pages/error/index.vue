@@ -116,9 +116,6 @@ export default {
 			apiErrorLog: ''
 		}
 	},
-	onShow() {
-		router.syncRoute()
-	},
 	methods: {
 		addLog(msg) {
 			const time = new Date().toLocaleTimeString()

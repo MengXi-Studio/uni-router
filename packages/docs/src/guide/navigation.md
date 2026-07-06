@@ -202,7 +202,7 @@ router.beforeEach((to, from, next) => {
 `back()` 仅拦截**编程式**调用。物理返回键（Android）、浏览器后退（H5）、小程序左上角返回**直接触发原生 `navigateBack`**，不经过路由器，守卫无法拦截。
 
 应对方案：
-1. 在页面 `onShow` 中调用 `router.syncRoute()` 同步状态
+1. 路由器在 `install()` 时已注册全局 mixin，会在每个页面 `onShow` 自动调用 `router.syncRoute()` 同步状态（无需手动调用）
 2. 在 `onRouteChange` 中做事后处理
 3. App 端可监听 `onBackPress` 拦截物理返回键
 :::
@@ -286,6 +286,10 @@ console.log(route.params.tags)    // ['a', 'b', 'c']
   → route.params = { id: 123, info: {...} }
 ```
 
+::: tip __params_key 的 URL 保留
+虽然 `route.query` 中**不包含** `__params_key`（matcher 解析时会移除内部 key，避免暴露给用户），但**实际导航 URL 中会保留**它。这样在 `back()` 返回原页面时，`syncCurrentRoute` 可从 URL 重建 params，避免丢失。如需获取用户可见 query，请使用 `route.query`。
+:::
+
 ### 持久化（H5 刷新不丢失）
 
 默认 `params` 存在内存中，页面关闭后丢失。设置 `persistent: true` 可持久化到 storage，H5 刷新后仍可读取：
@@ -308,7 +312,7 @@ const router = createRouter({
 ::: warning params 的局限
 1. **不支持函数、Symbol 等非 JSON 可序列化值**
 2. **TabBar 页面**：由于 `switchTab` 不支持 query，`__params_key` 无法传递，TabBar 页面无法接收 params
-3. **页面栈同步**：`back()` 后目标页面的 params 通过 `peek` 读取（避免误删）
+3. **`relaunch` / 栈溢出**：会清空或重建页面栈，原页面 params 无法保留，需用全局状态传递
 :::
 
 ## 特殊用法：页面间通信

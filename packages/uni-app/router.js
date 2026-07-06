@@ -66,12 +66,22 @@ router.onError((error, to, from) => {
 			case RouterErrorCode.NAVIGATION_CANCELLED:
 				console.warn('[onError] 导航被取消:', to.fullPath)
 				break
+			case RouterErrorCode.ROUTE_NOT_FOUND:
+				console.warn('[onError] 路由未找到:', to.fullPath)
+				uni.showToast({ title: '页面不存在', icon: 'none' })
+				break
 			case RouterErrorCode.NAVIGATION_API_ERROR:
 				console.error('[onError] uni API 调用失败:', error.cause)
 				break
 		}
 	} else if (error instanceof RouterError) {
-		console.error('[onError] 路由错误:', error.message)
+		switch (error.code) {
+			case RouterErrorCode.SETUP_ERROR:
+				console.error('[onError] 路由器初始化错误:', error.message)
+				break
+			default:
+				console.error('[onError] 路由错误:', error.message)
+		}
 	}
 })
 

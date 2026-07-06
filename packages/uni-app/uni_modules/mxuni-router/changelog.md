@@ -1,3 +1,21 @@
+## 1.9.0（2026-07-06）
+
+### 新增
+
+- **全局 mixin 自动同步路由状态** - `install()` 中注册 `app.mixin({ onShow() { router.syncRoute() } })`，每个页面 `onShow` 时自动同步路由状态，无需在各页面手动调用 `syncRoute()`
+  - mixin 钩子先于组件自身 `onShow` 执行，配合 `syncRoute()` 的去重机制（path + query 相同则跳过）避免重复同步
+  - 应用从后台回到前台时，当前活动页的 `onShow` 会自动触发同步，`App.vue` 的 `onShow` 无需手动调用
+  - `onLoad` 早于 `onShow`，若需在 `onLoad` 中读取路由信息可手动调用 `syncRoute()`
+
+### 修复
+
+- **`back()` 后 params 丢失** - `push` / `replace` 时实际导航 URL 保留 `__params_key`（`route.query` 中不可见），`back()` 返回原页面后 `syncCurrentRoute` 从 URL 读取 key 并用 `peek` 重建 params
+  - **问题**：`matcher.resolve` 会从 query 中移除 `__params_key`，导致实际导航 URL 不含 key，`back()` 后无法从 URL 重建 params
+  - **修复**：`performNavigation` 在 resolve 后通过 `extractParamsKey` 提取 key，`executeNavigation` 将 key 拼回实际导航 URL 的 query 中；`syncCurrentRoute` 从 URL 读取 key 并用 `peek`（非 `get`）重建 params，避免惰性清理误删
+- **`setCurrentRoute` 执行时机** - `setCurrentRoute(to)` 提前到 uni 导航 API 调用之前执行，确保目标页 `onLoad` / `onShow` 时 `route.value` 已是完整目标路由（含 `name` / `params`）
+  - **问题**：此前 `setCurrentRoute` 在 uni API 成功后执行，目标页 `onLoad` / `onShow` 触发时 `currentRoute` 仍为来源路由，导致 `route.value` 不含目标路由信息
+  - **修复**：在调用 `navigateTo` / `replaceTo` / `relaunchTo` 之前调用 `setCurrentRoute(to)`；导航 API 失败时回滚到 `from`
+
 ## 1.8.1（2026-06-26）
 
 ### 修复

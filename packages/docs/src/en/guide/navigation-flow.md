@@ -39,7 +39,11 @@ router.push({ name: 'about' })
 │    ├─ 2.3 runBeforeResolveGuards()                      │
 │    │      └─ execute beforeResolve guards in order      │
 │    │                                                    │
-│    └─ 2.4 call uni navigation API                       │
+│    ├─ 2.4 setCurrentRoute(to) update current route      │
+│    │      └─ Ensures target page's onLoad/onShow see    │
+│    │         the full target route (with name/params)   │
+│    │                                                    │
+│    └─ 2.5 call uni navigation API                       │
 │           ├─ push → navigateTo (returns eventChannel)   │
 │           ├─ replace → redirectTo / switchTab           │
 │           ├─ relaunch → reLaunch / switchTab            │
@@ -49,7 +53,6 @@ router.push({ name: 'about' })
   ▼
 ┌─────────────────────────────────────────────────────────┐
 │ 3. After navigation completes                           │
-│    ├─ routeState.setCurrentRoute(to) update current     │
 │    ├─ runAfterGuards() execute afterEach hooks          │
 │    └─ return NavigationResult / RouteLocation           │
 └─────────────────────────────────────────────────────────┘
@@ -202,15 +205,35 @@ push(protected) → beforeEach redirects to login
 
 ### 2.5 Calling uni API
 
-After all guards pass, the corresponding uni API is called based on `mode`:
+After all guards pass, **first** call `setCurrentRoute(to)` to update the current route in advance, **then** call the corresponding uni API based on `mode`:
 
 ```ts
-if (mode === 'push') {
-  eventChannel = await navigateTo(navOptions)  // returns eventChannel
-} else if (mode === 'replace') {
-  await replaceTo(navOptions)
-} else {
-  await relaunchTo(navOptions)
+// Update currentRoute in advance so target page's onLoad/onShow sees the full target route (with name/params)
+// syncRoute's dedup mechanism will skip duplicate syncs in onShow, preserving the full route set here
+this.routeState.setCurrentRoute(to)
+
+try {
+  const navOptions = {
+    path: to.path,
+    meta: to.meta,
+    // The actual navigation URL needs __params_key appended back to query (to.query was cleaned by matcher and doesn't contain internal key)
+    // so that syncCurrentRoute can read the key from URL to rebuild params when back() returns
+    query: paramsKey ? { ...to.query, [PARAMS_KEY]: paramsKey } : to.query,
+    animation,
+    events
+  }
+
+  if (mode === 'push') {
+    eventChannel = await navigateTo(navOptions)  // returns eventChannel
+  } else if (mode === 'replace') {
+    await replaceTo(navOptions)
+  } else {
+    await relaunchTo(navOptions)
+  }
+} catch (error) {
+  // API call failed, rollback currentRoute
+  this.routeState.setCurrentRoute(from)
+  throw error
 }
 ```
 
@@ -220,19 +243,15 @@ if (mode === 'push') {
 Before each uni API call, `markRouterCall()` is executed to mark that this call comes from the router. When `interceptUniApi` is enabled, the interceptor uses this mark to avoid circular interception.
 :::
 
+::: warning setCurrentRoute runs in advance
+`setCurrentRoute(to)` executes **before** the uni navigation API call, not after. This way, when the target page's `onLoad` / `onShow` fires, `route.value` is already the full target route (with `name` / `params`), avoiding reading stale `currentRoute` in target page lifecycles.
+
+The global mixin's `onShow` auto `syncRoute()` has dedup (skips if path + query match) and won't overwrite the full route info set here. If the API call fails, `currentRoute` rolls back to `from`.
+:::
+
 ## Phase 3: After Navigation Completes
 
-### 3.1 Update Current Route
-
-```ts
-this.routeState.setCurrentRoute(to)
-```
-
-Updates `currentRoute`, and simultaneously:
-- Notifies `onRouteChange` listeners
-- Updates Vue's `$route` computed property
-
-### 3.2 Execute Post Hooks
+### 3.1 Execute Post Hooks
 
 ```ts
 this.guardManager.runAfterGuards(to, from)
@@ -240,7 +259,7 @@ this.guardManager.runAfterGuards(to, from)
 
 `afterEach` hooks execute in registration order. Note that `afterEach` doesn't accept a `next` parameter and cannot change the result.
 
-### 3.3 Return Result
+### 3.2 Return Result
 
 ```ts
 return { ...to, eventChannel }  // push mode
@@ -269,8 +288,10 @@ router.back(delta)
   │
   ├─ goBack(delta, animation) call uni.navigateBack
   │
-  ├─ syncCurrentRoute(from) sync state
-  │   └─ read real page from stack, update currentRoute
+  ├─ syncCurrentRoute() sync state
+  │   ├─ read real page from stack, update currentRoute
+  │   ├─ read __params_key from URL query, rebuild params via peek (no deletion)
+  │   ├─ remove internal key from user-visible query
   │   └─ _synced = true (mark as state sync)
   │
   ├─ runAfterGuards(to, from)
@@ -280,6 +301,10 @@ router.back(delta)
 
 ::: warning back Does Not Execute beforeEnter
 `back()` returns to an existing page and doesn't trigger `beforeEnter` (route-specific guard). Only global guards are executed.
+:::
+
+::: tip params Not Lost After back()
+When `back()` returns to the original page, `syncCurrentRoute` reads `__params_key` from the URL query and uses `peek` (no deletion) to fetch params from `ParamsManager`. Because `push` already injected `__params_key` into the actual navigation URL (even though `route.query` doesn't expose it), `back()` can still rebuild params.
 :::
 
 ## State Sync Mechanism
@@ -302,12 +327,18 @@ syncRoute(): void {
   // Path and query both match, no update needed
   if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return
 
-  this.syncCurrentRoute(from)
+  this.syncCurrentRoute()
   this.paramsManager.cleanupStale()  // clean invalid params
 }
 ```
 
-`syncCurrentRoute` reads real page info from the stack, constructs a new `RouteLocation` (`_synced: true`), and updates the state.
+`syncCurrentRoute` reads real page info from the stack, constructs a new `RouteLocation` (`_synced: true`), and updates the state. During this process, it reads `__params_key` from the URL query and uses `peek` to rebuild params (no deletion, for repeated reads), and removes the internal key from the user-visible query.
+
+::: tip Auto Called via Global Mixin
+The router injects `app.mixin({ onShow() { router.syncRoute() } })` in `install()`, which **automatically** syncs state in each page's `onShow`. The mixin hook runs before the component's own `onShow`, and `syncRoute` has built-in deduplication (skips if path + query match).
+
+So for physical back button, browser back, direct `uni.navigateBack` calls, etc., **no need** to call `syncRoute()` manually. Manual call is only needed in lifecycles earlier than `onShow` (e.g., `onLoad`) when route info is needed immediately.
+:::
 
 ### Why afterEach Doesn't Trigger
 
@@ -394,11 +425,17 @@ Error occurs
 During navigation:
   location.params = { id: 123 }
   → ParamsManager.set(key, { id: 123 })
-  → URL: /detail?__params_key=key
+  → Actual navigation URL: /detail?__params_key=key
+  → route.query does not contain __params_key (matcher removed it during resolution)
 
-Target page reads:
+Target page reads (first entry after push):
   route.params = ParamsManager.get(key)
-  → get is lazy cleanup: deletes the key after reading
+  → get is lazy cleanup: deletes the key after reading (prevents duplicate reads)
+
+back() returns to original page:
+  → syncCurrentRoute reads __params_key from URL
+  → ParamsManager.peek(key) (no deletion, can be read repeatedly)
+  → rebuilds route.params
 
 Page close / syncRoute:
   → ParamsManager.cleanupStale() cleans invalid keys
@@ -407,8 +444,9 @@ Router init:
   → ParamsManager.cleanupAll() clears all residuals
 ```
 
-::: tip Lazy Cleanup
-`get(key)` deletes the key after reading to prevent duplicate reads. After `back()`, the target page's params are read with `peek(key)` (no deletion) to avoid accidental deletion.
+::: tip peek vs get
+- `get(key)`: Deletes the key after reading, preventing duplicate reads. Suitable for first read after `push`.
+- `peek(key)`: Reads without deleting. Suitable for rebuilding params on the original page after `back()`, since the user may `back` to the same page repeatedly.
 :::
 
 ## Complete Sequence Example
@@ -439,10 +477,10 @@ Taking "unauthenticated user accessing a protected page" as an example:
    │   └─ next()
    ├─ beforeEnter: (login route has no specific guard)
    ├─ beforeResolve: pass
+   ├─ setCurrentRoute(login)  ← update in advance, ensures target page's onLoad/onShow sees route.value ready
    └─ replaceTo → uni.redirectTo(login)
 
 5. Navigation complete:
-   ├─ setCurrentRoute(login)
    ├─ afterEach(login, home)
    └─ return RouteLocation(login)
 

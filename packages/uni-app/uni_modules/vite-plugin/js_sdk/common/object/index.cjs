@@ -1,0 +1,1 @@
+"use strict";function i(e){return typeof e=="object"&&e!==null&&!Array.isArray(e)&&Object.prototype.toString.call(e)==="[object Object]"}function deepMerge(...e){const t={};for(const r of e)if(r)for(const o in r){if(!Object.prototype.hasOwnProperty.call(r,o))continue;const n=r[o],c=t[o];n!==void 0&&(i(n)&&i(c)?t[o]=deepMerge(c,n):t[o]=n)}return t}exports.deepMerge=deepMerge;

@@ -126,4 +126,12 @@ declare global {
 	}
 }
 
+// uni-app 页面生命周期钩子类型增强（core 不依赖 @dcloudio/types，此处局部声明）
+declare module 'vue' {
+	interface ComponentOptions {
+		/** uni-app 页面生命周期：页面显示时触发 */
+		onShow?(this: any): void
+	}
+}
+
 export {}

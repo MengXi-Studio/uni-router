@@ -101,7 +101,7 @@ await router.push({
 
 **2. 页面栈被清理**
 
-`relaunch` 或 `back` 超出栈范围后，params 可能被清理。
+`relaunch` 或栈溢出后，原页面被销毁，params 也被清理。注意：`back()` 返回原页面时 params **不会丢失**（实际导航 URL 保留了 `__params_key`，可重建 params）。
 
 **3. 读取时机错误**
 
@@ -177,14 +177,17 @@ onBackPress(() => {
   return false
 })
 
-// 全平台：onShow + syncRoute 事后处理
-import { onShow } from '@dcloudio/uni-app'
+// 全平台：onRouteChange 事后处理
+// currentRoute 已通过 install() 中的全局 mixin 自动 syncRoute，无需手动调用
 import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-onShow(() => {
-  router.syncRoute() // 同步路由状态
+router.onRouteChange((to, from) => {
+  if (to._synced) {
+    // 状态同步（可能是物理返回触发）
+    handleBackNavigation(to, from)
+  }
 })
 ```
 
@@ -215,7 +218,7 @@ await router.push({ name: 'user' })
 
 // 目标页 onShow
 onShow(() => {
-  router.syncRoute()
+  // currentRoute 已被全局 mixin 自动 syncRoute，无需手动调用
   const param = tabStore.getTabParam('user')
   if (param?.tab) {
     activeTab.value = param.tab
@@ -376,15 +379,24 @@ uni-app 的 H5 路由由 `manifest.json` 的 `h5.router.mode` 控制，Uni Route
 
 `switchTab` 切换 TabBar 页面时，`onShow` 应正常触发。如果未触发，检查是否用了 `reLaunch`。
 
-**2. 是否在 `onShow` 中调用了 `syncRoute`**
+**2. 是否在 `onShow` 中读取了正确的 `currentRoute`**
+
+路由器在 `install()` 时已通过全局 mixin 自动在每个页面 `onShow` 调用 `syncRoute()`，**无需手动调用**。直接通过 `useRoute()` 读取即可：
 
 ```ts
-// ✅ onShow 中同步路由
+// ✅ currentRoute 已被 mixin 自动同步
+import { onShow } from '@dcloudio/uni-app'
+import { useRoute } from '@meng-xi/uni-router'
+
+const route = useRoute()
+
 onShow(() => {
-  router.syncRoute()
+  console.log(route.value.path, route.value.query)
   // 其他逻辑
 })
 ```
+
+如需在 `onLoad`（早于 `onShow`）中读取路由信息，可手动调用一次 `router.syncRoute()`。
 
 **3. 页面是否被销毁**
 
@@ -404,7 +416,7 @@ onShow(() => {
 
 ```ts
 // App.vue
-import { onLaunch, onShow } from '@dcloudio/uni-app'
+import { onLaunch } from '@dcloudio/uni-app'
 import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
@@ -414,12 +426,28 @@ onLaunch(() => {
   console.log(router.currentRoute) // 初始值
 })
 
-onShow(() => {
-  // 此时页面栈已就绪，同步路由
-  router.syncRoute()
-  console.log(router.currentRoute) // 正确的当前路由
+// 路由器在 install() 时已注册全局 mixin，会在每个页面 onShow 自动 syncRoute
+// 因此页面级 onShow 中无需手动调用 router.syncRoute()
+```
+
+::: tip 冷启动守卫校验
+若需要在 `onLaunch` 中对真实入口页面执行守卫，应传入 `options.path`：
+
+```ts
+onLaunch((options) => {
+  router.isReady().then(() => {
+    const launchPath = options?.path ? `/${options.path}` : undefined
+    router.guardRoute(launchPath, {
+      onAbort: (failure) => {
+        router.relaunch({ name: 'home' })
+      }
+    })
+  })
 })
 ```
+
+直接调用 `guardRoute(undefined)` 会校验 `START_LOCATION`（path `/`）而非真实入口页面，详见 [Router 实例 - guardRoute()](../api/router-instance#guardroute)。
+:::
 
 ## 多路由器实例冲突
 
@@ -504,11 +532,15 @@ declare module '@meng-xi/uni-router' {
 
 ### 原因
 
-params 在 `get` 时会惰性删除。`back` 后目标页面的 params 已被消费。
+`back()` 返回原页面时，由于 `matcher.resolve` 在解析时移除了 `__params_key`，实际导航 URL 中不包含该 key，导致 `syncCurrentRoute` 无法从 URL 重建 params。
 
 ### 解决方案
 
-Uni Router 在 `back` 场景下用 `peek`（不删除）读取 params。如果仍丢失，可能是：
+::: tip 已修复
+此问题在最新版本中已修复。`push` / `replace` 时实际导航 URL 会保留 `__params_key`（即使 `route.query` 中不可见），`back()` 返回时 `syncCurrentRoute` 会从 URL 读取 key 并用 `peek` 重建 params。**通常无需手动处理。**
+:::
+
+如果仍出现 params 丢失，可能是以下原因：
 
 **1. 页面已被销毁**
 
@@ -527,6 +559,10 @@ await router.relaunch({ name: 'target' })
 // 目标页
 const data = store.consumeData()
 ```
+
+**3. TabBar 页面**
+
+由于 `switchTab` 不支持 query，`__params_key` 无法传递，TabBar 页面无法接收 params。用全局状态替代。
 
 ## 守卫超时
 

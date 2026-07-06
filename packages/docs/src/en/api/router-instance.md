@@ -18,8 +18,8 @@ router.currentRoute.fullPath   // '/pages/about/about?id=1'
 router.currentRoute.name       // 'about'
 ```
 
-::: warning Not real-time synced
-`currentRoute` is **not automatically updated** on physical back button or browser back (these operations bypass the router). Call `syncRoute()` in the page's `onShow` to sync state. See [syncRoute()](#syncroute).
+::: tip Auto Sync
+The router registers a global mixin in `install()` that automatically calls `syncRoute()` in each page's `onShow` to sync state. `currentRoute` is automatically updated on physical back button, browser back, etc., **no manual call needed**. You only need to manually call `syncRoute()` if you need to access route info in lifecycles earlier than `onShow` (e.g., `onLoad`). See [syncRoute()](#syncroute).
 :::
 
 ## Navigation Methods
@@ -160,7 +160,7 @@ await router.back(1, { type: 'slide-out-right', duration: 500 })
 `back()` only intercepts **programmatic** calls. Physical back button (Android), browser back (H5), and mini-program top-left back **directly trigger native `navigateBack`**, bypassing the router, so guards cannot intercept them.
 
 Mitigation:
-1. Call `router.syncRoute()` in the page's `onShow` to sync state
+1. The router registers a global mixin in `install()` that automatically calls `router.syncRoute()` in each page's `onShow` to sync state (no manual call needed)
 2. Do post-processing in `onRouteChange`
 3. On App, listen to `onBackPress` to intercept the physical back button
 :::
@@ -414,26 +414,27 @@ syncRoute(): void
 When a page is switched via browser back, physical back button, or other non-router methods, the router's `currentRoute` may be out of sync with the actual page. Calling this method reads the current page info from the uni-app page stack and updates the route state.
 
 ```ts
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad } from '@dcloudio/uni-app'
 import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-// Recommended: call in each page's onShow
-onShow(() => {
+// onLoad runs before onShow; if you need route info at this stage, sync manually
+onLoad(() => {
   router.syncRoute()
+  console.log(router.currentRoute.params)
 })
 ```
 
-::: warning Scenarios that require manual sync
-`currentRoute` is **not** automatically updated in the following scenarios; you **must** call `syncRoute()` to sync:
+::: tip Auto Synced by Default
+The router registers `app.mixin({ onShow() { router.syncRoute() } })` in `install()`, which **automatically** calls `syncRoute()` in each page's `onShow`. The mixin hook runs before the component's own hooks, and `syncRoute` has built-in deduplication (skips if path + query match), so no redundant updates occur.
 
-1. **Physical back button** (Android / App)
-2. **Browser back** (H5)
-3. **Mini-program top-left back**
-4. **Direct `uni.navigateBack` call** (when `interceptUniApi` is not enabled)
+You usually **don't need** to call it manually in `onShow`. Manual sync is only needed in:
 
-Failure to sync will cause `currentRoute` to be inconsistent with the actual page, and `useRoute()` will return stale values.
+1. **Lifecycles earlier than `onShow`** (e.g., `onLoad`) where you need route info immediately
+2. Scenarios where URL query was modified via non-router methods and needs syncing
+
+Physical back button, browser back, direct `uni.navigateBack` calls (when `interceptUniApi` is not enabled), etc., are already covered by the global mixin.
 :::
 
 ### guardRoute()
@@ -468,9 +469,14 @@ import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-onLaunch(() => {
+onLaunch((options) => {
   router.isReady().then(() => {
-    router.guardRoute(undefined, {
+    // At onLaunch, the page stack may be empty (Page.onLoad hasn't fired yet),
+    // and currentRoute is still START_LOCATION.
+    // Pass the real entry path from launch options.path to guardRoute,
+    // ensuring guards check the actual page.
+    const launchPath = options?.path ? `/${options.path}` : undefined
+    router.guardRoute(launchPath, {
       onAbort: (failure) => {
         // Guard aborted (e.g., not logged in), navigate to a safe page
         console.warn('Cold start guard aborted:', failure.code)
@@ -480,6 +486,12 @@ onLaunch(() => {
   })
 })
 ```
+
+::: warning Must pass options.path
+When `onLaunch` fires, the page stack is empty and `router.currentRoute` is still `START_LOCATION` (path `/`). If you call `guardRoute(undefined)` directly, guards will check `/` instead of the real entry page (e.g., `/pages/index/index`), causing guard logic based on `to.path` / `to.name` / `to.meta` to fail.
+
+`options.path` is the real entry path provided by the uni-app framework (without leading `/`, needs manual prepending). It's available in `onLaunch` on H5 / mini-program / App platforms.
+:::
 
 ### Guard Result Handling
 
@@ -515,6 +527,7 @@ The installation registers the following:
 - **`$router`** — Global property, accessible via `this.$router`
 - **`$route`** — Global property (computed), accessible via `this.$route` for current route location
 - **provide** — Injects the router instance via `provide(ROUTER_SYMBOL, router)`, enabling `useRouter()` / `useRoute()`
+- **Global mixin** — Injects an `onShow` hook that automatically calls `router.syncRoute()` in each page's `onShow` to sync route state (mixin hook runs before the component's own hooks, `syncRoute` has built-in deduplication)
 - **markReady** — Marks the router as ready, resolving all pending `isReady()` Promises
 
 ## Method Overview

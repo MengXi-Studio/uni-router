@@ -1,0 +1,1 @@
+"use strict";function makeCallback(c,r="callback",e=""){return c?`function(${e}) { try { ${c} } catch(e) { console.error('[${r}] error:', e); } }`:`function(${e}) {}`}exports.makeCallback=makeCallback;

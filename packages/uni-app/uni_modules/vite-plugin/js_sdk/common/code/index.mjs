@@ -1,0 +1,10 @@
+const u=new Set(["break","case","catch","continue","debugger","default","delete","do","else","finally","for","function","if","in","instanceof","new","return","switch","this","throw","try","typeof","var","void","while","with","class","const","enum","export","extends","import","super","implements","interface","let","package","private","protected","public","static","yield","async","await","of","true","false","null","undefined","NaN","Infinity","console","window","document","global","globalThis","process","require","module","exports","__dirname","__filename","Object","Array","String","Number","Boolean","Symbol","BigInt","Map","Set","WeakMap","WeakSet","Promise","Proxy","Reflect","Error","TypeError","RangeError","SyntaxError","ReferenceError","Date","RegExp","Math","JSON","Intl","ArrayBuffer","DataView","Float32Array","Float64Array","Int8Array","Int16Array","Int32Array","Uint8Array","Uint16Array","Uint32Array","Uint8ClampedArray"]);function s(r){const n=[];let e=0;const i=r.length;for(;e<i;){if(r[e]==="/"&&r[e+1]==="/"){for(;e<i&&r[e]!==`
+`;)n.push(" "),e++;continue}if(r[e]==="/"&&r[e+1]==="*"){for(n.push(" "),n.push(" "),e+=2;e<i&&!(r[e-1]==="*"&&r[e]==="/");)n.push(r[e]===`
+`?`
+`:" "),e++;e<i&&(n.push(" "),e++);continue}if(r[e]==="'"){for(n.push(" "),e++;e<i&&r[e]!=="'";){if(r[e]==="\\"&&e+1<i){n.push(" "),n.push(" "),e+=2;continue}n.push(r[e]===`
+`?`
+`:" "),e++}e<i&&(n.push(" "),e++);continue}if(r[e]==='"'){for(n.push(" "),e++;e<i&&r[e]!=='"';){if(r[e]==="\\"&&e+1<i){n.push(" "),n.push(" "),e+=2;continue}n.push(r[e]===`
+`?`
+`:" "),e++}e<i&&(n.push(" "),e++);continue}if(r[e]==="`"){for(n.push(" "),e++;e<i&&r[e]!=="`";){if(r[e]==="\\"&&e+1<i){n.push(" "),n.push(" "),e+=2;continue}if(r[e]==="$"&&r[e+1]==="{"){n.push(" "),n.push(" "),e+=2;let o=1;for(;e<i&&o>0;)r[e]==="{"&&o++,r[e]==="}"&&o--,o>0&&(n.push(r[e]),e++);e<i&&(n.push(" "),e++);continue}n.push(r[e]===`
+`?`
+`:" "),e++}e<i&&(n.push(" "),e++);continue}n.push(r[e]),e++}return n.join("")}export{u as JS_KEYWORDS,s as stripCommentsAndStrings};

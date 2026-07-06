@@ -1,0 +1,1 @@
+"use strict";const crypto=require("crypto");function generateRandomHash(e=8){const t=Math.max(1,Math.min(64,e));return crypto.randomBytes(Math.ceil(t/2)).toString("hex").slice(0,t)}exports.generateRandomHash=generateRandomHash;

@@ -578,18 +578,27 @@ onBackPress((options) => {
 })
 ```
 
-**方案 2：onShow 中同步状态**
+**方案 2：onShow 自动同步状态**
+
+路由器在 `install()` 时已注册全局 mixin，会在每个页面 `onShow` 自动调用 `router.syncRoute()` 同步 `currentRoute` 为真实页面，**无需手动调用**：
 
 ```ts
-import { onShow } from '@dcloudio/uni-app'
-import { useRouter } from '@meng-xi/uni-router'
+// 路由器内部已注册：
+// app.mixin({ onShow() { router.syncRoute() } })
 
-const router = useRouter()
+// 因此你的页面中通常无需手动同步，直接在 onShow / onRouteChange 中读取即可
+import { onShow } from '@dcloudio/uni-app'
+import { useRoute } from '@meng-xi/uni-router'
+
+const route = useRoute()
 
 onShow(() => {
-  router.syncRoute() // 同步 currentRoute 为真实页面
+  // currentRoute 已被 mixin 自动同步
+  console.log(route.value.path, route.value.params)
 })
 ```
+
+如需在 `onLoad`（早于 `onShow`）中读取路由信息，可手动调用一次 `router.syncRoute()`。
 
 **方案 3：onRouteChange 事后处理**
 
@@ -634,9 +643,12 @@ import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-onLaunch(() => {
+onLaunch((options) => {
   router.isReady().then(() => {
-    router.guardRoute(undefined, {
+    // onLaunch 时页面栈可能为空（Page.onLoad 尚未触发），currentRoute 仍是 START_LOCATION。
+    // 优先从 launch options.path 获取真实入口路径传给 guardRoute，确保守卫校验的是实际页面。
+    const launchPath = options?.path ? `/${options.path}` : undefined
+    router.guardRoute(launchPath, {
       onAbort: (failure) => {
         // 守卫中止（如未登录），跳转到安全页面
         console.warn('冷启动守卫中止:', failure.code)
@@ -646,6 +658,12 @@ onLaunch(() => {
   })
 })
 ```
+
+::: warning 必须传入 options.path
+`onLaunch` 触发时页面栈为空，`router.currentRoute` 仍是 `START_LOCATION`（path 为 `/`）。若调用 `guardRoute(undefined)`，守卫会校验 `/` 而非真实入口页面，导致基于 `to.path` / `to.name` / `to.meta` 的守卫逻辑失效。
+
+`options.path` 由 uni-app 框架在 `onLaunch` 时传入（不含前导 `/`，需手动补全），各端均可用。
+:::
 
 ### 守卫结果处理
 

@@ -50,9 +50,6 @@ export default {
 			this.redirectUrl = Array.isArray(query.redirect) ? query.redirect[0] : query.redirect
 		}
 	},
-	onShow() {
-		router.syncRoute()
-	},
 	methods: {
 		handleLogin() {
 			if (!this.username.trim()) {

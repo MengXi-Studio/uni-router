@@ -7,15 +7,15 @@
 ::: code-group
 
 ```bash [pnpm]
-pnpm add @meng-xi/vite-plugin@^0.2.5 -D
+pnpm add @meng-xi/vite-plugin@^1.0.0 -D
 ```
 
 ```bash [npm]
-npm install @meng-xi/vite-plugin@^0.2.5 -D
+npm install @meng-xi/vite-plugin@^1.0.0 -D
 ```
 
 ```bash [yarn]
-yarn add @meng-xi/vite-plugin@^0.2.5 -D
+yarn add @meng-xi/vite-plugin@^1.0.0 -D
 ```
 
 :::
@@ -40,6 +40,16 @@ export default defineConfig({
 	]
 })
 ```
+
+::: tip 按需导入（推荐）
+`@meng-xi/vite-plugin@1.0.0` 起支持子路径导出，按分组导入利于 Tree-shaking：
+
+```ts
+import { generateRouter } from '@meng-xi/vite-plugin/plugins/generate'
+```
+
+主入口 `@meng-xi/vite-plugin` 仍向后兼容，两种写法等价。
+:::
 
 插件会在 Vite 启动时读取 `pages.json`，自动生成 `src/router.config.ts`：
 
@@ -272,7 +282,7 @@ router.push({ path: '/invalid/path' }) // ❌ TypeScript 类型错误
 | `{name}`        | 插件名称                                       | `generate-router`                   |
 | `{date}`        | 生成日期时间（默认格式 `YYYY-MM-DD HH:mm:ss`） | `2026-06-24 14:30:00`               |
 | `{date:格式}`   | 按指定格式输出日期时间                         | `{date:YYYY-MM-DD}` → `2026-06-24`  |
-| `{version}`     | 插件版本号                                     | `0.2.5`                             |
+| `{version}`     | 插件版本号                                     | `1.0.0`                             |
 | `{custom:键名}` | 自定义字段，值从 `customFields` 读取           | `{custom:author}` → `MengXi Studio` |
 
 ```ts
@@ -280,14 +290,14 @@ router.push({ path: '/invalid/path' }) // ❌ TypeScript 类型错误
 generateRouter({ headerTemplate: true })
 // 生成：
 // /**
-//  * generate-router 2026-06-24 14:30:00 0.2.5
+//  * generate-router 2026-06-24 14:30:00 1.0.0
 //  */
 
 // 自定义日期格式
 generateRouter({ headerTemplate: '{name} {date:YYYY-MM-DD} {version}' })
 // 生成：
 // /**
-//  * generate-router 2026-06-24 0.2.5
+//  * generate-router 2026-06-24 1.0.0
 //  */
 
 // 自定义字段
@@ -297,7 +307,7 @@ generateRouter({
 })
 // 生成：
 // /**
-//  * generate-router MengXi Studio 2026-06-24 14:30:00 0.2.5
+//  * generate-router MengXi Studio 2026-06-24 14:30:00 1.0.0
 //  */
 ```
 

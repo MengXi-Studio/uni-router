@@ -1,0 +1,1 @@
+"use strict";async function runWithConcurrency(n,a,e){const t=[];let r=0;async function i(){for(;r<n.length;){const c=r++,o=await a(n[c]);t[c]=o}}const l=Array(Math.min(e,n.length)).fill(null).map(()=>i());return await Promise.all(l),t}exports.runWithConcurrency=runWithConcurrency;
