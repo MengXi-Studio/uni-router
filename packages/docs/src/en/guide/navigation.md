@@ -202,7 +202,7 @@ router.beforeEach((to, from, next) => {
 `back()` only intercepts **programmatic** calls. Physical back button (Android), browser back (H5), mini-program top-left return **directly trigger native `navigateBack`**, bypassing the router, so guards cannot intercept them.
 
 Solutions:
-1. Call `router.syncRoute()` in page `onShow` to sync state
+1. The router registers a global mixin in `install()` that automatically calls `router.syncRoute()` in each page's `onShow` to sync state (no manual call needed)
 2. Do after-the-fact handling in `onRouteChange`
 3. App can listen to `onBackPress` to intercept physical back
 :::
@@ -286,6 +286,10 @@ Target page:
   → route.params = { id: 123, info: {...} }
 ```
 
+::: tip __params_key URL Retention
+Although `route.query` **does not contain** `__params_key` (the matcher removes this internal key during resolution to avoid exposing it to users), the **actual navigation URL preserves it**. This way, when `back()` returns to the original page, `syncCurrentRoute` can reconstruct params from the URL, preventing loss. To access user-visible query, use `route.query`.
+:::
+
 ### Persistence (H5 Refresh Won't Lose)
 
 By default, `params` are stored in memory and lost when the page closes. Set `persistent: true` to persist to storage, so H5 refresh can still read them:
@@ -308,7 +312,7 @@ const router = createRouter({
 ::: warning params Limitations
 1. **Doesn't support functions, Symbols, or other non-JSON-serializable values**
 2. **TabBar pages**: Since `switchTab` doesn't support query, `__params_key` cannot be passed, so TabBar pages cannot receive params
-3. **Page stack sync**: After `back()`, the target page's params are read via `peek` (to avoid accidental deletion)
+3. **`relaunch` / stack overflow**: Will clear or rebuild the page stack, original page params cannot be retained, use global state to pass data
 :::
 
 ## Special Usage: Page Communication

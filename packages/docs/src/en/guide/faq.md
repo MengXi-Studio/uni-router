@@ -101,7 +101,7 @@ await router.push({
 
 **2. Page Stack Cleared**
 
-`relaunch` or `back` beyond stack range may clean params.
+After `relaunch` or stack overflow, the original page is destroyed and params are cleaned. Note: `back()` returning to the original page **does not lose params** (the actual navigation URL preserves `__params_key`, params can be rebuilt).
 
 **3. Wrong Read Timing**
 
@@ -177,14 +177,17 @@ onBackPress(() => {
   return false
 })
 
-// All platforms: onShow + syncRoute for after-the-fact handling
-import { onShow } from '@dcloudio/uni-app'
+// All platforms: onRouteChange for after-the-fact handling
+// currentRoute is auto-synced by the global mixin in install(), no manual syncRoute needed
 import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-onShow(() => {
-  router.syncRoute() // Sync route state
+router.onRouteChange((to, from) => {
+  if (to._synced) {
+    // State sync (may be triggered by physical back)
+    handleBackNavigation(to, from)
+  }
 })
 ```
 
@@ -215,7 +218,7 @@ await router.push({ name: 'user' })
 
 // Target page onShow
 onShow(() => {
-  router.syncRoute()
+  // currentRoute is auto-synced by the global mixin, no manual syncRoute needed
   const param = tabStore.getTabParam('user')
   if (param?.tab) {
     activeTab.value = param.tab
@@ -376,15 +379,24 @@ Switching from TabBar page A to TabBar page B, then back to A, A's `onShow` does
 
 `switchTab` should trigger `onShow` normally when switching TabBar pages. If not triggered, check if `reLaunch` was used instead.
 
-**2. Did you call `syncRoute` in `onShow`**
+**2. Did you read the correct `currentRoute` in `onShow`**
+
+The router registers a global mixin in `install()` that automatically calls `syncRoute()` in each page's `onShow`, **no manual call needed**. Just read via `useRoute()`:
 
 ```ts
-// ✅ Sync route in onShow
+// ✅ currentRoute is auto-synced by the mixin
+import { onShow } from '@dcloudio/uni-app'
+import { useRoute } from '@meng-xi/uni-router'
+
+const route = useRoute()
+
 onShow(() => {
-  router.syncRoute()
+  console.log(route.value.path, route.value.query)
   // Other logic
 })
 ```
+
+If you need route info in `onLoad` (earlier than `onShow`), you can manually call `router.syncRoute()` once.
 
 **3. Was the page destroyed**
 
@@ -404,7 +416,7 @@ The router initializes during `App.vue`'s `setup` phase, when the page stack may
 
 ```ts
 // App.vue
-import { onLaunch, onShow } from '@dcloudio/uni-app'
+import { onLaunch } from '@dcloudio/uni-app'
 import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
@@ -414,12 +426,28 @@ onLaunch(() => {
   console.log(router.currentRoute) // Initial value
 })
 
-onShow(() => {
-  // Page stack is ready here, sync route
-  router.syncRoute()
-  console.log(router.currentRoute) // Correct current route
+// The router registers a global mixin in install() that auto-syncs in each page's onShow
+// So page-level onShow doesn't need to manually call router.syncRoute()
+```
+
+::: tip Cold Start Guard Check
+If you need to run guards against the real entry page in `onLaunch`, pass `options.path`:
+
+```ts
+onLaunch((options) => {
+  router.isReady().then(() => {
+    const launchPath = options?.path ? `/${options.path}` : undefined
+    router.guardRoute(launchPath, {
+      onAbort: (failure) => {
+        router.relaunch({ name: 'home' })
+      }
+    })
+  })
 })
 ```
+
+Calling `guardRoute(undefined)` directly will check `START_LOCATION` (path `/`) instead of the real entry page. See [Router Instance - guardRoute()](../api/router-instance#guardroute) for details.
+:::
 
 ## Multiple Router Instance Conflict
 
@@ -504,11 +532,15 @@ After `router.back()`, the target page's `route.params` is empty.
 
 ### Cause
 
-params are lazily deleted on `get`. After `back`, the target page's params have been consumed.
+When `back()` returns to the original page, since `matcher.resolve` removes `__params_key` during resolution, the actual navigation URL doesn't contain the key, preventing `syncCurrentRoute` from rebuilding params.
 
 ### Solution
 
-Uni Router uses `peek` (no deletion) to read params in `back` scenarios. If still lost, it might be:
+::: tip Fixed
+This issue has been fixed in the latest version. During `push` / `replace`, the actual navigation URL preserves `__params_key` (even though `route.query` doesn't expose it). When `back()` returns, `syncCurrentRoute` reads the key from URL and uses `peek` to rebuild params. **Usually no manual handling needed.**
+:::
+
+If params are still lost, possible causes:
 
 **1. Page was destroyed**
 
@@ -527,6 +559,10 @@ await router.relaunch({ name: 'target' })
 // Target page
 const data = store.consumeData()
 ```
+
+**3. TabBar pages**
+
+Since `switchTab` doesn't support query, `__params_key` cannot be passed, so TabBar pages cannot receive params. Use global state instead.
 
 ## Guard Timeout
 
