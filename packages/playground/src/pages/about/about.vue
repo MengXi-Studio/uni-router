@@ -33,8 +33,8 @@
 			<view class="section-title">路由器 API</view>
 			<view class="code-block">
 				const router = useRouter()\n\n// 导航\nrouter.push('/pages/detail/detail')\nrouter.replace({ name: 'pagesAboutAbout' })\nrouter.back() // 执行完整守卫链\n\n// 守卫\nrouter.beforeEach((to, from, next) =>
-				next())\nrouter.beforeResolve((to, from, next) => next())\nrouter.afterEach((to, from) => {})\n\n// 监听\nrouter.onRouteChange((to, from) => {})\n\n// 状态同步\nrouter.syncRoute() // 在 onShow 中调用\n\n//
-				查询\nrouter.hasRoute('pagesIndexIndex')\nrouter.getRoutes()\nrouter.resolve('/pages/detail/detail')\nrouter.isReady()\n\n// 错误\nrouter.onError((err, to, from) => {})
+				next())\nrouter.beforeResolve((to, from, next) => next())\nrouter.afterEach((to, from) => {})\n\n// 监听\nrouter.onRouteChange((to, from) => {})\n\n// 状态同步（已由 install() 中的全局 mixin 在 onShow 自动调用）\nrouter.syncRoute()\n// 仅在
+				onLoad 等 onShow 之前的生命周期需要时手动调用\n\n// 查询\nrouter.hasRoute('pagesIndexIndex')\nrouter.getRoutes()\nrouter.resolve('/pages/detail/detail')\nrouter.isReady()\n\n// 错误\nrouter.onError((err, to, from) => {})
 			</view>
 		</view>
 	</view>

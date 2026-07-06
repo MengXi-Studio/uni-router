@@ -90,10 +90,10 @@ const route = useRoute()
 
 const lastError = ref('')
 
-// 在 onShow 中调用 syncRoute()，处理浏览器后退/物理返回键等非路由器导航场景
+// syncRoute() 已由路由器全局 mixin 在 onShow 自动调用，无需手动调用
+// onShow 仅在需要 onLoad 之前的生命周期读取路由信息时手动调用 syncRoute()
 onShow(() => {
-	router.syncRoute()
-	console.log('[composable onShow] syncRoute() 已调用，当前路由:', router.currentRoute.fullPath)
+	console.log('[composable onShow] 当前路由:', router.currentRoute.fullPath)
 })
 
 // ===== useRouter() 导航方法演示 =====

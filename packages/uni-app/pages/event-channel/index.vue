@@ -69,9 +69,6 @@ export default {
 			logs: []
 		}
 	},
-	onShow() {
-		router.syncRoute()
-	},
 	methods: {
 		addLog(msg) {
 			const time = new Date().toLocaleTimeString()

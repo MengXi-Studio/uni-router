@@ -1135,11 +1135,12 @@ var UniRouter = class {
   /**
    * 同步路由状态与实际页面栈
    *
+   * 路由器 install 时通过全局 mixin 在每个页面 onShow 自动调用此方法。
+   * 若需在 onLoad 中获取路由信息，可手动调用（onLoad 早于 onShow）。
+   *
    * 当页面通过浏览器后退、物理返回键等非路由器方式切换时，
    * 路由器的 currentRoute 可能与实际页面不同步。
    * 调用此方法将从 uni-app 页面栈中读取当前页面信息并更新路由状态。
-   *
-   * 建议在每个页面的 onShow 生命周期中调用此方法。
    */
   syncRoute() {
     const from = this.routeState.getCurrentRoute();
@@ -1216,6 +1217,7 @@ var UniRouter = class {
    *
    * 注册全局属性 `$router` 和 `$route`，并通过 provide/inject 机制
    * 使组件可以通过 `useRouter()` / `useRoute()` 访问路由器。
+   * 同时注入全局 mixin，在每个页面 onShow 时自动调用 syncRoute() 同步路由状态。
    *
    * @param app - Vue 应用实例
    */
@@ -1236,6 +1238,12 @@ var UniRouter = class {
         app.onUnmount(() => removeInterceptors());
       }
     }
+    const router = this;
+    app.mixin({
+      onShow() {
+        router.syncRoute();
+      }
+    });
     this.routeState.markReady();
   }
   /**
@@ -1275,6 +1283,7 @@ var UniRouter = class {
     const from = this.routeState.getCurrentRoute();
     const animation = this.extractAnimation(location);
     const events = this.extractEvents(location);
+    const paramsKey = this.extractParamsKey(enrichedLocation);
     if (events && mode !== "push") {
       warn(`uni.${mode === "replace" ? "redirectTo" : "reLaunch"} does not support events. The events option will be ignored.`);
     }
@@ -1283,7 +1292,7 @@ var UniRouter = class {
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
-    const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, mode === "push" ? events : void 0);
+    const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, mode === "push" ? events : void 0, paramsKey);
     this.pendingNavigation = navigationPromise;
     try {
       const result = await navigationPromise;
@@ -1306,10 +1315,11 @@ var UniRouter = class {
    * @param redirectDepth - 当前重定向深度
    * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
    * @param events - 页面间通信事件监听器（仅 push 时生效）
+   * @param paramsKey - params 在 ParamsManager 中的 key，用于将 __params_key 拼入实际导航 URL
    * @returns 导航结果（push 模式包含 eventChannel）
    * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
    */
-  async executeNavigation(to, from, mode, redirectDepth, animation, events) {
+  async executeNavigation(to, from, mode, redirectDepth, animation, events, paramsKey) {
     if (redirectDepth > MAX_REDIRECT_DEPTH) {
       const failure = new NavigationFailure(to, from, "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`);
       this.triggerErrorHandlers(failure, to, from);
@@ -1325,11 +1335,12 @@ var UniRouter = class {
     const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from);
     const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation, events);
     if (handledResolve) return handledResolve;
+    this.routeState.setCurrentRoute(to);
     try {
       const navOptions = {
         path: to.path,
         meta: to.meta,
-        query: to.query,
+        query: paramsKey ? { ...to.query, [PARAMS_KEY]: paramsKey } : to.query,
         animation,
         events
       };
@@ -1341,10 +1352,10 @@ var UniRouter = class {
       } else {
         await relaunchTo(navOptions);
       }
-      this.routeState.setCurrentRoute(to);
       this.guardManager.runAfterGuards(to, from);
       return { ...to, eventChannel };
     } catch (error) {
+      this.routeState.setCurrentRoute(from);
       const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
       const cause = isUniApiError(error) ? error : void 0;
       const failure = new NavigationFailure(to, from, code, void 0, cause);
@@ -1454,6 +1465,24 @@ var UniRouter = class {
     return void 0;
   }
   /**
+   * 从已注入 params key 的路由位置中提取 __params_key
+   *
+   * enrichLocationWithParams 会将 key 写入 query，但 matcher.resolve 会将其移除。
+   * 此方法在 resolve 之后从 enrichedLocation 中读取 key，用于拼入实际导航 URL，
+   * 使 back() 返回时 syncCurrentRoute 可从 URL 重建 params。
+   *
+   * @param location - 已经过 enrichLocationWithParams 处理的路由位置
+   * @returns params key，不存在时返回 undefined
+   */
+  extractParamsKey(location) {
+    if (typeof location === "string") return void 0;
+    if (typeof location === "object" && "query" in location) {
+      const query = location.query;
+      return query?.[PARAMS_KEY];
+    }
+    return void 0;
+  }
+  /**
    * 从原始路由位置中提取 params 和 persistent，存入 ParamsManager 并将 key 注入 location
    *
    * params 在 resolve 前处理，因为需要将 key 拼入 query 以便目标页面读取。
@@ -1498,14 +1527,15 @@ var UniRouter = class {
     const config = this.matcher.getRouteConfig(currentPath);
     const meta = config?.meta ?? {};
     const query = getCurrentPageQuery();
-    const fullPath = buildFullPath(currentPath, query);
     let params = {};
     const paramsKey = query[PARAMS_KEY];
     if (paramsKey) {
       const resolved = this.paramsManager.peek(decodeURIComponent(paramsKey));
       if (resolved) params = resolved;
+      delete query[PARAMS_KEY];
     }
-    const to = createRouteLocation({ path: currentPath, meta, query, fullPath, params, _synced: true });
+    const fullPath = buildFullPath(currentPath, query);
+    const to = createRouteLocation({ path: currentPath, name: config?.name, meta, query, fullPath, params, _synced: true });
     this.routeState.setCurrentRoute(to);
   }
 };

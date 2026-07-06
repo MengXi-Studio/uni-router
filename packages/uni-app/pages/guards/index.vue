@@ -129,9 +129,6 @@ export default {
 	onLoad() {
 		this.addLog('进入守卫演示页面')
 	},
-	onShow() {
-		router.syncRoute()
-	},
 	methods: {
 		addLog(msg) {
 			const time = new Date().toLocaleTimeString()

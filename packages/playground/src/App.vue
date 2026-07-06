@@ -33,9 +33,6 @@ onLaunch(options => {
 
 onShow(() => {
 	console.log('App Show')
-	// 路由状态同步已由路由器全局 mixin 自动处理（页面 onShow 时触发 syncRoute）
-	// 此处手动调用用于应用从后台回到前台时的补充同步（与 mixin 去重，安全）
-	router.syncRoute()
 })
 
 onHide(() => {
