@@ -1,8 +1,9 @@
 import type { RouteMeta, NavigationAnimation, EventChannel, EventListeners } from '@/types/route'
-import type { UniApiCause, UniApiError as UniApiErrorType } from '@/types/error'
+import type { UniApiCause } from '@/types/error'
 import { buildFullPath } from '@/utils/path'
 import { warn } from '@/utils/general'
 import { markRouterCall } from '@/interceptor'
+import { UniApiError } from '@/errors/uni-api-error'
 
 /**
  * uni 导航 API 的统一选项
@@ -23,27 +24,6 @@ export interface UniNavigationOptions {
 	 * 其他导航方式不支持 events，传入时将被忽略。
 	 */
 	events?: EventListeners
-}
-
-/**
- * uni API 调用失败时的错误封装
- */
-class UniApiError extends Error {
-	/** 调用失败的 API 名称 */
-	readonly api: string
-	/** 原始错误原因 */
-	readonly cause: UniApiCause
-
-	/**
-	 * @param api - 失败的 uni API 名称
-	 * @param cause - 原始错误对象
-	 */
-	constructor(api: string, cause: UniApiCause) {
-		super(`[uni-router] uni.${api} failed`)
-		this.name = 'UniApiError'
-		this.api = api
-		this.cause = cause
-	}
 }
 
 /**
@@ -223,13 +203,4 @@ export function relaunchTo(options: UniNavigationOptions): Promise<void> {
 		warn('uni.reLaunch does not support animation parameters. The animation option will be ignored.')
 	}
 	return uniReLaunch(path, query)
-}
-
-/**
- * 检查错误是否为 uni API 调用失败
- * @param error - 待检查的值
- * @returns 是 UniApiError 时返回 true
- */
-export function isUniApiError(error: unknown): error is UniApiErrorType {
-	return error instanceof UniApiError
 }

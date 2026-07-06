@@ -1,32 +1,18 @@
-import type {
-	RouteConfig,
-	RouteLocation,
-	RouteLocationPathRaw,
-	RouteLocationNamedRaw,
-	RouteLocationRaw,
-	RouteMeta,
-	NavigationAnimation,
-	NavigationResult,
-	EventChannel,
-	EventListeners,
-	Router,
-	RouterOnError,
-	RouterOptions,
-	ParamObject,
-	GuardRouteOptions
-} from '@/types'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, NavigationResult, EventChannel, EventListeners, Router, RouterOnError, RouterOptions, GuardRouteOptions } from '@/types'
 import type { App } from 'vue'
 import { RouterErrorCode } from '@/types/error'
-import { NavigationFailure, RouterError } from '@/errors'
+import { NavigationFailure, RouterError, isUniApiError } from '@/errors'
 import { createGuardManager, type GuardResult } from '@/guard'
-import { navigateTo, replaceTo, relaunchTo, goBack, isUniApiError } from '@/navigation'
+import { navigateTo, replaceTo, relaunchTo, goBack } from '@/navigation'
 import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/navigation/context'
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
 import { installInterceptors, removeInterceptors } from '@/interceptor'
 import { createParamsManager, PARAMS_KEY } from '@/params'
 import type { ParamsManager } from '@/params'
-import { buildFullPath, createRouteLocation, warn } from '@/utils'
+import { warn } from '@/utils'
+import { extractAnimation, extractEvents, extractParamsKey, enrichLocationWithParams, isSameRouteLocation } from './location'
+import { createRouteSync, type RouteSync } from './sync'
 
 /**
  * 最大重定向深度，超过此值将取消导航以防止无限循环
@@ -45,6 +31,7 @@ class UniRouter implements Router {
 	private guardManager = createGuardManager()
 	private paramsManager: ParamsManager = createParamsManager(false)
 	private matcher = createRouteMatcher([], true, this.paramsManager)
+	private routeSync!: RouteSync
 	private errorHandlers: RouterOnError[] = []
 	private pendingNavigation: Promise<NavigationResult | RouteLocation | void> | null = null
 	private _interceptUniApi: boolean
@@ -57,6 +44,7 @@ class UniRouter implements Router {
 		this.paramsManager = createParamsManager(options.paramsPersistent ?? false)
 		this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager)
 		this.routeState = createRouteState(options.readyTimeout)
+		this.routeSync = createRouteSync(this.routeState, this.matcher, this.paramsManager)
 		this._interceptUniApi = options.interceptUniApi ?? false
 
 		// 路由器初始化时清理所有残留 params（上次运行可能残留 storage 数据）
@@ -172,7 +160,7 @@ class UniRouter implements Router {
 		// 守卫通过，执行返回
 		try {
 			await goBack(delta, effectiveAnimation)
-			this.syncCurrentRoute()
+			this.routeSync.syncCurrentRoute()
 			this.guardManager.runAfterGuards(to, from)
 			return this.routeState.getCurrentRoute()
 		} catch (error) {
@@ -287,14 +275,7 @@ class UniRouter implements Router {
 	 * 调用此方法将从 uni-app 页面栈中读取当前页面信息并更新路由状态。
 	 */
 	syncRoute(): void {
-		const from = this.routeState.getCurrentRoute()
-		const currentPath = getCurrentPagePath()
-		const currentQuery = getCurrentPageQuery()
-		// 若当前页面与路由状态一致（路径和查询参数均相同），无需更新
-		if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return
-		this.syncCurrentRoute()
-		// 同步时清理无效 params
-		this.paramsManager.cleanupStale()
+		this.routeSync.syncRoute()
 	}
 
 	/**
@@ -456,23 +437,23 @@ class UniRouter implements Router {
 		}
 
 		// 在 resolve 前处理 params：存入 ParamsManager 并将 key 注入 location
-		const enrichedLocation = this.enrichLocationWithParams(location)
+		const enrichedLocation = enrichLocationWithParams(location, this.paramsManager)
 
 		const to = this.matcher.resolve(enrichedLocation)
 		const from = this.routeState.getCurrentRoute()
 		// 从原始路由位置中提取动画参数和事件监听器（resolve 会丢弃这些字段）
-		const animation = this.extractAnimation(location)
-		const events = this.extractEvents(location)
+		const animation = extractAnimation(location)
+		const events = extractEvents(location)
 		// 提取 params key：matcher.resolve 会从 query 中移除 __params_key，
 		// 但实际导航 URL 需要保留它，以便 back() 时 syncCurrentRoute 能从 URL 重建 params
-		const paramsKey = this.extractParamsKey(enrichedLocation)
+		const paramsKey = extractParamsKey(enrichedLocation)
 
 		// events 仅在 push 模式下有效，其他模式发出警告并忽略
 		if (events && mode !== 'push') {
 			warn(`uni.${mode === 'replace' ? 'redirectTo' : 'reLaunch'} does not support events. The events option will be ignored.`)
 		}
 
-		if (mode === 'push' && this.isSameRouteLocation(to, from)) {
+		if (mode === 'push' && isSameRouteLocation(to, from)) {
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_DUPLICATED, `Avoided redundant navigation to current location: "${to.fullPath}"`)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
@@ -610,8 +591,8 @@ class UniRouter implements Router {
 
 		if (result.redirect) {
 			// 重定向时提取新位置的动画参数和事件监听器，未指定则沿用当前值
-			const redirectAnimation = this.extractAnimation(result.redirect) ?? animation
-			const redirectEvents = this.extractEvents(result.redirect) ?? events
+			const redirectAnimation = extractAnimation(result.redirect) ?? animation
+			const redirectEvents = extractEvents(result.redirect) ?? events
 			const redirectTarget = this.matcher.resolve(result.redirect)
 			// 重定向方式：守卫指定优先，否则沿用原始导航方式
 			// back 无法作为重定向方式（目标不在页面栈中），回退为 relaunch
@@ -636,153 +617,6 @@ class UniRouter implements Router {
 				// error handlers should not throw
 			}
 		}
-	}
-
-	/**
-	 * 判断两个路由位置是否相同
-	 * @param a - 第一个路由位置
-	 * @param b - 第二个路由位置
-	 * @returns 路径和查询参数均相同时返回 true
-	 */
-	private isSameRouteLocation(a: RouteLocation, b: RouteLocation): boolean {
-		if (a.path !== b.path) return false
-		if (a.name !== b.name) return false
-		return this.isSameQuery(a.query, b.query)
-	}
-
-	/**
-	 * 判断两组查询参数是否相同
-	 * @param a - 第一组查询参数
-	 * @param b - 第二组查询参数
-	 * @returns 键值对完全一致时返回 true
-	 */
-	private isSameQuery(a: Record<string, string>, b: Record<string, string>): boolean {
-		if (a === b) return true
-		const keysA = Object.keys(a)
-		const keysB = Object.keys(b)
-		if (keysA.length !== keysB.length) return false
-		if (keysA.length === 0) return true
-		return keysA.every(key => a[key] === b[key])
-	}
-
-	/**
-	 * 从原始路由位置中提取动画参数
-	 *
-	 * resolve() 会丢弃 animation 字段，因此需要在解析前提取。
-	 * 字符串形式的路由位置不包含动画参数。
-	 *
-	 * @param location - 原始路由位置
-	 * @returns 动画配置，不存在时返回 undefined
-	 */
-	private extractAnimation(location: RouteLocationRaw): NavigationAnimation | undefined {
-		if (typeof location === 'string') return undefined
-		if (typeof location === 'object' && 'animation' in location) return location.animation
-		return undefined
-	}
-
-	/**
-	 * 从原始路由位置中提取事件监听器
-	 *
-	 * resolve() 会丢弃 events 字段，因此需要在解析前提取。
-	 * 字符串形式的路由位置不包含事件监听器。
-	 *
-	 * @param location - 原始路由位置
-	 * @returns 事件监听器，不存在时返回 undefined
-	 */
-	private extractEvents(location: RouteLocationRaw): EventListeners | undefined {
-		if (typeof location === 'string') return undefined
-		if (typeof location === 'object' && 'events' in location) return location.events
-		return undefined
-	}
-
-	/**
-	 * 从已注入 params key 的路由位置中提取 __params_key
-	 *
-	 * enrichLocationWithParams 会将 key 写入 query，但 matcher.resolve 会将其移除。
-	 * 此方法在 resolve 之后从 enrichedLocation 中读取 key，用于拼入实际导航 URL，
-	 * 使 back() 返回时 syncCurrentRoute 可从 URL 重建 params。
-	 *
-	 * @param location - 已经过 enrichLocationWithParams 处理的路由位置
-	 * @returns params key，不存在时返回 undefined
-	 */
-	private extractParamsKey(location: RouteLocationRaw): string | undefined {
-		if (typeof location === 'string') return undefined
-		if (typeof location === 'object' && 'query' in location) {
-			const query = (location as { query?: Record<string, unknown> }).query
-			return query?.[PARAMS_KEY] as string | undefined
-		}
-		return undefined
-	}
-
-	/**
-	 * 从原始路由位置中提取 params 和 persistent，存入 ParamsManager 并将 key 注入 location
-	 *
-	 * params 在 resolve 前处理，因为需要将 key 拼入 query 以便目标页面读取。
-	 *
-	 * @param location - 原始路由位置
-	 * @returns 注入 __params_key 后的路由位置
-	 */
-	private enrichLocationWithParams(location: RouteLocationRaw): RouteLocationRaw {
-		if (typeof location === 'string') return location
-
-		// 检查是否有 params
-		const hasParams = 'params' in location && (location as { params?: ParamObject }).params
-		if (!hasParams || Object.keys((location as { params: ParamObject }).params).length === 0) return location
-
-		const params = (location as { params: ParamObject }).params
-		const persistent = 'persistent' in location ? (location as { persistent?: boolean }).persistent : undefined
-		const key = this.paramsManager.set(params, persistent)
-
-		// 将 key 注入 query
-		if ('path' in location) {
-			const pathLoc = location as RouteLocationPathRaw
-			return {
-				...pathLoc,
-				query: { ...pathLoc.query, [PARAMS_KEY]: key }
-			}
-		}
-
-		if ('name' in location) {
-			const namedLoc = location as RouteLocationNamedRaw
-			return {
-				...namedLoc,
-				query: { ...namedLoc.query, [PARAMS_KEY]: key }
-			}
-		}
-
-		return location
-	}
-
-	/**
-	 * 根据 uni-app 实际页面栈同步 currentRoute 状态
-	 *
-	 * 当通过 back() 或浏览器后退等非 push/replace 方式改变页面后，
-	 * 需要从页面栈中读取当前页面信息来更新路由状态。
-	 *
-	 * 状态同步不是一次完整的导航（未经过前置守卫），因此不触发 afterEach 钩子，
-	 * 仅通知 onRouteChange 监听器。
-	 */
-	private syncCurrentRoute(): void {
-		const currentPath = getCurrentPagePath()
-		const config = this.matcher.getRouteConfig(currentPath)
-		const meta: RouteMeta = config?.meta ?? {}
-		const query = getCurrentPageQuery()
-
-		// 从 query 中提取 __params_key 并读取 params，同时移除内部 key（不暴露给用户）
-		// 使用 peek：syncCurrentRoute 在 back() 后调用，此时目标页面已在栈中，
-		// 但 get 的惰性清理可能在某些边界情况下误删，peek 更安全
-		let params: ParamObject = {}
-		const paramsKey = query[PARAMS_KEY]
-		if (paramsKey) {
-			const resolved = this.paramsManager.peek(decodeURIComponent(paramsKey))
-			if (resolved) params = resolved
-			// 从用户可见的 query 中移除内部 key，fullPath 也基于清理后的 query 构建
-			delete query[PARAMS_KEY]
-		}
-
-		const fullPath = buildFullPath(currentPath, query)
-		const to = createRouteLocation({ path: currentPath, name: config?.name, meta, query, fullPath, params, _synced: true })
-		this.routeState.setCurrentRoute(to)
 	}
 }
 

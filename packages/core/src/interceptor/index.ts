@@ -1,5 +1,5 @@
-import type { NavigationAnimation, RouteLocationRaw, Router, EventListeners } from '@/types'
-import { normalizePath, parseQuery } from '@/utils/path'
+import type { Router, EventListeners } from '@/types'
+import { parseUniUrl, extractAnimationFromArgs, buildLocation } from './utils'
 
 /**
  * uni API 拦截器模块
@@ -111,54 +111,6 @@ export function markRouterCall(): void {
 }
 
 /**
- * 解析 uni API 的 URL 为路径和查询参数
- *
- * @param url - uni API 传入的 URL，如 "/pages/about/about?id=1"
- * @returns 路径和查询参数
- */
-function parseUniUrl(url: string): { path: string; query: Record<string, string> } {
-	if (!url) return { path: '', query: {} }
-
-	const queryIndex = url.indexOf('?')
-	const rawPath = queryIndex === -1 ? url : url.slice(0, queryIndex)
-	const queryString = queryIndex === -1 ? '' : url.slice(queryIndex + 1)
-
-	const path = normalizePath(rawPath)
-	const query = queryString ? parseQuery(queryString) : {}
-
-	return { path, query }
-}
-
-/**
- * 从 uni API 调用参数中提取动画配置
- *
- * uni.navigateTo / uni.navigateBack 支持 animationType 和 animationDuration 参数（仅 App 端），
- * 此函数将其转换为路由器的 NavigationAnimation 格式，以便在拦截器转发时保留动画配置。
- *
- * @param args - uni API 调用参数
- * @returns 动画配置，不存在时返回 undefined
- */
-function extractAnimation(args: Record<string, any>): NavigationAnimation | undefined {
-	if (!args.animationType) return undefined
-	return { type: args.animationType, ...(args.animationDuration != null && { duration: args.animationDuration }) }
-}
-
-/**
- * 将路径、查询参数、动画配置和事件监听器合并为 RouteLocationRaw
- *
- * @param path - 页面路径
- * @param query - 查询参数
- * @param animation - 动画配置
- * @param events - 页面间通信事件监听器
- * @returns 路由位置对象
- */
-function buildLocation(path: string, query: Record<string, string>, animation?: NavigationAnimation, events?: EventListeners): RouteLocationRaw {
-	const hasQuery = query && Object.keys(query).length > 0
-	if (!hasQuery && !animation && !events) return path
-	return { path, ...(hasQuery && { query }), ...(animation && { animation }), ...(events && { events }) }
-}
-
-/**
  * 处理被拦截的外部导航调用
  *
  * 阻止原始 uni API 调用，转由路由器执行完整的守卫链和导航流程。
@@ -176,7 +128,7 @@ function handleInterceptedNavigation(api: string, args: Record<string, any>): fa
 			const { path, query } = parseUniUrl(args.url || '')
 			if (path) {
 				const events: EventListeners | undefined = args.events
-				router.push(buildLocation(path, query, extractAnimation(args), events))
+				router.push(buildLocation(path, query, extractAnimationFromArgs(args), events))
 			}
 			break
 		}
@@ -203,7 +155,7 @@ function handleInterceptedNavigation(api: string, args: Record<string, any>): fa
 			break
 		}
 		case 'navigateBack': {
-			router.back(args.delta || 1, extractAnimation(args))
+			router.back(args.delta || 1, extractAnimationFromArgs(args))
 			break
 		}
 	}

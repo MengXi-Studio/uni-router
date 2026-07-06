@@ -1,5 +1,5 @@
 import type { ParamObject } from '@/types/route'
-import { warn } from '@/utils/general'
+import { warn, safeGetCurrentPages } from '@/utils/general'
 
 /** storage key 前缀 */
 const PARAMS_STORAGE_PREFIX = '__uni_router_params__'
@@ -18,14 +18,6 @@ function generateKey(): string {
 		.toString(16)
 		.padStart(6, '0')
 	return `pk_${hex}`
-}
-
-/**
- * 安全获取当前页面栈
- */
-function safeGetCurrentPages(): UniPage[] {
-	if (typeof getCurrentPages !== 'function') return []
-	return getCurrentPages()
 }
 
 /**

@@ -36,6 +36,21 @@ export function serializeQuery(query?: Record<string, QueryValue>): Record<strin
 }
 
 /**
+ * 判断两组查询参数是否相同
+ * @param a - 第一组查询参数
+ * @param b - 第二组查询参数
+ * @returns 键值对完全一致时返回 true
+ */
+export function isSameQuery(a: Record<string, string>, b: Record<string, string>): boolean {
+	if (a === b) return true
+	const keysA = Object.keys(a)
+	const keysB = Object.keys(b)
+	if (keysA.length !== keysB.length) return false
+	if (keysA.length === 0) return true
+	return keysA.every(key => a[key] === b[key])
+}
+
+/**
  * 创建 RouteLocation 对象，附带 query 便捷方法
  *
  * 所有 RouteLocation 实例均应通过此工厂函数创建，

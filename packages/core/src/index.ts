@@ -25,11 +25,10 @@ export type {
 	Router,
 	GuardRouteOptions,
 	UniApiCause,
-	UniApiError,
 	QueryValue,
 	ParamValue,
 	ParamObject,
 	ParamsInput
 } from '@/types'
-export { RouterError, NavigationFailure } from '@/errors'
+export { RouterError, NavigationFailure, UniApiError } from '@/errors'
 export { RouterErrorCode, DEFAULT_ANIMATION_DURATION } from '@/types'

@@ -1,15 +1,4 @@
-/**
- * 安全获取当前页面栈
- *
- * `getCurrentPages()` 是 uni-app 运行时 API，在 SSR、Node 测试环境、
- * 构建工具静态分析阶段不存在。此函数提供环境保护，避免 `ReferenceError`。
- *
- * @returns 页面栈数组，非 uni-app 环境返回空数组
- */
-function safeGetCurrentPages(): UniPage[] {
-	if (typeof getCurrentPages !== 'function') return []
-	return getCurrentPages()
-}
+import { safeGetCurrentPages } from '@/utils/general'
 
 /**
  * 获取当前页面栈的长度
