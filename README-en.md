@@ -32,8 +32,8 @@
 - **Page Params** - `params` passes complex data without exposing in URL, supports `persistent` storage
 - **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()` convenience methods
 - **Navigation Animation** - `push` / `replace` / `back` support animation params, App only
-- **Route State Sync** - `syncRoute()` handles browser back, physical back button, etc.
-- **Error Handling** - Complete `RouterError` / `NavigationFailure` system with `onError` global capture
+- **Auto Route State Sync** - Global mixin auto-invokes `syncRoute()` to handle browser back, physical back button, etc. No manual sync needed in pages
+- **Error Handling** - Complete `RouterError` / `NavigationFailure` / `UniApiError` system with `onError` global capture, supports `instanceof` for precise discrimination
 - **Composables** - `useRouter()` / `useRoute()` for reactive router access
 
 ## Installation
@@ -93,12 +93,13 @@ const router = createRouter({
 	routes,
 	strict: true,
 	interceptUniApi: true, // Intercept uni native navigation APIs to ensure guards work
-	guardTimeout: 15000 // Guard timeout in ms, default 10000
+	guardTimeout: 15000, // Guard timeout in ms, default 10000
+	readyTimeout: 5000 // Ready timeout in ms, default 0 means never timeout
 })
 
 export function createApp() {
 	const app = createSSRApp(App)
-	app.use(router)
+	app.use(router) // Auto-registers a global mixin that syncs currentRoute on each page's onShow
 	return { app }
 }
 ```
@@ -120,7 +121,7 @@ await router.push({ name: 'about' })
 // Page params (not exposed in URL, supports complex data)
 await router.push({ path: '/pages/detail/detail', params: { info: { name: 'Tom' } } })
 
-// Go back (executes full guard chain)
+// Go back (executes full guard chain, automatically preserves previous page's params)
 await router.back()
 ```
 

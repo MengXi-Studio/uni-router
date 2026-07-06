@@ -32,8 +32,8 @@
 - **页面参数传递** - `params` 传递复杂数据，不暴露在 URL，支持 `persistent` 持久化
 - **查询参数增强** - `queryInt()` / `queryNumber()` / `queryBool()` 便捷解析
 - **导航动画** - `push` / `replace` / `back` 支持动画参数，仅 App 端生效
-- **路由状态同步** - `syncRoute()` 处理浏览器后退、物理返回键等场景
-- **错误处理** - 完整的 `RouterError` / `NavigationFailure` 体系，`onError` 全局捕获
+- **路由状态自动同步** - 全局 Mixin 自动调用 `syncRoute()`，处理浏览器后退、物理返回键等场景，业务页面无需手动同步
+- **错误处理** - 完整的 `RouterError` / `NavigationFailure` / `UniApiError` 体系，`onError` 全局捕获，支持 `instanceof` 精准判断
 - **组合式 API** - `useRouter()` / `useRoute()` 响应式访问路由
 
 ## 安装
@@ -93,12 +93,13 @@ const router = createRouter({
 	routes,
 	strict: true,
 	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫生效
-	guardTimeout: 15000 // 守卫超时时间（毫秒），默认 10000
+	guardTimeout: 15000, // 守卫超时时间（毫秒），默认 10000
+	readyTimeout: 5000 // 就绪超时时间（毫秒），默认 0 表示永不超时
 })
 
 export function createApp() {
 	const app = createSSRApp(App)
-	app.use(router)
+	app.use(router) // 自动注册全局 mixin，页面 onShow 时自动同步 currentRoute
 	return { app }
 }
 ```
@@ -120,7 +121,7 @@ await router.push({ name: 'about' })
 // 页面参数传递（params 不暴露在 URL，支持复杂数据）
 await router.push({ path: '/pages/detail/detail', params: { info: { name: 'Tom' } } })
 
-// 返回（执行完整守卫链）
+// 返回（执行完整守卫链，自动保留上一页 params）
 await router.back()
 ```
 
