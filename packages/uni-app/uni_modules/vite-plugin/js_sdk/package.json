@@ -1,0 +1,213 @@
+{
+	"type": "module",
+	"main": "index.cjs",
+	"module": "index.mjs",
+	"types": "index.d.ts",
+	"exports": {
+		".": {
+			"require": "./index.cjs",
+			"import": "./index.mjs",
+			"types": "./index.d.ts"
+		},
+		"./common": {
+			"require": "./common/index.cjs",
+			"import": "./common/index.mjs",
+			"types": "./common/index.d.ts"
+		},
+		"./common/code": {
+			"require": "./common/code/index.cjs",
+			"import": "./common/code/index.mjs",
+			"types": "./common/code/index.d.ts"
+		},
+		"./common/compress": {
+			"require": "./common/compress/index.cjs",
+			"import": "./common/compress/index.mjs",
+			"types": "./common/compress/index.d.ts"
+		},
+		"./common/concurrency": {
+			"require": "./common/concurrency/index.cjs",
+			"import": "./common/concurrency/index.mjs",
+			"types": "./common/concurrency/index.d.ts"
+		},
+		"./common/env": {
+			"require": "./common/env/index.cjs",
+			"import": "./common/env/index.mjs",
+			"types": "./common/env/index.d.ts"
+		},
+		"./common/format": {
+			"require": "./common/format/index.cjs",
+			"import": "./common/format/index.mjs",
+			"types": "./common/format/index.d.ts"
+		},
+		"./common/fs": {
+			"require": "./common/fs/index.cjs",
+			"import": "./common/fs/index.mjs",
+			"types": "./common/fs/index.d.ts"
+		},
+		"./common/hash": {
+			"require": "./common/hash/index.cjs",
+			"import": "./common/hash/index.mjs",
+			"types": "./common/hash/index.d.ts"
+		},
+		"./common/html": {
+			"require": "./common/html/index.cjs",
+			"import": "./common/html/index.mjs",
+			"types": "./common/html/index.d.ts"
+		},
+		"./common/object": {
+			"require": "./common/object/index.cjs",
+			"import": "./common/object/index.mjs",
+			"types": "./common/object/index.d.ts"
+		},
+		"./common/path": {
+			"require": "./common/path/index.cjs",
+			"import": "./common/path/index.mjs",
+			"types": "./common/path/index.d.ts"
+		},
+		"./common/script": {
+			"require": "./common/script/index.cjs",
+			"import": "./common/script/index.mjs",
+			"types": "./common/script/index.d.ts"
+		},
+		"./common/string": {
+			"require": "./common/string/index.cjs",
+			"import": "./common/string/index.mjs",
+			"types": "./common/string/index.d.ts"
+		},
+		"./common/ui": {
+			"require": "./common/ui/index.cjs",
+			"import": "./common/ui/index.mjs",
+			"types": "./common/ui/index.d.ts"
+		},
+		"./common/validation": {
+			"require": "./common/validation/index.cjs",
+			"import": "./common/validation/index.mjs",
+			"types": "./common/validation/index.d.ts"
+		},
+		"./factory": {
+			"require": "./factory/index.cjs",
+			"import": "./factory/index.mjs",
+			"types": "./factory/index.d.ts"
+		},
+		"./logger": {
+			"require": "./logger/index.cjs",
+			"import": "./logger/index.mjs",
+			"types": "./logger/index.d.ts"
+		},
+		"./plugins": {
+			"require": "./plugins/index.cjs",
+			"import": "./plugins/index.mjs",
+			"types": "./plugins/index.d.ts"
+		},
+		"./plugins/analyze": {
+			"require": "./plugins/analyze/index.cjs",
+			"import": "./plugins/analyze/index.mjs",
+			"types": "./plugins/analyze/index.d.ts"
+		},
+		"./plugins/analyze/build-progress": {
+			"require": "./plugins/analyze/buildProgress/index.cjs",
+			"import": "./plugins/analyze/buildProgress/index.mjs",
+			"types": "./plugins/analyze/buildProgress/index.d.ts"
+		},
+		"./plugins/analyze/bundle-analyzer": {
+			"require": "./plugins/analyze/bundleAnalyzer/index.cjs",
+			"import": "./plugins/analyze/bundleAnalyzer/index.mjs",
+			"types": "./plugins/analyze/bundleAnalyzer/index.d.ts"
+		},
+		"./plugins/compress": {
+			"require": "./plugins/compress/index.cjs",
+			"import": "./plugins/compress/index.mjs",
+			"types": "./plugins/compress/index.d.ts"
+		},
+		"./plugins/compress/compress-assets": {
+			"require": "./plugins/compress/compressAssets/index.cjs",
+			"import": "./plugins/compress/compressAssets/index.mjs",
+			"types": "./plugins/compress/compressAssets/index.d.ts"
+		},
+		"./plugins/compress/image-optimizer": {
+			"require": "./plugins/compress/imageOptimizer/index.cjs",
+			"import": "./plugins/compress/imageOptimizer/index.mjs",
+			"types": "./plugins/compress/imageOptimizer/index.d.ts"
+		},
+		"./plugins/copy": {
+			"require": "./plugins/copy/index.cjs",
+			"import": "./plugins/copy/index.mjs",
+			"types": "./plugins/copy/index.d.ts"
+		},
+		"./plugins/copy/asset-manifest": {
+			"require": "./plugins/copy/assetManifest/index.cjs",
+			"import": "./plugins/copy/assetManifest/index.mjs",
+			"types": "./plugins/copy/assetManifest/index.d.ts"
+		},
+		"./plugins/copy/copy-file": {
+			"require": "./plugins/copy/copyFile/index.cjs",
+			"import": "./plugins/copy/copyFile/index.mjs",
+			"types": "./plugins/copy/copyFile/index.d.ts"
+		},
+		"./plugins/generate": {
+			"require": "./plugins/generate/index.cjs",
+			"import": "./plugins/generate/index.mjs",
+			"types": "./plugins/generate/index.d.ts"
+		},
+		"./plugins/generate/auto-import": {
+			"require": "./plugins/generate/autoImport/index.cjs",
+			"import": "./plugins/generate/autoImport/index.mjs",
+			"types": "./plugins/generate/autoImport/index.d.ts"
+		},
+		"./plugins/generate/generate-router": {
+			"require": "./plugins/generate/generateRouter/index.cjs",
+			"import": "./plugins/generate/generateRouter/index.mjs",
+			"types": "./plugins/generate/generateRouter/index.d.ts"
+		},
+		"./plugins/generate/generate-version": {
+			"require": "./plugins/generate/generateVersion/index.cjs",
+			"import": "./plugins/generate/generateVersion/index.mjs",
+			"types": "./plugins/generate/generateVersion/index.d.ts"
+		},
+		"./plugins/guard": {
+			"require": "./plugins/guard/index.cjs",
+			"import": "./plugins/guard/index.mjs",
+			"types": "./plugins/guard/index.d.ts"
+		},
+		"./plugins/guard/env-guard": {
+			"require": "./plugins/guard/envGuard/index.cjs",
+			"import": "./plugins/guard/envGuard/index.mjs",
+			"types": "./plugins/guard/envGuard/index.d.ts"
+		},
+		"./plugins/inject": {
+			"require": "./plugins/inject/index.cjs",
+			"import": "./plugins/inject/index.mjs",
+			"types": "./plugins/inject/index.d.ts"
+		},
+		"./plugins/inject/favicon-manager": {
+			"require": "./plugins/inject/faviconManager/index.cjs",
+			"import": "./plugins/inject/faviconManager/index.mjs",
+			"types": "./plugins/inject/faviconManager/index.d.ts"
+		},
+		"./plugins/inject/html-inject": {
+			"require": "./plugins/inject/htmlInject/index.cjs",
+			"import": "./plugins/inject/htmlInject/index.mjs",
+			"types": "./plugins/inject/htmlInject/index.d.ts"
+		},
+		"./plugins/inject/loading-manager": {
+			"require": "./plugins/inject/loadingManager/index.cjs",
+			"import": "./plugins/inject/loadingManager/index.mjs",
+			"types": "./plugins/inject/loadingManager/index.d.ts"
+		},
+		"./plugins/inject/version-update-checker": {
+			"require": "./plugins/inject/versionUpdateChecker/index.cjs",
+			"import": "./plugins/inject/versionUpdateChecker/index.mjs",
+			"types": "./plugins/inject/versionUpdateChecker/index.d.ts"
+		},
+		"./plugins/proxy": {
+			"require": "./plugins/proxy/index.cjs",
+			"import": "./plugins/proxy/index.mjs",
+			"types": "./plugins/proxy/index.d.ts"
+		},
+		"./plugins/proxy/proxy-manager": {
+			"require": "./plugins/proxy/proxyManager/index.cjs",
+			"import": "./plugins/proxy/proxyManager/index.mjs",
+			"types": "./plugins/proxy/proxyManager/index.d.ts"
+		}
+	}
+}

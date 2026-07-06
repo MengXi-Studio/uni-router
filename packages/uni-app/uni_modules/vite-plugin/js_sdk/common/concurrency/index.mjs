@@ -1,0 +1,1 @@
+async function s(n,c,l){const t=[];let r=0;async function o(){for(;r<n.length;){const a=r++,i=await c(n[a]);t[a]=i}}const e=Array(Math.min(l,n.length)).fill(null).map(()=>o());return await Promise.all(e),t}export{s as runWithConcurrency};

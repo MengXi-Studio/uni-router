@@ -1,0 +1,1 @@
+import t from"node:zlib";import{promisify as i}from"node:util";const r=i(t.gzip);async function e(f){const o=Buffer.isBuffer(f)?f:Buffer.from(f,"utf-8");return(await r(o)).length}export{e as calculateGzipSize};

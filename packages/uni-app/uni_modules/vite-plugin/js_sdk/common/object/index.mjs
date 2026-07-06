@@ -1,0 +1,1 @@
+function i(o){return typeof o=="object"&&o!==null&&!Array.isArray(o)&&Object.prototype.toString.call(o)==="[object Object]"}function f(...o){const e={};for(const r of o)if(r)for(const t in r){if(!Object.prototype.hasOwnProperty.call(r,t))continue;const n=r[t],c=e[t];n!==void 0&&(i(n)&&i(c)?e[t]=f(c,n):e[t]=n)}return e}export{f as deepMerge};
