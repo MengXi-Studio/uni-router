@@ -7,15 +7,15 @@ Writing route configurations manually is error-prone and difficult to keep in sy
 ::: code-group
 
 ```bash [pnpm]
-pnpm add @meng-xi/vite-plugin@^0.2.5 -D
+pnpm add @meng-xi/vite-plugin@^1.0.0 -D
 ```
 
 ```bash [npm]
-npm install @meng-xi/vite-plugin@^0.2.5 -D
+npm install @meng-xi/vite-plugin@^1.0.0 -D
 ```
 
 ```bash [yarn]
-yarn add @meng-xi/vite-plugin@^0.2.5 -D
+yarn add @meng-xi/vite-plugin@^1.0.0 -D
 ```
 
 :::
@@ -40,6 +40,16 @@ export default defineConfig({
 	]
 })
 ```
+
+::: tip Subpath Import (Recommended)
+Since `@meng-xi/vite-plugin@1.0.0`, subpath exports are supported. Importing by group benefits Tree-shaking:
+
+```ts
+import { generateRouter } from '@meng-xi/vite-plugin/plugins/generate'
+```
+
+The main entry `@meng-xi/vite-plugin` remains backward compatible; both forms are equivalent.
+:::
 
 The plugin reads `pages.json` when Vite starts and automatically generates `src/router.config.ts`:
 
@@ -273,7 +283,7 @@ The `headerTemplate` option controls the comment header at the top of the genera
 | `{name}`           | Plugin name                                      | `generate-router`                    |
 | `{date}`           | Generation datetime (default format `YYYY-MM-DD HH:mm:ss`) | `2026-06-24 14:30:00` |
 | `{date:format}`    | Datetime in specified format                     | `{date:YYYY-MM-DD}` → `2026-06-24`  |
-| `{version}`        | Plugin version                                   | `0.2.5`                              |
+| `{version}`        | Plugin version                                   | `1.0.0`                              |
 | `{custom:key}`     | Custom field, value from `customFields`          | `{custom:author}` → `MengXi Studio`  |
 
 ```ts
@@ -281,14 +291,14 @@ The `headerTemplate` option controls the comment header at the top of the genera
 generateRouter({ headerTemplate: true })
 // Generated:
 // /**
-//  * generate-router 2026-06-24 14:30:00 0.2.5
+//  * generate-router 2026-06-24 14:30:00 1.0.0
 //  */
 
 // Custom date format
 generateRouter({ headerTemplate: '{name} {date:YYYY-MM-DD} {version}' })
 // Generated:
 // /**
-//  * generate-router 2026-06-24 0.2.5
+//  * generate-router 2026-06-24 1.0.0
 //  */
 
 // Custom fields
@@ -298,7 +308,7 @@ generateRouter({
 })
 // Generated:
 // /**
-//  * generate-router MengXi Studio 2026-06-24 14:30:00 0.2.5
+//  * generate-router MengXi Studio 2026-06-24 14:30:00 1.0.0
 //  */
 ```
 
