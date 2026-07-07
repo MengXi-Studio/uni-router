@@ -1,28 +1,30 @@
 # 文档部署到 GitHub Pages（自动 + 手动触发）
+# 支持双分支：master 部署到根路径，v1 分支部署到 /v1/ 子路径
 name: Deploy Docs to GitHub Pages
 
 on:
   push:
-    branches: [master]
+    branches: [master, v1]
     paths:
       - 'packages/docs/**'
       - .github/workflows/deploy-docs.yml
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # 需要写权限以推送 gh-pages 分支
   pages: write
   id-token: write
 
+# 不同分支独立并发组，避免 v1 与 master 部署互相取消
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 检出代码（拉取完整历史）
+      # 检出代码（拉取完整历史，用于 lastUpdated）
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -41,33 +43,36 @@ jobs:
           node-version: 24.14.0
           cache: pnpm
 
-      # 配置 GitHub Pages
-      - name: Setup Pages
-        uses: actions/configure-pages@v6
+      # 根据分支决定 VitePress base 路径与 gh-pages 部署目录
+      - name: Determine docs base path
+        id: docs
+        run: |
+          if [ "${{ github.ref_name }}" = "v1" ]; then
+            echo "base=/uni-router/v1/" >> $GITHUB_OUTPUT
+            echo "dest_dir=v1" >> $GITHUB_OUTPUT
+          else
+            echo "base=/uni-router/" >> $GITHUB_OUTPUT
+            echo "dest_dir=." >> $GITHUB_OUTPUT
+          fi
 
       # 安装依赖
       - name: Install dependencies
         run: pnpm install
 
-      # 构建文档
+      # 构建文档（通过 DOCS_BASE 环境变量注入 base 路径）
       - name: Build docs
+        env:
+          DOCS_BASE: ${{ steps.docs.outputs.base }}
         run: pnpm run build:docs
 
-      # 上传构建产物
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: ./packages/docs/.vitepress/dist
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
-    runs-on: ubuntu-latest
-    name: Deploy
-    steps:
-      # 部署到 GitHub Pages
+      # 部署到 gh-pages 分支的不同目录，保留其他版本目录
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./packages/docs/.vitepress/dist
+          destination_dir: ${{ steps.docs.outputs.dest_dir }}
+          keep_files: true # 保留其他版本目录，避免互相覆盖
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'docs: deploy ${{ github.ref_name }} site'

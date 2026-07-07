@@ -6,8 +6,15 @@ import { enConfig } from './en'
 export default defineConfig({
 	...sharedConfig,
 
-	/** 网站部署基础路径 */
-	base: '/uni-router/',
+	/**
+	 * 网站部署基础路径
+	 *
+	 * CI 通过 DOCS_BASE 环境变量注入：
+	 * - master 分支：/uni-router/
+	 * - v1 分支：/uni-router/v1/
+	 * 本地开发默认 /uni-router/
+	 */
+	base: process.env.DOCS_BASE || '/uni-router/',
 
 	/** 文档源目录 */
 	srcDir: './src',

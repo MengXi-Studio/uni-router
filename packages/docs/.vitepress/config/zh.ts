@@ -1,4 +1,5 @@
 import type { DefaultTheme, LocaleSpecificConfig } from 'vitepress'
+import { versionNav } from './shared'
 
 export const META_URL = 'https://mengxi-studio.github.io/uni-router/'
 export const META_TITLE = 'Uni Router'
@@ -44,7 +45,8 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						link: 'https://github.com/MengXi-Studio/uni-router/releases'
 					}
 				]
-			}
+			},
+			versionNav
 		],
 
 		sidebar: {

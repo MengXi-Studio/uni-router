@@ -91,16 +91,22 @@ jobs:
       # 步骤8：发布到 npm（OIDC 受信任发布者 + Provenance 签名）
       - name: Publish to npm
         if: ${{ !inputs.skip_publish && steps.version.outputs.should_publish == 'true' }} # 不跳过且版本未发布时执行
-        run: npm publish --provenance --access public # --provenance 附加 Sigstore 签名，--access public 公开访问
+        env:
+          # 根据分支决定 dist-tag：v1 分支用 v1 tag，避免 patch 覆盖 latest
+          DIST_TAG: ${{ github.ref_name == 'v1' && 'v1' || 'latest' }}
+        run: npm publish --provenance --access public --tag "$DIST_TAG" # --provenance 附加 Sigstore 签名，--access public 公开访问，--tag 指定 npm dist-tag
         working-directory: packages/core # 在核心包目录下执行
 
       # 步骤9：发布成功摘要，写入 GitHub Actions Summary 页面
       - name: Publish summary
         if: ${{ !inputs.skip_publish && steps.version.outputs.should_publish == 'true' }} # 发布成功时执行
+        env:
+          DIST_TAG: ${{ github.ref_name == 'v1' && 'v1' || 'latest' }}
         run: |
           echo "## 📦 Published @meng-xi/uni-router@${{ steps.version.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY # 标题
           echo "" >> $GITHUB_STEP_SUMMARY # 空行
           echo "- **Version**: \`${{ steps.version.outputs.current_version }}\`" >> $GITHUB_STEP_SUMMARY # 版本号
+          echo "- **Dist Tag**: \`$DIST_TAG\`" >> $GITHUB_STEP_SUMMARY # npm dist-tag
           echo "- **Auth**: OIDC Trusted Publisher (tokenless)" >> $GITHUB_STEP_SUMMARY # 认证方式
           echo "- **Provenance**: ✅ Signed with Sigstore" >> $GITHUB_STEP_SUMMARY # 签名状态
           echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY # 关联的 commit SHA
