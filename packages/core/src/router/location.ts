@@ -1,5 +1,6 @@
 import type { RouteLocationRaw, RouteLocationPathRaw, RouteLocationNamedRaw, NavigationAnimation, EventListeners, RouteLocation, ParamObject } from '@/types'
 import { PARAMS_KEY } from '@/params'
+import { NAV_ID_KEY } from '@/channel'
 import type { ParamsManager } from '@/params'
 import { isSameQuery } from '@/utils/query'
 
@@ -53,6 +54,25 @@ export function extractParamsKey(location: RouteLocationRaw): string | undefined
 }
 
 /**
+ * 从已注入 navId 的路由位置中提取 __nav_id
+ *
+ * enrichLocationWithNavId 会将 navId 写入 query，但 matcher.resolve 会将其移除。
+ * 此方法在 resolve 之后从 enrichedLocation 中读取 navId，用于拼入实际导航 URL，
+ * 使目标页面 syncCurrentRoute 可从 URL 读取并重建通信通道。
+ *
+ * @param location - 已经过 enrichLocationWithNavId 处理的路由位置
+ * @returns navigationId，不存在时返回 undefined
+ */
+export function extractNavId(location: RouteLocationRaw): string | undefined {
+	if (typeof location === 'string') return undefined
+	if (typeof location === 'object' && 'query' in location) {
+		const query = (location as { query?: Record<string, unknown> }).query
+		return query?.[NAV_ID_KEY] as string | undefined
+	}
+	return undefined
+}
+
+/**
  * 判断两个路由位置是否相同
  * @param a - 第一个路由位置
  * @param b - 第二个路由位置
@@ -98,6 +118,43 @@ export function enrichLocationWithParams(location: RouteLocationRaw, paramsManag
 		return {
 			...namedLoc,
 			query: { ...namedLoc.query, [PARAMS_KEY]: key }
+		}
+	}
+
+	return location
+}
+
+/**
+ * 将 navigationId 注入路由位置的 query 中
+ *
+ * 仅在 useUniEventChannel: true 时调用。
+ * navId 通过 URL query 传递，使目标页面 syncCurrentRoute 时能读取并重建通信通道。
+ * 类似 __params_key 机制，matcher.resolve 会从 query 中移除内部 key，
+ * 实际导航 URL 需通过 extractNavId 读取后拼回。
+ *
+ * @param location - 原始路由位置
+ * @param navId - 导航 ID
+ * @returns 注入 __nav_id 后的路由位置
+ */
+export function enrichLocationWithNavId(location: RouteLocationRaw, navId: string): RouteLocationRaw {
+	if (typeof location === 'string') {
+		// 字符串形式无法注入 query，转换为对象形式
+		return { path: location, query: { [NAV_ID_KEY]: navId } }
+	}
+
+	if ('path' in location) {
+		const pathLoc = location as RouteLocationPathRaw
+		return {
+			...pathLoc,
+			query: { ...pathLoc.query, [NAV_ID_KEY]: navId }
+		}
+	}
+
+	if ('name' in location) {
+		const namedLoc = location as RouteLocationNamedRaw
+		return {
+			...namedLoc,
+			query: { ...namedLoc.query, [NAV_ID_KEY]: navId }
 		}
 	}
 

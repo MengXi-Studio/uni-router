@@ -81,6 +81,22 @@ export interface RouterOptions {
 	 * @default false
 	 */
 	paramsPersistent?: boolean
+
+	/**
+	 * 是否使用内置通信管理器替代 uni.navigateTo 的原生 EventChannel
+	 *
+	 * - false（默认）：push 使用 uni.navigateTo 原生 EventChannel，其他导航方式不支持页面通信
+	 * - true：所有导航方式（push/replace/relaunch/back）都使用内置通信管理器
+	 *
+	 * 内置通信管理器基于 `uni.$emit/$on/$off` 全局事件总线实现：
+	 * - 每次导航生成唯一 `navigationId` 隔离事件通道
+	 * - 目标页面通过 `usePageChannel()` 获取通道
+	 * - 页面卸载时自动清理监听器
+	 * - `__nav_id` 通过 URL query 传递，H5 刷新后仍可重建通道
+	 *
+	 * @default false
+	 */
+	useUniEventChannel?: boolean
 }
 
 /**
@@ -94,7 +110,9 @@ export interface Router {
 	 * 导航到新页面，对应 uni.navigateTo / uni.switchTab
 	 *
 	 * 返回 NavigationResult，包含目标路由位置和可选的 eventChannel。
-	 * eventChannel 仅在对应 uni.navigateTo 时可用，用于页面间双向通信。
+	 * eventChannel 在以下情况可用：
+	 * - 默认（useUniEventChannel: false）：仅对应 uni.navigateTo 时可用
+	 * - useUniEventChannel: true：所有导航方式都返回内置 EventChannel
 	 *
 	 * @param location - 目标路由位置
 	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel
