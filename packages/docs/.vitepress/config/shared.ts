@@ -15,7 +15,7 @@ const asset = (p: string) => base + p.replace(/^\//, '')
 export const versionNav = {
 	text: 'v1.9.0',
 	items: [
-		{ text: 'v2', link: 'https://mengxi-studio.github.io/uni-router/' },
+		{ text: 'v2.0.0', link: 'https://mengxi-studio.github.io/uni-router/' },
 		{ text: 'v1.9.0', link: '/' }
 	]
 }
