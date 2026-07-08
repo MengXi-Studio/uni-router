@@ -28,64 +28,16 @@ export function wrapEventName(navId: string, event: string): string {
 }
 
 /**
- * 内部全局事件总线
- *
- * 独立于 uni.$emit/$on 实现，确保跨平台（H5/App/小程序）行为一致。
- * uni.$emit 在 H5 平台可能存在时机或兼容性差异，使用自定义总线更可靠。
- * 所有通道实例共享同一个总线，通过 wrapEventName 隔离不同 navId 的事件。
- */
-class InternalEventBus {
-	private listeners: Map<string, Set<(...args: any[]) => void>> = new Map()
-
-	on(event: string, callback: (...args: any[]) => void): void {
-		let set = this.listeners.get(event)
-		if (!set) {
-			set = new Set()
-			this.listeners.set(event, set)
-		}
-		set.add(callback)
-	}
-
-	once(event: string, callback: (...args: any[]) => void): void {
-		const wrapper = (...args: any[]) => {
-			this.off(event, wrapper)
-			callback(...args)
-		}
-		this.on(event, wrapper)
-	}
-
-	off(event: string, callback?: (...args: any[]) => void): void {
-		if (callback) {
-			this.listeners.get(event)?.delete(callback)
-		} else {
-			this.listeners.delete(event)
-		}
-	}
-
-	emit(event: string, ...args: any[]): void {
-		const set = this.listeners.get(event)
-		if (set) {
-			// 复制一份，避免回调中修改 Set 导致迭代异常
-			;[...set].forEach(cb => cb(...args))
-		}
-	}
-}
-
-/** 全局唯一事件总线实例 */
-const globalEventBus = new InternalEventBus()
-
-/**
- * 基于全局事件总线的页面间通信通道
+ * 基于 uni.$emit/$on 全局事件的页面间通信通道
  *
  * 实现与 uni.navigateTo 原生 eventChannel 相同的 EventChannel 接口，
- * 但通过内部事件总线通信，使所有导航方法（push/replace/relaunch/back/switchTab）都支持页面通信。
+ * 但通过 uni.$emit/$on 全局事件总线通信，使所有导航方法（push/replace/relaunch/back/switchTab）都支持页面通信。
  *
  * 事件名通过 `uni-router:<navId>:<event>` 格式隔离，避免全局事件冲突。
  *
- * 粘性事件缓存：emit 时若当前通道无监听器，将事件参数缓存；on/once 注册监听器时若有缓存，
- * 立即异步触发。解决导航方 emit 与目标页面 setup 注册监听器的时序竞争问题
- *（uni.navigateTo success 回调可能在目标页面 setup 之前触发，导致 emit 的事件丢失）。
- * 每个事件名仅缓存最后一次 emit 的参数，避免无限堆积。
+ * 粘性事件缓存：emit 时总是缓存事件参数；on/once 注册监听器时若有缓存，异步触发（不删除缓存）。
+ * 解决导航方 emit 与目标页面 setup 注册监听器的时序竞争问题——无论 emit 和 on/once 的先后顺序，
+ * 所有监听器都能收到最后一次 emit 的数据。once 通过缓存触发时手动 uni.$off 防止重复触发。
  */
 export class UniEventChannel implements EventChannel {
 	private readonly navId: string
@@ -108,12 +60,11 @@ export class UniEventChannel implements EventChannel {
 			this.listeners.set(event, set)
 		}
 		set.add(callback)
-		globalEventBus.on(name, callback)
+		uni.$on(name, callback)
 
-		// 有缓存的待处理事件时，异步触发（微任务，确保 on 调用链完成后再回调）
+		// 有缓存的待处理事件时，异步触发（保留缓存，使后续注册的 once 也能收到）
 		const pending = this.pendingEvents.get(event)
 		if (pending) {
-			this.pendingEvents.delete(event)
 			Promise.resolve().then(() => callback(...pending))
 		}
 
@@ -134,13 +85,17 @@ export class UniEventChannel implements EventChannel {
 			this.listeners.set(event, set)
 		}
 		set.add(wrapper)
-		globalEventBus.once(name, wrapper)
+		uni.$once(name, wrapper)
 
-		// 有缓存的待处理事件时，异步触发（once 只触发一次）
+		// 有缓存的待处理事件时，异步触发（保留缓存，使后续注册的监听器也能收到）
+		// 注意：通过缓存触发时需手动 uni.$off 移除 wrapper，因为不是通过 uni.$emit 触发的，
+		// uni.$once 的自动移除不会生效
 		const pending = this.pendingEvents.get(event)
 		if (pending) {
-			this.pendingEvents.delete(event)
-			Promise.resolve().then(() => wrapper(...pending))
+			Promise.resolve().then(() => {
+				uni.$off(name, wrapper)
+				wrapper(...pending)
+			})
 		}
 
 		return this
@@ -150,11 +105,11 @@ export class UniEventChannel implements EventChannel {
 		const name = wrapEventName(this.navId, event)
 		const set = this.listeners.get(event)
 		if (callback) {
-			globalEventBus.off(name, callback)
+			uni.$off(name, callback)
 			set?.delete(callback)
 		} else if (set) {
 			// 未指定回调时移除该事件的所有监听器
-			set.forEach(cb => globalEventBus.off(name, cb))
+			set.forEach(cb => uni.$off(name, cb))
 			set.clear()
 		}
 		return this
@@ -163,15 +118,15 @@ export class UniEventChannel implements EventChannel {
 	emit(event: string, ...args: any[]): EventChannel {
 		if (this.destroyed) return this
 
-		const set = this.listeners.get(event)
-		// 无监听器时缓存事件，等待 on/once 注册时触发
-		if (!set || set.size === 0) {
-			this.pendingEvents.set(event, args)
-			return this
-		}
+		// 总是更新缓存，使后续注册的 on/once 都能收到最后一次 emit 的数据
+		this.pendingEvents.set(event, args)
 
-		const name = wrapEventName(this.navId, event)
-		globalEventBus.emit(name, ...args)
+		const set = this.listeners.get(event)
+		// 有监听器时同时通过 uni.$emit 触发
+		if (set && set.size > 0) {
+			const name = wrapEventName(this.navId, event)
+			uni.$emit(name, ...args)
+		}
 		return this
 	}
 
@@ -185,7 +140,7 @@ export class UniEventChannel implements EventChannel {
 		this.destroyed = true
 		for (const [event, set] of this.listeners) {
 			const name = wrapEventName(this.navId, event)
-			set.forEach(cb => globalEventBus.off(name, cb))
+			set.forEach(cb => uni.$off(name, cb))
 			set.clear()
 		}
 		this.listeners.clear()
