@@ -122,11 +122,16 @@ export interface Router {
 
 	/**
 	 * 替换当前页面，对应 uni.redirectTo / uni.switchTab
+	 *
+	 * 返回 NavigationResult：
+	 * - 默认（useUniEventChannel: false）：eventChannel 为 undefined（原生 uni.redirectTo 不支持）
+	 * - useUniEventChannel: true：返回内置 EventChannel，可与目标页面双向通信
+	 *
 	 * @param location - 目标路由位置
-	 * @returns 解析后的目标路由位置
+	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel
 	 * @throws {NavigationFailure} 导航被中止或 API 调用失败时抛出
 	 */
-	replace(location: RouteLocationRaw): Promise<RouteLocation>
+	replace(location: RouteLocationRaw): Promise<NavigationResult>
 
 	/**
 	 * 关闭所有页面并打开目标页面，对应 uni.reLaunch / uni.switchTab
@@ -135,11 +140,15 @@ export interface Router {
 	 * TabBar 页面自动切换为 uni.switchTab。
 	 * reLaunch 不支持动画参数，传入时将输出警告。
 	 *
+	 * 返回 NavigationResult：
+	 * - 默认（useUniEventChannel: false）：eventChannel 为 undefined
+	 * - useUniEventChannel: true：返回内置 EventChannel，可与目标页面双向通信
+	 *
 	 * @param location - 目标路由位置
-	 * @returns 解析后的目标路由位置
+	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel
 	 * @throws {NavigationFailure} 导航被中止或 API 调用失败时抛出
 	 */
-	relaunch(location: RouteLocationRaw): Promise<RouteLocation>
+	relaunch(location: RouteLocationRaw): Promise<NavigationResult>
 
 	/**
 	 * 返回上一页或多级页面，对应 uni.navigateBack

@@ -91,10 +91,10 @@ class UniRouter implements Router {
 	 * 替换 TabBar 页面时将关闭所有非 Tab 页面。
 	 *
 	 * @param location - 目标路由位置
-	 * @returns 解析后的目标路由位置
+	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel（useUniEventChannel: true 时）
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
-	replace(location: RouteLocationRaw): Promise<RouteLocation> {
+	replace(location: RouteLocationRaw): Promise<NavigationResult> {
 		return this.performNavigation(location, 'replace')
 	}
 
@@ -106,10 +106,10 @@ class UniRouter implements Router {
 	 * reLaunch 不支持动画参数，传入时将输出警告。
 	 *
 	 * @param location - 目标路由位置
-	 * @returns 解析后的目标路由位置
+	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel（useUniEventChannel: true 时）
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
-	relaunch(location: RouteLocationRaw): Promise<RouteLocation> {
+	relaunch(location: RouteLocationRaw): Promise<NavigationResult> {
 		return this.performNavigation(location, 'relaunch')
 	}
 
@@ -485,7 +485,7 @@ class UniRouter implements Router {
 		}
 
 		// useUniEventChannel 模式下不向 uni.navigateTo 传递 events（避免原生通道干扰）
-		const effectiveEvents = this._useUniEventChannel ? undefined : (mode === 'push' ? events : undefined)
+		const effectiveEvents = this._useUniEventChannel ? undefined : mode === 'push' ? events : undefined
 		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, effectiveEvents, paramsKey, resolvedNavId, internalChannel)
 		this.pendingNavigation = navigationPromise
 

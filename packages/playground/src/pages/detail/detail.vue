@@ -29,6 +29,9 @@
 
 		<view class="section" v-if="eventChannelMessages.length > 0">
 			<view class="section-title">EventChannel 收到的消息</view>
+			<view class="info-text">
+				通过 usePageChannel() 获取通信通道，无论页面是通过 push / replace / relaunch 哪种方式进入，都能接收导航方发送的事件。
+			</view>
 			<view class="code-block">
 				<view v-for="(msg, index) in eventChannelMessages" :key="index">{{ msg }}</view>
 			</view>
@@ -73,17 +76,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { useRouter, useRoute, type EventChannel } from '@meng-xi/uni-router'
+import { useRouter, useRoute, usePageChannel } from '@meng-xi/uni-router'
 
 const router = useRouter()
 const route = useRoute()
 const eventChannelMessages = ref<string[]>([])
-const hasEventChannel = ref(false)
 const hasParams = computed(() => Object.keys(route.value.params).length > 0)
 
-let eventChannel: EventChannel | null = null
+// usePageChannel() 内部读取 route.params.__navId 获取通信通道
+// 仅在 useUniEventChannel: true 时有效，无 navId 时返回 no-op channel（不会报错）
+// 页面卸载时自动清理监听器，无需手动 destroy
+const channel = usePageChannel()
+const hasEventChannel = computed(() => !!route.value.params?.__navId)
 
 // onLoad 早于 onShow，若需在此阶段读取路由信息（含 params），可手动调用 syncRoute()
 // 路由器在 install() 时已注册全局 mixin，会在 onShow 自动 syncRoute，此处手动调用会去重跳过
@@ -92,40 +98,26 @@ onLoad(() => {
 	console.log('[detail onLoad] params:', route.value.params, 'query:', route.value.query)
 })
 
-onMounted(() => {
-	// 获取当前页面的 EventChannel
-	const pages = getCurrentPages()
-	const currentPage = pages[pages.length - 1] as any
-	if (currentPage && currentPage.getOpenerEventChannel) {
-		eventChannel = currentPage.getOpenerEventChannel()
-		hasEventChannel.value = true
+// 监听发起页发送的事件
+channel.on('fromOpener', (data: Record<string, unknown>) => {
+	eventChannelMessages.value.push(`fromOpener: ${JSON.stringify(data)}`)
+})
 
-		// 监听发起页发送的事件
-		eventChannel?.on('fromOpener', (data: Record<string, unknown>) => {
-			eventChannelMessages.value.push(`fromOpener: ${JSON.stringify(data)}`)
-		})
-
-		// 使用 once 监听一次性事件
-		eventChannel?.once('fromOpener', (data: Record<string, unknown>) => {
-			eventChannelMessages.value.push(`[once] fromOpener: ${JSON.stringify(data)}`)
-		})
-	}
+// 使用 once 监听一次性事件
+channel.once('fromOpener', (data: Record<string, unknown>) => {
+	eventChannelMessages.value.push(`[once] fromOpener: ${JSON.stringify(data)}`)
 })
 
 function replyToOpener() {
-	if (eventChannel) {
-		eventChannel.emit('receiveData', { msg: '详情页收到你的消息了！' })
-		eventChannel.emit('replyFromDetail', { msg: '这是详情页的回复' })
-		uni.showToast({ title: '已回复发起页', icon: 'none' })
-	}
+	channel.emit('receiveData', { msg: '详情页收到你的消息了！' })
+	channel.emit('replyFromDetail', { msg: '这是详情页的回复' })
+	uni.showToast({ title: '已回复发起页', icon: 'none' })
 }
 
 function replyOnceToOpener() {
-	if (eventChannel) {
-		eventChannel.emit('onceEvent', { msg: '这是一次性回复' })
-		eventChannel.emit('replyOnce', { msg: 'once 回复' })
-		uni.showToast({ title: '已通过 once 回复', icon: 'none' })
-	}
+	channel.emit('onceEvent', { msg: '这是一次性回复' })
+	channel.emit('replyOnce', { msg: 'once 回复' })
+	uni.showToast({ title: '已通过 once 回复', icon: 'none' })
 }
 
 function goBack() {
