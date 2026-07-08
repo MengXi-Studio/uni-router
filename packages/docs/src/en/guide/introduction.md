@@ -143,9 +143,9 @@ The router cannot intercept physical back buttons and browser back. You must cal
 - 🔄 **Controllable redirect** — `next(location, { mode })` in guards to specify redirect method
 - 📦 **Page params** — `params` passes complex data, not exposed in URL, supports persistence
 - 🔢 **Query enhancement** — `queryInt()` / `queryNumber()` / `queryBool()` type parsing
-- 📡 **Page communication** — `events` + `eventChannel` bidirectional communication
+- 📡 **Page communication** — `events` + `eventChannel` bidirectional communication; `useUniEventChannel` supports all navigation methods
 - 🎬 **Navigation animation** — App custom animation, route-level defaults
-- 🪝 **Composables** — `useRouter()` / `useRoute()` reactive access
+- 🪝 **Composables** — `useRouter()` / `useRoute()` / `usePageChannel()` reactive access
 - ⚡ **API interception** — Optional interception of native navigation APIs, unified guard flow
 - 🛡️ **Timeout protection** — `guardTimeout` / `readyTimeout` prevent hanging
 - 💪 **TypeScript** — Complete type definitions + intellisense

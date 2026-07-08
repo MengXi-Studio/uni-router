@@ -12,6 +12,7 @@ interface RouterOptions {
   guardTimeout?: number
   readyTimeout?: number
   paramsPersistent?: boolean
+  useUniEventChannel?: boolean
 }
 ```
 
@@ -170,6 +171,46 @@ await router.push({
 - 持久化的 params 应及时清理（`router` 会在页面关闭时自动清理）
 :::
 
+### useUniEventChannel
+
+- **类型**: `boolean`
+- **默认值**: `false`
+- **说明**: 是否使用内置通信管理器替代 `uni.navigateTo` 的原生 EventChannel
+  - `false`（默认）：`push` 使用 `uni.navigateTo` 原生 EventChannel，其他导航方式（`replace` / `relaunch` / `back`）不支持页面通信
+  - `true`：所有导航方式（`push` / `replace` / `relaunch`）都使用内置通信管理器，返回的 `eventChannel` 均可用
+
+内置通信管理器基于 `uni.$emit` / `uni.$on` / `uni.$off` 全局事件总线实现：
+- 每次导航生成唯一 `navigationId` 隔离事件通道，避免全局事件冲突
+- 目标页面通过 [`usePageChannel()`](./use-page-channel) 获取通道
+- 粘性事件缓存：`emit` 总是缓存事件参数，`on` / `once` 注册时异步触发，解决导航方 `emit` 早于目标页面 `setup` 注册监听器的时序问题
+- `__nav_id` 通过 URL query 传递并持久化存储，H5 刷新后仍可重建通道
+- 页面卸载时自动清理监听器，防止内存泄漏
+
+```ts
+const router = createRouter({
+  routes,
+  useUniEventChannel: true // 所有导航方式支持页面通信
+})
+
+// replace / relaunch 现在也返回 eventChannel
+const { eventChannel } = await router.replace({ name: 'detail', params: { id: 123 } })
+eventChannel.emit('init', { source: 'replace' })
+```
+
+::: tip 何时启用
+- 需要 `replace` / `relaunch` 后与目标页面双向通信
+- 希望统一通信机制，避免原生 EventChannel 的时序问题（emit 早于监听注册导致事件丢失）
+- 需要 H5 刷新后恢复通信通道
+:::
+
+::: warning 与原生 EventChannel 的差异
+- 启用后 `push` 不再使用 `uni.navigateTo` 的原生 EventChannel，改用内置通道
+- 目标页面需使用 `usePageChannel()` 而非 `getCurrentPages()[last].getOpenerEventChannel()`
+- `events` 选项仍可用，但通过内置通道转发
+:::
+
+详见[页面间通信](../guide/navigation#特殊用法-页面间通信)与[`usePageChannel()`](./use-page-channel)。
+
 ## 完整示例
 
 ```ts
@@ -189,7 +230,8 @@ const router = createRouter({
   interceptUniApi: true,     // 拦截原生 API
   guardTimeout: 15000,       // 守卫超时 15 秒
   readyTimeout: 5000,        // 就绪超时 5 秒
-  paramsPersistent: false    // params 默认不持久化
+  paramsPersistent: false,   // params 默认不持久化
+  useUniEventChannel: false  // 默认仅 push 支持通信
 })
 
 export default router

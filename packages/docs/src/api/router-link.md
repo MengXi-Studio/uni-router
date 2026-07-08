@@ -123,7 +123,7 @@ interface NavigationAnimation {
 
 - **类型**: `EventListeners | undefined`
 - **默认值**: `undefined`
-- **说明**: 页面间通信事件监听器（仅 push 时生效），对应 `uni.navigateTo` 的 `events` 参数，用于监听目标页面通过 `eventChannel.emit` 发送的事件。其他导航方式（`replace` / `relaunch`）不支持 `events`，传入时将被忽略。
+- **说明**: 页面间通信事件监听器，对应 `uni.navigateTo` 的 `events` 参数，用于监听目标页面通过 `eventChannel.emit` 发送的事件。默认仅 `push` 时生效；启用 `useUniEventChannel` 后所有导航方式均生效。
 
 ```ts
 type EventListeners = Record<string, (...args: any[]) => void>
@@ -243,7 +243,7 @@ function onNavError(error: NavigationFailure) {
 ### navigated
 
 - **参数**: `(eventChannel: EventChannel | undefined)`
-- **说明**: `push` 导航成功后触发，返回 `eventChannel` 用于页面间通信。仅在 `push` 模式下 `eventChannel` 有值，`replace` / `relaunch` 不会触发此事件。
+- **说明**: 导航成功后触发，返回 `eventChannel` 用于页面间通信。默认仅 `push` 模式下 `eventChannel` 有值；启用 `useUniEventChannel` 后 `replace` / `relaunch` 也可获取 `eventChannel`。
 
 ```vue
 <RouterLink

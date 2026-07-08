@@ -620,7 +620,25 @@ EventChannel 是 `navigateTo` 专属能力，`redirectTo` / `reLaunch` 不支持
 
 ### 解决方案
 
-用全局状态替代：
+**方案一（推荐）**：启用 `useUniEventChannel: true`，所有导航方式都支持内置通信通道：
+
+```ts
+const router = createRouter({
+  routes,
+  useUniEventChannel: true
+})
+
+// replace 后也能通信
+const { eventChannel } = await router.replace({ name: 'target' })
+eventChannel.emit('init', { payload })
+
+// 目标页使用 usePageChannel() 接收
+import { usePageChannel } from '@meng-xi/uni-router'
+const channel = usePageChannel()
+channel.on('init', (data) => { /* ... */ })
+```
+
+**方案二**：用全局状态替代：
 
 ```ts
 // 发起页

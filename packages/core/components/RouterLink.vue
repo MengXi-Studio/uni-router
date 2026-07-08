@@ -6,7 +6,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRouter, type RouteLocationRaw, type NavigationFailure, type NavigationAnimation, type EventListeners, type EventChannel, type ParamObject } from '@meng-xi/uni-router'
+import { useRouter, type RouteLocationRaw, type NavigationFailure, type NavigationResult, type NavigationAnimation, type EventListeners, type EventChannel, type ParamObject } from '@meng-xi/uni-router'
 
 const props = withDefaults(
 	defineProps<{
@@ -22,7 +22,7 @@ const props = withDefaults(
 		persistent?: boolean
 		/** 导航动画（仅 App 端生效），覆盖 meta.animation */
 		animation?: NavigationAnimation
-		/** 页面间通信事件监听器（仅 push 时生效），对应 uni.navigateTo 的 events 参数 */
+		/** 页面间通信事件监听器，对应 uni.navigateTo 的 events 参数；默认仅 push 生效，启用 useUniEventChannel 后所有导航方式均生效 */
 		events?: EventListeners
 		/** 按下时的样式类，设置为 'none' 可禁用点击态 */
 		hoverClass?: string
@@ -42,7 +42,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-	/** push 导航成功后触发，返回 eventChannel 用于页面间通信（仅 push 时可用） */
+	/** 导航成功后触发，返回 eventChannel 用于页面间通信；默认仅 push 时有值，启用 useUniEventChannel 后所有导航方式均可用 */
 	navigated: [eventChannel: EventChannel | undefined]
 	/** 导航失败时触发（如守卫中止、重复导航） */
 	error: [error: NavigationFailure]
@@ -89,14 +89,15 @@ const location = computed<RouteLocationRaw>(() => {
 /** 导航到目标页面 */
 async function navigate() {
 	try {
+		let result: NavigationResult
 		if (props.relaunch) {
-			await router.relaunch(location.value)
+			result = await router.relaunch(location.value)
 		} else if (props.replace) {
-			await router.replace(location.value)
+			result = await router.replace(location.value)
 		} else {
-			const result = await router.push(location.value)
-			emit('navigated', result.eventChannel)
+			result = await router.push(location.value)
 		}
+		emit('navigated', result.eventChannel)
 	} catch (error) {
 		emit('error', error as NavigationFailure)
 	}

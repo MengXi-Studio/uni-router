@@ -7,9 +7,11 @@ Route navigation is Uni Router's core capability. This chapter dives deep into t
 | Method | Stack Operation | uni API | Duplicate Check | Animation | events | Return Value |
 | --- | --- | --- | --- | --- | --- | --- |
 | `push()` | Push +1 | `navigateTo` / `switchTab` | ✅ | ✅ | ✅ | `NavigationResult` |
-| `replace()` | Replace top | `redirectTo` / `switchTab` | ❌ | ✅ | ❌ | `RouteLocation` |
-| `relaunch()` | Clear then push | `reLaunch` / `switchTab` | ❌ | ❌ | ❌ | `RouteLocation` |
+| `replace()` | Replace top | `redirectTo` / `switchTab` | ❌ | ✅ | ⚠️¹ | `NavigationResult` |
+| `relaunch()` | Clear then push | `reLaunch` / `switchTab` | ❌ | ❌ | ⚠️¹ | `NavigationResult` |
 | `back()` | Pop -n | `navigateBack` | ❌ | ✅ | ❌ | `RouteLocation` |
+
+> ¹ `events` not supported by default; with `useUniEventChannel: true` enabled, `replace` / `relaunch` also support page communication and the returned `eventChannel` is available.
 
 ::: tip TabBar Page Auto-Detection
 When the target route's `meta.isTab` is `true`, `push` / `replace` / `relaunch` all automatically switch to `uni.switchTab`. You don't need to manually check—just declare `isTab` correctly in the route config.
@@ -108,8 +110,8 @@ await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
 ### Differences from push
 
 - **No duplicate check**: Can replace to current page (for refresh)
-- **No eventChannel return**: `redirectTo` doesn't support page communication
-- **events ignored**: Passing `events` outputs a warning
+- **No eventChannel by default**: `redirectTo` doesn't support native page communication; the returned `NavigationResult.eventChannel` is `undefined` (available with `useUniEventChannel: true` via the built-in channel)
+- **events ignored by default**: Passing `events` outputs a warning (takes effect with `useUniEventChannel: true`)
 - **Same TabBar limitations**: Switches to `switchTab` when `meta.isTab`
 
 ## relaunch — Reset Navigation
@@ -317,6 +319,10 @@ const router = createRouter({
 
 ## Special Usage: Page Communication
 
+Uni Router provides two page communication modes: native EventChannel (default) and the built-in communication manager (`useUniEventChannel: true`).
+
+### Mode 1: Native EventChannel (Default)
+
 `push` supports `events` + `eventChannel` bidirectional communication, corresponding to `uni.navigateTo`'s EventChannel mechanism:
 
 ```ts
@@ -349,8 +355,65 @@ eventChannel.on('init', (data) => {
 eventChannel.emit('update', { status: 'loaded' })
 ```
 
-::: warning Only push Supports Communication
-`replace` / `relaunch` / `back` don't support `events`; passing them will be ignored with a warning. This is because `redirectTo` / `reLaunch` / `navigateBack` don't create EventChannel.
+::: warning Limitations of Native Mode
+- **Only `push` supported**: `replace` / `relaunch` / `back` don't support `events`; passing them will be ignored with a warning (`redirectTo` / `reLaunch` / `navigateBack` don't create EventChannel)
+- **Timing issue**: `uni.navigateTo`'s `success` callback may fire before the target page's `setup` runs; `emit` then happens before `on` is registered, causing events to be lost
+- **H5 refresh loss**: Native channels aren't persisted; refreshing breaks the channel
+:::
+
+### Mode 2: Built-in Communication Manager (useUniEventChannel)
+
+With `createRouter({ useUniEventChannel: true })` enabled, all navigation methods (`push` / `replace` / `relaunch`) use the built-in communication manager, and the target page obtains the channel via [`usePageChannel()`](../api/use-page-channel):
+
+```ts
+// Initiator: replace / relaunch also return eventChannel
+const { eventChannel } = await router.replace({
+  name: 'detail',
+  params: { id: 123 },
+  events: {
+    ready(data) { console.log('Target page ready:', data) }
+  }
+})
+
+// Send event to target page
+eventChannel.emit('init', { message: 'Init data' })
+```
+
+```vue
+<!-- Target page: use usePageChannel() instead of getOpenerEventChannel() -->
+<script setup lang="ts">
+import { usePageChannel } from '@meng-xi/uni-router'
+
+const channel = usePageChannel()
+
+// Listen for events from the initiator
+channel.on('init', (data) => {
+  console.log('Received init:', data)
+})
+
+// Send event to the initiator
+channel.emit('ready', { status: 'loaded' })
+</script>
+```
+
+Advantages of the built-in communication manager:
+
+| Feature | Native EventChannel | Built-in Communication Manager |
+| --- | --- | --- |
+| Applicable navigation methods | Only `push` | `push` / `replace` / `relaunch` |
+| Timing issue | Events lost when emit precedes on | Sticky cache, no loss |
+| H5 refresh | Channel lost | `__nav_id` persisted, can rebuild |
+| Lifecycle cleanup | Manual | Auto-destroyed on page unmount |
+| Target page access | `getOpenerEventChannel()` | `usePageChannel()` |
+
+::: tip Sticky Event Caching
+The built-in channel implements a sticky event mechanism: `emit` **always** caches the event arguments; when `on` / `once` registers a listener and a cache exists, it **async-triggers** (without deleting the cache). Regardless of the order of `emit` and `on`, all listeners receive the data from the last `emit`, completely solving the timing race.
+:::
+
+::: warning Notes on Switching Modes
+- When `useUniEventChannel` is enabled, `push` no longer uses the native EventChannel; the target page must use `usePageChannel()`
+- The `events` option works in both modes, but is forwarded via `uni.$emit` in built-in mode
+- See [`usePageChannel()` API](../api/use-page-channel) and [`useUniEventChannel` option](../api/type-router-options#useunieventchannel)
 :::
 
 ## Special Usage: Navigation Animation
