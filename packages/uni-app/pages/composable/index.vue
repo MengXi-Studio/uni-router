@@ -1,8 +1,10 @@
 <template>
 	<view class="content">
 		<view class="card">
-			<text class="card-title">组合式 API - useRouter / useRoute</text>
-			<text class="desc">本页使用 Vue 3 &lt;script setup&gt; 语法，演示 useRouter() 和 useRoute() 的用法。与 Options API 的 this.$router / this.$route 等价，但提供更好的类型推导和 Composition API 支持。</text>
+			<text class="card-title">组合式 API - useRouter / useRoute / usePageChannel</text>
+			<text class="desc"
+				>本页使用 Vue 3 &lt;script setup&gt; 语法，演示 useRouter()、useRoute() 和 usePageChannel() 的用法。usePageChannel() 用于目标页获取通信通道（本页作为发起页演示发送端，目标页 about/index.vue 演示接收端）。</text
+			>
 		</view>
 
 		<!-- useRoute() 演示 -->
@@ -65,6 +67,19 @@
 			</view>
 		</view>
 
+		<!-- EventChannel 组合式 API 通信 -->
+		<view class="card">
+			<text class="card-title">EventChannel - 组合式 API 通信</text>
+			<text class="hint">发起页通过 result.eventChannel.on() 监听目标页事件，目标页通过 usePageChannel() 接收</text>
+			<view class="btn" @click="pushWithChannel">
+				<text class="btn-text">push 并与关于页通信</text>
+			</view>
+			<view class="info-row" v-if="channelLog">
+				<text class="info-label">通信日志</text>
+				<text class="info-value">{{ channelLog }}</text>
+			</view>
+		</view>
+
 		<!-- RouterLink + 组合式 API -->
 		<view class="card">
 			<text class="card-title">RouterLink 组件</text>
@@ -81,7 +96,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { useRouter, useRoute } from '../../uni_modules/mxuni-router/js_sdk/index.js'
+import { useRouter, useRoute, usePageChannel, noopChannel } from '../../uni_modules/mxuni-router/js_sdk/index.js'
 import router from '../../router'
 
 // 使用组合式 API 获取路由器和路由位置
@@ -89,6 +104,12 @@ const routerInstance = useRouter()
 const route = useRoute()
 
 const lastError = ref('')
+const channelLog = ref('')
+
+// usePageChannel() 在目标页调用获取通信通道；本页作为发起页，调用时返回 noopChannel（无操作）
+// 目标页 about/index.vue 通过 usePageChannel() 获取真实通道实现双向通信
+const pageChannel = usePageChannel()
+// pageChannel === noopChannel，因为本页不是通过带 channel 的导航打开的
 
 // syncRoute() 已由路由器全局 mixin 在 onShow 自动调用，无需手动调用
 // onShow 仅在需要 onLoad 之前的生命周期读取路由信息时手动调用 syncRoute()
@@ -152,6 +173,30 @@ async function refreshWithQuery() {
 		})
 	} catch (e) {
 		// 重复导航到当前页面会抛出 NAVIGATION_DUPLICATED
+		lastError.value = e.message || String(e)
+	}
+}
+
+// EventChannel 组合式 API 通信演示（发起页端）
+async function pushWithChannel() {
+	try {
+		lastError.value = ''
+		channelLog.value = ''
+
+		const result = await routerInstance.push({
+			path: '/pages/about/index',
+			query: { id: 'composable-ec' }
+		})
+
+		// useUniEventChannel: true 时通过 result.eventChannel.on() 注册监听
+		result.eventChannel?.on('receiveData', data => {
+			channelLog.value = `收到关于页数据: ${JSON.stringify(data)}`
+			uni.showToast({ title: `收到: ${data.msg}`, icon: 'none' })
+		})
+
+		result.eventChannel?.emit('fromOpener', { msg: '来自组合式 API 的消息' })
+		channelLog.value = '已发送消息，等待关于页回复...'
+	} catch (e) {
 		lastError.value = e.message || String(e)
 	}
 }

@@ -1,3 +1,34 @@
+## 1.10.0（2026-07-09）
+
+### 新增
+
+- **内置页面间通信管理器** - 新增 `useUniEventChannel` 选项与 `UniEventChannel` 类，基于 `uni.$emit/$on/$off/$once` 全局事件总线实现，替代 `uni.navigateTo`
+  原生 EventChannel，使所有导航方式（push/replace/relaunch）均支持页面间双向通信
+  - `RouterOptions.useUniEventChannel?: boolean`（默认 `false`）- 启用后所有导航方式使用内置通信管理器；默认 `false` 时仅 `push` 使用 `uni.navigateTo` 原生 EventChannel，其他方式不支持页面通信
+  - `UniEventChannel` 类 - 实现 `EventChannel` 接口，提供 `emit` / `on` / `once` / `off` 方法；每次导航生成唯一 `navigationId`（格式 `nav-<timestamp>-<seq>`），通过 `wrapEventName()` 包装为
+    `uni-router:{navId}:{eventName}` 隔离事件通道，避免多导航间事件串扰
+  - `__nav_id` 通过 URL query 传递，目标页面 `syncCurrentRoute` 时读取并重建通道，H5 刷新后仍可恢复通信
+  - 新增 `noopChannel` 导出 - 空操作通道，所有方法均为 no-op 并返回自身；`usePageChannel()` 在无 `__navId` 时返回 `noopChannel`，避免空指针
+- **Sticky 事件缓存机制** - `emit()` 始终将事件参数缓存到 `pendingEvents`，`on()` / `once()` 注册监听器时异步触发已缓存事件（不删除缓存），解决发送方 `emit` 与目标页 `setup` 注册监听的时序竞态
+  - 适用场景：发起页导航后立即 `emit`，目标页 `setup` 中 `on` 监听时仍能收到缓存事件
+  - 缓存随 `UniEventChannel.destroy()` 清理（页面 `onUnmounted` 时自动调用）
+- **`usePageChannel()` 组合式 API** - 目标页面获取通信通道的便捷方法
+  - 读取 `route.params.__navId`，返回对应的 `UniEventChannel` 实例；无 `__navId` 时返回 `noopChannel`
+  - `onUnmounted()` 时自动调用 `destroyChannel(navId)` 清理监听器与缓存，避免内存泄漏
+- **`NavigationResult` 返回类型** - `push` / `replace` / `relaunch` 返回值从 `RouteLocation` 扩展为 `NavigationResult`（继承 `RouteLocation`，新增可选 `eventChannel?: EventChannel`）
+  - 默认模式：仅 `push`（对应 `uni.navigateTo`）的 `eventChannel` 可用
+  - `useUniEventChannel: true`：所有导航方式均返回内置 `UniEventChannel`
+  - 类型向后兼容：`NavigationResult extends RouteLocation`，原 `const route: RouteLocation = await router.push(...)` 仍可用
+- **通道注册表（内部）** - `registerChannel` / `getOrCreateChannel` / `getRegisteredChannel` / `hasChannel` / `destroyChannel` 管理 `navId → UniEventChannel` 映射
+  - `registerChannel` 采用 first-wins 策略：同一 `navId` 已存在通道时返回 false，避免重复注册
+  - `getOrCreateChannel` 优先复用已注册通道，无则新建
+- **`RouterLink` 的 `navigated` 事件支持所有导航方式** - 配合 `NavigationResult` 返回类型，`navigate()` 现对 push/replace/relaunch 统一触发 `navigated` 事件并传递
+  `eventChannel`（默认模式仅 push 有值，`useUniEventChannel: true` 时所有方式均有值）；1.9.0 中 replace/relaunch 无 `eventChannel`，仅 push 触发为当时一致行为
+
+### 优化
+
+- **`RouterLink` 的 `events` prop 与 `navigated` 事件 JSDoc 完善** - 明确说明默认模式下 `events` 仅 `push` 生效、`navigated` 的 `eventChannel` 仅 `push` 有值；启用 `useUniEventChannel` 后所有导航方式均生效
+
 ## 1.9.0（2026-07-06）
 
 ### 新增
@@ -11,7 +42,8 @@
 
 - **`back()` 后 params 丢失** - `push` / `replace` 时实际导航 URL 保留 `__params_key`（`route.query` 中不可见），`back()` 返回原页面后 `syncCurrentRoute` 从 URL 读取 key 并用 `peek` 重建 params
   - **问题**：`matcher.resolve` 会从 query 中移除 `__params_key`，导致实际导航 URL 不含 key，`back()` 后无法从 URL 重建 params
-  - **修复**：`performNavigation` 在 resolve 后通过 `extractParamsKey` 提取 key，`executeNavigation` 将 key 拼回实际导航 URL 的 query 中；`syncCurrentRoute` 从 URL 读取 key 并用 `peek`（非 `get`）重建 params，避免惰性清理误删
+  - **修复**：`performNavigation` 在 resolve 后通过 `extractParamsKey` 提取 key，`executeNavigation` 将 key 拼回实际导航 URL 的 query 中；`syncCurrentRoute` 从 URL 读取 key 并用 `peek`（非
+    `get`）重建 params，避免惰性清理误删
 - **`setCurrentRoute` 执行时机** - `setCurrentRoute(to)` 提前到 uni 导航 API 调用之前执行，确保目标页 `onLoad` / `onShow` 时 `route.value` 已是完整目标路由（含 `name` / `params`）
   - **问题**：此前 `setCurrentRoute` 在 uni API 成功后执行，目标页 `onLoad` / `onShow` 触发时 `currentRoute` 仍为来源路由，导致 `route.value` 不含目标路由信息
   - **修复**：在调用 `navigateTo` / `replaceTo` / `relaunchTo` 之前调用 `setCurrentRoute(to)`；导航 API 失败时回滚到 `from`
@@ -21,9 +53,13 @@
 ### 修复
 
 - **`interface` 对象无法赋值给 `params` 字段** - 解决 v1.8.0 中 `router.push({ params })` 传入 `interface` 定义的对象时类型报错的问题
-  - **问题**：v1.8.0 中 `RouteLocationPathRaw.params` / `RouteLocationNamedRaw.params` 的类型为 `interface ParamObject`（带索引签名 `{ [key: string]: ParamValue }`）。TypeScript 严格模式下，`interface` 定义的对象类型没有显式索引签名，无法赋值给带索引签名的类型，导致 `const params: MyInterface = {...}; router.push({ params })` 报错“缺少类型 'string' 的索引签名”
-  - **修复**：新增 `ParamsInput` 类型（`object`）作为输入侧类型，`params` 字段改用 `ParamsInput`，通过结构子类型兼容任意 `interface` 对象；输出侧 `ParamObject` 从 `interface` 改为 `type` 别名（`Record<string, ParamValue>`），保留索引签名访问
-  - **设计说明**：参考 vue-router 的 `RouteParamsRawGeneric`（`Record<string, RouteParamValueRaw | ...[]>`）调研，发现其值类型仅含原始类型（`string | number | null | undefined`），原始类型属性的 `interface` 对象可通过结构子类型兼容 `Record`；而 mxuni-router 的 `ParamValue` 包含 `object` / `ParamValue[]` 分支（支持复杂数据传递），此场景下 `Record<string, ParamValue>` 在 vue-tsc 严格模式下仍不兼容 `interface` 对象，必须使用 `object`
+  - **问题**：v1.8.0 中 `RouteLocationPathRaw.params` / `RouteLocationNamedRaw.params` 的类型为 `interface ParamObject`（带索引签名 `{ [key: string]: ParamValue }`）。TypeScript 严格模式下，`interface`
+    定义的对象类型没有显式索引签名，无法赋值给带索引签名的类型，导致 `const params: MyInterface = {...}; router.push({ params })` 报错“缺少类型 'string' 的索引签名”
+  - **修复**：新增 `ParamsInput` 类型（`object`）作为输入侧类型，`params` 字段改用 `ParamsInput`，通过结构子类型兼容任意 `interface` 对象；输出侧 `ParamObject` 从 `interface` 改为 `type`
+    别名（`Record<string, ParamValue>`），保留索引签名访问
+  - **设计说明**：参考 vue-router 的 `RouteParamsRawGeneric`（`Record<string, RouteParamValueRaw | ...[]>`）调研，发现其值类型仅含原始类型（`string | number | null | undefined`），原始类型属性的 `interface`
+    对象可通过结构子类型兼容 `Record`；而 mxuni-router 的 `ParamValue` 包含 `object` / `ParamValue[]` 分支（支持复杂数据传递），此场景下 `Record<string, ParamValue>` 在 vue-tsc 严格模式下仍不兼容 `interface`
+    对象，必须使用 `object`
   - 运行时由 `ParamsManager` 校验 JSON 可序列化性
   - 新增 `ParamsInput` 类型导出
 
