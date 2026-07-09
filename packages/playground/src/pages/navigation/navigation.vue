@@ -48,9 +48,10 @@
 				💡 back() params 不丢失：push 时实际导航 URL 会保留 __params_key（route.query 中不可见），back() 返回原页面后 syncCurrentRoute 会从 URL 读取 key 并用 peek 重建 params。详情页有完整演示。
 			</view>
 			<view class="code-block">
-				// 传递 params\nawait router.push({\n path: '/pages/detail/detail',\n query: { id: '1' },\n params: { userInfo: { name: 'Tom', age: 20 } }\n})\n// → 实际 URL: /pages/detail/detail?id=1&__params_key=xxx\n// → route.query 中 __params_key 不可见，route.params.userInfo 可读\n\n// 目标页面读取\nconst route =
-				useRoute()\nconsole.log(route.params.userInfo) // { name: 'Tom', age: 20 }\n\n// back() 后 params 重建（peek，非 get 避免懒清理丢失）\nawait router.back()\n// → syncCurrentRoute 从 URL 读 __params_key，peek 重建 params\n\n// 持久化存储（H5 刷新后仍可读取）\nawait router.push({\n path: '/pages/detail/detail',\n params: { bigData: largeObject },\n
-				persistent: true\n})
+				// 传递 params\nawait router.push({\n path: '/pages/detail/detail',\n query: { id: '1' },\n params: { userInfo: { name: 'Tom', age: 20 } }\n})\n// → 实际 URL: /pages/detail/detail?id=1&__params_key=xxx\n// →
+				route.query 中 __params_key 不可见，route.params.userInfo 可读\n\n// 目标页面读取\nconst route = useRoute()\nconsole.log(route.params.userInfo) // { name: 'Tom', age: 20 }\n\n// back() 后 params 重建（peek，非
+				get 避免懒清理丢失）\nawait router.back()\n// → syncCurrentRoute 从 URL 读 __params_key，peek 重建 params\n\n// 持久化存储（H5 刷新后仍可读取）\nawait router.push({\n path: '/pages/detail/detail',\n params: {
+				bigData: largeObject },\n persistent: true\n})
 			</view>
 		</view>
 
@@ -81,10 +82,11 @@
 
 		<view class="section">
 			<view class="section-title">EventChannel - 页面间通信</view>
-			<view class="info-text">push 支持 events 参数和 eventChannel 返回值，实现页面间双向通信</view>
+			<view class="info-text"> 启用 useUniEventChannel 后，所有导航方法（push / replace / relaunch）都支持 events 参数和 eventChannel 返回值，目标页面通过 usePageChannel() 接收 </view>
 			<view class="btn" @click="goEventChannel">查看 EventChannel 演示</view>
 			<view class="code-block">
-				const { eventChannel } = await router.push({\n path: '/pages/detail/detail',\n events: {\n receiveData: (data) => console.log(data)\n }\n})\neventChannel.emit('fromOpener', { msg: 'hello' })
+				const { eventChannel } = await router.push({\n path: '/pages/detail/detail',\n events: {\n receiveData: (data) => console.log(data)\n }\n})\neventChannel.emit('fromOpener', { msg: 'hello' })\n\n//
+				目标页面\nimport { usePageChannel } from '@meng-xi/uni-router'\nconst channel = usePageChannel()\nchannel.on('fromOpener', (data) => console.log(data))
 			</view>
 		</view>
 

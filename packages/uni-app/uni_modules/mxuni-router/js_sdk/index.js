@@ -1,4 +1,4 @@
-import { inject, ref } from 'vue';
+import { inject, onUnmounted, ref } from 'vue';
 
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -54,6 +54,27 @@ var NavigationFailure = class extends RouterError {
   }
 };
 
+// src/errors/uni-api-error.ts
+var UniApiError = class extends Error {
+  /**
+   * @param api - 失败的 uni API 名称
+   * @param cause - 原始错误对象
+   */
+  constructor(api, cause) {
+    super(`[uni-router] uni.${api} failed`);
+    /** 调用失败的 API 名称（如 navigateTo / redirectTo） */
+    __publicField(this, "api");
+    /** 原始错误原因 */
+    __publicField(this, "cause");
+    this.name = "UniApiError";
+    this.api = api;
+    this.cause = cause;
+  }
+};
+function isUniApiError(error) {
+  return error instanceof UniApiError;
+}
+
 // src/utils/general.ts
 function warn(message) {
   if (typeof console !== "undefined") {
@@ -62,6 +83,10 @@ function warn(message) {
 }
 function isObject(value) {
   return value !== null && typeof value === "object";
+}
+function safeGetCurrentPages() {
+  if (typeof getCurrentPages !== "function") return [];
+  return getCurrentPages();
 }
 
 // src/guard/index.ts
@@ -215,6 +240,26 @@ function normalizePath(path) {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
+// src/interceptor/utils.ts
+function parseUniUrl(url) {
+  if (!url) return { path: "", query: {} };
+  const queryIndex = url.indexOf("?");
+  const rawPath = queryIndex === -1 ? url : url.slice(0, queryIndex);
+  const queryString = queryIndex === -1 ? "" : url.slice(queryIndex + 1);
+  const path = normalizePath(rawPath);
+  const query = queryString ? parseQuery(queryString) : {};
+  return { path, query };
+}
+function extractAnimationFromArgs(args) {
+  if (!args.animationType) return void 0;
+  return { type: args.animationType, ...args.animationDuration != null && { duration: args.animationDuration } };
+}
+function buildLocation(path, query, animation, events) {
+  const hasQuery = query && Object.keys(query).length > 0;
+  if (!hasQuery && !animation && !events) return path;
+  return { path, ...hasQuery && { query }, ...animation && { animation }, ...events && { events } };
+}
+
 // src/interceptor/index.ts
 var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
 function isWebPlatform() {
@@ -270,24 +315,6 @@ var activeManager = null;
 function markRouterCall() {
   activeManager?.markRouterCall();
 }
-function parseUniUrl(url) {
-  if (!url) return { path: "", query: {} };
-  const queryIndex = url.indexOf("?");
-  const rawPath = queryIndex === -1 ? url : url.slice(0, queryIndex);
-  const queryString = queryIndex === -1 ? "" : url.slice(queryIndex + 1);
-  const path = normalizePath(rawPath);
-  const query = queryString ? parseQuery(queryString) : {};
-  return { path, query };
-}
-function extractAnimation(args) {
-  if (!args.animationType) return void 0;
-  return { type: args.animationType, ...args.animationDuration != null && { duration: args.animationDuration } };
-}
-function buildLocation(path, query, animation, events) {
-  const hasQuery = query && Object.keys(query).length > 0;
-  if (!hasQuery && !animation && !events) return path;
-  return { path, ...hasQuery && { query }, ...animation && { animation }, ...events && { events } };
-}
 function handleInterceptedNavigation(api, args) {
   const router = activeManager?.getRouter();
   if (!router) return false;
@@ -296,7 +323,7 @@ function handleInterceptedNavigation(api, args) {
       const { path, query } = parseUniUrl(args.url || "");
       if (path) {
         const events = args.events;
-        router.push(buildLocation(path, query, extractAnimation(args), events));
+        router.push(buildLocation(path, query, extractAnimationFromArgs(args), events));
       }
       break;
     }
@@ -322,7 +349,7 @@ function handleInterceptedNavigation(api, args) {
       break;
     }
     case "navigateBack": {
-      router.back(args.delta || 1, extractAnimation(args));
+      router.back(args.delta || 1, extractAnimationFromArgs(args));
       break;
     }
   }
@@ -380,22 +407,6 @@ function removeInterceptors() {
 }
 
 // src/navigation/navigate.ts
-var UniApiError = class extends Error {
-  /**
-   * @param api - 失败的 uni API 名称
-   * @param cause - 原始错误对象
-   */
-  constructor(api, cause) {
-    super(`[uni-router] uni.${api} failed`);
-    /** 调用失败的 API 名称 */
-    __publicField(this, "api");
-    /** 原始错误原因 */
-    __publicField(this, "cause");
-    this.name = "UniApiError";
-    this.api = api;
-    this.cause = cause;
-  }
-};
 function promisifyUniApi(api, executor) {
   return new Promise((resolve, reject) => {
     executor(resolve, (err) => reject(new UniApiError(api, err)));
@@ -505,15 +516,8 @@ function relaunchTo(options) {
   }
   return uniReLaunch(path, query);
 }
-function isUniApiError(error) {
-  return error instanceof UniApiError;
-}
 
 // src/navigation/context.ts
-function safeGetCurrentPages() {
-  if (typeof getCurrentPages !== "function") return [];
-  return getCurrentPages();
-}
 function getPageStackLength() {
   return safeGetCurrentPages().length;
 }
@@ -554,6 +558,14 @@ function serializeQuery(query) {
     }
   }
   return result;
+}
+function isSameQuery(a, b) {
+  if (a === b) return true;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  if (keysA.length === 0) return true;
+  return keysA.every((key) => a[key] === b[key]);
 }
 function createRouteLocation(base) {
   const query = Object.freeze(base.query);
@@ -688,12 +700,8 @@ function generateKey() {
   const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
   return `pk_${hex}`;
 }
-function safeGetCurrentPages2() {
-  if (typeof getCurrentPages !== "function") return [];
-  return getCurrentPages();
-}
 function isPageInStack(key) {
-  const pages = safeGetCurrentPages2();
+  const pages = safeGetCurrentPages();
   const encodedKey = encodeURIComponent(key);
   return pages.some((page) => {
     const fullPath = page.$page?.fullPath ?? "";
@@ -806,6 +814,134 @@ function createParamsManager(defaultPersistent) {
   return { set, get, peek, remove, cleanupStale, cleanupAll };
 }
 
+// src/channel/uni-event-channel.ts
+var NAV_ID_KEY = "__nav_id";
+var navIdSeq = 0;
+function generateNavId() {
+  return `nav-${Date.now()}-${++navIdSeq}`;
+}
+var NAV_EVENT_PREFIX = "uni-router";
+function wrapEventName(navId, event) {
+  return `${NAV_EVENT_PREFIX}:${navId}:${event}`;
+}
+var UniEventChannel = class {
+  constructor(navId) {
+    __publicField(this, "navId");
+    /** 按 event 名分组的监听器集合，用于 destroy 时批量清理 */
+    __publicField(this, "listeners", /* @__PURE__ */ new Map());
+    /** 粘性事件缓存：无监听器时 emit 的事件参数，on/once 注册时异步触发 */
+    __publicField(this, "pendingEvents", /* @__PURE__ */ new Map());
+    __publicField(this, "destroyed", false);
+    this.navId = navId;
+  }
+  on(event, callback) {
+    if (this.destroyed) return this;
+    const name = wrapEventName(this.navId, event);
+    let set = this.listeners.get(event);
+    if (!set) {
+      set = /* @__PURE__ */ new Set();
+      this.listeners.set(event, set);
+    }
+    set.add(callback);
+    uni.$on(name, callback);
+    const pending = this.pendingEvents.get(event);
+    if (pending) {
+      Promise.resolve().then(() => callback(...pending));
+    }
+    return this;
+  }
+  once(event, callback) {
+    if (this.destroyed) return this;
+    const name = wrapEventName(this.navId, event);
+    const wrapper = (...args) => {
+      this.listeners.get(event)?.delete(wrapper);
+      callback(...args);
+    };
+    let set = this.listeners.get(event);
+    if (!set) {
+      set = /* @__PURE__ */ new Set();
+      this.listeners.set(event, set);
+    }
+    set.add(wrapper);
+    uni.$once(name, wrapper);
+    const pending = this.pendingEvents.get(event);
+    if (pending) {
+      Promise.resolve().then(() => {
+        uni.$off(name, wrapper);
+        wrapper(...pending);
+      });
+    }
+    return this;
+  }
+  off(event, callback) {
+    const name = wrapEventName(this.navId, event);
+    const set = this.listeners.get(event);
+    if (callback) {
+      uni.$off(name, callback);
+      set?.delete(callback);
+    } else if (set) {
+      set.forEach((cb) => uni.$off(name, cb));
+      set.clear();
+    }
+    return this;
+  }
+  emit(event, ...args) {
+    if (this.destroyed) return this;
+    this.pendingEvents.set(event, args);
+    const set = this.listeners.get(event);
+    if (set && set.size > 0) {
+      const name = wrapEventName(this.navId, event);
+      uni.$emit(name, ...args);
+    }
+    return this;
+  }
+  /**
+   * 销毁通道，清理所有监听器和待处理事件
+   *
+   * 框架内部在页面卸载时调用，防止监听器累积导致内存泄漏。
+   */
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    for (const [event, set] of this.listeners) {
+      const name = wrapEventName(this.navId, event);
+      set.forEach((cb) => uni.$off(name, cb));
+      set.clear();
+    }
+    this.listeners.clear();
+    this.pendingEvents.clear();
+  }
+};
+var noopChannel = {
+  on: () => noopChannel,
+  once: () => noopChannel,
+  off: () => noopChannel,
+  emit: () => noopChannel
+};
+
+// src/channel/registry.ts
+var channelRegistry = /* @__PURE__ */ new Map();
+function registerChannel(navId, channel) {
+  if (!channelRegistry.has(navId)) {
+    channelRegistry.set(navId, channel);
+  }
+}
+function destroyChannel(navId) {
+  const channel = channelRegistry.get(navId);
+  if (channel) {
+    channel.destroy();
+    channelRegistry.delete(navId);
+  }
+}
+function getOrCreateChannel(navId) {
+  let channel = channelRegistry.get(navId);
+  if (!channel) {
+    channel = new UniEventChannel(navId);
+    channelRegistry.set(navId, channel);
+  }
+  return channel;
+}
+
 // src/matcher/index.ts
 function createRouteMatcher(routes, strict, paramsManager) {
   const pathMap = /* @__PURE__ */ new Map();
@@ -912,10 +1048,19 @@ function createRouteMatcher(routes, strict, paramsManager) {
     });
   }
   function extractParams(query) {
+    const params = {};
     const key = query[PARAMS_KEY];
-    if (!key) return void 0;
-    delete query[PARAMS_KEY];
-    return paramsManager.peek(decodeURIComponent(key));
+    if (key) {
+      delete query[PARAMS_KEY];
+      const stored = paramsManager.peek(decodeURIComponent(key));
+      if (stored) Object.assign(params, stored);
+    }
+    const navId = query[NAV_ID_KEY];
+    if (navId) {
+      delete query[NAV_ID_KEY];
+      params.__navId = decodeURIComponent(navId);
+    }
+    return Object.keys(params).length > 0 ? params : void 0;
   }
   return {
     getRoutes,
@@ -923,6 +1068,116 @@ function createRouteMatcher(routes, strict, paramsManager) {
     resolve,
     getRouteConfig
   };
+}
+
+// src/router/location.ts
+function extractAnimation(location) {
+  if (typeof location === "string") return void 0;
+  if (typeof location === "object" && "animation" in location) return location.animation;
+  return void 0;
+}
+function extractEvents(location) {
+  if (typeof location === "string") return void 0;
+  if (typeof location === "object" && "events" in location) return location.events;
+  return void 0;
+}
+function extractParamsKey(location) {
+  if (typeof location === "string") return void 0;
+  if (typeof location === "object" && "query" in location) {
+    const query = location.query;
+    return query?.[PARAMS_KEY];
+  }
+  return void 0;
+}
+function extractNavId(location) {
+  if (typeof location === "string") return void 0;
+  if (typeof location === "object" && "query" in location) {
+    const query = location.query;
+    return query?.[NAV_ID_KEY];
+  }
+  return void 0;
+}
+function isSameRouteLocation(a, b) {
+  if (a.path !== b.path) return false;
+  if (a.name !== b.name) return false;
+  return isSameQuery(a.query, b.query);
+}
+function enrichLocationWithParams(location, paramsManager) {
+  if (typeof location === "string") return location;
+  const hasParams = "params" in location && location.params;
+  if (!hasParams || Object.keys(location.params).length === 0) return location;
+  const params = location.params;
+  const persistent = "persistent" in location ? location.persistent : void 0;
+  const key = paramsManager.set(params, persistent);
+  if ("path" in location) {
+    const pathLoc = location;
+    return {
+      ...pathLoc,
+      query: { ...pathLoc.query, [PARAMS_KEY]: key }
+    };
+  }
+  if ("name" in location) {
+    const namedLoc = location;
+    return {
+      ...namedLoc,
+      query: { ...namedLoc.query, [PARAMS_KEY]: key }
+    };
+  }
+  return location;
+}
+function enrichLocationWithNavId(location, navId) {
+  if (typeof location === "string") {
+    return { path: location, query: { [NAV_ID_KEY]: navId } };
+  }
+  if ("path" in location) {
+    const pathLoc = location;
+    return {
+      ...pathLoc,
+      query: { ...pathLoc.query, [NAV_ID_KEY]: navId }
+    };
+  }
+  if ("name" in location) {
+    const namedLoc = location;
+    return {
+      ...namedLoc,
+      query: { ...namedLoc.query, [NAV_ID_KEY]: navId }
+    };
+  }
+  return location;
+}
+
+// src/router/sync.ts
+function createRouteSync(routeState, matcher, paramsManager) {
+  function syncRoute() {
+    const from = routeState.getCurrentRoute();
+    const currentPath = getCurrentPagePath();
+    const currentQuery = getCurrentPageQuery();
+    if (currentPath === from.path && isSameQuery(currentQuery, from.query)) return;
+    syncCurrentRoute();
+    paramsManager.cleanupStale();
+  }
+  function syncCurrentRoute() {
+    const currentPath = getCurrentPagePath();
+    const config = matcher.getRouteConfig(currentPath);
+    const meta = config?.meta ?? {};
+    const query = getCurrentPageQuery();
+    let params = {};
+    const paramsKey = query[PARAMS_KEY];
+    if (paramsKey) {
+      const resolved = paramsManager.peek(decodeURIComponent(paramsKey));
+      if (resolved) params = resolved;
+      delete query[PARAMS_KEY];
+    }
+    const navId = query[NAV_ID_KEY];
+    if (navId) {
+      params.__navId = decodeURIComponent(navId);
+      delete query[NAV_ID_KEY];
+    }
+    const fullPath = buildFullPath(currentPath, query);
+    const to = createRouteLocation({ path: currentPath, name: config?.name, meta, query, fullPath, params, _synced: true });
+    routeState.setCurrentRoute(to);
+  }
+  return { syncRoute, syncCurrentRoute };
 }
 
 // src/router/index.ts
@@ -936,14 +1191,18 @@ var UniRouter = class {
     __publicField(this, "guardManager", createGuardManager());
     __publicField(this, "paramsManager", createParamsManager(false));
     __publicField(this, "matcher", createRouteMatcher([], true, this.paramsManager));
+    __publicField(this, "routeSync");
     __publicField(this, "errorHandlers", []);
     __publicField(this, "pendingNavigation", null);
     __publicField(this, "_interceptUniApi");
+    __publicField(this, "_useUniEventChannel");
     this.guardManager = createGuardManager(options.guardTimeout);
     this.paramsManager = createParamsManager(options.paramsPersistent ?? false);
     this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager);
     this.routeState = createRouteState(options.readyTimeout);
+    this.routeSync = createRouteSync(this.routeState, this.matcher, this.paramsManager);
     this._interceptUniApi = options.interceptUniApi ?? false;
+    this._useUniEventChannel = options.useUniEventChannel ?? false;
     this.paramsManager.cleanupAll();
     this.initRoute();
     if (this._interceptUniApi) {
@@ -980,7 +1239,7 @@ var UniRouter = class {
    * 替换 TabBar 页面时将关闭所有非 Tab 页面。
    *
    * @param location - 目标路由位置
-   * @returns 解析后的目标路由位置
+   * @returns 导航结果，包含目标路由位置和可选的 eventChannel（useUniEventChannel: true 时）
    * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
    */
   replace(location) {
@@ -994,7 +1253,7 @@ var UniRouter = class {
    * reLaunch 不支持动画参数，传入时将输出警告。
    *
    * @param location - 目标路由位置
-   * @returns 解析后的目标路由位置
+   * @returns 导航结果，包含目标路由位置和可选的 eventChannel（useUniEventChannel: true 时）
    * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
    */
   relaunch(location) {
@@ -1038,7 +1297,7 @@ var UniRouter = class {
     if (handledResolve) return handledResolve;
     try {
       await goBack(delta, effectiveAnimation);
-      this.syncCurrentRoute();
+      this.routeSync.syncCurrentRoute();
       this.guardManager.runAfterGuards(to, from);
       return this.routeState.getCurrentRoute();
     } catch (error) {
@@ -1143,12 +1402,7 @@ var UniRouter = class {
    * 调用此方法将从 uni-app 页面栈中读取当前页面信息并更新路由状态。
    */
   syncRoute() {
-    const from = this.routeState.getCurrentRoute();
-    const currentPath = getCurrentPagePath();
-    const currentQuery = getCurrentPageQuery();
-    if (currentPath === from.path && this.isSameQuery(currentQuery, from.query)) return;
-    this.syncCurrentRoute();
-    this.paramsManager.cleanupStale();
+    this.routeSync.syncRoute();
   }
   /**
    * 对指定路由执行守卫链检查（不执行实际导航）
@@ -1278,21 +1532,37 @@ var UniRouter = class {
       await this.pendingNavigation.catch(() => {
       });
     }
-    const enrichedLocation = this.enrichLocationWithParams(location);
+    let enrichedLocation = enrichLocationWithParams(location, this.paramsManager);
+    let navId;
+    let internalChannel;
+    const events = extractEvents(location);
+    if (this._useUniEventChannel) {
+      navId = generateNavId();
+      enrichedLocation = enrichLocationWithNavId(enrichedLocation, navId);
+      internalChannel = new UniEventChannel(navId);
+      if (events) {
+        for (const [event, handler] of Object.entries(events)) {
+          internalChannel.on(event, handler);
+        }
+      }
+      registerChannel(navId, internalChannel);
+    }
     const to = this.matcher.resolve(enrichedLocation);
     const from = this.routeState.getCurrentRoute();
-    const animation = this.extractAnimation(location);
-    const events = this.extractEvents(location);
-    const paramsKey = this.extractParamsKey(enrichedLocation);
-    if (events && mode !== "push") {
+    const animation = extractAnimation(location);
+    const paramsKey = extractParamsKey(enrichedLocation);
+    const resolvedNavId = navId ?? extractNavId(enrichedLocation);
+    if (events && mode !== "push" && !this._useUniEventChannel) {
       warn(`uni.${mode === "replace" ? "redirectTo" : "reLaunch"} does not support events. The events option will be ignored.`);
     }
-    if (mode === "push" && this.isSameRouteLocation(to, from)) {
+    if (mode === "push" && isSameRouteLocation(to, from)) {
+      if (navId) destroyChannel(navId);
       const failure = new NavigationFailure(to, from, "NAVIGATION_DUPLICATED" /* NAVIGATION_DUPLICATED */, `Avoided redundant navigation to current location: "${to.fullPath}"`);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
-    const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, mode === "push" ? events : void 0, paramsKey);
+    const effectiveEvents = this._useUniEventChannel ? void 0 : mode === "push" ? events : void 0;
+    const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, effectiveEvents, paramsKey, resolvedNavId, internalChannel);
     this.pendingNavigation = navigationPromise;
     try {
       const result = await navigationPromise;
@@ -1314,33 +1584,39 @@ var UniRouter = class {
    * @param mode - 导航模式
    * @param redirectDepth - 当前重定向深度
    * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
-   * @param events - 页面间通信事件监听器（仅 push 时生效）
+   * @param events - 页面间通信事件监听器（仅 push 时生效，且 useUniEventChannel: false 时）
    * @param paramsKey - params 在 ParamsManager 中的 key，用于将 __params_key 拼入实际导航 URL
-   * @returns 导航结果（push 模式包含 eventChannel）
+   * @param navId - 导航 ID，用于将 __nav_id 拼入实际导航 URL（useUniEventChannel: true 时）
+   * @param internalChannel - 内置通信通道实例（useUniEventChannel: true 时）
+   * @returns 导航结果（push 模式或 useUniEventChannel 模式包含 eventChannel）
    * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
    */
-  async executeNavigation(to, from, mode, redirectDepth, animation, events, paramsKey) {
+  async executeNavigation(to, from, mode, redirectDepth, animation, events, paramsKey, navId, internalChannel) {
     if (redirectDepth > MAX_REDIRECT_DEPTH) {
+      if (navId) destroyChannel(navId);
       const failure = new NavigationFailure(to, from, "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
     const config = this.matcher.getRouteConfig(to.path);
     const beforeResult = await this.guardManager.runBeforeGuards(to, from);
-    const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation, events);
+    const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation, events, paramsKey, navId, internalChannel);
     if (handled) return handled;
     const beforeEnterResult = config ? await this.guardManager.runBeforeEnterGuards(to, from, config) : { type: "next" };
-    const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation, events);
+    const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation, events, paramsKey, navId, internalChannel);
     if (handledEnter) return handledEnter;
     const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from);
-    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation, events);
+    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation, events, paramsKey, navId, internalChannel);
     if (handledResolve) return handledResolve;
     this.routeState.setCurrentRoute(to);
     try {
+      const queryWithKeys = { ...to.query };
+      if (paramsKey) queryWithKeys[PARAMS_KEY] = paramsKey;
+      if (navId) queryWithKeys["__nav_id"] = navId;
       const navOptions = {
         path: to.path,
         meta: to.meta,
-        query: paramsKey ? { ...to.query, [PARAMS_KEY]: paramsKey } : to.query,
+        query: queryWithKeys,
         animation,
         events
       };
@@ -1353,9 +1629,10 @@ var UniRouter = class {
         await relaunchTo(navOptions);
       }
       this.guardManager.runAfterGuards(to, from);
-      return { ...to, eventChannel };
+      return { ...to, eventChannel: internalChannel ?? eventChannel };
     } catch (error) {
       this.routeState.setCurrentRoute(from);
+      if (navId) destroyChannel(navId);
       const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
       const cause = isUniApiError(error) ? error : void 0;
       const failure = new NavigationFailure(to, from, code, void 0, cause);
@@ -1380,20 +1657,25 @@ var UniRouter = class {
    * @param mode - 导航模式
    * @param redirectDepth - 当前重定向深度
    * @param animation - 当前导航的动画参数
+   * @param events - 当前导航的事件监听器
+   * @param paramsKey - 当前导航的 params key
+   * @param navId - 当前导航的 navigationId
+   * @param internalChannel - 当前导航的内置通道
    * @returns 中止或重定向时返回 Promise\<RouteLocation\>，放行时返回 null
    */
-  handleGuardResult(result, to, from, mode, redirectDepth, animation, events) {
+  handleGuardResult(result, to, from, mode, redirectDepth, animation, events, paramsKey, navId, internalChannel) {
     if (result.type === "abort") {
+      if (navId) destroyChannel(navId);
       const failure = new NavigationFailure(to, from, result.code);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
     if (result.redirect) {
-      const redirectAnimation = this.extractAnimation(result.redirect) ?? animation;
-      const redirectEvents = this.extractEvents(result.redirect) ?? events;
+      const redirectAnimation = extractAnimation(result.redirect) ?? animation;
+      const redirectEvents = extractEvents(result.redirect) ?? events;
       const redirectTarget = this.matcher.resolve(result.redirect);
       const redirectMode = result.mode ?? (mode === "back" ? "relaunch" : mode);
-      return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, redirectAnimation, redirectEvents);
+      return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, redirectAnimation, redirectEvents, paramsKey, navId, internalChannel);
     }
     return null;
   }
@@ -1410,133 +1692,6 @@ var UniRouter = class {
       } catch {
       }
     }
-  }
-  /**
-   * 判断两个路由位置是否相同
-   * @param a - 第一个路由位置
-   * @param b - 第二个路由位置
-   * @returns 路径和查询参数均相同时返回 true
-   */
-  isSameRouteLocation(a, b) {
-    if (a.path !== b.path) return false;
-    if (a.name !== b.name) return false;
-    return this.isSameQuery(a.query, b.query);
-  }
-  /**
-   * 判断两组查询参数是否相同
-   * @param a - 第一组查询参数
-   * @param b - 第二组查询参数
-   * @returns 键值对完全一致时返回 true
-   */
-  isSameQuery(a, b) {
-    if (a === b) return true;
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-    if (keysA.length !== keysB.length) return false;
-    if (keysA.length === 0) return true;
-    return keysA.every((key) => a[key] === b[key]);
-  }
-  /**
-   * 从原始路由位置中提取动画参数
-   *
-   * resolve() 会丢弃 animation 字段，因此需要在解析前提取。
-   * 字符串形式的路由位置不包含动画参数。
-   *
-   * @param location - 原始路由位置
-   * @returns 动画配置，不存在时返回 undefined
-   */
-  extractAnimation(location) {
-    if (typeof location === "string") return void 0;
-    if (typeof location === "object" && "animation" in location) return location.animation;
-    return void 0;
-  }
-  /**
-   * 从原始路由位置中提取事件监听器
-   *
-   * resolve() 会丢弃 events 字段，因此需要在解析前提取。
-   * 字符串形式的路由位置不包含事件监听器。
-   *
-   * @param location - 原始路由位置
-   * @returns 事件监听器，不存在时返回 undefined
-   */
-  extractEvents(location) {
-    if (typeof location === "string") return void 0;
-    if (typeof location === "object" && "events" in location) return location.events;
-    return void 0;
-  }
-  /**
-   * 从已注入 params key 的路由位置中提取 __params_key
-   *
-   * enrichLocationWithParams 会将 key 写入 query，但 matcher.resolve 会将其移除。
-   * 此方法在 resolve 之后从 enrichedLocation 中读取 key，用于拼入实际导航 URL，
-   * 使 back() 返回时 syncCurrentRoute 可从 URL 重建 params。
-   *
-   * @param location - 已经过 enrichLocationWithParams 处理的路由位置
-   * @returns params key，不存在时返回 undefined
-   */
-  extractParamsKey(location) {
-    if (typeof location === "string") return void 0;
-    if (typeof location === "object" && "query" in location) {
-      const query = location.query;
-      return query?.[PARAMS_KEY];
-    }
-    return void 0;
-  }
-  /**
-   * 从原始路由位置中提取 params 和 persistent，存入 ParamsManager 并将 key 注入 location
-   *
-   * params 在 resolve 前处理，因为需要将 key 拼入 query 以便目标页面读取。
-   *
-   * @param location - 原始路由位置
-   * @returns 注入 __params_key 后的路由位置
-   */
-  enrichLocationWithParams(location) {
-    if (typeof location === "string") return location;
-    const hasParams = "params" in location && location.params;
-    if (!hasParams || Object.keys(location.params).length === 0) return location;
-    const params = location.params;
-    const persistent = "persistent" in location ? location.persistent : void 0;
-    const key = this.paramsManager.set(params, persistent);
-    if ("path" in location) {
-      const pathLoc = location;
-      return {
-        ...pathLoc,
-        query: { ...pathLoc.query, [PARAMS_KEY]: key }
-      };
-    }
-    if ("name" in location) {
-      const namedLoc = location;
-      return {
-        ...namedLoc,
-        query: { ...namedLoc.query, [PARAMS_KEY]: key }
-      };
-    }
-    return location;
-  }
-  /**
-   * 根据 uni-app 实际页面栈同步 currentRoute 状态
-   *
-   * 当通过 back() 或浏览器后退等非 push/replace 方式改变页面后，
-   * 需要从页面栈中读取当前页面信息来更新路由状态。
-   *
-   * 状态同步不是一次完整的导航（未经过前置守卫），因此不触发 afterEach 钩子，
-   * 仅通知 onRouteChange 监听器。
-   */
-  syncCurrentRoute() {
-    const currentPath = getCurrentPagePath();
-    const config = this.matcher.getRouteConfig(currentPath);
-    const meta = config?.meta ?? {};
-    const query = getCurrentPageQuery();
-    let params = {};
-    const paramsKey = query[PARAMS_KEY];
-    if (paramsKey) {
-      const resolved = this.paramsManager.peek(decodeURIComponent(paramsKey));
-      if (resolved) params = resolved;
-      delete query[PARAMS_KEY];
-    }
-    const fullPath = buildFullPath(currentPath, query);
-    const to = createRouteLocation({ path: currentPath, name: config?.name, meta, query, fullPath, params, _synced: true });
-    this.routeState.setCurrentRoute(to);
   }
 };
 var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
@@ -1570,8 +1725,19 @@ function useRoute() {
   const router = useRouter();
   return getReactiveRoute(router);
 }
+function usePageChannel() {
+  const router = useRouter();
+  const route = getReactiveRoute(router);
+  const navId = route.value.params?.__navId;
+  if (!navId) return noopChannel;
+  const channel = getOrCreateChannel(navId);
+  onUnmounted(() => {
+    destroyChannel(navId);
+  });
+  return channel;
+}
 
 // src/types/route.ts
 var DEFAULT_ANIMATION_DURATION = 300;
 
-export { DEFAULT_ANIMATION_DURATION, NavigationFailure, ROUTER_SYMBOL, RouterError, RouterErrorCode, createRouter, useRoute, useRouter };
+export { DEFAULT_ANIMATION_DURATION, NavigationFailure, ROUTER_SYMBOL, RouterError, RouterErrorCode, UniApiError, UniEventChannel, createRouter, noopChannel, usePageChannel, useRoute, useRouter };

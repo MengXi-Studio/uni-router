@@ -163,6 +163,10 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 							link: '/en/api/use-route'
 						},
 						{
+							text: 'usePageChannel()',
+							link: '/en/api/use-page-channel'
+						},
+						{
 							text: 'RouterLink',
 							link: '/en/api/router-link'
 						}

@@ -34,7 +34,7 @@ features:
     details: params 传递复杂数据，queryInt / queryNumber / queryBool 便捷解析
   - icon: 📡
     title: 页面间通信
-    details: push 支持 events 与 eventChannel，实现页面间双向通信
+    details: events 与 eventChannel 双向通信，useUniEventChannel 支持所有导航方式
   - icon: 🎬
     title: 导航动画
     details: 导航动画参数与路由级 meta.animation 默认值，仅 App 端生效

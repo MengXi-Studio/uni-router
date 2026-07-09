@@ -1,8 +1,9 @@
-import { inject, ref, type Ref } from 'vue'
-import type { Router, RouteLocation } from '@/types'
+import { inject, ref, onUnmounted, type Ref } from 'vue'
+import type { Router, RouteLocation, EventChannel } from '@/types'
 import { RouterErrorCode } from '@/types/error'
 import { RouterError } from '@/errors'
 import { ROUTER_SYMBOL } from '@/router'
+import { noopChannel, getOrCreateChannel, destroyChannel } from '@/channel'
 
 /**
  * 获取当前路由器实例
@@ -83,4 +84,55 @@ function getReactiveRoute(router: Router): Ref<RouteLocation> {
 export function useRoute(): Ref<RouteLocation> {
 	const router = useRouter()
 	return getReactiveRoute(router)
+}
+
+/**
+ * 获取当前页面的通信通道
+ *
+ * 必须在 Vue 组件的 setup() 函数中调用。
+ * 内部自动读取 `route.params.__navId`：
+ * - 有 navId 时返回与导航方共享的 EventChannel 实例（基于 uni.$emit/$on）
+ * - 无 navId 时返回 no-op channel，避免调用方需判空
+ *
+ * 页面卸载时自动销毁通道，清理所有事件监听器，防止内存泄漏。
+ *
+ * 仅在 `createRouter({ useUniEventChannel: true })` 时有效。
+ * 默认模式下（useUniEventChannel: false）始终返回 no-op channel。
+ *
+ * @returns 事件通道实例
+ * @throws {RouterError} 在 setup 外调用或未安装路由器时抛出 SETUP_ERROR
+ *
+ * @example
+ * ```ts
+ * import { usePageChannel } from '@meng-xi/uni-router'
+ *
+ * const channel = usePageChannel()
+ *
+ * // 监听导航方发送的事件
+ * channel.on('data', (payload) => {
+ *   console.log('received:', payload)
+ * })
+ *
+ * // 向导航方发送事件
+ * channel.emit('ready', { status: 'ok' })
+ * ```
+ */
+export function usePageChannel(): EventChannel {
+	const router = useRouter()
+	const route = getReactiveRoute(router)
+	const navId = route.value.params?.__navId as string | undefined
+
+	// 无 navId 时返回 no-op channel，避免调用方需判空
+	if (!navId) return noopChannel
+
+	// 获取或创建通道（同一 navId 复用已注册通道）
+	const channel = getOrCreateChannel(navId)
+
+	// 页面卸载时销毁通道，清理所有监听器
+	// 注意：仅销毁当前页面持有的通道，不影响其他页面的通道
+	onUnmounted(() => {
+		destroyChannel(navId)
+	})
+
+	return channel
 }

@@ -77,11 +77,11 @@
 
 		<!-- RouterLink events + navigated -->
 		<view class="card">
-			<text class="card-title">RouterLink - events 与 navigated</text>
-			<text class="hint">通过 events 属性监听目标页面事件，通过 @navigated 获取 eventChannel</text>
-			<mxuni-router :to="{ path: '/pages/about/index', query: { id: 'link-ec' } }" :events="{ receiveData: data => onReceiveData(data) }" @navigated="onNavigated" @error="onRouterLinkError">
+			<text class="card-title">RouterLink - @navigated 与 eventChannel</text>
+			<text class="hint">启用 useUniEventChannel 后 events prop 被忽略，通过 @navigated 获取 eventChannel，再调用 on() 监听目标页事件</text>
+			<mxuni-router :to="{ path: '/pages/about/index', query: { id: 'link-ec' } }" @navigated="onNavigated" @error="onRouterLinkError">
 				<view class="btn btn-secondary">
-					<text class="btn-text-secondary">RouterLink - events + navigated</text>
+					<text class="btn-text-secondary">RouterLink - @navigated + eventChannel</text>
 				</view>
 			</mxuni-router>
 			<view v-if="routerLinkLog" class="info-row">
@@ -146,7 +146,7 @@
 		<!-- EventChannel -->
 		<view class="card">
 			<text class="card-title">EventChannel - 页面间通信</text>
-			<text class="hint">push 支持 events 参数和 eventChannel 返回值，实现页面间双向通信</text>
+			<text class="hint">启用 useUniEventChannel，所有导航方式均返回 eventChannel，目标页通过 usePageChannel() 接收</text>
 			<view class="btn" @click="goToEventChannel">
 				<text class="btn-text">查看 EventChannel 演示</text>
 			</view>
@@ -255,8 +255,8 @@
 
 		<!-- 组合式 API -->
 		<view class="card">
-			<text class="card-title">组合式 API（useRouter / useRoute）</text>
-			<text class="hint">在 Vue 3 setup 中使用 useRouter() 和 useRoute() 访问路由器</text>
+			<text class="card-title">组合式 API（useRouter / useRoute / usePageChannel）</text>
+			<text class="hint">在 Vue 3 setup 中使用组合式 API 访问路由器和页面间通信通道</text>
 			<view class="btn" @click="goToComposable">
 				<text class="btn-text">查看组合式 API 演示</text>
 			</view>
@@ -429,6 +429,8 @@ export default {
 		},
 		onNavigated(eventChannel) {
 			if (eventChannel) {
+				// useUniEventChannel: true 时 events prop 被忽略，通过 eventChannel.on() 注册监听
+				eventChannel.on('receiveData', data => this.onReceiveData(data))
 				eventChannel.emit('fromOpener', { msg: '来自 RouterLink 的 navigated 事件' })
 				this.routerLinkLog = '已通过 eventChannel 发送消息到关于页'
 			}

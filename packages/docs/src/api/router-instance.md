@@ -64,7 +64,7 @@ eventChannel.emit('init', { message: '初始化数据' })
 ```
 
 ::: info NavigationResult 向后兼容
-`NavigationResult` 继承自 `RouteLocation`，原有代码 `const route = await router.push(...)` 无需修改。`eventChannel` 仅在 `push` 模式下可用，`replace` / `relaunch` 返回的 `eventChannel` 为 `undefined`。
+`NavigationResult` 继承自 `RouteLocation`，原有代码 `const route = await router.push(...)` 无需修改。`eventChannel` 在 `push` 模式下默认可用；`replace` / `relaunch` 也返回 `NavigationResult`，但 `eventChannel` 默认为 `undefined`，需启用 `useUniEventChannel: true` 后才可用内置通道通信。
 :::
 
 ::: warning TabBar 页面限制
@@ -78,13 +78,13 @@ eventChannel.emit('init', { message: '初始化数据' })
 替换当前页面，不增加栈深度。常用于登录后替换登录页、表单提交后替换表单页。
 
 ```ts
-replace(location: RouteLocationRaw): Promise<RouteLocation>
+replace(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 - 普通页面 → `uni.redirectTo`
 - TabBar 页面 → `uni.switchTab`
 - **不检测重复导航**（可替换到当前页，用于刷新）
-- 不返回 `eventChannel`
+- 返回 `NavigationResult`，但 `eventChannel` 默认为 `undefined`（`redirectTo` 不支持原生通信）；启用 `useUniEventChannel: true` 后可通过内置通道双向通信
 
 ```ts
 // 登录成功后替换登录页
@@ -92,6 +92,14 @@ await router.replace({ name: 'home' })
 
 // 表单提交后替换为详情页
 await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
+
+// 启用 useUniEventChannel 后，replace 也能与目标页通信
+const { eventChannel } = await router.replace({
+  name: 'detail',
+  params: { id: 123 },
+  events: { ready(data) { console.log('就绪:', data) } }
+})
+eventChannel.emit('init', { source: 'replace' })
 ```
 
 ::: tip 何时用 replace 而非 push
@@ -105,13 +113,14 @@ await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
 关闭所有页面并打开目标页面，重置整个页面栈。
 
 ```ts
-relaunch(location: RouteLocationRaw): Promise<RouteLocation>
+relaunch(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 - 普通页面 → `uni.reLaunch`
 - TabBar 页面 → `uni.switchTab`
 - **不进行重复导航检测**（清栈场景下目标页面可能就是当前页面）
 - `uni.reLaunch` 不支持动画参数，传入时将输出警告
+- 返回 `NavigationResult`，`eventChannel` 默认为 `undefined`；启用 `useUniEventChannel: true` 后可通过内置通道双向通信
 
 ```ts
 // 退出登录
@@ -533,8 +542,8 @@ install(app: App): void
 | 方法 | 用途 | 返回值 |
 | --- | --- | --- |
 | `push()` | 入栈导航 | `Promise<NavigationResult>` |
-| `replace()` | 替换当前页 | `Promise<RouteLocation>` |
-| `relaunch()` | 清栈后入栈 | `Promise<RouteLocation>` |
+| `replace()` | 替换当前页 | `Promise<NavigationResult>` |
+| `relaunch()` | 清栈后入栈 | `Promise<NavigationResult>` |
 | `back()` | 返回上一页 | `Promise<RouteLocation>` |
 | `beforeEach()` | 注册前置守卫 | 移除函数 |
 | `beforeResolve()` | 注册解析守卫 | 移除函数 |

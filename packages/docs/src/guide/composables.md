@@ -1,6 +1,6 @@
 # 组合式 API
 
-Uni Router 提供两个组合式函数（Composables），用于在 Vue 3 的 `<script setup>` 中访问路由器实例和当前路由。本章详细讲解用法、响应式原理和实战技巧。
+Uni Router 提供三个组合式函数（Composables），用于在 Vue 3 的 `<script setup>` 中访问路由器实例、当前路由以及页面间通信通道。本章详细讲解用法、响应式原理和实战技巧。
 
 ## useRouter()
 
@@ -190,6 +190,94 @@ const list = route.value.params.list as Item[]
 - params 仅在 `push` 时可用，`replace` / `relaunch` 后可能丢失
 - 详见[导航 - params 传递复杂数据](./navigation#params-传递复杂数据)
 :::
+
+## usePageChannel()
+
+获取当前页面与导航方之间的双向通信通道。必须在 Vue 组件的 `setup()` 函数中调用。
+
+::: tip 前置条件
+需在 `createRouter({ useUniEventChannel: true })` 时启用内置通信管理器。默认模式下返回 no-op channel（调用 `on` / `emit` 均无效果）。
+:::
+
+### 基本用法
+
+```ts
+import { usePageChannel } from '@meng-xi/uni-router'
+
+const channel = usePageChannel()
+
+// 监听导航方发送的事件
+channel.on('init', (data) => {
+  console.log('收到初始化数据:', data)
+})
+
+// 向导航方发送事件
+channel.emit('ready', { status: 'loaded' })
+```
+
+### 工作原理
+
+`usePageChannel()` 内部读取 `route.params.__navId`：
+
+- 有 `navId` 时返回与导航方共享的 `UniEventChannel` 实例（基于 `uni.$emit` / `uni.$on`）
+- 无 `navId` 时返回 `noopChannel`，避免调用方需判空
+- 页面卸载时自动销毁通道，清理所有事件监听器
+
+```ts
+// 发起页：push/replace/relaunch 均可返回 eventChannel
+const { eventChannel } = await router.push({
+  name: 'detail',
+  params: { id: 123 },
+  events: {
+    ready(data) { console.log('目标页就绪:', data) }
+  }
+})
+eventChannel.emit('init', { message: '初始化数据' })
+```
+
+```vue
+<!-- 目标页面 -->
+<script setup lang="ts">
+import { usePageChannel } from '@meng-xi/uni-router'
+
+const channel = usePageChannel()
+
+channel.on('init', (data) => {
+  console.log('收到初始化:', data)
+})
+
+channel.emit('ready', { status: 'loaded' })
+</script>
+```
+
+### 粘性事件缓存
+
+内置通道实现粘性事件机制，解决导航方 `emit` 早于目标页面 `setup` 注册监听器的时序问题：
+
+- `emit` 时**总是**缓存事件参数
+- `on` / `once` 注册监听器时若已有缓存，会**异步触发**（不删除缓存）
+- 无论 `emit` 和 `on` 的先后顺序，所有监听器都能收到最后一次 `emit` 的数据
+
+```ts
+// 即使发起页 emit 在目标页 on 之前执行，监听器仍能收到数据
+channel.on('init', (data) => {
+  // ✅ 能收到数据（通过缓存异步触发）
+  console.log('收到:', data)
+})
+
+channel.once('init', (data) => {
+  // ✅ 也能收到（once 通过缓存触发时手动移除 wrapper）
+  console.log('仅一次:', data)
+})
+```
+
+::: tip 与原生 getOpenerEventChannel 的差异
+- 原生 `getOpenerEventChannel()` 仅 `push` 可用，且 emit 早于 on 时事件丢失
+- `usePageChannel()` 支持所有导航方式（需 `useUniEventChannel: true`），粘性缓存不丢失事件
+- `__nav_id` 持久化到 URL，H5 刷新后仍可重建通道
+:::
+
+详见 [`usePageChannel()` API](../api/use-page-channel) 与[页面间通信](./navigation#特殊用法-页面间通信)。
 
 ## 在非组件中使用
 

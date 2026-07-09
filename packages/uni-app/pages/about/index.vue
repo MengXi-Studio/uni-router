@@ -62,7 +62,7 @@
 		<!-- EventChannel -->
 		<view class="card" v-if="hasEventChannel">
 			<text class="card-title">EventChannel 通信</text>
-			<text class="hint">本页通过 getOpenerEventChannel() 获取与发起页的通信通道</text>
+			<text class="hint">本页通过 usePageChannel() 获取与发起页的通信通道（基于 uni.$emit 全局事件总线，粘性事件缓存确保时序安全）</text>
 			<view v-if="eventChannelMessages.length" class="log-box">
 				<view class="log-item" v-for="(msg, index) in eventChannelMessages" :key="index">
 					<text class="log-text">{{ msg }}</text>
@@ -80,14 +80,20 @@
 
 <script>
 import router from '../../router'
+import { usePageChannel, noopChannel } from '../../uni_modules/mxuni-router/js_sdk/index.js'
 
 export default {
+	// usePageChannel() 必须在 setup 中调用，读取 route.params.__navId 获取与发起页共享的通信通道
+	// 无 __nav_id 时（如直接 URL 访问）返回 noopChannel，所有方法为空操作，避免调用方判空
+	setup() {
+		const pageChannel = usePageChannel()
+		const hasEventChannel = pageChannel !== noopChannel
+		return { pageChannel, hasEventChannel }
+	},
 	data() {
 		return {
 			currentRoute: {},
-			hasEventChannel: false,
-			eventChannelMessages: [],
-			openerEventChannel: null
+			eventChannelMessages: []
 		}
 	},
 	computed: {
@@ -143,30 +149,28 @@ export default {
 			}
 		},
 		initEventChannel() {
-			const eventChannel = this.getOpenerEventChannel?.()
-			if (eventChannel) {
-				this.hasEventChannel = true
-				this.openerEventChannel = eventChannel
+			if (!this.hasEventChannel) return
 
-				// 监听发起页发来的事件
-				eventChannel.on('fromOpener', data => {
-					this.eventChannelMessages.push(`收到 fromOpener: ${JSON.stringify(data)}`)
-					uni.showToast({ title: `收到: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
-				})
+			const eventChannel = this.pageChannel
 
-				// 向发起页发送数据
-				eventChannel.emit('receiveData', { msg: '关于页已收到你的消息！' })
-			}
+			// 监听发起页发来的事件
+			eventChannel.on('fromOpener', data => {
+				this.eventChannelMessages.push(`收到 fromOpener: ${JSON.stringify(data)}`)
+				uni.showToast({ title: `收到: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
+			})
+
+			// 向发起页发送数据（粘性事件缓存：即使发起页尚未注册监听也能收到）
+			eventChannel.emit('receiveData', { msg: '关于页已收到你的消息！' })
 		},
 		replyToOpener() {
-			if (this.openerEventChannel) {
-				this.openerEventChannel.emit('replyFromAbout', { msg: '这是关于页的回复！' })
+			if (this.pageChannel) {
+				this.pageChannel.emit('replyFromAbout', { msg: '这是关于页的回复！' })
 				this.eventChannelMessages.push('已发送 replyFromAbout 事件到发起页')
 			}
 		},
 		replyOnceToOpener() {
-			if (this.openerEventChannel) {
-				this.openerEventChannel.emit('onceEvent', { msg: '这是一次性事件（once）' })
+			if (this.pageChannel) {
+				this.pageChannel.emit('onceEvent', { msg: '这是一次性事件（once）' })
 				this.eventChannelMessages.push('已发送 onceEvent 事件到发起页')
 			}
 		},

@@ -9,7 +9,8 @@ const router = createRouter({
 	strict: true,
 	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫始终生效
 	guardTimeout: 15000, // 守卫超时 15 秒，适用于异步请求较慢的场景
-	readyTimeout: 5000 // 路由器就绪超时 5 秒，防止初始化异常时 isReady() 永久挂起
+	readyTimeout: 5000, // 路由器就绪超时 5 秒，防止初始化异常时 isReady() 永久挂起
+	useUniEventChannel: true // 启用内置通信管理器，所有导航方法（push/replace/relaunch）都支持页面间通信
 })
 
 // ===== 等待路由器初始化完成 =====

@@ -93,7 +93,7 @@ pnpm add vue@^3.0.0
 ```
 
 ::: tip Why vue is an optional dependency
-The core routing logic doesn't depend on the Vue runtime. Vue's `inject` feature is only needed when using the `useRouter()` / `useRoute()` composables. This design allows the core library to be used in non-Vue environments (like pure JavaScript projects).
+The core routing logic doesn't depend on the Vue runtime. Vue's `inject` feature is only needed when using the `useRouter()` / `useRoute()` / `usePageChannel()` composables. This design allows the core library to be used in non-Vue environments (like pure JavaScript projects).
 :::
 
 ## TypeScript Support

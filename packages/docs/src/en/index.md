@@ -34,7 +34,7 @@ features:
     details: params for complex data, queryInt / queryNumber / queryBool convenience methods
   - icon: 📡
     title: Page Communication
-    details: push supports events and eventChannel for bidirectional page communication
+    details: events and eventChannel bidirectional communication; useUniEventChannel supports all navigation methods
   - icon: 🎬
     title: Navigation Animation
     details: Inline animation params and route-level meta.animation defaults, App only
