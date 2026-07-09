@@ -467,7 +467,7 @@ interface NavigationResult extends RouteLocation {
 }
 ```
 
-- **eventChannel**: Page communication event channel, only available in `push` mode. `replace` / `relaunch` return `undefined` for this field.
+- **eventChannel**: Page communication event channel. Available by default in `push` mode; `replace` / `relaunch` return `undefined` for this field by default. With `useUniEventChannel: true` enabled, all navigation methods return an available `eventChannel`.
 
 ::: info
 `NavigationResult` extends `RouteLocation`, so existing code like `const route = await router.push(...)` works without modification.

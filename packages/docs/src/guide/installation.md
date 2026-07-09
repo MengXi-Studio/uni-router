@@ -93,7 +93,7 @@ pnpm add vue@^3.0.0
 ```
 
 ::: tip 为何 vue 是可选依赖
-路由核心逻辑不依赖 Vue 运行时。仅在需要使用 `useRouter()` / `useRoute()` 组合式 API 时才需要 Vue 的 `inject` 功能。这样设计使得核心库可以在非 Vue 环境中使用（如纯 JavaScript 项目）。
+路由核心逻辑不依赖 Vue 运行时。仅在需要使用 `useRouter()` / `useRoute()` / `usePageChannel()` 组合式 API 时才需要 Vue 的 `inject` 功能。这样设计使得核心库可以在非 Vue 环境中使用（如纯 JavaScript 项目）。
 :::
 
 ## TypeScript 支持

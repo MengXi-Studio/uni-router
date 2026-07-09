@@ -12,6 +12,7 @@ interface RouterOptions {
   guardTimeout?: number
   readyTimeout?: number
   paramsPersistent?: boolean
+  useUniEventChannel?: boolean
 }
 ```
 
@@ -170,6 +171,46 @@ Persistence writes to storage; frequent use of large objects increases storage o
 - Persisted params should be cleaned up promptly (the `router` auto-cleans on page close)
 :::
 
+### useUniEventChannel
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Whether to use the built-in communication manager instead of `uni.navigateTo`'s native EventChannel
+  - `false` (default): `push` uses `uni.navigateTo`'s native EventChannel; other navigation methods (`replace` / `relaunch` / `back`) don't support page communication
+  - `true`: All navigation methods (`push` / `replace` / `relaunch`) use the built-in communication manager; the returned `eventChannel` is always available
+
+The built-in communication manager is implemented on top of the `uni.$emit` / `uni.$on` / `uni.$off` global event bus:
+- Each navigation generates a unique `navigationId` to isolate event channels, avoiding global event conflicts
+- The target page obtains the channel via [`usePageChannel()`](./use-page-channel)
+- Sticky event caching: `emit` always caches event arguments; `on` / `once` async-trigger on registration, solving the timing race where the initiator's `emit` happens before the target page's `setup` registers a listener
+- `__nav_id` is passed via URL query and persisted, so the channel can be rebuilt after H5 refresh
+- Listeners are auto-cleaned on page unmount to prevent memory leaks
+
+```ts
+const router = createRouter({
+  routes,
+  useUniEventChannel: true // All navigation methods support page communication
+})
+
+// replace / relaunch now also return eventChannel
+const { eventChannel } = await router.replace({ name: 'detail', params: { id: 123 } })
+eventChannel.emit('init', { source: 'replace' })
+```
+
+::: tip When to enable
+- Need bidirectional communication with the target page after `replace` / `relaunch`
+- Want a unified communication mechanism to avoid the native EventChannel timing issue (events lost when emit precedes listener registration)
+- Need to recover the communication channel after H5 refresh
+:::
+
+::: warning Differences from native EventChannel
+- When enabled, `push` no longer uses `uni.navigateTo`'s native EventChannel; it uses the built-in channel instead
+- The target page must use `usePageChannel()` instead of `getCurrentPages()[last].getOpenerEventChannel()`
+- The `events` option still works, but is forwarded via the built-in channel
+:::
+
+See [Page Communication](../guide/navigation#special-usage-page-communication) and [`usePageChannel()`](./use-page-channel) for details.
+
 ## Full Example
 
 ```ts
@@ -189,7 +230,8 @@ const router = createRouter({
   interceptUniApi: true,     // Intercept native APIs
   guardTimeout: 15000,       // Guard timeout 15s
   readyTimeout: 5000,        // Ready timeout 5s
-  paramsPersistent: false    // params not persisted by default
+  paramsPersistent: false,   // params not persisted by default
+  useUniEventChannel: false  // Only push supports communication by default
 })
 
 export default router

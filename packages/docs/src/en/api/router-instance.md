@@ -64,7 +64,7 @@ eventChannel.emit('init', { message: 'Init data' })
 ```
 
 ::: info NavigationResult backward compatibility
-`NavigationResult` extends `RouteLocation`, so existing code like `const route = await router.push(...)` works without modification. `eventChannel` is only available in `push` mode; `replace` / `relaunch` return `undefined` for `eventChannel`.
+`NavigationResult` extends `RouteLocation`, so existing code like `const route = await router.push(...)` works without modification. `eventChannel` is available by default in `push` mode; `replace` / `relaunch` also return `NavigationResult`, but `eventChannel` is `undefined` by default—it requires `useUniEventChannel: true` to enable built-in channel communication.
 :::
 
 ::: warning TabBar page limitations
@@ -78,13 +78,13 @@ See [Route Navigation](../guide/navigation#push-stack-navigation).
 Replace the current page without increasing stack depth. Commonly used to replace the login page after login, or replace a form page after form submission.
 
 ```ts
-replace(location: RouteLocationRaw): Promise<RouteLocation>
+replace(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 - Regular page → `uni.redirectTo`
 - TabBar page → `uni.switchTab`
 - **No duplicate navigation detection** (can replace to the current page, useful for refresh)
-- Does not return `eventChannel`
+- Returns `NavigationResult`, but `eventChannel` is `undefined` by default (`redirectTo` doesn't support native communication); with `useUniEventChannel: true`, bidirectional communication via the built-in channel is available
 
 ```ts
 // Replace login page after successful login
@@ -92,6 +92,14 @@ await router.replace({ name: 'home' })
 
 // Replace with detail page after form submission
 await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
+
+// With useUniEventChannel enabled, replace can also communicate with the target page
+const { eventChannel } = await router.replace({
+  name: 'detail',
+  params: { id: 123 },
+  events: { ready(data) { console.log('Ready:', data) } }
+})
+eventChannel.emit('init', { source: 'replace' })
 ```
 
 ::: tip When to use replace instead of push
@@ -105,13 +113,14 @@ await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
 Close all pages and open the target page, resetting the entire page stack.
 
 ```ts
-relaunch(location: RouteLocationRaw): Promise<RouteLocation>
+relaunch(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 - Regular page → `uni.reLaunch`
 - TabBar page → `uni.switchTab`
 - **No duplicate navigation detection** (in stack-clearing scenarios the target page may be the current page)
 - `uni.reLaunch` does not support animation parameters; a warning is output when provided
+- Returns `NavigationResult`, with `eventChannel` `undefined` by default; with `useUniEventChannel: true`, bidirectional communication via the built-in channel is available
 
 ```ts
 // Logout
@@ -535,8 +544,8 @@ The installation registers the following:
 | Method | Purpose | Return Value |
 | --- | --- | --- |
 | `push()` | Stack navigation | `Promise<NavigationResult>` |
-| `replace()` | Replace current page | `Promise<RouteLocation>` |
-| `relaunch()` | Clear stack then push | `Promise<RouteLocation>` |
+| `replace()` | Replace current page | `Promise<NavigationResult>` |
+| `relaunch()` | Clear stack then push | `Promise<NavigationResult>` |
 | `back()` | Go back | `Promise<RouteLocation>` |
 | `beforeEach()` | Register before guard | Remove function |
 | `beforeResolve()` | Register resolve guard | Remove function |

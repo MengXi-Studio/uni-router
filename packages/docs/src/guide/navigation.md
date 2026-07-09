@@ -7,9 +7,11 @@
 | 方法 | 栈操作 | 对应 uni API | 重复检测 | 动画 | events | 返回值 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `push()` | 入栈 +1 | `navigateTo` / `switchTab` | ✅ | ✅ | ✅ | `NavigationResult` |
-| `replace()` | 替换栈顶 | `redirectTo` / `switchTab` | ❌ | ✅ | ❌ | `RouteLocation` |
-| `relaunch()` | 清栈后入栈 | `reLaunch` / `switchTab` | ❌ | ❌ | ❌ | `RouteLocation` |
+| `replace()` | 替换栈顶 | `redirectTo` / `switchTab` | ❌ | ✅ | ⚠️¹ | `NavigationResult` |
+| `relaunch()` | 清栈后入栈 | `reLaunch` / `switchTab` | ❌ | ❌ | ⚠️¹ | `NavigationResult` |
 | `back()` | 出栈 -n | `navigateBack` | ❌ | ✅ | ❌ | `RouteLocation` |
+
+> ¹ 默认不支持 `events`；启用 `useUniEventChannel: true` 后，`replace` / `relaunch` 也支持页面通信，返回的 `eventChannel` 可用。
 
 ::: tip TabBar 页面自动识别
 当目标路由的 `meta.isTab` 为 `true` 时，`push` / `replace` / `relaunch` 都会自动改用 `uni.switchTab`。你无需手动判断，只需在路由配置中正确声明 `isTab`。
@@ -108,8 +110,8 @@ await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
 ### 与 push 的差异
 
 - **不检测重复**：可替换到当前页（用于刷新）
-- **不返回 eventChannel**：`redirectTo` 不支持页面通信
-- **events 被忽略**：传入 `events` 会输出警告
+- **默认不返回 eventChannel**：`redirectTo` 不支持原生页面通信，返回的 `NavigationResult.eventChannel` 为 `undefined`（启用 `useUniEventChannel: true` 后可用内置通道通信）
+- **events 默认被忽略**：传入 `events` 会输出警告（启用 `useUniEventChannel: true` 后生效）
 - **TabBar 限制相同**：`meta.isTab` 时改用 `switchTab`
 
 ## relaunch — 重置导航
@@ -317,6 +319,10 @@ const router = createRouter({
 
 ## 特殊用法：页面间通信
 
+Uni Router 提供两种页面间通信模式：原生 EventChannel（默认）和内置通信管理器（`useUniEventChannel: true`）。
+
+### 模式一：原生 EventChannel（默认）
+
 `push` 支持 `events` + `eventChannel` 双向通信，对应 `uni.navigateTo` 的 EventChannel 机制：
 
 ```ts
@@ -349,8 +355,65 @@ eventChannel.on('init', (data) => {
 eventChannel.emit('update', { status: 'loaded' })
 ```
 
-::: warning 仅 push 支持通信
-`replace` / `relaunch` / `back` 不支持 `events`，传入时会被忽略并警告。这是因为 `redirectTo` / `reLaunch` / `navigateBack` 不创建 EventChannel。
+::: warning 原生模式的局限
+- **仅 `push` 支持**：`replace` / `relaunch` / `back` 不支持 `events`，传入时会被忽略并警告（`redirectTo` / `reLaunch` / `navigateBack` 不创建 EventChannel）
+- **时序问题**：`uni.navigateTo` 的 `success` 回调可能早于目标页面 `setup` 执行，此时 `emit` 会早于 `on` 注册导致事件丢失
+- **H5 刷新丢失**：原生通道不持久化，刷新后通道失效
+:::
+
+### 模式二：内置通信管理器（useUniEventChannel）
+
+启用 `createRouter({ useUniEventChannel: true })` 后，所有导航方式（`push` / `replace` / `relaunch`）都使用内置通信管理器，目标页面通过 [`usePageChannel()`](../api/use-page-channel) 获取通道：
+
+```ts
+// 发起页：replace / relaunch 也返回 eventChannel
+const { eventChannel } = await router.replace({
+  name: 'detail',
+  params: { id: 123 },
+  events: {
+    ready(data) { console.log('目标页就绪:', data) }
+  }
+})
+
+// 向目标页面发送事件
+eventChannel.emit('init', { message: '初始化数据' })
+```
+
+```vue
+<!-- 目标页面：使用 usePageChannel() 替代 getOpenerEventChannel() -->
+<script setup lang="ts">
+import { usePageChannel } from '@meng-xi/uni-router'
+
+const channel = usePageChannel()
+
+// 监听发起页发送的事件
+channel.on('init', (data) => {
+  console.log('收到初始化:', data)
+})
+
+// 向发起页发送事件
+channel.emit('ready', { status: 'loaded' })
+</script>
+```
+
+内置通信管理器的优势：
+
+| 特性 | 原生 EventChannel | 内置通信管理器 |
+| --- | --- | --- |
+| 适用导航方式 | 仅 `push` | `push` / `replace` / `relaunch` |
+| 时序问题 | emit 早于 on 时事件丢失 | 粘性事件缓存，不丢失 |
+| H5 刷新 | 通道丢失 | `__nav_id` 持久化，可重建 |
+| 生命周期清理 | 手动管理 | 页面卸载自动销毁 |
+| 目标页获取方式 | `getOpenerEventChannel()` | `usePageChannel()` |
+
+::: tip 粘性事件缓存
+内置通道实现粘性事件机制：`emit` 时**总是**缓存事件参数；`on` / `once` 注册时若已有缓存，会**异步触发**（不删除缓存）。无论 `emit` 和 `on` 的先后顺序，所有监听器都能收到最后一次 `emit` 的数据，彻底解决时序竞争问题。
+:::
+
+::: warning 切换模式时的注意
+- 启用 `useUniEventChannel` 后，`push` 不再使用原生 EventChannel，目标页需改用 `usePageChannel()`
+- `events` 选项在两种模式下均可使用，但内置模式下通过 `uni.$emit` 转发
+- 详见 [`usePageChannel()` API](../api/use-page-channel) 与 [`useUniEventChannel` 选项](../api/type-router-options#useunieventchannel)
 :::
 
 ## 特殊用法：导航动画

@@ -1,5 +1,6 @@
 export { createRouter, ROUTER_SYMBOL } from '@/router'
-export { useRouter, useRoute } from '@/composables'
+export { useRouter, useRoute, usePageChannel } from '@/composables'
+export { UniEventChannel, noopChannel } from '@/channel'
 export type {
 	RouteNameMap,
 	RouteName,

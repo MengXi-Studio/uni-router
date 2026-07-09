@@ -157,6 +157,10 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 							link: '/api/use-route'
 						},
 						{
+							text: 'usePageChannel()',
+							link: '/api/use-page-channel'
+						},
+						{
 							text: 'RouterLink',
 							link: '/api/router-link'
 						}

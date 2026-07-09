@@ -1,6 +1,6 @@
 # Composables
 
-Uni Router provides two composable functions for accessing the router instance and current route information in Vue 3's `<script setup>`. This chapter covers usage, reactivity principles, and practical tips in detail.
+Uni Router provides three composable functions for accessing the router instance, current route, and inter-page communication channel in Vue 3's `<script setup>`. This chapter covers usage, reactivity principles, and practical tips in detail.
 
 ## useRouter()
 
@@ -190,6 +190,94 @@ const list = route.value.params.list as Item[]
 - params is only available with `push`; may be lost after `replace` / `relaunch`
 - See [Navigation - Passing Complex Data with params](./navigation#passing-complex-data-with-params)
 :::
+
+## usePageChannel()
+
+Gets the bidirectional communication channel between the current page and the navigation initiator. Must be called inside a Vue component's `setup()` function.
+
+::: tip Prerequisite
+Requires enabling the built-in communication manager via `createRouter({ useUniEventChannel: true })`. In default mode, it returns a no-op channel (calling `on` / `emit` has no effect).
+:::
+
+### Basic Usage
+
+```ts
+import { usePageChannel } from '@meng-xi/uni-router'
+
+const channel = usePageChannel()
+
+// Listen for events from the initiator
+channel.on('init', (data) => {
+  console.log('Received init data:', data)
+})
+
+// Send an event to the initiator
+channel.emit('ready', { status: 'loaded' })
+```
+
+### How It Works
+
+`usePageChannel()` reads `route.params.__navId` internally:
+
+- Returns a shared `UniEventChannel` instance (based on `uni.$emit` / `uni.$on`) when `navId` is present
+- Returns a `noopChannel` when `navId` is absent, avoiding null checks
+- Automatically destroys the channel and cleans up all listeners on page unmount
+
+```ts
+// Initiator: push/replace/relaunch all return eventChannel
+const { eventChannel } = await router.push({
+  name: 'detail',
+  params: { id: 123 },
+  events: {
+    ready(data) { console.log('Target page ready:', data) }
+  }
+})
+eventChannel.emit('init', { message: 'Init data' })
+```
+
+```vue
+<!-- Target page -->
+<script setup lang="ts">
+import { usePageChannel } from '@meng-xi/uni-router'
+
+const channel = usePageChannel()
+
+channel.on('init', (data) => {
+  console.log('Received init:', data)
+})
+
+channel.emit('ready', { status: 'loaded' })
+</script>
+```
+
+### Sticky Event Caching
+
+The built-in channel implements a sticky event mechanism, solving the timing race where the initiator's `emit` happens before the target page's `setup` registers a listener:
+
+- `emit` **always** caches the event arguments
+- When `on` / `once` registers a listener and a cache exists, it **async-triggers** (without deleting the cache)
+- Regardless of the order of `emit` and `on`, all listeners receive the data from the last `emit`
+
+```ts
+// Even if the initiator's emit runs before the target page's on, the listener still receives data
+channel.on('init', (data) => {
+  // ✅ Receives data (async-triggered via cache)
+  console.log('Received:', data)
+})
+
+channel.once('init', (data) => {
+  // ✅ Also receives (once manually removes the wrapper when triggered via cache)
+  console.log('Once only:', data)
+})
+```
+
+::: tip Differences from native getOpenerEventChannel
+- Native `getOpenerEventChannel()` only works with `push`, and events are lost when emit precedes on
+- `usePageChannel()` supports all navigation methods (requires `useUniEventChannel: true`), and sticky caching prevents event loss
+- `__nav_id` is persisted in the URL, so the channel can be rebuilt after H5 refresh
+:::
+
+See [`usePageChannel()` API](../api/use-page-channel) and [Page Communication](./navigation#special-usage-page-communication) for details.
 
 ## Using Outside Components
 

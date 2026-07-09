@@ -123,6 +123,14 @@ declare global {
 		removeStorageSync(key: string): void
 		/** 同步获取存储信息 */
 		getStorageInfoSync(): { keys: string[]; currentSize: number; limitSize: number }
+		/** 触发全局事件 */
+		$emit(event: string, ...args: any[]): void
+		/** 监听全局事件 */
+		$on(event: string, callback: (...args: any[]) => void): void
+		/** 监听全局事件（仅触发一次） */
+		$once(event: string, callback: (...args: any[]) => void): void
+		/** 移除全局事件监听器 */
+		$off(event: string, callback?: (...args: any[]) => void): void
 	}
 }
 

@@ -3,6 +3,7 @@ import type { createRouteState } from '@/state'
 import type { RouteMatcher } from '@/matcher'
 import type { ParamsManager } from '@/params'
 import { PARAMS_KEY } from '@/params'
+import { NAV_ID_KEY } from '@/channel'
 import { getCurrentPagePath, getCurrentPageQuery } from '@/navigation/context'
 import { buildFullPath, createRouteLocation } from '@/utils'
 import { isSameQuery } from '@/utils/query'
@@ -73,6 +74,13 @@ export function createRouteSync(routeState: RouteState, matcher: RouteMatcher, p
 			if (resolved) params = resolved
 			// 从用户可见的 query 中移除内部 key，fullPath 也基于清理后的 query 构建
 			delete query[PARAMS_KEY]
+		}
+
+		// 从 query 中提取 __nav_id 并写入 params.__navId，供 usePageChannel() 读取
+		const navId = query[NAV_ID_KEY]
+		if (navId) {
+			params.__navId = decodeURIComponent(navId)
+			delete query[NAV_ID_KEY]
 		}
 
 		const fullPath = buildFullPath(currentPath, query)

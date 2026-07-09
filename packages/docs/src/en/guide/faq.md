@@ -620,7 +620,25 @@ EventChannel is a `navigateTo`-exclusive capability; `redirectTo` / `reLaunch` d
 
 ### Solution
 
-Use global state instead:
+**Option 1 (Recommended)**: Enable `useUniEventChannel: true` so all navigation methods support the built-in communication channel:
+
+```ts
+const router = createRouter({
+  routes,
+  useUniEventChannel: true
+})
+
+// Communicate even after replace
+const { eventChannel } = await router.replace({ name: 'target' })
+eventChannel.emit('init', { payload })
+
+// Target page receives via usePageChannel()
+import { usePageChannel } from '@meng-xi/uni-router'
+const channel = usePageChannel()
+channel.on('init', (data) => { /* ... */ })
+```
+
+**Option 2**: Use global state instead:
 
 ```ts
 // Initiating page

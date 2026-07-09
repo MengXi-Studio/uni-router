@@ -27,14 +27,14 @@
 - **Named Routes & Route Meta** - Navigate by `name`, carry custom data via `meta`
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths
 - **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
-- **Page Communication** - `push` supports `events` and `eventChannel` (corresponds to uni EventChannel)
+- **Page Communication** - All navigation methods support `events` and `eventChannel`; `useUniEventChannel` option enables built-in communication manager for cross-page bidirectional communication
 - **Declarative Navigation** - `RouterLink` component, wraps uni `navigator`, supports navigation params, animation, page communication
 - **Page Params** - `params` passes complex data without exposing in URL, supports `persistent` storage
 - **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()` convenience methods
 - **Navigation Animation** - `push` / `replace` / `back` support animation params, App only
 - **Auto Route State Sync** - Global mixin auto-invokes `syncRoute()` to handle browser back, physical back button, etc. No manual sync needed in pages
 - **Error Handling** - Complete `RouterError` / `NavigationFailure` / `UniApiError` system with `onError` global capture, supports `instanceof` for precise discrimination
-- **Composables** - `useRouter()` / `useRoute()` for reactive router access
+- **Composables** - `useRouter()` / `useRoute()` / `usePageChannel()` for reactive router and page channel access
 
 ## Installation
 

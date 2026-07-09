@@ -92,8 +92,8 @@ jobs:
       - name: Publish to npm
         if: ${{ !inputs.skip_publish && steps.version.outputs.should_publish == 'true' }} # 不跳过且版本未发布时执行
         env:
-          # 根据分支决定 dist-tag：v1 分支用 v1 tag，避免 patch 覆盖 latest
-          DIST_TAG: ${{ github.ref_name == 'v1' && 'v1' || 'latest' }}
+          # 根据分支决定 dist-tag：v1 分支用 v1-lts（不可用 v1，因其为合法 SemVer range 会被 npm 拒绝），避免 patch 覆盖 latest
+          DIST_TAG: ${{ github.ref_name == 'v1' && 'v1-lts' || 'latest' }}
         run: npm publish --provenance --access public --tag "$DIST_TAG" # --provenance 附加 Sigstore 签名，--access public 公开访问，--tag 指定 npm dist-tag
         working-directory: packages/core # 在核心包目录下执行
 
@@ -101,7 +101,7 @@ jobs:
       - name: Publish summary
         if: ${{ !inputs.skip_publish && steps.version.outputs.should_publish == 'true' }} # 发布成功时执行
         env:
-          DIST_TAG: ${{ github.ref_name == 'v1' && 'v1' || 'latest' }}
+          DIST_TAG: ${{ github.ref_name == 'v1' && 'v1-lts' || 'latest' }}
         run: |
           echo "## 📦 Published @meng-xi/uni-router@${{ steps.version.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY # 标题
           echo "" >> $GITHUB_STEP_SUMMARY # 空行

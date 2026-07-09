@@ -123,7 +123,7 @@ Animation **only works on App**. Navigation animations on mini-programs and H5 a
 
 - **Type**: `EventListeners | undefined`
 - **Default**: `undefined`
-- **Description**: Page communication event listeners (only effective in push mode), corresponding to the `events` parameter of `uni.navigateTo`, used to listen for events sent by the target page via `eventChannel.emit`. Other navigation modes (`replace` / `relaunch`) do not support `events`; they will be ignored when provided.
+- **Description**: Page communication event listeners, corresponding to the `events` parameter of `uni.navigateTo`, used to listen for events sent by the target page via `eventChannel.emit`. Only effective in `push` mode by default; with `useUniEventChannel` enabled, all navigation methods are supported.
 
 ```ts
 type EventListeners = Record<string, (...args: any[]) => void>
@@ -243,7 +243,7 @@ When the `error` event is not listened to, navigation failures are silently hand
 ### navigated
 
 - **Parameter**: `(eventChannel: EventChannel | undefined)`
-- **Description**: Emitted after a successful `push` navigation, returns `eventChannel` for page communication. `eventChannel` is only available in `push` mode; `replace` / `relaunch` do not trigger this event.
+- **Description**: Emitted after a successful navigation, returns `eventChannel` for page communication. `eventChannel` is only available in `push` mode by default; with `useUniEventChannel` enabled, `replace` / `relaunch` also return `eventChannel`.
 
 ```vue
 <RouterLink

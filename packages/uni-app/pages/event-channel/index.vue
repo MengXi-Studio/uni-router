@@ -2,7 +2,10 @@
 	<view class="content">
 		<view class="card">
 			<text class="card-title">EventChannel - 页面间通信</text>
-			<text class="desc">通过 push 的 events 参数监听被打开页面发送的事件，通过返回的 eventChannel 向被打开页面发送数据，实现双向通信。</text>
+			<text class="desc"
+				>本项目启用 useUniEventChannel: true，所有导航方式（push/replace/relaunch）均返回内置 EventChannel。发起页通过 result.eventChannel.on() 监听目标页事件，目标页通过 usePageChannel() 获取通道。基于 uni.$emit
+				全局事件总线，粘性事件缓存确保无论 emit 与 on 的先后顺序都能收到数据。</text
+			>
 		</view>
 
 		<!-- 发送数据到被打开页面 -->
@@ -17,7 +20,7 @@
 		<!-- 接收被打开页面的数据 -->
 		<view class="card">
 			<text class="card-title">接收被打开页面的数据</text>
-			<text class="hint">events 参数中定义的回调会在被打开页面 emit 对应事件时触发</text>
+			<text class="hint">push 后通过 result.eventChannel.on() 注册监听，目标页 emit 时触发回调</text>
 			<view class="btn btn-secondary" @click="pushAndWaitReply">
 				<text class="btn-text-secondary">push 并等待回复</text>
 			</view>
@@ -79,17 +82,19 @@ export default {
 			this.logs = []
 			this.addLog('发起 push 导航...')
 
+			// useUniEventChannel: true 时 events 参数被忽略，通过 result.eventChannel.on() 注册监听
 			const result = await router.push({
 				path: '/pages/about/index',
-				query: { id: 'ec', demo: 'event-channel' },
-				events: {
-					receiveData: data => {
-						this.addLog(`收到关于页数据: ${JSON.stringify(data)}`)
-					}
-				}
+				query: { id: 'ec', demo: 'event-channel' }
 			})
 
 			this.addLog('导航成功，获取到 eventChannel')
+
+			// 监听目标页 emit 的事件（粘性缓存：目标页已 emit 的数据不会丢失）
+			result.eventChannel?.on('receiveData', data => {
+				this.addLog(`收到关于页数据: ${JSON.stringify(data)}`)
+			})
+
 			result.eventChannel?.emit('fromOpener', { msg: '你好，关于页！来自 EventChannel 演示' })
 			this.addLog('已通过 eventChannel 发送消息到关于页')
 		},
@@ -99,16 +104,16 @@ export default {
 
 			const result = await router.push({
 				path: '/pages/about/index',
-				query: { id: 'ec-reply', demo: 'event-channel-reply' },
-				events: {
-					replyFromAbout: data => {
-						this.addLog(`收到关于页回复: ${JSON.stringify(data)}`)
-						uni.showToast({ title: `收到: ${data.msg}`, icon: 'none' })
-					}
-				}
+				query: { id: 'ec-reply', demo: 'event-channel-reply' }
 			})
 
-			this.addLog('导航成功，等待关于页 emit replyFromAbout...')
+			this.addLog('导航成功，注册 replyFromAbout 监听，等待关于页回复...')
+
+			result.eventChannel?.on('replyFromAbout', data => {
+				this.addLog(`收到关于页回复: ${JSON.stringify(data)}`)
+				uni.showToast({ title: `收到: ${data.msg}`, icon: 'none' })
+			})
+
 			setTimeout(() => {
 				result.eventChannel?.emit('fromOpener', { msg: '请回复我！' })
 				this.addLog('已发送 fromOpener 事件')
@@ -120,15 +125,16 @@ export default {
 
 			const result = await router.push({
 				path: '/pages/about/index',
-				query: { id: 'once', demo: 'once-listener' },
-				events: {
-					onceEvent: data => {
-						this.addLog(`[once] 收到一次性事件: ${JSON.stringify(data)}`)
-						uni.showToast({ title: `once: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
-					}
-				}
+				query: { id: 'once', demo: 'once-listener' }
 			})
 
+			// on() 监听目标页的 onceEvent 事件
+			result.eventChannel?.on('onceEvent', data => {
+				this.addLog(`[once] 收到一次性事件: ${JSON.stringify(data)}`)
+				uni.showToast({ title: `once: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
+			})
+
+			// once() 演示：只触发一次后自动移除
 			result.eventChannel?.once('replyOnce', data => {
 				this.addLog(`[once] 收到关于页一次性回复: ${JSON.stringify(data)}`)
 			})
@@ -143,19 +149,17 @@ export default {
 			this.logs = []
 			this.addLog('发起 push 导航，演示 off 取消监听...')
 
+			const result = await router.push({
+				path: '/pages/about/index',
+				query: { id: 'off', demo: 'off-listener' }
+			})
+
 			// 定义一个事件处理函数
 			const offHandler = data => {
 				this.addLog(`[off] 收到事件（取消前）: ${JSON.stringify(data)}`)
 			}
 
-			const result = await router.push({
-				path: '/pages/about/index',
-				query: { id: 'off', demo: 'off-listener' },
-				events: {
-					offDemo: offHandler
-				}
-			})
-
+			result.eventChannel?.on('offDemo', offHandler)
 			this.addLog('导航成功，已注册 offDemo 监听')
 
 			// 1 秒后取消监听

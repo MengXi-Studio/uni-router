@@ -335,7 +335,7 @@ interface UniApiCause {
  *
  * 包含失败的 API 名称和原始错误原因，作为 {@link NavigationFailure.cause} 传递。
  */
-interface UniApiError {
+interface UniApiError$1 {
     /** 调用失败的 API 名称（如 navigateTo / redirectTo） */
     readonly api: string;
     /** 原始错误原因 */
@@ -354,7 +354,7 @@ interface NavigationFailure$1 extends RouterError$1 {
      *
      * 仅当 `code` 为 `NAVIGATION_API_ERROR` 时存在，包含失败的 API 名称和原始错误信息。
      */
-    readonly cause?: UniApiError;
+    readonly cause?: UniApiError$1;
 }
 /**
  * 路由错误码枚举
@@ -445,6 +445,21 @@ interface RouterOptions {
      * @default false
      */
     paramsPersistent?: boolean;
+    /**
+     * 是否使用内置通信管理器替代 uni.navigateTo 的原生 EventChannel
+     *
+     * - false（默认）：push 使用 uni.navigateTo 原生 EventChannel，其他导航方式不支持页面通信
+     * - true：所有导航方式（push/replace/relaunch/back）都使用内置通信管理器
+     *
+     * 内置通信管理器基于 `uni.$emit/$on/$off` 全局事件总线实现：
+     * - 每次导航生成唯一 `navigationId` 隔离事件通道
+     * - 目标页面通过 `usePageChannel()` 获取通道
+     * - 页面卸载时自动清理监听器
+     * - `__nav_id` 通过 URL query 传递，H5 刷新后仍可重建通道
+     *
+     * @default false
+     */
+    useUniEventChannel?: boolean;
 }
 /**
  * 路由器实例接口，提供路由导航、守卫注册和状态查询能力
@@ -456,7 +471,9 @@ interface Router {
      * 导航到新页面，对应 uni.navigateTo / uni.switchTab
      *
      * 返回 NavigationResult，包含目标路由位置和可选的 eventChannel。
-     * eventChannel 仅在对应 uni.navigateTo 时可用，用于页面间双向通信。
+     * eventChannel 在以下情况可用：
+     * - 默认（useUniEventChannel: false）：仅对应 uni.navigateTo 时可用
+     * - useUniEventChannel: true：所有导航方式都返回内置 EventChannel
      *
      * @param location - 目标路由位置
      * @returns 导航结果，包含目标路由位置和可选的 eventChannel
@@ -465,11 +482,16 @@ interface Router {
     push(location: RouteLocationRaw): Promise<NavigationResult>;
     /**
      * 替换当前页面，对应 uni.redirectTo / uni.switchTab
+     *
+     * 返回 NavigationResult：
+     * - 默认（useUniEventChannel: false）：eventChannel 为 undefined（原生 uni.redirectTo 不支持）
+     * - useUniEventChannel: true：返回内置 EventChannel，可与目标页面双向通信
+     *
      * @param location - 目标路由位置
-     * @returns 解析后的目标路由位置
+     * @returns 导航结果，包含目标路由位置和可选的 eventChannel
      * @throws {NavigationFailure} 导航被中止或 API 调用失败时抛出
      */
-    replace(location: RouteLocationRaw): Promise<RouteLocation>;
+    replace(location: RouteLocationRaw): Promise<NavigationResult>;
     /**
      * 关闭所有页面并打开目标页面，对应 uni.reLaunch / uni.switchTab
      *
@@ -477,11 +499,15 @@ interface Router {
      * TabBar 页面自动切换为 uni.switchTab。
      * reLaunch 不支持动画参数，传入时将输出警告。
      *
+     * 返回 NavigationResult：
+     * - 默认（useUniEventChannel: false）：eventChannel 为 undefined
+     * - useUniEventChannel: true：返回内置 EventChannel，可与目标页面双向通信
+     *
      * @param location - 目标路由位置
-     * @returns 解析后的目标路由位置
+     * @returns 导航结果，包含目标路由位置和可选的 eventChannel
      * @throws {NavigationFailure} 导航被中止或 API 调用失败时抛出
      */
-    relaunch(location: RouteLocationRaw): Promise<RouteLocation>;
+    relaunch(location: RouteLocationRaw): Promise<NavigationResult>;
     /**
      * 返回上一页或多级页面，对应 uni.navigateBack
      *
@@ -667,6 +693,76 @@ declare function useRouter(): Router;
  * ```
  */
 declare function useRoute(): Ref<RouteLocation>;
+/**
+ * 获取当前页面的通信通道
+ *
+ * 必须在 Vue 组件的 setup() 函数中调用。
+ * 内部自动读取 `route.params.__navId`：
+ * - 有 navId 时返回与导航方共享的 EventChannel 实例（基于 uni.$emit/$on）
+ * - 无 navId 时返回 no-op channel，避免调用方需判空
+ *
+ * 页面卸载时自动销毁通道，清理所有事件监听器，防止内存泄漏。
+ *
+ * 仅在 `createRouter({ useUniEventChannel: true })` 时有效。
+ * 默认模式下（useUniEventChannel: false）始终返回 no-op channel。
+ *
+ * @returns 事件通道实例
+ * @throws {RouterError} 在 setup 外调用或未安装路由器时抛出 SETUP_ERROR
+ *
+ * @example
+ * ```ts
+ * import { usePageChannel } from '@meng-xi/uni-router'
+ *
+ * const channel = usePageChannel()
+ *
+ * // 监听导航方发送的事件
+ * channel.on('data', (payload) => {
+ *   console.log('received:', payload)
+ * })
+ *
+ * // 向导航方发送事件
+ * channel.emit('ready', { status: 'ok' })
+ * ```
+ */
+declare function usePageChannel(): EventChannel;
+
+/**
+ * 基于 uni.$emit/$on 全局事件的页面间通信通道
+ *
+ * 实现与 uni.navigateTo 原生 eventChannel 相同的 EventChannel 接口，
+ * 但通过 uni.$emit/$on 全局事件总线通信，使所有导航方法（push/replace/relaunch/back/switchTab）都支持页面通信。
+ *
+ * 事件名通过 `uni-router:<navId>:<event>` 格式隔离，避免全局事件冲突。
+ *
+ * 粘性事件缓存：emit 时总是缓存事件参数；on/once 注册监听器时若有缓存，异步触发（不删除缓存）。
+ * 解决导航方 emit 与目标页面 setup 注册监听器的时序竞争问题——无论 emit 和 on/once 的先后顺序，
+ * 所有监听器都能收到最后一次 emit 的数据。once 通过缓存触发时手动 uni.$off 防止重复触发。
+ */
+declare class UniEventChannel implements EventChannel {
+    private readonly navId;
+    /** 按 event 名分组的监听器集合，用于 destroy 时批量清理 */
+    private readonly listeners;
+    /** 粘性事件缓存：无监听器时 emit 的事件参数，on/once 注册时异步触发 */
+    private readonly pendingEvents;
+    private destroyed;
+    constructor(navId: string);
+    on(event: string, callback: (...args: any[]) => void): EventChannel;
+    once(event: string, callback: (...args: any[]) => void): EventChannel;
+    off(event: string, callback?: (...args: any[]) => void): EventChannel;
+    emit(event: string, ...args: any[]): EventChannel;
+    /**
+     * 销毁通道，清理所有监听器和待处理事件
+     *
+     * 框架内部在页面卸载时调用，防止监听器累积导致内存泄漏。
+     */
+    destroy(): void;
+}
+/**
+ * 空操作通道
+ *
+ * 当目标页面无 __nav_id 时由 usePageChannel() 返回，避免调用方需判空。
+ */
+declare const noopChannel: EventChannel;
 
 /**
  * 路由错误类，表示路由过程中产生的错误
@@ -690,7 +786,7 @@ declare class NavigationFailure extends RouterError {
     /** 来源路由 */
     readonly from: RouteLocation;
     /** 原始错误原因 */
-    readonly cause?: UniApiError;
+    readonly cause?: UniApiError$1;
     /**
      * @param to - 目标路由
      * @param from - 来源路由
@@ -698,7 +794,25 @@ declare class NavigationFailure extends RouterError {
      * @param message - 可选的错误信息，默认自动生成
      * @param cause - 原始错误原因
      */
-    constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: UniApiError);
+    constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: UniApiError$1);
 }
 
-export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type GuardRouteOptions, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationGuardNextOptions, type NavigationRedirectMode, type NavigationResult, type ParamObject, type ParamValue, type ParamsInput, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, type UniApiCause, type UniApiError, createRouter, useRoute, useRouter };
+/**
+ * uni API 调用失败时的错误封装
+ *
+ * 当 uni.navigateTo / uni.redirectTo 等导航 API 调用失败时，
+ * 将错误原因封装为此类实例，作为 {@link NavigationFailure.cause} 传递。
+ */
+declare class UniApiError extends Error {
+    /** 调用失败的 API 名称（如 navigateTo / redirectTo） */
+    readonly api: string;
+    /** 原始错误原因 */
+    readonly cause: UniApiCause;
+    /**
+     * @param api - 失败的 uni API 名称
+     * @param cause - 原始错误对象
+     */
+    constructor(api: string, cause: UniApiCause);
+}
+
+export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type GuardRouteOptions, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationGuardNextOptions, type NavigationRedirectMode, type NavigationResult, type ParamObject, type ParamValue, type ParamsInput, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, type UniApiCause, UniApiError, UniEventChannel, createRouter, noopChannel, usePageChannel, useRoute, useRouter };
