@@ -169,7 +169,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, NavigationFailure, RouterErrorCode, type EventChannel } from '@meng-xi/uni-router'
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 
 const router = useRouter()
 const routerLinkLog = ref('')

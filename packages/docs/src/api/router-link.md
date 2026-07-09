@@ -5,7 +5,7 @@
 ## 引入
 
 ```ts
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 ```
 
 ::: info 直接引入 .vue 文件
@@ -19,7 +19,7 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 import { createSSRApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 
 export function createApp() {
   const app = createSSRApp(App)
@@ -295,7 +295,7 @@ function onNavigated(eventChannel) {
 </template>
 
 <script setup lang="ts">
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 </script>
 ```
 

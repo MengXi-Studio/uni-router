@@ -102,4 +102,6 @@ async function navigate() {
 		emit('error', error as NavigationFailure)
 	}
 }
+
+defineOptions({ name: 'RouterLink' })
 </script>
