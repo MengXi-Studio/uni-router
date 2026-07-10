@@ -92,7 +92,7 @@ if (pages.length >= 8) {
 | vue-router Feature          | Reason                                                                                          |
 | --------------------------- | ----------------------------------------------------------------------------------------------- |
 | `<router-view>`             | uni-app has its own page rendering mechanism                                                    |
-| `<router-link>`             | Simplified [RouterLink](../api/router-link) component supported, based on `<navigator>` |
+| `<router-link>`             | Simplified [RouterLink](../component/router-link) component supported, based on `<navigator>` |
 | Nested routes               | uni-app has no nested views                                                                     |
 | Named views                 | uni-app has no multi-view support                                                               |
 | Route lazy loading `() => import()` | uni-app has its own code splitting (sub-packages)                                       |

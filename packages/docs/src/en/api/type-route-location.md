@@ -602,4 +602,4 @@ router.beforeEach((to, from, next) => {
 
 - [useRoute()](./use-route) — Get route info in components
 - [Router Instance](./router-instance) — Navigation methods in detail
-- [RouterLink Component](./router-link) — Declarative navigation
+- [RouterLink Component](../component/router-link) — Declarative navigation

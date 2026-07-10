@@ -30,62 +30,76 @@
 		<!-- RouterLink 组件 -->
 		<view class="card">
 			<text class="card-title">RouterLink 组件</text>
-			<text class="hint">使用 mxuni-router 组件进行声明式导航</text>
-			<mxuni-router to="/pages/about/index">
+			<text class="hint">声明式导航组件，easycom 自动注册</text>
+			<RouterLink to="/pages/about/index">
 				<view class="btn">
 					<text class="btn-text">RouterLink - 路径跳转</text>
 				</view>
-			</mxuni-router>
-			<mxuni-router to="/pages/guards/index" replace>
+			</RouterLink>
+			<RouterLink to="/pages/guards/index" replace>
 				<view class="btn btn-secondary">
 					<text class="btn-text-secondary">RouterLink - replace 模式</text>
 				</view>
-			</mxuni-router>
-			<mxuni-router to="/pages/index/index" relaunch>
+			</RouterLink>
+			<RouterLink to="/pages/index/index" relaunch>
 				<view class="btn btn-secondary">
 					<text class="btn-text-secondary">RouterLink - relaunch 模式</text>
 				</view>
-			</mxuni-router>
+			</RouterLink>
 		</view>
 
 		<!-- RouterLink animation -->
 		<view class="card">
 			<text class="card-title">RouterLink - animation 属性</text>
 			<text class="hint">通过 animation 属性控制导航动画（仅 App 端生效）</text>
-			<mxuni-router to="/pages/about/index" :animation="{ type: 'slide-in-bottom' }">
+			<RouterLink to="/pages/about/index" :animation="{ type: 'slide-in-bottom' }">
 				<view class="btn">
 					<text class="btn-text">RouterLink - 底部滑入动画</text>
 				</view>
-			</mxuni-router>
+			</RouterLink>
 		</view>
 
 		<!-- RouterLink params/persistent -->
 		<view class="card">
 			<text class="card-title">RouterLink - params 与 persistent</text>
 			<text class="hint">通过 params 属性传递复杂数据，通过 persistent 属性控制是否持久化到 storage</text>
-			<mxuni-router :to="{ path: '/pages/about/index', query: { id: 'link-params' } }" :params="{ orderInfo: { orderId: 'A001', amount: 99.9 } }">
+			<RouterLink :to="{ path: '/pages/about/index', query: { id: 'link-params' } }" :params="{ orderInfo: { orderId: 'A001', amount: 99.9 } }">
 				<view class="btn">
 					<text class="btn-text">RouterLink - 带 params 跳转</text>
 				</view>
-			</mxuni-router>
-			<mxuni-router :to="{ path: '/pages/about/index', query: { id: 'link-persistent' } }" :params="{ config: { theme: 'dark' } }" persistent>
+			</RouterLink>
+			<RouterLink :to="{ path: '/pages/about/index', query: { id: 'link-persistent' } }" :params="{ config: { theme: 'dark' } }" persistent>
 				<view class="btn btn-secondary">
 					<text class="btn-text-secondary">RouterLink - params 持久化</text>
 				</view>
-			</mxuni-router>
+			</RouterLink>
 		</view>
 
 		<!-- RouterLink events + navigated -->
 		<view class="card">
 			<text class="card-title">RouterLink - @navigated 与 eventChannel</text>
-			<text class="hint">启用 useUniEventChannel 后 events prop 被忽略，通过 @navigated 获取 eventChannel，再调用 on() 监听目标页事件</text>
-			<mxuni-router :to="{ path: '/pages/about/index', query: { id: 'link-ec' } }" @navigated="onNavigated" @error="onRouterLinkError">
+			<text class="hint">启用 useUniEventChannel 后通过 @navigated 获取 eventChannel</text>
+			<RouterLink :to="{ path: '/pages/about/index', query: { id: 'link-ec' } }" @navigated="onNavigated" @error="onRouterLinkError">
 				<view class="btn btn-secondary">
 					<text class="btn-text-secondary">RouterLink - @navigated + eventChannel</text>
 				</view>
-			</mxuni-router>
+			</RouterLink>
 			<view v-if="routerLinkLog" class="info-row">
 				<text class="info-value active">{{ routerLinkLog }}</text>
+			</view>
+		</view>
+
+		<!-- TabBar / TabBarItem 组件 -->
+		<view class="card">
+			<text class="card-title">TabBar / TabBarItem 组件</text>
+			<text class="hint">自定义底部导航栏，支持徽标、切换拦截、SCSS 主题定制（此处 fixed=false 内嵌展示）</text>
+			<TabBar :fixed="false" :border="true" selected-color="#007aff" @change="onTabBarChange">
+				<TabBarItem to="/pages/index/index" icon-path="/static/tab/home.svg" selected-icon-path="/static/tab/home-active.svg" text="首页" />	
+				<TabBarItem to="/pages/guards/index" icon-path="/static/tab/nav.svg" selected-icon-path="/static/tab/nav-active.svg" text="守卫" :badge="3" />
+				<TabBarItem to="/pages/about/index" icon-path="/static/tab/user.svg" selected-icon-path="/static/tab/user-active.svg" text="关于" dot />
+			</TabBar>
+			<view v-if="tabBarLog" class="info-row">
+				<text class="info-value active">{{ tabBarLog }}</text>
 			</view>
 		</view>
 
@@ -274,7 +288,8 @@ export default {
 			currentRoute: {},
 			lastError: '',
 			resolveResult: '',
-			routerLinkLog: ''
+			routerLinkLog: '',
+			tabBarLog: ''
 		}
 	},
 	computed: {
@@ -437,6 +452,9 @@ export default {
 		},
 		onRouterLinkError(error) {
 			this.lastError = `RouterLink 导航失败: ${error.message || String(error)}`
+		},
+		onTabBarChange(item, index) {
+			this.tabBarLog = `切换到: ${item.text} (索引: ${index})`
 		},
 		// ===== interceptUniApi 拦截演示 =====
 		// 启用 interceptUniApi: true 后，直接调用 uni 原生导航 API 会被拦截并转为路由器方法

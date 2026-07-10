@@ -84,11 +84,11 @@
 		<view class="card">
 			<text class="card-title">RouterLink 组件</text>
 			<text class="hint">声明式导航，内部也使用 useRouter() 实现导航</text>
-			<mxuni-router to="/pages/index/index" relaunch>
+			<RouterLink to="/pages/index/index" relaunch>
 				<view class="btn btn-secondary">
 					<text class="btn-text-secondary">RouterLink - relaunch 回首页</text>
 				</view>
-			</mxuni-router>
+			</RouterLink>
 		</view>
 	</view>
 </template>
