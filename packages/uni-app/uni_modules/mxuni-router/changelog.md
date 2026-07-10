@@ -1,3 +1,47 @@
+## 1.11.0（2026-07-10）
+
+### 新增
+
+- **TabBar / TabBarItem 组件** - 自定义底部导航栏，需配合使用
+  - TabBar Props：`color` / `selectedColor` / `bgColor` / `borderStyle` / `fixed` / `border` / `placeholder` / `safeAreaInsetBottom` / `zIndex` / `beforeChange`
+  - TabBar Events：`change(item, index)` / `error(error)`
+  - TabBarItem Props：`to` / `text` / `iconPath` / `selectedIconPath` / `dot` / `badge` / `badgeMax` / `badgeColor` / `replace`
+  - TabBarItem Slots：`#icon="{ active }"` 自定义图标、`default` 自定义文字
+  - 内置徽标系统：`dot` 小红点（优先级高于 badge）、`badge` 数字/文字徽标、`badgeMax` 上限、`badgeColor` 自定义颜色
+  - `beforeChange` 拦截器：返回 `false` 或 reject 阻止切换，支持异步
+- **SCSS 主题定制** - 组件样式迁移到 SCSS，支持双层级覆盖
+  - SCSS 变量 `!default`：编译时覆盖（通过 vite `css.preprocessorOptions.scss.additionalData`）
+  - CSS 自定义属性：运行时覆盖（在父元素设置 `--mx-tabbar-*` / `--mx-tabbar-item-*`）
+  - TabBar 变量：`--mx-tabbar-height` / `--mx-tabbar-background` / `--mx-tabbar-border-color`
+  - TabBarItem 变量：`--mx-tabbar-item-icon-size` / `--mx-tabbar-item-font-size` / `--mx-tabbar-item-gap` / `--mx-tabbar-badge-color` / `--mx-tabbar-badge-dot-size` / `--mx-tabbar-badge-font-size` /
+    `--mx-tabbar-badge-min-width` / `--mx-tabbar-badge-line-height` / `--mx-tabbar-badge-padding`
+- **`TabBarItemProps` 类型导出** - 从 `@meng-xi/uni-router` 主入口新增导出，用于 TabBar `change` 事件回调类型标注
+
+### 优化
+
+- **组件目录按 easycom 规范重构** - 组件从扁平文件改为 `components/<name>/<name>.vue` 嵌套结构，符合 easycom 自动注册约定
+  - `components/RouterLink.vue` → `components/router-link/router-link.vue`
+  - `components/TabBar.vue` → `components/tab-bar/tab-bar.vue`
+  - `components/TabBarItem.vue` → `components/tab-bar-item/tab-bar-item.vue`
+  - 共享上下文 `tabbar-context.ts` → `tab-bar/context.ts`
+  - 组件类型提取到同级 `type.ts`（`router-link/type.ts`、`tab-bar/type.ts`）
+- **uni_modules 版本组件导入改为本地 js_sdk** - mxuni-router 包内组件从 `@meng-xi/uni-router` 改为相对路径引用 `../../js_sdk/index`，消除对 npm 包的运行时依赖
+- **uni_modules 版本标签名变更** - `<mxuni-router>` 改为 `<RouterLink>`（easycom 自动注册）
+- **组件 TypeScript 类型提取** - 各组件 props/emits 类型提取到同级 `type.ts`，共享上下文（InjectionKey + 接口）放在 `context.ts`
+- **组件 CSS → SCSS** - RouterLink、TabBar、TabBarItem 样式全部迁移到 SCSS，使用变量和自定义属性
+
+### 迁移说明
+
+npm 用户需更新组件导入路径：
+
+| 旧路径                                          | 新路径                                                         |
+| ----------------------------------------------- | -------------------------------------------------------------- |
+| `@meng-xi/uni-router/components/RouterLink.vue` | `@meng-xi/uni-router/components/router-link/router-link.vue`   |
+| `@meng-xi/uni-router/components/TabBar.vue`     | `@meng-xi/uni-router/components/tab-bar/tab-bar.vue`           |
+| `@meng-xi/uni-router/components/TabBarItem.vue` | `@meng-xi/uni-router/components/tab-bar-item/tab-bar-item.vue` |
+
+uni_modules 用户无需修改，easycom 自动注册 `<RouterLink>` / `<TabBar>` / `<TabBarItem>`。
+
 ## 1.10.0（2026-07-09）
 
 ### 新增

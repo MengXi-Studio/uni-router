@@ -105,7 +105,7 @@ router.beforeEach((to, from, next) => {
 
 ## 文档
 
-📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
+📖 **[https://mengxi-studio.github.io/uni-router/v1/](https://mengxi-studio.github.io/uni-router/v1/)**
 
 ## License
 

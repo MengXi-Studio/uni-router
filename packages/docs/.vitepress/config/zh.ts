@@ -1,7 +1,7 @@
 import type { DefaultTheme, LocaleSpecificConfig } from 'vitepress'
 import { versionNav } from './shared'
 
-export const META_URL = 'https://mengxi-studio.github.io/uni-router/'
+export const META_URL = 'https://mengxi-studio.github.io/uni-router/v1/'
 export const META_TITLE = 'Uni Router'
 export const META_DESCRIPTION = '为 uni-app 提供类似 vue-router 风格的路由管理系统'
 
