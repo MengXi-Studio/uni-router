@@ -1,66 +1,31 @@
 <template>
-	<view
-		class="mx-tabbar"
-		:class="{ 'mx-tabbar--fixed': fixed, 'mx-tabbar--border': border, 'mx-tabbar--safe-area': safeAreaInsetBottom }"
-		:style="barStyle"
-	>
+	<view class="mx-tabbar" :class="{ 'mx-tabbar--fixed': fixed, 'mx-tabbar--border': border, 'mx-tabbar--safe-area': safeAreaInsetBottom }" :style="barStyle">
 		<slot />
 	</view>
+
 	<!-- 占位元素：fixed 时生成等高占位，避免内容被遮挡 -->
-	<view
-		v-if="fixed && placeholder"
-		class="mx-tabbar__placeholder"
-		:class="{ 'mx-tabbar--safe-area': safeAreaInsetBottom }"
-	/>
+	<view v-if="fixed && placeholder" class="mx-tabbar__placeholder" :class="{ 'mx-tabbar--safe-area': safeAreaInsetBottom }" />
 </template>
 
 <script setup lang="ts">
 import { computed, provide, ref } from 'vue'
-import { useRoute, type NavigationFailure } from '@meng-xi/uni-router'
+import { type NavigationFailure, useRoute } from '@meng-xi/uni-router'
 import { TABBAR_KEY, type TabBarContext, type TabBarItemProps } from './context'
+import type { TabBarProps, TabBarEmits } from './type'
 
-const props = withDefaults(
-	defineProps<{
-		/** 默认文字颜色 */
-		color?: string
-		/** 选中文字颜色 */
-		selectedColor?: string
-		/** 背景色 */
-		bgColor?: string
-		/** 顶部边框颜色：'black'（默认）或 'white' */
-		borderStyle?: 'black' | 'white'
-		/** 是否固定在底部 */
-		fixed?: boolean
-		/** 是否显示顶部边框 */
-		border?: boolean
-		/** fixed 时是否生成等高占位元素，避免内容被遮挡 */
-		placeholder?: boolean
-		/** 是否开启底部安全区适配 */
-		safeAreaInsetBottom?: boolean
-		/** 元素 z-index */
-		zIndex?: number | string
-		/** 切换前拦截器，返回 false 或 reject 可阻止切换；支持 Promise */
-		beforeChange?: (item: TabBarItemProps, index: number) => boolean | Promise<boolean>
-	}>(),
-	{
-		color: '#7A7E83',
-		selectedColor: '#007AFF',
-		bgColor: '#ffffff',
-		borderStyle: 'black',
-		fixed: true,
-		border: true,
-		placeholder: false,
-		safeAreaInsetBottom: true,
-		zIndex: 999
-	}
-)
+const props = withDefaults(defineProps<TabBarProps>(), {
+	color: '#7A7E83',
+	selectedColor: '#007AFF',
+	bgColor: '#ffffff',
+	borderStyle: 'black',
+	fixed: true,
+	border: true,
+	placeholder: false,
+	safeAreaInsetBottom: true,
+	zIndex: 999
+})
 
-const emit = defineEmits<{
-	/** 点击 tab 切换成功后触发 */
-	change: [item: TabBarItemProps, index: number]
-	/** 导航失败时触发（如守卫中止、重复导航） */
-	error: [error: NavigationFailure]
-}>()
+const emit = defineEmits<TabBarEmits>()
 
 const route = useRoute()
 
@@ -125,12 +90,17 @@ const barStyle = computed(() => {
 defineOptions({ name: 'TabBar' })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+// SCSS 变量（编译时可被前置覆盖，!default 保证默认值）
+$mx-tabbar-height: 50px !default;
+$mx-tabbar-background: #ffffff !default;
+$mx-tabbar-border-color: #e5e5e5 !default;
+
 .mx-tabbar {
 	display: flex;
 	width: 100%;
-	height: var(--mx-tabbar-height, 50px);
-	background-color: #ffffff;
+	height: var(--mx-tabbar-height, #{$mx-tabbar-height});
+	background-color: var(--mx-tabbar-background, #{$mx-tabbar-background});
 }
 
 .mx-tabbar--fixed {
@@ -141,17 +111,17 @@ defineOptions({ name: 'TabBar' })
 }
 
 .mx-tabbar--border {
-	border-top: 1rpx solid #e5e5e5;
+	border-top: 1rpx solid var(--mx-tabbar-border-color, #{$mx-tabbar-border-color});
 }
 
 .mx-tabbar--safe-area {
-	/* 适配 iPhone X 底部安全区域 */
+	// 适配 iPhone X 底部安全区域
 	padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* fixed 模式下的等高占位元素 */
+// fixed 模式下的等高占位元素
 .mx-tabbar__placeholder {
 	width: 100%;
-	height: var(--mx-tabbar-height, 50px);
+	height: var(--mx-tabbar-height, #{$mx-tabbar-height});
 }
 </style>
