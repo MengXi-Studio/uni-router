@@ -1,7 +1,7 @@
 {
 	"name": "@meng-xi/uni-router",
 	"type": "module",
-	"version": "1.10.0",
+	"version": "1.11.0",
 	"private": false,
 	"description": "为 uni-app 提供类似 vue-router 风格的路由管理系统",
 	"keywords": [

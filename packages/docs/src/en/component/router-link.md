@@ -5,7 +5,7 @@ Navigation component that triggers route navigation on click. Built on uni-app's
 ## Import
 
 ```ts
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 ```
 
 ::: info Direct .vue file import
@@ -19,7 +19,7 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 import { createSSRApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 
 export function createApp() {
   const app = createSSRApp(App)
@@ -295,7 +295,7 @@ Default slot for the navigation link content:
 </template>
 
 <script setup lang="ts">
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 </script>
 ```
 
@@ -446,6 +446,6 @@ vue-router's `custom` allows fully custom rendering logic, relying on `<a>` tags
 
 ## Next Steps
 
-- [Router Instance](./router-instance) — Programmatic navigation API
+- [Router Instance](../api/router-instance) — Programmatic navigation API
 - [Route Navigation](../guide/navigation) — Deep dive into the four navigation modes
-- [RouteLocationRaw Type](./type-route-location) — Type definition of the `to` prop
+- [RouteLocationRaw Type](../api/type-route-location) — Type definition of the `to` prop

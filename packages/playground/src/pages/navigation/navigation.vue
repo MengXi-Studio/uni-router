@@ -144,6 +144,20 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">TabBar / TabBarItem 组件</view>
+			<view class="info-text">自定义底部导航栏组件，支持徽标、切换拦截、SCSS 主题定制。此处演示内嵌样式，实际使用通常 fixed 在页面底部。</view>
+			<TabBar :fixed="false" :border="true" selected-color="#007aff" @change="onTabBarChange">
+				<TabBarItem to="/pages/index/index" icon-path="/static/tab/home.svg" selected-icon-path="/static/tab/home-active.svg" text="首页" />
+				<TabBarItem to="/pages/navigation/navigation" icon-path="/static/tab/nav.svg"	 selected-icon-path="/static/tab/nav-active.svg" text="导航" :badge="5" />
+				<TabBarItem to="/pages/about/about" icon-path="/static/tab/user.svg" selected-icon-path="/static/tab/user-active.svg" text="我的" dot />
+			</TabBar>
+			<view class="code-block">
+				&lt;TabBar :fixed="false" @change="onChange"&gt;\n  &lt;TabBarItem to="/pages/index/index" icon-path="/static/home.png" text="首页" /&gt;\n  &lt;TabBarItem to="/pages/msg/msg" text="消息" :badge="5" /&gt;\n  &lt;TabBarItem to="/pages/user/user" text="我的" dot /&gt;\n&lt;/TabBar&gt;
+			</view>
+			<view v-if="tabBarLog" class="info-text" style="color: #34c759">{{ tabBarLog }}</view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">interceptUniApi - 拦截 uni 原生导航 API</view>
 			<view class="info-text">
 				启用 interceptUniApi 后，直接调用 uni.navigateTo / uni.redirectTo / uni.switchTab / uni.reLaunch / uni.navigateBack 将被拦截，自动转为 router.push / replace / relaunch / back，确保路由守卫始终生效。
@@ -168,11 +182,15 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter, NavigationFailure, RouterErrorCode, type EventChannel } from '@meng-xi/uni-router'
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import { useRouter, NavigationFailure, RouterErrorCode, type EventChannel,  } from '@meng-xi/uni-router'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
+import TabBar from '@meng-xi/uni-router/components/tab-bar/tab-bar.vue'
+import TabBarItem from '@meng-xi/uni-router/components/tab-bar-item/tab-bar-item.vue'
+import type { TabBarItemProps } from '@meng-xi/uni-router/components/tab-bar/context'
 
 const router = useRouter()
 const routerLinkLog = ref('')
+const tabBarLog = ref('')
 
 // 代码示例：含 < > 的文本需通过插值输出，避免小程序 WXML 编译器误解析为标签
 const linkAnimationCode = `<RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }"> 底部滑入 </RouterLink>`
@@ -317,5 +335,9 @@ function interceptedNavigateBack() {
 
 function onRouterLinkError(error: NavigationFailure) {
 	uni.showToast({ title: `导航失败: ${error.code}`, icon: 'none' })
+}
+
+function onTabBarChange(item: TabBarItemProps, index: number) {
+	tabBarLog.value = `切换到: ${item.text} (索引: ${index})`
 }
 </script>

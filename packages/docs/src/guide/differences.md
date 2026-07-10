@@ -92,7 +92,7 @@ if (pages.length >= 8) {
 | vue-router 特性 | 原因 |
 | --- | --- |
 | `<router-view>` | uni-app 有自己的页面渲染机制 |
-| `<router-link>` | 支持简化版 [RouterLink](../api/router-link) 组件，基于 `<navigator>` 封装 |
+| `<router-link>` | 支持简化版 [RouterLink](../component/router-link) 组件，基于 `<navigator>` 封装 |
 | 嵌套路由 | uni-app 无嵌套视图 |
 | 命名视图 | uni-app 无多视图支持 |
 | 路由懒加载 `() => import()` | uni-app 有自己的代码分割（分包） |

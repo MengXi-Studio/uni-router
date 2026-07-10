@@ -16,6 +16,7 @@
 				<text class="tag tag-red">错误处理</text>
 				<text class="tag tag-purple">EventChannel</text>
 				<text class="tag tag-blue">params 参数传递</text>
+				<text class="tag tag-green">TabBar / TabBarItem</text>
 			</view>
 		</view>
 
