@@ -16,40 +16,29 @@
 
 </div>
 
-## 介绍
-
-`@meng-xi/uni-router` 是一个为 uni-app 打造的路由管理库，提供 vue-router 风格的 API，让你在 uni-app 中也能享受熟悉的导航体验。
-
 ## 特性
 
-- **vue-router 风格 API** - `push` / `replace` / `relaunch` / `back`，零学习成本
-- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
+- **vue-router 风格 API** - `push` / `replace` / `relaunch` / `back`
+- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`，`guardRoute` 冷启动补执行
 - **命名路由 & 路由元信息** - 通过 `name` 导航，`meta` 携带自定义数据
 - **TypeScript 类型提示** - 路由名称和路径自动补全与类型检查
 - **uni API 拦截** - 可选拦截原生导航 API，统一守卫流程
-- **页面间通信** - 所有导航方式支持 `events` 和 `eventChannel`，`useUniEventChannel` 选项启用内置通信管理器，跨页面双向通信
-- **声明式导航** - `RouterLink` 组件，基于 uni `navigator` 封装，支持导航参数、动画、页面通信
-- **页面参数传递** - `params` 传递复杂数据，不暴露在 URL，支持 `persistent` 持久化
-- **查询参数增强** - `queryInt()` / `queryNumber()` / `queryBool()` 便捷解析
-- **导航动画** - `push` / `replace` / `back` 支持动画参数，仅 App 端生效
-- **路由状态自动同步** - 全局 Mixin 自动调用 `syncRoute()`，处理浏览器后退、物理返回键等场景，业务页面无需手动同步
-- **错误处理** - 完整的 `RouterError` / `NavigationFailure` / `UniApiError` 体系，`onError` 全局捕获，支持 `instanceof` 精准判断
-- **组合式 API** - `useRouter()` / `useRoute()` / `usePageChannel()` 响应式访问路由与页面通信通道
+- **页面间通信** - `useUniEventChannel` 内置通信管理器，所有导航方式支持 `eventChannel`
+- **声明式导航** - `RouterLink` + `TabBar` / `TabBarItem` 组件，支持 SCSS 主题定制
+- **页面参数传递** - `params` 传递复杂数据不暴露 URL，`back()` 后自动保留
+- **查询参数增强** - `queryInt()` / `queryNumber()` / `queryBool()`
+- **导航动画** - `push` / `replace` / `back` 支持动画参数，仅 App 端
+- **路由状态自动同步** - 全局 Mixin 自动 `syncRoute()`，无需手动同步
+- **错误处理** - `RouterError` / `NavigationFailure` / `UniApiError`，支持 `instanceof` 精准判断
+- **组合式 API** - `useRouter()` / `useRoute()` / `usePageChannel()`
 
 ## 安装
 
 ```bash
-# npm
-npm install @meng-xi/uni-router
-
-# yarn
-yarn add @meng-xi/uni-router
-
-# pnpm
 pnpm add @meng-xi/uni-router
 ```
 
-配合 [`@meng-xi/vite-plugin`](https://github.com/MengXi-Studio/vite-plugin) 可从 `pages.json` 自动生成路由配置和类型声明：
+配合 [`@meng-xi/vite-plugin`](https://github.com/MengXi-Studio/vite-plugin) 从 `pages.json` 自动生成路由配置和类型声明：
 
 ```bash
 pnpm add @meng-xi/vite-plugin -D
@@ -57,30 +46,7 @@ pnpm add @meng-xi/vite-plugin -D
 
 ## 快速开始
 
-### 1. 配置 vite.config.ts
-
-```typescript
-import { defineConfig } from 'vite'
-import uni from '@dcloudio/vite-plugin-uni'
-import { generateRouter } from '@meng-xi/vite-plugin'
-
-export default defineConfig({
-	plugins: [
-		uni(),
-		generateRouter({
-			pagesJsonPath: 'src/pages.json',
-			outputPath: 'src/router.config.ts',
-			dts: true, // 自动生成类型声明
-			metaMapping: {
-				navigationBarTitleText: 'title',
-				requireAuth: 'requireAuth'
-			}
-		})
-	]
-})
-```
-
-### 2. 创建路由器
+### 1. 创建路由器
 
 ```typescript
 // src/main.ts
@@ -91,56 +57,53 @@ import App from './App.vue'
 
 const router = createRouter({
 	routes,
-	strict: true,
-	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫生效
-	guardTimeout: 15000, // 守卫超时时间（毫秒），默认 10000
-	readyTimeout: 5000 // 就绪超时时间（毫秒），默认 0 表示永不超时
+	interceptUniApi: true // 拦截 uni 原生导航 API，确保守卫生效
 })
 
 export function createApp() {
 	const app = createSSRApp(App)
-	app.use(router) // 自动注册全局 mixin，页面 onShow 时自动同步 currentRoute
+	app.use(router) // 自动注册全局 mixin，onShow 时同步 currentRoute
 	return { app }
 }
 ```
 
-### 3. 路由导航
+### 2. 路由导航
 
 ```typescript
-import { useRouter, useRoute } from '@meng-xi/uni-router'
-
 const router = useRouter()
-const route = useRoute() // 返回响应式引用，路由变化时自动更新
 
-// 路径导航
 await router.push({ path: '/pages/about/about', query: { id: '1' } })
-
-// 命名导航
 await router.push({ name: 'about' })
-
-// 页面参数传递（params 不暴露在 URL，支持复杂数据）
 await router.push({ path: '/pages/detail/detail', params: { info: { name: 'Tom' } } })
-
-// 返回（执行完整守卫链，自动保留上一页 params）
 await router.back()
 ```
 
-### 4. 路由守卫
+### 3. 路由守卫
 
 ```typescript
 router.beforeEach((to, from, next) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		// 使用 replace 模式重定向，避免登录页之后残留受保护页面的历史
-		next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
+		next({ name: 'login' }, { mode: 'replace' })
 	} else {
 		next()
 	}
 })
 ```
 
-## 文档
+### 4. 组件
 
-完整的 API 参考、使用指南和示例请查阅官方网站：
+```vue
+<!-- RouterLink：声明式导航 -->
+<RouterLink :to="{ name: 'about' }">关于</RouterLink>
+
+<!-- TabBar / TabBarItem：自定义底部导航 -->
+<TabBar>
+	<TabBarItem to="/pages/index/index" icon-path="/static/home.png" text="首页" />
+	<TabBarItem to="/pages/about/about" icon-path="/static/user.png" text="我的" dot />
+</TabBar>
+```
+
+## 文档
 
 📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 

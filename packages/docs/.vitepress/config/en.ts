@@ -36,6 +36,10 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 				link: '/en/guide/getting-started'
 			},
 			{
+				text: 'Components',
+				link: '/en/component/router-link'
+			},
+			{
 				text: 'API',
 				link: '/en/api/create-router'
 			},
@@ -142,6 +146,30 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 					]
 				}
 			],
+			'/en/component/': [
+				{
+					text: 'Navigation',
+					items: [
+						{
+							text: 'RouterLink',
+							link: '/en/component/router-link'
+						}
+					]
+				},
+				{
+					text: 'TabBar',
+					items: [
+						{
+							text: 'TabBar',
+							link: '/en/component/tab-bar'
+						},
+						{
+							text: 'TabBarItem',
+							link: '/en/component/tab-bar-item'
+						}
+					]
+				}
+			],
 			'/en/api/': [
 				{
 					text: 'Core API',
@@ -165,10 +193,6 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: 'usePageChannel()',
 							link: '/en/api/use-page-channel'
-						},
-						{
-							text: 'RouterLink',
-							link: '/en/api/router-link'
 						}
 					]
 				},

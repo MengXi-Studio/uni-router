@@ -554,4 +554,4 @@ router.beforeEach((to, from, next) => {
 
 - [useRoute()](./use-route) — 在组件中获取路由信息
 - [Router 实例](./router-instance) — 导航方法详解
-- [RouterLink 组件](./router-link) — 声明式导航
+- [RouterLink 组件](../component/router-link) — 声明式导航

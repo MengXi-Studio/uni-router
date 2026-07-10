@@ -16,36 +16,25 @@
 
 </div>
 
-## Introduction
-
-`@meng-xi/uni-router` is a routing management library for uni-app that provides a vue-router-style API, bringing the familiar navigation experience to uni-app.
-
 ## Features
 
-- **vue-router-style API** - `push` / `replace` / `relaunch` / `back`, zero learning curve
-- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
+- **vue-router-style API** - `push` / `replace` / `relaunch` / `back`
+- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`, `guardRoute` for cold-start execution
 - **Named Routes & Route Meta** - Navigate by `name`, carry custom data via `meta`
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths
 - **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
-- **Page Communication** - All navigation methods support `events` and `eventChannel`; `useUniEventChannel` option enables built-in communication manager for cross-page bidirectional communication
-- **Declarative Navigation** - `RouterLink` component, wraps uni `navigator`, supports navigation params, animation, page communication
-- **Page Params** - `params` passes complex data without exposing in URL, supports `persistent` storage
-- **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()` convenience methods
+- **Page Communication** - `useUniEventChannel` built-in manager, all navigation methods support `eventChannel`
+- **Declarative Navigation** - `RouterLink` + `TabBar` / `TabBarItem` components with SCSS theming
+- **Page Params** - `params` passes complex data without URL exposure, auto-preserved after `back()`
+- **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()`
 - **Navigation Animation** - `push` / `replace` / `back` support animation params, App only
-- **Auto Route State Sync** - Global mixin auto-invokes `syncRoute()` to handle browser back, physical back button, etc. No manual sync needed in pages
-- **Error Handling** - Complete `RouterError` / `NavigationFailure` / `UniApiError` system with `onError` global capture, supports `instanceof` for precise discrimination
-- **Composables** - `useRouter()` / `useRoute()` / `usePageChannel()` for reactive router and page channel access
+- **Auto Route State Sync** - Global mixin auto-invokes `syncRoute()`, no manual sync needed
+- **Error Handling** - `RouterError` / `NavigationFailure` / `UniApiError`, supports `instanceof` discrimination
+- **Composables** - `useRouter()` / `useRoute()` / `usePageChannel()`
 
 ## Installation
 
 ```bash
-# npm
-npm install @meng-xi/uni-router
-
-# yarn
-yarn add @meng-xi/uni-router
-
-# pnpm
 pnpm add @meng-xi/uni-router
 ```
 
@@ -57,30 +46,7 @@ pnpm add @meng-xi/vite-plugin -D
 
 ## Quick Start
 
-### 1. Configure vite.config.ts
-
-```typescript
-import { defineConfig } from 'vite'
-import uni from '@dcloudio/vite-plugin-uni'
-import { generateRouter } from '@meng-xi/vite-plugin'
-
-export default defineConfig({
-	plugins: [
-		uni(),
-		generateRouter({
-			pagesJsonPath: 'src/pages.json',
-			outputPath: 'src/router.config.ts',
-			dts: true, // Auto-generate type declarations
-			metaMapping: {
-				navigationBarTitleText: 'title',
-				requireAuth: 'requireAuth'
-			}
-		})
-	]
-})
-```
-
-### 2. Create Router
+### 1. Create Router
 
 ```typescript
 // src/main.ts
@@ -91,10 +57,7 @@ import App from './App.vue'
 
 const router = createRouter({
 	routes,
-	strict: true,
-	interceptUniApi: true, // Intercept uni native navigation APIs to ensure guards work
-	guardTimeout: 15000, // Guard timeout in ms, default 10000
-	readyTimeout: 5000 // Ready timeout in ms, default 0 means never timeout
+	interceptUniApi: true // Intercept uni native navigation APIs to ensure guards work
 })
 
 export function createApp() {
@@ -104,43 +67,43 @@ export function createApp() {
 }
 ```
 
-### 3. Route Navigation
+### 2. Route Navigation
 
 ```typescript
-import { useRouter, useRoute } from '@meng-xi/uni-router'
-
 const router = useRouter()
-const route = useRoute() // Returns reactive ref, auto-updates on route changes
 
-// Path navigation
 await router.push({ path: '/pages/about/about', query: { id: '1' } })
-
-// Named navigation
 await router.push({ name: 'about' })
-
-// Page params (not exposed in URL, supports complex data)
 await router.push({ path: '/pages/detail/detail', params: { info: { name: 'Tom' } } })
-
-// Go back (executes full guard chain, automatically preserves previous page's params)
 await router.back()
 ```
 
-### 4. Route Guards
+### 3. Route Guards
 
 ```typescript
 router.beforeEach((to, from, next) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		// Use replace mode to avoid extra history pages after the login page
-		next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
+		next({ name: 'login' }, { mode: 'replace' })
 	} else {
 		next()
 	}
 })
 ```
 
-## Documentation
+### 4. Components
 
-For complete API reference, usage guides, and examples, please visit the official website:
+```vue
+<!-- RouterLink: declarative navigation -->
+<RouterLink :to="{ name: 'about' }">About</RouterLink>
+
+<!-- TabBar / TabBarItem: custom bottom navigation -->
+<TabBar>
+  <TabBarItem to="/pages/index/index" icon-path="/static/home.png" text="Home" />
+  <TabBarItem to="/pages/about/about" icon-path="/static/user.png" text="Profile" dot />
+</TabBar>
+```
+
+## Documentation
 
 📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 

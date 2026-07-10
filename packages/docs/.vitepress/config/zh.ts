@@ -32,6 +32,7 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 		/** 网站主题配置 导航栏 */
 		nav: [
 			{ text: '指南', link: '/guide/getting-started' },
+			{ text: '组件', link: '/component/router-link' },
 			{ text: 'API', link: '/api/create-router' },
 			{
 				text: '相关链接',
@@ -136,6 +137,30 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 					]
 				}
 			],
+			'/component/': [
+				{
+					text: '导航组件',
+					items: [
+						{
+							text: 'RouterLink',
+							link: '/component/router-link'
+						}
+					]
+				},
+				{
+					text: 'TabBar 组件',
+					items: [
+						{
+							text: 'TabBar',
+							link: '/component/tab-bar'
+						},
+						{
+							text: 'TabBarItem',
+							link: '/component/tab-bar-item'
+						}
+					]
+				}
+			],
 			'/api/': [
 				{
 					text: '核心 API',
@@ -159,10 +184,6 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: 'usePageChannel()',
 							link: '/api/use-page-channel'
-						},
-						{
-							text: 'RouterLink',
-							link: '/api/router-link'
 						}
 					]
 				},

@@ -446,6 +446,6 @@ vue-router's `custom` allows fully custom rendering logic, relying on `<a>` tags
 
 ## Next Steps
 
-- [Router Instance](./router-instance) — Programmatic navigation API
+- [Router Instance](../api/router-instance) — Programmatic navigation API
 - [Route Navigation](../guide/navigation) — Deep dive into the four navigation modes
-- [RouteLocationRaw Type](./type-route-location) — Type definition of the `to` prop
+- [RouteLocationRaw Type](../api/type-route-location) — Type definition of the `to` prop
