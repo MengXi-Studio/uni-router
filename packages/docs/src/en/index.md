@@ -28,18 +28,26 @@ features:
     details: push / replace / relaunch / back, auto-detect TabBar, declarative RouterLink
   - icon: 🛡️
     title: Route Guards
-    details: Global beforeEach / beforeResolve / afterEach and per-route guards, intercept native APIs
+    details: Global beforeEach / beforeResolve / afterEach and per-route guards, guardRoute for cold-start execution, intercept native APIs
   - icon: 📦
     title: Params & Query Enhancement
-    details: params for complex data, queryInt / queryNumber / queryBool convenience methods
+    details: params for complex data without URL exposure, auto-preserved after back(), queryInt / queryNumber / queryBool convenience methods
   - icon: 📡
     title: Page Communication
-    details: events and eventChannel bidirectional communication; useUniEventChannel supports all navigation methods
+    details: events and eventChannel bidirectional communication; useUniEventChannel supports all navigation methods; sticky cache prevents event loss
+  - icon: 🧩
+    title: Declarative Components
+    details: RouterLink navigation + TabBar / TabBarItem custom bottom navigation, SCSS variables and CSS custom properties for theming
+  - icon: 🔄
+    title: Auto Route State Sync
+    details: Global mixin auto-invokes syncRoute(), handles browser back, physical back button, etc. No manual sync needed
+  - icon: ⚠️
+    title: Error Handling
+    details: RouterError / NavigationFailure / UniApiError complete system, onError global capture, instanceof discrimination
   - icon: 🎬
     title: Navigation Animation
     details: Inline animation params and route-level meta.animation defaults, App only
   - icon: 💪
     title: TypeScript First
-    details: Complete type definitions and composables, seamlessly integrate with Vue 3
+    details: Complete type definitions and composables, useRouter / useRoute / usePageChannel, seamlessly integrate with Vue 3
 ---
-

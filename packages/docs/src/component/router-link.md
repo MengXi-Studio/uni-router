@@ -5,7 +5,7 @@
 ## 引入
 
 ```ts
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 ```
 
 ::: info 直接引入 .vue 文件
@@ -19,7 +19,7 @@ import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
 import { createSSRApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 
 export function createApp() {
   const app = createSSRApp(App)
@@ -295,7 +295,7 @@ function onNavigated(eventChannel) {
 </template>
 
 <script setup lang="ts">
-import RouterLink from '@meng-xi/uni-router/components/RouterLink.vue'
+import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 </script>
 ```
 
@@ -446,6 +446,6 @@ vue-router 的 `custom` 允许完全自定义渲染逻辑，依赖 `<a>` 标签�
 
 ## 下一步
 
-- [Router 实例](./router-instance) — 编程式导航 API
+- [Router 实例](../api/router-instance) — 编程式导航 API
 - [路由导航](../guide/navigation) — 四种导航方式的深入讲解
-- [RouteLocationRaw 类型](./type-route-location) — `to` 属性的类型定义
+- [RouteLocationRaw 类型](../api/type-route-location) — `to` 属性的类型定义

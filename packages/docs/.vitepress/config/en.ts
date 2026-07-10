@@ -1,7 +1,7 @@
 import type { DefaultTheme, LocaleSpecificConfig } from 'vitepress'
 import { versionNav } from './shared'
 
-export const META_URL = 'https://mengxi-studio.github.io/uni-router/en/'
+export const META_URL = 'https://mengxi-studio.github.io/uni-router/v1/en/'
 export const META_TITLE = 'Uni Router'
 export const META_DESCRIPTION = 'Provide a routing management system for uni-app that is similar to the style of vue-router'
 
@@ -34,6 +34,10 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 			{
 				text: 'Guide',
 				link: '/en/guide/getting-started'
+			},
+			{
+				text: 'Components',
+				link: '/en/component/router-link'
 			},
 			{
 				text: 'API',
@@ -142,6 +146,30 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 					]
 				}
 			],
+			'/en/component/': [
+				{
+					text: 'Navigation',
+					items: [
+						{
+							text: 'RouterLink',
+							link: '/en/component/router-link'
+						}
+					]
+				},
+				{
+					text: 'TabBar',
+					items: [
+						{
+							text: 'TabBar',
+							link: '/en/component/tab-bar'
+						},
+						{
+							text: 'TabBarItem',
+							link: '/en/component/tab-bar-item'
+						}
+					]
+				}
+			],
 			'/en/api/': [
 				{
 					text: 'Core API',
@@ -165,10 +193,6 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: 'usePageChannel()',
 							link: '/en/api/use-page-channel'
-						},
-						{
-							text: 'RouterLink',
-							link: '/en/api/router-link'
 						}
 					]
 				},
