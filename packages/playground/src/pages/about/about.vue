@@ -18,8 +18,9 @@
 				<text class="tag tag-red">错误处理</text>
 				<text class="tag tag-blue">路由元信息</text>
 				<text class="tag tag-green">RouterLink 组件</text>
-				<text class="tag tag-orange">uni API 拦截</text>
-				<text class="tag tag-purple">params 参数传递</text>
+				<text class="tag tag-orange">TabBar / TabBarItem</text>
+				<text class="tag tag-purple">uni API 拦截</text>
+				<text class="tag tag-blue">params 参数传递</text>
 			</view>
 		</view>
 
