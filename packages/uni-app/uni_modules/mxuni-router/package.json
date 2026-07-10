@@ -13,8 +13,8 @@
 	"repository": "https://github.com/MengXi-Studio/uni-router",
 	"engines": {
 		"HBuilderX": "^3.1.0",
-		"uni-app": "^3.7.12",
-		"uni-app-x": "^3.7.12"
+		"uni-app": "^3.7.10",
+		"uni-app-x": "^3.7.10"
 	},
 	"dcloudext": {
 		"type": "component-vue",
