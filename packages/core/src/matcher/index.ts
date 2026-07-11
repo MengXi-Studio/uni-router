@@ -3,9 +3,8 @@ import { RouterErrorCode } from '@/types/error'
 import { RouterError } from '@/errors'
 import { buildFullPath, parseQuery, normalizePath, createRouteLocation, serializeQuery } from '@/utils'
 import { warn, isObject } from '@/utils/general'
-import type { ParamsManager } from '@/params'
-import { PARAMS_KEY } from '@/params'
-import { NAV_ID_KEY } from '@/channel'
+import type { ParamsManager } from '@/plugins/params/params-manager'
+import { PARAMS_KEY } from '@/plugins/params/params-manager'
 
 /**
  * 路由匹配器接口，负责路由的查找和解析
@@ -177,11 +176,13 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean, param
 	}
 
 	/**
-	 * 从 query 中提取 __params_key 和 __nav_id，并从 ParamsManager 读取 params
+	 * 从 query 中提取 __params_key，并从 ParamsManager 读取 params
 	 * 提取后从 query 中移除内部 key，避免暴露给用户
 	 *
 	 * 使用 peek 而非 get，因为 resolve 在导航执行前调用，
 	 * 此时目标页面尚未入栈，get 的惰性清理会误删 params。
+	 *
+	 * 注意：__nav_id 的提取已移至 ChannelPlugin 的 routeSync hook
 	 */
 	function extractParams(query: Record<string, string>): ParamObject | undefined {
 		const params: ParamObject = {}
@@ -192,13 +193,6 @@ export function createRouteMatcher(routes: RouteConfig[], strict: boolean, param
 			delete query[PARAMS_KEY]
 			const stored = paramsManager.peek(decodeURIComponent(key))
 			if (stored) Object.assign(params, stored)
-		}
-
-		// 提取 __nav_id 并写入 params.__navId，供 usePageChannel() 读取
-		const navId = query[NAV_ID_KEY]
-		if (navId) {
-			delete query[NAV_ID_KEY]
-			params.__navId = decodeURIComponent(navId)
 		}
 
 		return Object.keys(params).length > 0 ? params : undefined

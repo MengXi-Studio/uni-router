@@ -275,6 +275,10 @@ export interface NavigationResult extends RouteLocation {
 
 /**
  * 基于路径的原始路由位置
+ *
+ * 核心类型仅包含 path 和 query。
+ * 插件扩展字段（params、persistent、animation、events）通过插件机制启用，
+ * 类型始终声明在此以提供完整的类型提示（运行时行为由插件控制）。
  */
 export interface RouteLocationPathRaw {
 	/** 目标路径 */
@@ -283,17 +287,17 @@ export interface RouteLocationPathRaw {
 	/** 查询参数，值支持 string / number / boolean，内部自动序列化为字符串 */
 	query?: Record<string, QueryValue>
 
-	/** 页面参数，支持复杂数据（仅 JSON 可序列化值），接受 `interface` 对象 */
+	/** 页面参数，支持复杂数据（仅 JSON 可序列化值），接受 `interface` 对象（需 ParamsPlugin） */
 	params?: ParamsInput
 
-	/** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
+	/** 页面参数是否持久化到 storage（默认 false，仅内存存储）（需 ParamsPlugin） */
 	persistent?: boolean
 
-	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
+	/** 导航动画（仅 App 端生效），覆盖 meta.animation（需 AnimationPlugin） */
 	animation?: NavigationAnimation
 
 	/**
-	 * 页面间通信事件监听器（仅 push 时生效）
+	 * 页面间通信事件监听器（仅 push 时生效）（需 ChannelPlugin）
 	 *
 	 * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
 	 * 其他导航方式（replace / relaunch）不支持 events，传入时将被忽略。
@@ -303,6 +307,10 @@ export interface RouteLocationPathRaw {
 
 /**
  * 基于名称的原始路由位置
+ *
+ * 核心类型仅包含 name 和 query。
+ * 插件扩展字段（params、persistent、animation、events）通过插件机制启用，
+ * 类型始终声明在此以提供完整的类型提示（运行时行为由插件控制）。
  */
 export interface RouteLocationNamedRaw {
 	/** 目标路由名称 */
@@ -311,17 +319,17 @@ export interface RouteLocationNamedRaw {
 	/** 查询参数，值支持 string / number / boolean，内部自动序列化为字符串 */
 	query?: Record<string, QueryValue>
 
-	/** 页面参数，支持复杂数据（仅 JSON 可序列化值），接受 `interface` 对象 */
+	/** 页面参数，支持复杂数据（仅 JSON 可序列化值），接受 `interface` 对象（需 ParamsPlugin） */
 	params?: ParamsInput
 
-	/** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
+	/** 页面参数是否持久化到 storage（默认 false，仅内存存储）（需 ParamsPlugin） */
 	persistent?: boolean
 
-	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
+	/** 导航动画（仅 App 端生效），覆盖 meta.animation（需 AnimationPlugin） */
 	animation?: NavigationAnimation
 
 	/**
-	 * 页面间通信事件监听器（仅 push 时生效）
+	 * 页面间通信事件监听器（仅 push 时生效）（需 ChannelPlugin）
 	 *
 	 * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
 	 * 其他导航方式（replace / relaunch）不支持 events，传入时将被忽略。

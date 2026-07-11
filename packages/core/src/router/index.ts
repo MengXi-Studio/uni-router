@@ -1,18 +1,17 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, NavigationResult, EventChannel, EventListeners, Router, RouterOnError, RouterOptions, GuardRouteOptions } from '@/types'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, NavigationResult, EventChannel, Router, RouterOnError, RouterOptions, GuardRouteOptions } from '@/types'
+import type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from '@/plugin'
 import type { App } from 'vue'
 import { RouterErrorCode } from '@/types/error'
 import { NavigationFailure, RouterError, isUniApiError } from '@/errors'
 import { createGuardManager, type GuardResult } from '@/guard'
 import { navigateTo, replaceTo, relaunchTo, goBack } from '@/navigation'
+import type { UniNavigationOptions } from '@/navigation'
 import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/navigation/context'
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
-import { installInterceptors, removeInterceptors } from '@/interceptor'
-import { createParamsManager, PARAMS_KEY } from '@/params'
-import type { ParamsManager } from '@/params'
-import { UniEventChannel, generateNavId, registerChannel, destroyChannel } from '@/channel'
-import { warn } from '@/utils'
-import { extractAnimation, extractEvents, extractParamsKey, extractNavId, enrichLocationWithParams, enrichLocationWithNavId, isSameRouteLocation } from './location'
+import { createParamsManager } from '@/plugins/params/params-manager'
+import type { ParamsManager } from '@/plugins/params/params-manager'
+import { isSameRouteLocation } from './location'
 import { createRouteSync, type RouteSync } from './sync'
 
 /**
@@ -21,11 +20,24 @@ import { createRouteSync, type RouteSync } from './sync'
 const MAX_REDIRECT_DEPTH = 10
 
 /**
+ * Hook 类型定义
+ */
+type EnrichLocationHook = (location: RouteLocationRaw) => RouteLocationRaw
+type AfterResolveHook = (enrichedLocation: RouteLocationRaw, pluginData: Record<string, any>) => void
+type PrepareNavigationHook = (ctx: NavigationPrepareContext) => void
+type CompleteNavigationHook = (ctx: NavigationCompleteContext) => void
+type NavigationAbortHook = (pluginData: Record<string, any>) => void
+type RouteSyncHook = (query: Record<string, string>, params: Record<string, any>) => void
+type AppInstallHook = (app: App) => void
+
+/**
  * uni-app 路由器实现类
  *
  * 提供路由导航、守卫注册、状态查询和 Vue 插件安装能力。
  * 基于 uni-app 原生导航 API（navigateTo / redirectTo / switchTab / navigateBack）实现，
  * 遵循 uni-app 的静态页面模型（pages.json）。
+ *
+ * 核心仅提供基础导航能力，所有扩展功能通过插件注册的 hook 实现。
  */
 class UniRouter implements Router {
 	private routeState = createRouteState()
@@ -35,27 +47,87 @@ class UniRouter implements Router {
 	private routeSync!: RouteSync
 	private errorHandlers: RouterOnError[] = []
 	private pendingNavigation: Promise<NavigationResult | RouteLocation | void> | null = null
-	private _interceptUniApi: boolean
-	private _useUniEventChannel: boolean
+
+	// 插件 hook 数组
+	private enrichLocationHooks: EnrichLocationHook[] = []
+	private afterResolveHooks: AfterResolveHook[] = []
+	private prepareNavigationHooks: PrepareNavigationHook[] = []
+	private completeNavigationHooks: CompleteNavigationHook[] = []
+	private navigationAbortHooks: NavigationAbortHook[] = []
+	private routeSyncHooks: RouteSyncHook[] = []
+	private appInstallHooks: AppInstallHook[] = []
 
 	/**
 	 * @param options - 路由器初始化选项
 	 */
 	constructor(options: RouterOptions) {
 		this.guardManager = createGuardManager(options.guardTimeout)
-		this.paramsManager = createParamsManager(options.paramsPersistent ?? false)
+		this.paramsManager = createParamsManager(false)
 		this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager)
 		this.routeState = createRouteState(options.readyTimeout)
-		this.routeSync = createRouteSync(this.routeState, this.matcher, this.paramsManager)
-		this._interceptUniApi = options.interceptUniApi ?? false
-		this._useUniEventChannel = options.useUniEventChannel ?? false
+
+		// 安装插件：插件通过 PluginContext 注册 hook
+		this.installPlugins(options.plugins ?? [], options)
+
+		// 路由同步模块需要在插件安装后创建（routeSyncHooks 已填充）
+		this.routeSync = createRouteSync(
+			this.routeState,
+			this.matcher,
+			() => this.paramsManager.cleanupStale(),
+			(query, params) => {
+				for (const hook of this.routeSyncHooks) {
+					hook(query, params)
+				}
+			}
+		)
 
 		// 路由器初始化时清理所有残留 params（上次运行可能残留 storage 数据）
 		this.paramsManager.cleanupAll()
 
 		this.initRoute()
-		if (this._interceptUniApi) {
-			installInterceptors(this)
+	}
+
+	/**
+	 * 安装插件并注册 hook
+	 */
+	private installPlugins(plugins: RouterPlugin[], options: RouterOptions): void {
+		const self = this
+		const context: PluginContext = {
+			onEnrichLocation: hook => {
+				this.enrichLocationHooks.push(hook)
+			},
+			onAfterResolve: hook => {
+				this.afterResolveHooks.push(hook)
+			},
+			onPrepareNavigation: hook => {
+				this.prepareNavigationHooks.push(hook)
+			},
+			onCompleteNavigation: hook => {
+				this.completeNavigationHooks.push(hook)
+			},
+			onNavigationAbort: hook => {
+				this.navigationAbortHooks.push(hook)
+			},
+			onRouteSync: hook => {
+				this.routeSyncHooks.push(hook)
+			},
+			onAppInstall: hook => {
+				this.appInstallHooks.push(hook)
+			},
+			get currentRoute() {
+				return self.routeState.getCurrentRoute()
+			},
+			resolve: location => self.matcher.resolve(location),
+			get router() {
+				return self as unknown as Router
+			},
+			get paramsManager() {
+				return self.paramsManager
+			}
+		}
+
+		for (const plugin of plugins) {
+			plugin.install(context, options)
 		}
 	}
 
@@ -91,7 +163,7 @@ class UniRouter implements Router {
 	 * 替换 TabBar 页面时将关闭所有非 Tab 页面。
 	 *
 	 * @param location - 目标路由位置
-	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel（useUniEventChannel: true 时）
+	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
 	replace(location: RouteLocationRaw): Promise<NavigationResult> {
@@ -106,7 +178,7 @@ class UniRouter implements Router {
 	 * reLaunch 不支持动画参数，传入时将输出警告。
 	 *
 	 * @param location - 目标路由位置
-	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel（useUniEventChannel: true 时）
+	 * @returns 导航结果，包含目标路由位置和可选的 eventChannel
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
 	relaunch(location: RouteLocationRaw): Promise<NavigationResult> {
@@ -123,12 +195,11 @@ class UniRouter implements Router {
 	 * 对于原生返回，需依赖 syncRoute() + afterEach 做事后处理。
 	 *
 	 * @param delta - 返回的页面数，默认为 1
-	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
+	 * @param options - 额外选项（AnimationPlugin 通过模块增强添加 animation 字段）
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
-	async back(delta: number = 1, animation?: NavigationAnimation): Promise<RouteLocation> {
+	async back(delta: number = 1, options?: Record<string, any>): Promise<RouteLocation> {
 		// 等待前一次导航完成（无论成功或失败），避免并发导航
-		// 错误已通过 onError 机制通知，此处无需再处理
 		if (this.pendingNavigation) {
 			await this.pendingNavigation.catch(() => {})
 		}
@@ -148,25 +219,53 @@ class UniRouter implements Router {
 		const targetPath = `/${targetPage.route}`
 		const to = this.matcher.resolve(targetPath)
 
-		// 动画优先级：调用时传入 > 目标页面 meta.animation > uni 默认值
-		const effectiveAnimation = animation ?? to.meta.animation
+		// 插件数据（back 模式不经过 enrichLocation/afterResolve，pluginData 为空）
+		const pluginData: Record<string, any> = {}
 
 		// 执行守卫链
 		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
-		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0, effectiveAnimation)
+		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0, pluginData)
 		if (handled) return handled as unknown as Promise<RouteLocation>
 
 		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
-		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'back', 0, effectiveAnimation)
+		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'back', 0, pluginData)
 		if (handledResolve) return handledResolve as unknown as Promise<RouteLocation>
+
+		// 调用 prepareNavigation hooks（插件修改 navOptions，如 AnimationPlugin 注入动画）
+		const navOptions: UniNavigationOptions = {
+			path: to.path,
+			meta: to.meta,
+			query: { ...to.query },
+			animation: to.meta.animation
+		}
+
+		// 将 back() 的 options 中的 animation 注入 pluginData，供 AnimationPlugin 读取
+		if (options && 'animation' in options) {
+			pluginData['animation'] = { animation: (options as { animation?: NavigationAnimation }).animation }
+		}
+
+		const prepareCtx: NavigationPrepareContext = {
+			to,
+			from,
+			mode: 'back',
+			pluginData,
+			query: navOptions.query!,
+			options: navOptions
+		}
+		for (const hook of this.prepareNavigationHooks) {
+			hook(prepareCtx)
+		}
+
+		const animation = navOptions.animation
 
 		// 守卫通过，执行返回
 		try {
-			await goBack(delta, effectiveAnimation)
+			await goBack(delta, animation)
 			this.routeSync.syncCurrentRoute()
 			this.guardManager.runAfterGuards(to, from)
 			return this.routeState.getCurrentRoute()
 		} catch (error) {
+			this.runAbortHooks(pluginData)
 			const code = RouterErrorCode.NAVIGATION_API_ERROR
 			const cause = isUniApiError(error) ? error : undefined
 			const failure = new NavigationFailure(to, from, code, undefined, cause)
@@ -272,10 +371,6 @@ class UniRouter implements Router {
 	 *
 	 * 路由器 install 时通过全局 mixin 在每个页面 onShow 自动调用此方法。
 	 * 若需在 onLoad 中获取路由信息，可手动调用（onLoad 早于 onShow）。
-	 *
-	 * 当页面通过浏览器后退、物理返回键等非路由器方式切换时，
-	 * 路由器的 currentRoute 可能与实际页面不同步。
-	 * 调用此方法将从 uni-app 页面栈中读取当前页面信息并更新路由状态。
 	 */
 	syncRoute(): void {
 		this.routeSync.syncRoute()
@@ -287,10 +382,6 @@ class UniRouter implements Router {
 	 * 用于冷启动场景：用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，
 	 * 页面由 uni-app 框架直接加载，不经过路由器导航，守卫（beforeEach 等）未执行。
 	 * 调用此方法可对当前页面补执行守卫链，按守卫结果决定是否重定向。
-	 *
-	 * - 守卫放行：不执行任何导航，resolve 目标路由
-	 * - 守卫重定向：按守卫指定的方式（默认 relaunch）跳转到重定向目标
-	 * - 守卫中止：调用 onAbort 回调（若提供），并 reject NavigationFailure
 	 *
 	 * @param location - 目标路由位置，不传时默认检查当前路由
 	 * @param options - 选项，可传入 onAbort 回调处理守卫中止
@@ -324,15 +415,6 @@ class UniRouter implements Router {
 
 	/**
 	 * 处理 guardRoute 的守卫执行结果
-	 *
-	 * 与 handleGuardResult 不同，此方法在守卫放行时不执行导航（页面已加载），
-	 * 仅在重定向时委托给 push/replace/relaunch 执行实际跳转。
-	 *
-	 * @param result - 守卫执行结果
-	 * @param to - 目标路由
-	 * @param from - 来源路由
-	 * @param options - guardRoute 选项
-	 * @returns 中止或重定向时返回 Promise，放行时返回 null
 	 */
 	private handleGuardRouteResult(result: GuardResult, to: RouteLocation, from: RouteLocation, options?: GuardRouteOptions): Promise<RouteLocation> | null {
 		if (result.type === 'abort') {
@@ -343,7 +425,6 @@ class UniRouter implements Router {
 		}
 
 		if (result.redirect) {
-			// 冷启动重定向：默认 relaunch（清空栈，避免返回受保护页面）
 			const mode = result.mode ?? 'relaunch'
 			if (mode === 'replace') {
 				return this.replace(result.redirect)
@@ -366,11 +447,10 @@ class UniRouter implements Router {
 	 * @param app - Vue 应用实例
 	 */
 	install(app: App): void {
-		// 通过 provide/inject 机制提供路由器，使 useRouter()/useRoute() 可用
+		// 通过 provide/inject 机制提供路由器
 		app.provide(ROUTER_SYMBOL, this)
 
 		// 仅在 $router 和 $route 未被定义时设置全局属性
-		// 避免与 uni-app H5 内置的 vue-router 冲突
 		if (!('$router' in app.config.globalProperties)) {
 			app.config.globalProperties.$router = this
 		}
@@ -382,16 +462,12 @@ class UniRouter implements Router {
 			})
 		}
 
-		if (this._interceptUniApi) {
-			// app.onUnmount 是 Vue 3.5+ API，uni-app 可能不支持
-			// 在 uni-app 中应用不会真正卸载，拦截器无需清理
-			if (typeof app.onUnmount === 'function') {
-				app.onUnmount(() => removeInterceptors())
-			}
+		// 调用插件的 appInstall hook
+		for (const hook of this.appInstallHooks) {
+			hook(app)
 		}
 
 		// 通过全局 mixin 在页面 onShow 时自动同步路由状态
-		// syncRoute 有去重（路径+query 相同则跳过），mixin 钩子先于组件自身钩子执行
 		const router = this
 		app.mixin({
 			onShow() {
@@ -399,15 +475,12 @@ class UniRouter implements Router {
 			}
 		})
 
-		// 在 install 时标记路由器就绪，确保 isReady() 回调在所有插件安装完成后执行
+		// 在 install 时标记路由器就绪
 		this.routeState.markReady()
 	}
 
 	/**
 	 * 根据当前页面栈初始化路由状态
-	 *
-	 * 若页面栈为空（如首次启动），将路由初始化为根路径 `/`。
-	 * 否则从当前页面获取路径、元信息和查询参数。
 	 */
 	private initRoute(): void {
 		if (getPageStackLength() === 0) {
@@ -433,60 +506,37 @@ class UniRouter implements Router {
 	 * @throws {NavigationFailure} 导航失败时抛出
 	 */
 	private async performNavigation(location: RouteLocationRaw, mode: 'push' | 'replace' | 'relaunch'): Promise<NavigationResult> {
-		// 等待前一次导航完成（无论成功或失败），避免并发导航
-		// 错误已通过 onError 机制通知，此处无需再处理
+		// 等待前一次导航完成
 		if (this.pendingNavigation) {
 			await this.pendingNavigation.catch(() => {})
 		}
 
-		// 在 resolve 前处理 params：存入 ParamsManager 并将 key 注入 location
-		let enrichedLocation = enrichLocationWithParams(location, this.paramsManager)
-
-		// useUniEventChannel 模式：生成 navId 并注入 query，使所有导航方式都支持页面通信
-		let navId: string | undefined
-		let internalChannel: UniEventChannel | undefined
-		const events = extractEvents(location)
-		if (this._useUniEventChannel) {
-			navId = generateNavId()
-			enrichedLocation = enrichLocationWithNavId(enrichedLocation, navId)
-			internalChannel = new UniEventChannel(navId)
-			// 注册调用方传入的 events 监听器到内置通道
-			if (events) {
-				for (const [event, handler] of Object.entries(events)) {
-					internalChannel.on(event, handler)
-				}
-			}
-			// 注册到全局 registry，供目标页面 usePageChannel() 复用
-			registerChannel(navId, internalChannel)
+		// 1. 调用 enrichLocation hooks（插件注入内部 key 到 query）
+		let enrichedLocation = location
+		for (const hook of this.enrichLocationHooks) {
+			enrichedLocation = hook(enrichedLocation)
 		}
 
+		// 2. resolve 路由位置
 		const to = this.matcher.resolve(enrichedLocation)
 		const from = this.routeState.getCurrentRoute()
-		// 从原始路由位置中提取动画参数和事件监听器（resolve 会丢弃这些字段）
-		const animation = extractAnimation(location)
-		// 提取 params key：matcher.resolve 会从 query 中移除 __params_key，
-		// 但实际导航 URL 需要保留它，以便 back() 时 syncCurrentRoute 能从 URL 重建 params
-		const paramsKey = extractParamsKey(enrichedLocation)
-		// 提取 navId：matcher.resolve 会从 query 中移除 __nav_id，
-		// 但实际导航 URL 需要保留它，以便目标页面 syncCurrentRoute 能从 URL 重建通道
-		const resolvedNavId = navId ?? extractNavId(enrichedLocation)
 
-		// 非 useUniEventChannel 模式下 events 仅在 push 模式有效，其他模式发出警告并忽略
-		if (events && mode !== 'push' && !this._useUniEventChannel) {
-			warn(`uni.${mode === 'replace' ? 'redirectTo' : 'reLaunch'} does not support events. The events option will be ignored.`)
+		// 3. 调用 afterResolve hooks（从 enrichedLocation 提取插件数据）
+		const pluginData: Record<string, any> = {}
+		for (const hook of this.afterResolveHooks) {
+			hook(enrichedLocation, pluginData)
 		}
 
+		// 4. 重复导航检测
 		if (mode === 'push' && isSameRouteLocation(to, from)) {
-			// 重复导航时清理已注册的通道，避免内存泄漏
-			if (navId) destroyChannel(navId)
+			// 调用 abort hooks 清理插件资源
+			this.runAbortHooks(pluginData)
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_DUPLICATED, `Avoided redundant navigation to current location: "${to.fullPath}"`)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
 		}
 
-		// useUniEventChannel 模式下不向 uni.navigateTo 传递 events（避免原生通道干扰）
-		const effectiveEvents = this._useUniEventChannel ? undefined : mode === 'push' ? events : undefined
-		const navigationPromise = this.executeNavigation(to, from, mode, 0, animation, effectiveEvents, paramsKey, resolvedNavId, internalChannel)
+		const navigationPromise = this.executeNavigation(to, from, mode, 0, pluginData)
 		this.pendingNavigation = navigationPromise
 
 		try {
@@ -503,34 +553,19 @@ class UniRouter implements Router {
 	 * 执行完整的导航流程，包括守卫链和 uni API 调用
 	 *
 	 * 依次执行：全局前置守卫 → 路由独享守卫 → 全局解析守卫 → uni 导航 API → 全局后置钩子。
-	 * 支持守卫重定向，但重定向深度超过 {@link MAX_REDIRECT_DEPTH} 时将取消导航。
+	 * 支持守卫重定向，但重定向深度超过 MAX_REDIRECT_DEPTH 时将取消导航。
 	 *
 	 * @param to - 目标路由
 	 * @param from - 来源路由
 	 * @param mode - 导航模式
 	 * @param redirectDepth - 当前重定向深度
-	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
-	 * @param events - 页面间通信事件监听器（仅 push 时生效，且 useUniEventChannel: false 时）
-	 * @param paramsKey - params 在 ParamsManager 中的 key，用于将 __params_key 拼入实际导航 URL
-	 * @param navId - 导航 ID，用于将 __nav_id 拼入实际导航 URL（useUniEventChannel: true 时）
-	 * @param internalChannel - 内置通信通道实例（useUniEventChannel: true 时）
-	 * @returns 导航结果（push 模式或 useUniEventChannel 模式包含 eventChannel）
+	 * @param pluginData - 插件间共享数据
+	 * @returns 导航结果
 	 * @throws {NavigationFailure} 导航被中止、取消或 API 调用失败时抛出
 	 */
-	private async executeNavigation(
-		to: RouteLocation,
-		from: RouteLocation,
-		mode: 'push' | 'replace' | 'relaunch' | 'back',
-		redirectDepth: number,
-		animation?: NavigationAnimation,
-		events?: EventListeners,
-		paramsKey?: string,
-		navId?: string,
-		internalChannel?: UniEventChannel
-	): Promise<NavigationResult> {
+	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'relaunch' | 'back', redirectDepth: number, pluginData: Record<string, any>): Promise<NavigationResult> {
 		if (redirectDepth > MAX_REDIRECT_DEPTH) {
-			// 超过重定向上限时清理已注册的通道
-			if (navId) destroyChannel(navId)
+			this.runAbortHooks(pluginData)
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
@@ -539,39 +574,46 @@ class UniRouter implements Router {
 		const config = this.matcher.getRouteConfig(to.path)
 
 		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
-		const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, animation, events, paramsKey, navId, internalChannel)
+		const handled = this.handleGuardResult(beforeResult, to, from, mode, redirectDepth, pluginData)
 		if (handled) return handled
 
 		const beforeEnterResult = config ? await this.guardManager.runBeforeEnterGuards(to, from, config) : { type: 'next' as const }
-		const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, animation, events, paramsKey, navId, internalChannel)
+		const handledEnter = this.handleGuardResult(beforeEnterResult, to, from, mode, redirectDepth, pluginData)
 		if (handledEnter) return handledEnter
 
 		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
-		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, animation, events, paramsKey, navId, internalChannel)
+		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, pluginData)
 		if (handledResolve) return handledResolve
 
-		// 提前更新 currentRoute，确保目标页 onLoad/onShow 时 route.value 已是完整目标路由（含 name/params）
-		// syncRoute 的去重机制会跳过 onShow 中的重复同步，保留此处设置的完整路由信息
+		// 提前更新 currentRoute，确保目标页 onLoad/onShow 时 route.value 已是完整目标路由
 		this.routeState.setCurrentRoute(to)
 
 		try {
-			// 实际导航 URL 需要将 __params_key 和 __nav_id 拼回 query（to.query 已被 matcher 清理，不含内部 key）
-			// 这样 back() 返回时 syncCurrentRoute 可从 URL 读取 key 重建 params 和通道
+			// 构建 navigation 选项
 			const queryWithKeys: Record<string, string> = { ...to.query }
-			if (paramsKey) queryWithKeys[PARAMS_KEY] = paramsKey
-			if (navId) queryWithKeys['__nav_id'] = navId
-
-			const navOptions = {
+			const navOptions: UniNavigationOptions = {
 				path: to.path,
 				meta: to.meta,
 				query: queryWithKeys,
-				animation,
-				events
+				animation: to.meta.animation
 			}
 
-			let eventChannel: EventChannel | undefined
+			// 调用 prepareNavigation hooks（插件修改 query 和 navOptions）
+			const prepareCtx: NavigationPrepareContext = {
+				to,
+				from,
+				mode,
+				pluginData,
+				query: queryWithKeys,
+				options: navOptions
+			}
+			for (const hook of this.prepareNavigationHooks) {
+				hook(prepareCtx)
+			}
+
+			let nativeEventChannel: EventChannel | undefined
 			if (mode === 'push') {
-				eventChannel = await navigateTo(navOptions)
+				nativeEventChannel = await navigateTo(navOptions)
 			} else if (mode === 'replace') {
 				await replaceTo(navOptions)
 			} else {
@@ -580,12 +622,29 @@ class UniRouter implements Router {
 
 			this.guardManager.runAfterGuards(to, from)
 
-			// useUniEventChannel 模式下返回内置通道，替代原生 eventChannel
-			return { ...to, eventChannel: internalChannel ?? eventChannel }
+			// 构建结果
+			const result: Record<string, any> = { ...to }
+			if (mode === 'push') {
+				result.eventChannel = nativeEventChannel
+			}
+
+			// 调用 completeNavigation hooks（插件扩展 result）
+			const completeCtx: NavigationCompleteContext = {
+				to,
+				mode,
+				pluginData,
+				nativeEventChannel,
+				result
+			}
+			for (const hook of this.completeNavigationHooks) {
+				hook(completeCtx)
+			}
+
+			return result as NavigationResult
 		} catch (error) {
-			// 导航 API 失败，回退 currentRoute 到来源路由，并清理已注册的通道
+			// 导航 API 失败，回退 currentRoute 到来源路由，并调用 abort hooks 清理插件资源
 			this.routeState.setCurrentRoute(from)
-			if (navId) destroyChannel(navId)
+			this.runAbortHooks(pluginData)
 			const code = RouterErrorCode.NAVIGATION_API_ERROR
 			const cause = isUniApiError(error) ? error : undefined
 			const failure = new NavigationFailure(to, from, code, undefined, cause)
@@ -601,21 +660,6 @@ class UniRouter implements Router {
 	 * - abort: 中止导航并抛出 NavigationFailure
 	 * - next + redirect: 递归执行重定向导航
 	 * - next: 继续执行后续守卫
-	 *
-	 * 重定向方式优先级：守卫通过 next(location, { mode }) 指定的 mode > 原始导航方式。
-	 * 原始导航为 back 时无法重定向（目标不在页面栈中），回退为 relaunch。
-	 *
-	 * @param result - 守卫执行结果
-	 * @param to - 目标路由
-	 * @param from - 来源路由
-	 * @param mode - 导航模式
-	 * @param redirectDepth - 当前重定向深度
-	 * @param animation - 当前导航的动画参数
-	 * @param events - 当前导航的事件监听器
-	 * @param paramsKey - 当前导航的 params key
-	 * @param navId - 当前导航的 navigationId
-	 * @param internalChannel - 当前导航的内置通道
-	 * @returns 中止或重定向时返回 Promise\<RouteLocation\>，放行时返回 null
 	 */
 	private handleGuardResult(
 		result: GuardResult,
@@ -623,39 +667,54 @@ class UniRouter implements Router {
 		from: RouteLocation,
 		mode: 'push' | 'replace' | 'relaunch' | 'back',
 		redirectDepth: number,
-		animation?: NavigationAnimation,
-		events?: EventListeners,
-		paramsKey?: string,
-		navId?: string,
-		internalChannel?: UniEventChannel
+		pluginData: Record<string, any>
 	): Promise<NavigationResult> | null {
 		if (result.type === 'abort') {
-			// 中止时清理已注册的通道
-			if (navId) destroyChannel(navId)
+			// 中止时调用 abort hooks 清理插件资源
+			this.runAbortHooks(pluginData)
 			const failure = new NavigationFailure(to, from, result.code)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
 		}
 
 		if (result.redirect) {
-			// 重定向时提取新位置的动画参数和事件监听器，未指定则沿用当前值
-			const redirectAnimation = extractAnimation(result.redirect) ?? animation
-			const redirectEvents = extractEvents(result.redirect) ?? events
-			const redirectTarget = this.matcher.resolve(result.redirect)
+			// 重定向时对新的 location 执行 enrichLocation hooks
+			let enrichedRedirect = result.redirect
+			for (const hook of this.enrichLocationHooks) {
+				enrichedRedirect = hook(enrichedRedirect)
+			}
+
+			const redirectTarget = this.matcher.resolve(enrichedRedirect)
+
+			// 对重定向的 enrichedLocation 执行 afterResolve hooks
+			const redirectPluginData = { ...pluginData }
+			for (const hook of this.afterResolveHooks) {
+				hook(enrichedRedirect, redirectPluginData)
+			}
+
 			// 重定向方式：守卫指定优先，否则沿用原始导航方式
-			// back 无法作为重定向方式（目标不在页面栈中），回退为 relaunch
 			const redirectMode = result.mode ?? (mode === 'back' ? 'relaunch' : mode)
-			return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, redirectAnimation, redirectEvents, paramsKey, navId, internalChannel)
+			return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, redirectPluginData)
 		}
 
 		return null
 	}
 
 	/**
+	 * 执行所有 abort hooks
+	 */
+	private runAbortHooks(pluginData: Record<string, any>): void {
+		for (const hook of this.navigationAbortHooks) {
+			try {
+				hook(pluginData)
+			} catch {
+				// abort hooks should not throw
+			}
+		}
+	}
+
+	/**
 	 * 触发所有已注册的错误处理器
-	 * @param error - 路由错误对象
-	 * @param to - 目标路由
-	 * @param from - 来源路由
 	 */
 	private triggerErrorHandlers(error: RouterError, to: RouteLocation, from: RouteLocation): void {
 		for (const handler of this.errorHandlers) {
@@ -683,13 +742,15 @@ export const ROUTER_SYMBOL = Symbol('uni-router')
  *
  * @example
  * ```ts
+ * import { createRouter, Params, Animation, Channel, Interceptor } from '@meng-xi/uni-router'
+ *
  * const router = createRouter({
  *   routes: [
  *     { path: 'pages/index/index', name: 'home', meta: { title: '首页' } },
  *     { path: 'pages/about/about', name: 'about', meta: { requireAuth: true } },
  *     { path: 'pages/user/user', name: 'user', meta: { isTab: true } }
  *   ],
- *   strict: true
+ *   plugins: [Params, Animation, Channel, Interceptor],
  * })
  *
  * // 注册到 Vue 应用

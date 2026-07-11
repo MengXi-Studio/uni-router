@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup'
 import { resolve } from 'node:path'
 
 export default defineConfig({
-	entry: ['src/index.ts'],
+	entry: ['src/index.ts', 'src/plugins/index.ts'],
 	format: ['esm', 'cjs'],
 	dts: true,
 	clean: true,
