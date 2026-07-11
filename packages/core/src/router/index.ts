@@ -11,6 +11,7 @@ import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
 import { createParamsManager } from '@/plugins/params/params-manager'
 import type { ParamsManager } from '@/plugins/params/params-manager'
+import { warn } from '@/utils/general'
 import { isSameRouteLocation } from './location'
 import { createRouteSync, type RouteSync } from './sync'
 
@@ -47,6 +48,7 @@ class UniRouter implements Router {
 	private routeSync!: RouteSync
 	private errorHandlers: RouterOnError[] = []
 	private pendingNavigation: Promise<NavigationResult | RouteLocation | void> | null = null
+	private installedPlugins: Set<string> = new Set()
 
 	// 插件 hook 数组
 	private enrichLocationHooks: EnrichLocationHook[] = []
@@ -123,11 +125,26 @@ class UniRouter implements Router {
 			},
 			get paramsManager() {
 				return self.paramsManager
+			},
+			hasPlugin(name: string) {
+				return self.installedPlugins.has(name)
 			}
 		}
 
 		for (const plugin of plugins) {
+			this.installedPlugins.add(plugin.name)
 			plugin.install(context, options)
+		}
+
+		// 检查设置了插件选项但未注册对应插件的情况
+		if (options.paramsPersistent && !this.installedPlugins.has('params')) {
+			warn('options.paramsPersistent is set but ParamsPlugin is not registered. The option will be ignored.')
+		}
+		if (options.useUniEventChannel && !this.installedPlugins.has('channel')) {
+			warn('options.useUniEventChannel is set but ChannelPlugin is not registered. The option will be ignored.')
+		}
+		if (options.interceptUniApi && !this.installedPlugins.has('interceptor')) {
+			warn('options.interceptUniApi is set but InterceptorPlugin is not registered. The option will be ignored.')
 		}
 	}
 
@@ -202,6 +219,11 @@ class UniRouter implements Router {
 		// 等待前一次导航完成（无论成功或失败），避免并发导航
 		if (this.pendingNavigation) {
 			await this.pendingNavigation.catch(() => {})
+		}
+
+		// 检查用户是否使用了动画但未安装 AnimationPlugin
+		if (options && 'animation' in options && !this.installedPlugins.has('animation')) {
+			throw new RouterError(RouterErrorCode.PLUGIN_REQUIRED, 'AnimationPlugin is required to use animation in back(). Add AnimationPlugin to createRouter({ plugins: [AnimationPlugin] }).')
 		}
 
 		const from = this.routeState.getCurrentRoute()
@@ -316,6 +338,18 @@ class UniRouter implements Router {
 	 */
 	hasRoute(name: string): boolean {
 		return this.matcher.hasRoute(name)
+	}
+
+	/**
+	 * 检查指定插件是否已注册
+	 *
+	 * 插件未注册时使用其功能将抛出 PLUGIN_REQUIRED 错误。
+	 *
+	 * @param name - 插件名称
+	 * @returns 已注册时返回 true
+	 */
+	hasPlugin(name: string): boolean {
+		return this.installedPlugins.has(name)
 	}
 
 	/**
@@ -510,6 +544,9 @@ class UniRouter implements Router {
 		if (this.pendingNavigation) {
 			await this.pendingNavigation.catch(() => {})
 		}
+
+		// 检查用户是否使用了插件功能但未安装对应插件
+		this.requirePluginForLocation(location)
 
 		// 1. 调用 enrichLocation hooks（插件注入内部 key 到 query）
 		let enrichedLocation = location
@@ -710,6 +747,29 @@ class UniRouter implements Router {
 			} catch {
 				// abort hooks should not throw
 			}
+		}
+	}
+
+	/**
+	 * 检查路由位置是否使用了插件功能但未安装对应插件
+	 *
+	 * 当用户传入 params / events / animation 但对应插件未注册时，
+	 * 抛出 PLUGIN_REQUIRED 错误，帮助用户快速定位问题。
+	 */
+	private requirePluginForLocation(location: RouteLocationRaw): void {
+		if (typeof location === 'string') return
+		const loc = location as Record<string, any>
+
+		if ('params' in loc && loc.params && !this.installedPlugins.has('params')) {
+			throw new RouterError(RouterErrorCode.PLUGIN_REQUIRED, 'ParamsPlugin is required to use params. Add ParamsPlugin to createRouter({ plugins: [ParamsPlugin] }).')
+		}
+
+		if ('events' in loc && loc.events && !this.installedPlugins.has('channel')) {
+			throw new RouterError(RouterErrorCode.PLUGIN_REQUIRED, 'ChannelPlugin is required to use events. Add ChannelPlugin to createRouter({ plugins: [ChannelPlugin] }).')
+		}
+
+		if ('animation' in loc && loc.animation && !this.installedPlugins.has('animation')) {
+			throw new RouterError(RouterErrorCode.PLUGIN_REQUIRED, 'AnimationPlugin is required to use animation. Add AnimationPlugin to createRouter({ plugins: [AnimationPlugin] }).')
 		}
 	}
 

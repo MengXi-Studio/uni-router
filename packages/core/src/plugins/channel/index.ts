@@ -1,7 +1,8 @@
 import type { RouterPlugin, PluginContext } from '@/plugin'
-import type { RouteLocationRaw, RouteLocationPathRaw, RouteLocationNamedRaw, EventChannel, EventListeners, RouterOptions } from '@/types'
+import type { RouteLocationRaw, EventChannel, EventListeners, RouterOptions } from '@/types'
 import { UniEventChannel, generateNavId, noopChannel, NAV_ID_KEY } from './uni-event-channel'
 import { registerChannel, destroyChannel, getOrCreateChannel } from './registry'
+import { injectQueryKey, extractQueryKey } from '@/utils/route'
 import { useRouter, getReactiveRoute } from '@/composables'
 import { warn } from '@/utils/general'
 import { onUnmounted } from 'vue'
@@ -28,39 +29,14 @@ function extractEvents(location: RouteLocationRaw): EventListeners | undefined {
  * 将 navigationId 注入路由位置的 query 中
  */
 function enrichLocationWithNavId(location: RouteLocationRaw, navId: string): RouteLocationRaw {
-	if (typeof location === 'string') {
-		return { path: location, query: { [NAV_ID_KEY]: navId } }
-	}
-
-	if ('path' in location) {
-		const pathLoc = location as RouteLocationPathRaw
-		return {
-			...pathLoc,
-			query: { ...pathLoc.query, [NAV_ID_KEY]: navId }
-		}
-	}
-
-	if ('name' in location) {
-		const namedLoc = location as RouteLocationNamedRaw
-		return {
-			...namedLoc,
-			query: { ...namedLoc.query, [NAV_ID_KEY]: navId }
-		}
-	}
-
-	return location
+	return injectQueryKey(location, NAV_ID_KEY, navId)
 }
 
 /**
  * 从已注入 navId 的路由位置中提取 __nav_id
  */
 function extractNavId(location: RouteLocationRaw): string | undefined {
-	if (typeof location === 'string') return undefined
-	if (typeof location === 'object' && 'query' in location) {
-		const query = (location as { query?: Record<string, unknown> }).query
-		return query?.[NAV_ID_KEY] as string | undefined
-	}
-	return undefined
+	return extractQueryKey(location, NAV_ID_KEY)
 }
 
 /**

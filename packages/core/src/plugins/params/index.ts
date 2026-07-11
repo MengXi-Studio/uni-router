@@ -1,7 +1,8 @@
 import type { RouterPlugin, PluginContext } from '@/plugin'
-import type { RouteLocationRaw, RouteLocationPathRaw, RouteLocationNamedRaw, RouterOptions, ParamObject } from '@/types'
+import type { RouteLocationRaw, RouterOptions, ParamObject } from '@/types'
 import { PARAMS_KEY } from './params-manager'
 import type { ParamsManager } from './params-manager'
+import { injectQueryKey, extractQueryKey } from '@/utils/route'
 
 // Re-export implementation code for external use
 export { PARAMS_KEY, createParamsManager } from './params-manager'
@@ -27,36 +28,14 @@ function enrichLocationWithParams(location: RouteLocationRaw, paramsManager: Par
 	const persistent = 'persistent' in loc ? loc.persistent : undefined
 	const key = paramsManager.set(params, persistent)
 
-	// 将 key 注入 query
-	if ('path' in location) {
-		const pathLoc = location as RouteLocationPathRaw
-		return {
-			...pathLoc,
-			query: { ...pathLoc.query, [PARAMS_KEY]: key }
-		}
-	}
-
-	if ('name' in location) {
-		const namedLoc = location as RouteLocationNamedRaw
-		return {
-			...namedLoc,
-			query: { ...namedLoc.query, [PARAMS_KEY]: key }
-		}
-	}
-
-	return location
+	return injectQueryKey(location, PARAMS_KEY, key)
 }
 
 /**
  * 从已注入 params key 的路由位置中提取 __params_key
  */
 function extractParamsKey(location: RouteLocationRaw): string | undefined {
-	if (typeof location === 'string') return undefined
-	if (typeof location === 'object' && 'query' in location) {
-		const query = (location as { query?: Record<string, unknown> }).query
-		return query?.[PARAMS_KEY] as string | undefined
-	}
-	return undefined
+	return extractQueryKey(location, PARAMS_KEY)
 }
 
 /**

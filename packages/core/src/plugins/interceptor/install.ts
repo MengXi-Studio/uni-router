@@ -1,4 +1,4 @@
-import type { Router, EventListeners } from '@/types'
+import type { Router, EventListeners, NavigationAnimation, RouteLocationRaw } from '@/types'
 import { normalizePath, parseQuery } from '@/utils/path'
 
 /**
@@ -29,7 +29,7 @@ function parseUniUrl(url: string): { path: string; query: Record<string, string>
  * @param args - uni API 调用参数
  * @returns 动画配置，不存在时返回 undefined
  */
-function extractAnimationFromArgs(args: Record<string, any>): import('@/types').NavigationAnimation | undefined {
+function extractAnimationFromArgs(args: Record<string, any>): NavigationAnimation | undefined {
 	if (!args.animationType) return undefined
 	return { type: args.animationType, ...(args.animationDuration != null && { duration: args.animationDuration }) }
 }
@@ -43,7 +43,7 @@ function extractAnimationFromArgs(args: Record<string, any>): import('@/types').
  * @param events - 页面间通信事件监听器
  * @returns 路由位置对象
  */
-function buildLocation(path: string, query: Record<string, string>, animation?: import('@/types').NavigationAnimation, events?: EventListeners): import('@/types').RouteLocationRaw {
+function buildLocation(path: string, query: Record<string, string>, animation?: NavigationAnimation, events?: EventListeners): RouteLocationRaw {
 	const hasQuery = query && Object.keys(query).length > 0
 	if (!hasQuery && !animation && !events) return path
 	return { path, ...(hasQuery && { query }), ...(animation && { animation }), ...(events && { events }) }

@@ -278,6 +278,16 @@ export interface Router {
 	guardRoute(location?: RouteLocationRaw, options?: GuardRouteOptions): Promise<RouteLocation>
 
 	/**
+	 * 检查指定插件是否已注册
+	 *
+	 * 插件未注册时使用其功能将抛出 PLUGIN_REQUIRED 错误。
+	 *
+	 * @param name - 插件名称（对应 RouterPlugin.name）
+	 * @returns 插件已注册时返回 true
+	 */
+	hasPlugin(name: string): boolean
+
+	/**
 	 * 安装路由器到 Vue 应用实例，注册全局属性和 provide
 	 * @param app - Vue 应用实例
 	 */

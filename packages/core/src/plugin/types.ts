@@ -1,4 +1,4 @@
-import type { RouteLocation, RouteLocationRaw, RouterOptions } from '@/types'
+import type { RouteLocation, RouteLocationRaw, RouterOptions, Router } from '@/types'
 import type { EventChannel } from '@/types'
 import type { UniNavigationOptions } from '@/navigation'
 import type { ParamsManager } from '@/plugins/params/params-manager'
@@ -104,10 +104,18 @@ export interface PluginContext {
 	resolve(location: RouteLocationRaw): RouteLocation
 
 	/** 路由器实例引用（仅特定插件需要，如 InterceptorPlugin） */
-	readonly router: import('@/types').Router
+	readonly router: Router
 
 	/** 核心 ParamsManager 实例（供 ParamsPlugin 共享使用） */
 	readonly paramsManager: ParamsManager
+
+	/**
+	 * 检查指定插件是否已注册
+	 *
+	 * @param name - 插件名称
+	 * @returns 已注册时返回 true
+	 */
+	hasPlugin(name: string): boolean
 }
 
 /**
