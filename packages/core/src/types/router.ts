@@ -1,6 +1,7 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationAnimation, NavigationResult } from './route'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationResult } from './route'
 import type { NavigationGuard, PostNavigationGuard } from './guard'
 import type { RouterError, NavigationFailure } from './error'
+import type { RouterPlugin } from '@/plugin'
 import type { App } from 'vue'
 
 /**
@@ -29,6 +30,10 @@ export interface GuardRouteOptions {
 
 /**
  * 路由器初始化选项
+ *
+ * 核心选项包含 routes、strict、guardTimeout、readyTimeout 和 plugins。
+ * 插件扩展选项（paramsPersistent、useUniEventChannel、interceptUniApi）
+ * 通过插件机制启用，类型始终声明在此以提供完整的类型提示（运行时行为由插件控制）。
  */
 export interface RouterOptions {
 	/** 路由配置列表，需与 pages.json 中的页面声明保持一致 */
@@ -36,16 +41,6 @@ export interface RouterOptions {
 
 	/** 是否启用严格模式，启用后未匹配的命名路由将抛出异常 */
 	strict?: boolean
-
-	/**
-	 * 是否拦截 uni 原生导航 API（navigateTo / redirectTo / switchTab / navigateBack）
-	 *
-	 * 启用后，直接调用 uni.navigateTo 等方法将被拦截并转由路由器处理，
-	 * 确保路由守卫（beforeEach / beforeResolve / afterEach）始终生效。
-	 *
-	 * @default false
-	 */
-	interceptUniApi?: boolean
 
 	/**
 	 * 守卫超时时间（毫秒）
@@ -73,7 +68,16 @@ export interface RouterOptions {
 	readyTimeout?: number
 
 	/**
-	 * 页面参数持久化默认值
+	 * 路由器插件列表
+	 *
+	 * 插件按数组顺序依次安装，注册 hook 到路由器的导航流程中。
+	 * 核心仅提供基础导航能力，所有扩展功能（params、animation、channel、interceptor）
+	 * 均通过插件提供，用户需显式引入并注册。
+	 */
+	plugins?: RouterPlugin[]
+
+	/**
+	 * 页面参数持久化默认值（需 ParamsPlugin）
 	 *
 	 * 设为 true 时，所有 params 默认通过 uni.setStorageSync 持久化存储，
 	 * H5 刷新后仍可读取。单次导航可通过 persistent 选项覆盖此默认值。
@@ -83,20 +87,24 @@ export interface RouterOptions {
 	paramsPersistent?: boolean
 
 	/**
-	 * 是否使用内置通信管理器替代 uni.navigateTo 的原生 EventChannel
+	 * 是否使用内置通信管理器替代 uni.navigateTo 的原生 EventChannel（需 ChannelPlugin）
 	 *
 	 * - false（默认）：push 使用 uni.navigateTo 原生 EventChannel，其他导航方式不支持页面通信
 	 * - true：所有导航方式（push/replace/relaunch/back）都使用内置通信管理器
 	 *
-	 * 内置通信管理器基于 `uni.$emit/$on/$off` 全局事件总线实现：
-	 * - 每次导航生成唯一 `navigationId` 隔离事件通道
-	 * - 目标页面通过 `usePageChannel()` 获取通道
-	 * - 页面卸载时自动清理监听器
-	 * - `__nav_id` 通过 URL query 传递，H5 刷新后仍可重建通道
-	 *
 	 * @default false
 	 */
 	useUniEventChannel?: boolean
+
+	/**
+	 * 是否拦截 uni 原生导航 API（需 InterceptorPlugin）
+	 *
+	 * 启用后，直接调用 uni.navigateTo 等方法将被拦截并转由路由器处理，
+	 * 确保路由守卫（beforeEach / beforeResolve / afterEach）始终生效。
+	 *
+	 * @default false
+	 */
+	interceptUniApi?: boolean
 }
 
 /**
@@ -158,11 +166,11 @@ export interface Router {
 	 * 注意：物理返回键和浏览器后退不经过路由器，无法被守卫拦截。
 	 *
 	 * @param delta - 返回的页面数，默认为 1
-	 * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
+	 * @param options - 额外选项（AnimationPlugin 通过模块增强添加 animation 字段）
 	 * @returns 返回到的目标路由位置
 	 * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
 	 */
-	back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
+	back(delta?: number, options?: Record<string, any>): Promise<RouteLocation>
 
 	/**
 	 * 注册全局前置守卫，在每次导航前执行
@@ -268,6 +276,16 @@ export interface Router {
 	 * @returns 守卫放行时 resolve 目标路由；重定向时跳转后 resolve；中止时 reject
 	 */
 	guardRoute(location?: RouteLocationRaw, options?: GuardRouteOptions): Promise<RouteLocation>
+
+	/**
+	 * 检查指定插件是否已注册
+	 *
+	 * 插件未注册时使用其功能将抛出 PLUGIN_REQUIRED 错误。
+	 *
+	 * @param name - 插件名称（对应 RouterPlugin.name）
+	 * @returns 插件已注册时返回 true
+	 */
+	hasPlugin(name: string): boolean
 
 	/**
 	 * 安装路由器到 Vue 应用实例，注册全局属性和 provide

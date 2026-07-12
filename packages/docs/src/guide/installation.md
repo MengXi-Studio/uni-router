@@ -138,28 +138,35 @@ yarn add -D @dcloudio/types
 ### 1. 创建路由器实例
 
 ```ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin } from '@meng-xi/uni-router'
 
 const router = createRouter({
   routes: [
-    { path: 'pages/index/index', name: 'home' }
-  ]
+    { path: 'pages/index/index', name: 'home', meta: { isTab: true } }
+  ],
+  plugins: [ParamsPlugin, ChannelPlugin, InterceptorPlugin],
+  interceptUniApi: true // 需要 InterceptorPlugin
 })
 
 console.log(router.currentRoute.path) // 输出: /
 ```
+
+::: tip 插件按需引入
+扩展功能（params、animation、channel、interceptor）通过 `plugins` 按需注册，未注册的插件功能不可用（使用时抛出 `PLUGIN_REQUIRED` 错误）。详见[插件系统](./plugins)。
+:::
 
 ### 2. 检查类型提示
 
 在编辑器中输入以下代码，应有类型提示：
 
 ```ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, AnimationPlugin } from '@meng-xi/uni-router'
 
 const router = createRouter({
   routes: [
     { path: 'pages/index/index', name: 'home', meta: { title: '首页' } }
-  ]
+  ],
+  plugins: [AnimationPlugin]
 })
 
 // 应有 push / replace / back 等方法的提示

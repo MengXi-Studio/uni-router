@@ -104,15 +104,24 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 					]
 				},
 				{
+					text: 'Plugins',
+					items: [
+						{
+							text: 'Plugin System',
+							link: '/en/guide/plugins'
+						},
+						{
+							text: 'Interceptor Mechanism',
+							link: '/en/guide/interceptor'
+						}
+					]
+				},
+				{
 					text: 'Principles In Depth',
 					items: [
 						{
 							text: 'Navigation Flow',
 							link: '/en/guide/navigation-flow'
-						},
-						{
-							text: 'Interceptor Mechanism',
-							link: '/en/guide/interceptor'
 						},
 						{
 							text: 'Error Handling',
@@ -222,6 +231,10 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: 'RouterErrorCode',
 							link: '/en/api/type-router-error'
+						},
+						{
+							text: 'RouterPlugin',
+							link: '/en/api/type-router-plugin'
 						}
 					]
 				}

@@ -95,15 +95,24 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 					]
 				},
 				{
+					text: '插件',
+					items: [
+						{
+							text: '插件系统',
+							link: '/guide/plugins'
+						},
+						{
+							text: '拦截器机制',
+							link: '/guide/interceptor'
+						}
+					]
+				},
+				{
 					text: '原理深入',
 					items: [
 						{
 							text: '导航流程原理',
 							link: '/guide/navigation-flow'
-						},
-						{
-							text: '拦截器机制',
-							link: '/guide/interceptor'
 						},
 						{
 							text: '错误处理',
@@ -213,6 +222,10 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: 'RouterErrorCode',
 							link: '/api/type-router-error'
+						},
+						{
+							text: 'RouterPlugin',
+							link: '/api/type-router-plugin'
 						}
 					]
 				}

@@ -5,9 +5,10 @@
 		"lib": ["ESNext", "DOM"],
 		"jsx": "preserve",
 		"esModuleInterop": true,
+		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"],
-			"@meng-xi/uni-router": ["./uni_modules/mxuni-router/js_sdk/index"]
+			"@meng-xi/uni-router": ["./uni_modules/mxuni-router-v2/js_sdk/index"]
 		},
 		"types": ["@dcloudio/types"]
 	},

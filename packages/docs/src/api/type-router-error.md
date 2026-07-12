@@ -109,7 +109,7 @@ router.onError((err) => {
 
 ## RouterErrorCode
 
-错误码枚举，共 6 种：
+错误码枚举，共 7 种：
 
 | 错误码 | 说明 | 触发场景 | 是否可恢复 |
 | --- | --- | --- | --- |
@@ -118,6 +118,7 @@ router.onError((err) => {
 | `NAVIGATION_DUPLICATED` | 重复导航 | `push` 到当前已处于的页面 | 是 |
 | `ROUTE_NOT_FOUND` | 路由未找到 | 严格模式下使用未定义的命名路由 | 是 |
 | `NAVIGATION_API_ERROR` | uni API 调用失败 | `uni.navigateTo` 等调用失败（如栈溢出） | 是 |
+| `PLUGIN_REQUIRED` | 插件未注册 | 使用了插件提供的功能但对应插件未注册 | 是 |
 | `SETUP_ERROR` | 初始化/使用错误 | `useRouter()` 在 setup 外调用 | 否 |
 
 ::: tip 错误码判断
@@ -274,6 +275,30 @@ router.onError((err) => {
 })
 ```
 
+### PLUGIN_REQUIRED
+
+使用了插件提供的功能但对应插件未注册。
+
+```ts
+// 未注册 ParamsPlugin 时使用 params
+await router.push({ path: '/detail', params: { id: 123 } })
+// → PLUGIN_REQUIRED
+
+// 未注册 AnimationPlugin 时使用 animation
+await router.push({ path: '/detail', animation: { type: 'fade-in' } })
+// → PLUGIN_REQUIRED
+```
+
+**触发场景**：
+
+| 功能 | 所需插件 |
+| --- | --- |
+| `params` / `persistent` | `ParamsPlugin` |
+| `animation` | `AnimationPlugin` |
+| `events` | `ChannelPlugin` |
+
+**处理方式**：注册对应插件或使用 `router.hasPlugin()` 检查后再使用。详见[插件系统](../guide/plugins)。
+
 ### SETUP_ERROR
 
 路由器初始化或使用方式错误，不可恢复：
@@ -303,6 +328,7 @@ router.onError((err) => {
     // 严重错误：弹窗提示
     case RouterErrorCode.ROUTE_NOT_FOUND:
     case RouterErrorCode.NAVIGATION_API_ERROR:
+    case RouterErrorCode.PLUGIN_REQUIRED:
       uni.showModal({
         title: '出错了',
         content: err.message,

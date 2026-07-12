@@ -27,3 +27,5 @@ export type { RouterOnError, RouterOptions, Router, GuardRouteOptions } from './
 export type { RouterError, UniApiCause, UniApiError, NavigationFailure } from './error'
 
 export { RouterErrorCode } from './error'
+
+export type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from '@/plugin'

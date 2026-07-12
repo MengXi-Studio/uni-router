@@ -1,14 +1,15 @@
-import { createRouter, NavigationFailure, RouterError, RouterErrorCode } from './uni_modules/mxuni-router/js_sdk/index.js'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin, NavigationFailure, RouterError, RouterErrorCode } from './uni_modules/mxuni-router-v2/js_sdk/index.js'
 import routes from './router.config'
 
 const router = createRouter({
 	routes,
 	strict: true,
-	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫始终生效
+	plugins: [ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin], // 按需注册插件，未注册的插件功能不可用
+	interceptUniApi: true, // 需要 InterceptorPlugin，拦截 uni 原生导航 API，确保守卫始终生效
 	guardTimeout: 15000, // 守卫超时 15 秒，适用于异步请求较慢的场景
 	readyTimeout: 5000, // 路由器就绪超时 5 秒，防止初始化异常时 isReady() 永久挂起
-	paramsPersistent: false, // params 持久化默认值，设为 true 时所有 params 默认持久化到 storage
-	useUniEventChannel: true // 启用内置通信管理器，所有导航方式（push/replace/relaunch）均支持页面间双向通信
+	paramsPersistent: false, // 需要 ParamsPlugin，params 持久化默认值
+	useUniEventChannel: true // 需要 ChannelPlugin，启用内置通信管理器
 })
 
 // ===== 等待路由器初始化完成 =====

@@ -80,15 +80,28 @@
 
 <script>
 import router from '../../router'
-import { usePageChannel, noopChannel } from '../../uni_modules/mxuni-router/js_sdk/index.js'
+import { usePageChannel, noopChannel } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
 
 export default {
-	// usePageChannel() 必须在 setup 中调用，读取 route.params.__navId 获取与发起页共享的通信通道
-	// 无 __nav_id 时（如直接 URL 访问）返回 noopChannel，所有方法为空操作，避免调用方判空
+	// usePageChannel() 在 setup 顶层调用，读取 route.params.__navId 获取通信通道
+	// 路由器在导航时已将 __navId 从 query 提取到 params（applySyncHooks），因此 setup 执行时已有值
+	// 无 __navId 时（如直接 URL 访问）返回 noopChannel，所有方法为空操作，避免调用方判空
+	// 页面卸载时自动清理监听器，无需手动 destroy
 	setup() {
-		const pageChannel = usePageChannel()
-		const hasEventChannel = pageChannel !== noopChannel
-		return { pageChannel, hasEventChannel }
+		const channel = usePageChannel()
+		const hasEventChannel = channel !== noopChannel
+
+		// 直接在 setup 中注册事件监听器，无需等到 onLoad
+		if (hasEventChannel) {
+			channel.on('fromOpener', data => {
+				uni.showToast({ title: `收到: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
+			})
+
+			// 粘性事件缓存：即使发起页尚未注册监听也能收到
+			channel.emit('receiveData', { msg: '关于页已收到你的消息！' })
+		}
+
+		return { channel, hasEventChannel }
 	},
 	data() {
 		return {
@@ -130,7 +143,6 @@ export default {
 	},
 	onLoad() {
 		this.updateRouteInfo()
-		this.initEventChannel()
 	},
 	onShow() {
 		// syncRoute() 已由路由器全局 mixin 在 onShow 自动调用
@@ -148,29 +160,15 @@ export default {
 				params: route.params || {}
 			}
 		},
-		initEventChannel() {
-			if (!this.hasEventChannel) return
-
-			const eventChannel = this.pageChannel
-
-			// 监听发起页发来的事件
-			eventChannel.on('fromOpener', data => {
-				this.eventChannelMessages.push(`收到 fromOpener: ${JSON.stringify(data)}`)
-				uni.showToast({ title: `收到: ${data.msg || JSON.stringify(data)}`, icon: 'none' })
-			})
-
-			// 向发起页发送数据（粘性事件缓存：即使发起页尚未注册监听也能收到）
-			eventChannel.emit('receiveData', { msg: '关于页已收到你的消息！' })
-		},
 		replyToOpener() {
-			if (this.pageChannel) {
-				this.pageChannel.emit('replyFromAbout', { msg: '这是关于页的回复！' })
+			if (this.channel) {
+				this.channel.emit('replyFromAbout', { msg: '这是关于页的回复！' })
 				this.eventChannelMessages.push('已发送 replyFromAbout 事件到发起页')
 			}
 		},
 		replyOnceToOpener() {
-			if (this.pageChannel) {
-				this.pageChannel.emit('onceEvent', { msg: '这是一次性事件（once）' })
+			if (this.channel) {
+				this.channel.emit('onceEvent', { msg: '这是一次性事件（once）' })
 				this.eventChannelMessages.push('已发送 onceEvent 事件到发起页')
 			}
 		},

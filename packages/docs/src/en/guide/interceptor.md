@@ -32,8 +32,11 @@ This is a hidden risk in team collaboration: a developer might habitually use `u
 After enabling `interceptUniApi`, all native navigation API calls are intercepted and redirected to the router:
 
 ```ts
+import { createRouter, InterceptorPlugin } from '@meng-xi/uni-router'
+
 const router = createRouter({
   routes,
+  plugins: [InterceptorPlugin],  // Register interceptor plugin
   interceptUniApi: true // Enable interception
 })
 
@@ -45,11 +48,18 @@ uni.navigateTo({ url: '/pages/protected/protected' }) // → forwarded to router
 ## Enabling and Configuration
 
 ```ts
+import { createRouter, InterceptorPlugin } from '@meng-xi/uni-router'
+
 const router = createRouter({
   routes: [...],
+  plugins: [InterceptorPlugin],  // Register interceptor plugin
   interceptUniApi: true  // default false
 })
 ```
+
+::: warning InterceptorPlugin Required
+`interceptUniApi: true` requires `InterceptorPlugin` to be registered. If `interceptUniApi: true` is set but `InterceptorPlugin` is not registered, the router will output a warning and the interceptors will not be installed.
+:::
 
 ::: warning Disabled by Default
 `interceptUniApi` defaults to `false`. This is for gradual adoption — you can first integrate the router without enabling the interceptor, gradually migrate `uni.navigateTo` to `router.push`, and then enable the interceptor as a "safety net" once confirmed.
@@ -420,7 +430,7 @@ In development, hot reload recreates the router instance. If old interceptors ar
 ## Complete Example
 
 ```ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, InterceptorPlugin } from '@meng-xi/uni-router'
 
 const router = createRouter({
   routes: [
@@ -428,6 +438,7 @@ const router = createRouter({
     { path: 'pages/about/about', name: 'about', meta: { requireAuth: true } },
     { path: 'pages/login/login', name: 'login' }
   ],
+  plugins: [InterceptorPlugin],
   interceptUniApi: true // Enable interception
 })
 
@@ -454,6 +465,7 @@ uni.navigateTo({ url: '/pages/about/about' })
 
 ## Next Steps
 
+- [Plugin System](./plugins) — Plugin mechanism and extensions
 - [Navigation Flow](./navigation-flow) — Where the interceptor fits in the complete flow
 - [Platform Compatibility](./compatibility) — Platform limitations
 - [Recipes](./recipes) — Complete business solutions

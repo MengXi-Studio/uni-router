@@ -1,21 +1,13 @@
-import type { RouteLocationRaw, NavigationAnimation, EventListeners, ParamObject, EventChannel, NavigationFailure } from '../../js_sdk/index'
+import type { RouteLocationRaw, EventChannel, NavigationFailure } from '../../js_sdk/index'
 
 /** RouterLink 组件 Props 类型 */
 export interface RouterLinkProps {
-	/** 目标路由位置，支持路径字符串、路径对象或命名对象 */
+	/** 目标路由位置，支持路径字符串、路径对象或命名对象；插件依赖字段（params/animation/events 等）通过 to 对象传入 */
 	to: RouteLocationRaw
 	/** 是否使用替换模式导航 */
 	replace?: boolean
 	/** 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面） */
 	relaunch?: boolean
-	/** 页面参数，支持复杂数据（仅 JSON 可序列化值） */
-	params?: ParamObject
-	/** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
-	persistent?: boolean
-	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
-	animation?: NavigationAnimation
-	/** 页面间通信事件监听器，对应 uni.navigateTo 的 events 参数；默认仅 push 生效，启用 useUniEventChannel 后所有导航方式均生效 */
-	events?: EventListeners
 	/** 按下时的样式类，设置为 'none' 可禁用点击态 */
 	hoverClass?: string
 	/** 是否阻止祖先节点的点击态 */

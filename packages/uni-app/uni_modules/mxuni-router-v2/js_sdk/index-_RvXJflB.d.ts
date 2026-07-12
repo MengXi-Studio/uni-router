@@ -1,4 +1,4 @@
-import { App, Ref } from 'vue';
+import { App } from 'vue';
 
 /**
  * 导航守卫重定向方式
@@ -265,20 +265,24 @@ interface NavigationResult extends RouteLocation {
 }
 /**
  * 基于路径的原始路由位置
+ *
+ * 核心类型仅包含 path 和 query。
+ * 插件扩展字段（params、persistent、animation、events）通过插件机制启用，
+ * 类型始终声明在此以提供完整的类型提示（运行时行为由插件控制）。
  */
 interface RouteLocationPathRaw {
     /** 目标路径 */
     path: RoutePath;
     /** 查询参数，值支持 string / number / boolean，内部自动序列化为字符串 */
     query?: Record<string, QueryValue>;
-    /** 页面参数，支持复杂数据（仅 JSON 可序列化值），接受 `interface` 对象 */
+    /** 页面参数，支持复杂数据（仅 JSON 可序列化值），接受 `interface` 对象（需 ParamsPlugin） */
     params?: ParamsInput;
-    /** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
+    /** 页面参数是否持久化到 storage（默认 false，仅内存存储）（需 ParamsPlugin） */
     persistent?: boolean;
-    /** 导航动画（仅 App 端生效），覆盖 meta.animation */
+    /** 导航动画（仅 App 端生效），覆盖 meta.animation（需 AnimationPlugin） */
     animation?: NavigationAnimation;
     /**
-     * 页面间通信事件监听器（仅 push 时生效）
+     * 页面间通信事件监听器（仅 push 时生效）（需 ChannelPlugin）
      *
      * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
      * 其他导航方式（replace / relaunch）不支持 events，传入时将被忽略。
@@ -287,20 +291,24 @@ interface RouteLocationPathRaw {
 }
 /**
  * 基于名称的原始路由位置
+ *
+ * 核心类型仅包含 name 和 query。
+ * 插件扩展字段（params、persistent、animation、events）通过插件机制启用，
+ * 类型始终声明在此以提供完整的类型提示（运行时行为由插件控制）。
  */
 interface RouteLocationNamedRaw {
     /** 目标路由名称 */
     name: RouteName;
     /** 查询参数，值支持 string / number / boolean，内部自动序列化为字符串 */
     query?: Record<string, QueryValue>;
-    /** 页面参数，支持复杂数据（仅 JSON 可序列化值），接受 `interface` 对象 */
+    /** 页面参数，支持复杂数据（仅 JSON 可序列化值），接受 `interface` 对象（需 ParamsPlugin） */
     params?: ParamsInput;
-    /** 页面参数是否持久化到 storage（默认 false，仅内存存储） */
+    /** 页面参数是否持久化到 storage（默认 false，仅内存存储）（需 ParamsPlugin） */
     persistent?: boolean;
-    /** 导航动画（仅 App 端生效），覆盖 meta.animation */
+    /** 导航动画（仅 App 端生效），覆盖 meta.animation（需 AnimationPlugin） */
     animation?: NavigationAnimation;
     /**
-     * 页面间通信事件监听器（仅 push 时生效）
+     * 页面间通信事件监听器（仅 push 时生效）（需 ChannelPlugin）
      *
      * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
      * 其他导航方式（replace / relaunch）不支持 events，传入时将被忽略。
@@ -315,7 +323,7 @@ type RouteLocationRaw = string | RouteLocationPathRaw | RouteLocationNamedRaw;
 /**
  * 路由错误接口，描述路由过程中产生的错误
  */
-interface RouterError$1 {
+interface RouterError {
     /** 错误码 */
     readonly code: RouterErrorCode;
     /** 错误信息 */
@@ -335,7 +343,7 @@ interface UniApiCause {
  *
  * 包含失败的 API 名称和原始错误原因，作为 {@link NavigationFailure.cause} 传递。
  */
-interface UniApiError$1 {
+interface UniApiError {
     /** 调用失败的 API 名称（如 navigateTo / redirectTo） */
     readonly api: string;
     /** 原始错误原因 */
@@ -344,7 +352,7 @@ interface UniApiError$1 {
 /**
  * 导航失败接口，描述导航过程中产生的失败，包含来源和目标路由信息
  */
-interface NavigationFailure$1 extends RouterError$1 {
+interface NavigationFailure extends RouterError {
     /** 目标路由 */
     readonly to: RouteLocation;
     /** 来源路由 */
@@ -354,7 +362,7 @@ interface NavigationFailure$1 extends RouterError$1 {
      *
      * 仅当 `code` 为 `NAVIGATION_API_ERROR` 时存在，包含失败的 API 名称和原始错误信息。
      */
-    readonly cause?: UniApiError$1;
+    readonly cause?: UniApiError;
 }
 /**
  * 路由错误码枚举
@@ -370,8 +378,169 @@ declare enum RouterErrorCode {
     ROUTE_NOT_FOUND = "ROUTE_NOT_FOUND",
     /** uni 导航 API 调用失败 */
     NAVIGATION_API_ERROR = "NAVIGATION_API_ERROR",
+    /** 使用了插件提供的功能但对应插件未注册 */
+    PLUGIN_REQUIRED = "PLUGIN_REQUIRED",
     /** 路由器初始化或使用方式错误 */
     SETUP_ERROR = "SETUP_ERROR"
+}
+
+/**
+ * uni 导航 API 的统一选项
+ */
+interface UniNavigationOptions {
+    /** 目标页面路径 */
+    path: string;
+    /** 路由元信息 */
+    meta: RouteMeta;
+    /** 查询参数 */
+    query?: Record<string, string>;
+    /** 导航动画（仅 App 端生效），覆盖 meta.animation */
+    animation?: NavigationAnimation;
+    /**
+     * 页面间通信事件监听器（仅 push 时生效）
+     *
+     * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
+     * 其他导航方式不支持 events，传入时将被忽略。
+     */
+    events?: EventListeners;
+}
+
+/**
+ * Params 存储管理器接口
+ */
+interface ParamsManager {
+    /** 存储 params，返回生成的 key */
+    set(params: ParamObject, persistent?: boolean): string;
+    /** 根据 key 读取 params（惰性清理：页面已不在栈中则返回 undefined 并删除） */
+    get(key: string): ParamObject | undefined;
+    /** 根据 key 读取 params（不做惰性清理，用于导航解析阶段目标页面尚未入栈的场景） */
+    peek(key: string): ParamObject | undefined;
+    /** 删除指定 key 的 params */
+    remove(key: string): void;
+    /** 清理所有无效 params（页面已不在栈中的） */
+    cleanupStale(): void;
+    /** 清理所有 params（路由器初始化时调用） */
+    cleanupAll(): void;
+    /** 设置全局默认持久化策略 */
+    setDefaultPersistent(persistent: boolean): void;
+}
+
+/**
+ * 导航准备上下文
+ *
+ * 在 uni API 调用前，插件通过此上下文修改导航 URL query 和选项。
+ */
+interface NavigationPrepareContext {
+    /** 目标路由 */
+    to: RouteLocation;
+    /** 来源路由 */
+    from: RouteLocation;
+    /** 导航模式 */
+    mode: 'push' | 'replace' | 'relaunch' | 'back';
+    /** 插件间共享数据，由 onAfterResolve 阶段填充 */
+    pluginData: Record<string, any>;
+    /** 实际导航 URL 的 query（可变：插件添加内部 key） */
+    query: Record<string, string>;
+    /** uni 导航选项（可变：插件修改） */
+    options: UniNavigationOptions;
+}
+/**
+ * 导航完成上下文
+ *
+ * 在 uni API 调用成功后，插件通过此上下文扩展 NavigationResult。
+ */
+interface NavigationCompleteContext {
+    /** 目标路由 */
+    to: RouteLocation;
+    /** 导航模式 */
+    mode: 'push' | 'replace' | 'relaunch' | 'back';
+    /** 插件间共享数据 */
+    pluginData: Record<string, any>;
+    /** 原生 eventChannel（仅 push 模式可用） */
+    nativeEventChannel?: EventChannel;
+    /** 导航结果（可变：插件扩展） */
+    result: Record<string, any>;
+}
+/**
+ * 插件上下文
+ *
+ * 路由器暴露给插件的 hook 注册接口，插件通过此接口注册各种钩子。
+ */
+interface PluginContext {
+    /**
+     * 在 matcher.resolve() 前增强原始路由位置
+     *
+     * 例如：注入 __params_key、__nav_id 到 query 中
+     */
+    onEnrichLocation(hook: (location: RouteLocationRaw) => RouteLocationRaw): void;
+    /**
+     * resolve 之后、守卫之前，从增强后的路由位置中提取插件数据
+     *
+     * 因为 matcher.resolve 会丢弃内部 key，插件需在此阶段提取数据存入 pluginData
+     */
+    onAfterResolve(hook: (enrichedLocation: RouteLocationRaw, pluginData: Record<string, any>) => void): void;
+    /**
+     * uni API 调用前，修改导航 URL query 和选项
+     *
+     * 插件可将内部 key 拼回 query，或修改 navOptions
+     */
+    onPrepareNavigation(hook: (ctx: NavigationPrepareContext) => void): void;
+    /**
+     * uni API 调用成功后，扩展 NavigationResult
+     *
+     * 例如：ChannelPlugin 用内部通道替代原生 eventChannel
+     */
+    onCompleteNavigation(hook: (ctx: NavigationCompleteContext) => void): void;
+    /**
+     * 导航中止或失败时，执行清理操作
+     *
+     * 例如：destroyChannel
+     */
+    onNavigationAbort(hook: (pluginData: Record<string, any>) => void): void;
+    /**
+     * syncCurrentRoute 期间，从 URL query 中提取插件数据
+     *
+     * 例如：从 query 中提取 __params_key 重建 params
+     */
+    onRouteSync(hook: (query: Record<string, string>, params: Record<string, any>) => void): void;
+    /**
+     * router.install() 被调用时触发
+     *
+     * 插件可在此注册 app 级别的清理逻辑
+     */
+    onAppInstall(hook: (app: App) => void): void;
+    /** 当前路由位置（只读） */
+    readonly currentRoute: RouteLocation;
+    /** 解析路由位置为完整的 RouteLocation 对象 */
+    resolve(location: RouteLocationRaw): RouteLocation;
+    /** 路由器实例引用（仅特定插件需要，如 InterceptorPlugin） */
+    readonly router: Router;
+    /** 核心 ParamsManager 实例（供 ParamsPlugin 共享使用） */
+    readonly paramsManager: ParamsManager;
+    /**
+     * 检查指定插件是否已注册
+     *
+     * @param name - 插件名称
+     * @returns 已注册时返回 true
+     */
+    hasPlugin(name: string): boolean;
+}
+/**
+ * 路由器插件接口（Swiper.js 风格）
+ *
+ * 每个插件通过 install 方法注册 hook 到 PluginContext，
+ * 路由器在导航流程的各个阶段依次调用已注册的 hook。
+ */
+interface RouterPlugin {
+    /** 插件名称 */
+    name: string;
+    /**
+     * 安装插件
+     *
+     * @param context - 插件上下文，用于注册 hook
+     * @param options - 路由器初始化选项（插件可读取自己的选项）
+     */
+    install(context: PluginContext, options: RouterOptions): void;
 }
 
 /**
@@ -380,7 +549,7 @@ declare enum RouterErrorCode {
  * @param to - 目标路由
  * @param from - 来源路由
  */
-type RouterOnError = (error: RouterError$1, to: RouteLocation, from: RouteLocation) => void;
+type RouterOnError = (error: RouterError, to: RouteLocation, from: RouteLocation) => void;
 /**
  * guardRoute 方法的选项
  */
@@ -394,25 +563,20 @@ interface GuardRouteOptions {
      *
      * @param failure - 导航失败对象
      */
-    onAbort?: (failure: NavigationFailure$1) => void;
+    onAbort?: (failure: NavigationFailure) => void;
 }
 /**
  * 路由器初始化选项
+ *
+ * 核心选项包含 routes、strict、guardTimeout、readyTimeout 和 plugins。
+ * 插件扩展选项（paramsPersistent、useUniEventChannel、interceptUniApi）
+ * 通过插件机制启用，类型始终声明在此以提供完整的类型提示（运行时行为由插件控制）。
  */
 interface RouterOptions {
     /** 路由配置列表，需与 pages.json 中的页面声明保持一致 */
     routes: RouteConfig[];
     /** 是否启用严格模式，启用后未匹配的命名路由将抛出异常 */
     strict?: boolean;
-    /**
-     * 是否拦截 uni 原生导航 API（navigateTo / redirectTo / switchTab / navigateBack）
-     *
-     * 启用后，直接调用 uni.navigateTo 等方法将被拦截并转由路由器处理，
-     * 确保路由守卫（beforeEach / beforeResolve / afterEach）始终生效。
-     *
-     * @default false
-     */
-    interceptUniApi?: boolean;
     /**
      * 守卫超时时间（毫秒）
      *
@@ -437,7 +601,15 @@ interface RouterOptions {
      */
     readyTimeout?: number;
     /**
-     * 页面参数持久化默认值
+     * 路由器插件列表
+     *
+     * 插件按数组顺序依次安装，注册 hook 到路由器的导航流程中。
+     * 核心仅提供基础导航能力，所有扩展功能（params、animation、channel、interceptor）
+     * 均通过插件提供，用户需显式引入并注册。
+     */
+    plugins?: RouterPlugin[];
+    /**
+     * 页面参数持久化默认值（需 ParamsPlugin）
      *
      * 设为 true 时，所有 params 默认通过 uni.setStorageSync 持久化存储，
      * H5 刷新后仍可读取。单次导航可通过 persistent 选项覆盖此默认值。
@@ -446,20 +618,23 @@ interface RouterOptions {
      */
     paramsPersistent?: boolean;
     /**
-     * 是否使用内置通信管理器替代 uni.navigateTo 的原生 EventChannel
+     * 是否使用内置通信管理器替代 uni.navigateTo 的原生 EventChannel（需 ChannelPlugin）
      *
      * - false（默认）：push 使用 uni.navigateTo 原生 EventChannel，其他导航方式不支持页面通信
      * - true：所有导航方式（push/replace/relaunch/back）都使用内置通信管理器
      *
-     * 内置通信管理器基于 `uni.$emit/$on/$off` 全局事件总线实现：
-     * - 每次导航生成唯一 `navigationId` 隔离事件通道
-     * - 目标页面通过 `usePageChannel()` 获取通道
-     * - 页面卸载时自动清理监听器
-     * - `__nav_id` 通过 URL query 传递，H5 刷新后仍可重建通道
-     *
      * @default false
      */
     useUniEventChannel?: boolean;
+    /**
+     * 是否拦截 uni 原生导航 API（需 InterceptorPlugin）
+     *
+     * 启用后，直接调用 uni.navigateTo 等方法将被拦截并转由路由器处理，
+     * 确保路由守卫（beforeEach / beforeResolve / afterEach）始终生效。
+     *
+     * @default false
+     */
+    interceptUniApi?: boolean;
 }
 /**
  * 路由器实例接口，提供路由导航、守卫注册和状态查询能力
@@ -516,11 +691,11 @@ interface Router {
      * 注意：物理返回键和浏览器后退不经过路由器，无法被守卫拦截。
      *
      * @param delta - 返回的页面数，默认为 1
-     * @param animation - 导航动画（仅 App 端生效），覆盖 meta.animation
+     * @param options - 额外选项（AnimationPlugin 通过模块增强添加 animation 字段）
      * @returns 返回到的目标路由位置
      * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
      */
-    back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>;
+    back(delta?: number, options?: Record<string, any>): Promise<RouteLocation>;
     /**
      * 注册全局前置守卫，在每次导航前执行
      * @param guard - 前置守卫函数
@@ -616,6 +791,15 @@ interface Router {
      */
     guardRoute(location?: RouteLocationRaw, options?: GuardRouteOptions): Promise<RouteLocation>;
     /**
+     * 检查指定插件是否已注册
+     *
+     * 插件未注册时使用其功能将抛出 PLUGIN_REQUIRED 错误。
+     *
+     * @param name - 插件名称（对应 RouterPlugin.name）
+     * @returns 插件已注册时返回 true
+     */
+    hasPlugin(name: string): boolean;
+    /**
      * 安装路由器到 Vue 应用实例，注册全局属性和 provide
      * @param app - Vue 应用实例
      */
@@ -623,76 +807,35 @@ interface Router {
 }
 
 /**
- * 路由器注入键，用于 Vue 的 provide/inject 机制
+ * ParamsPlugin - 页面参数管理插件
  *
- * @internal 内部使用，不应在应用代码中直接引用
+ * 提供 params 传递和存储能力：
+ * - 将页面参数存入 ParamsManager，通过 URL query 中的 __params_key 关联
+ * - 支持内存存储和 storage 持久化两种模式
+ * - syncCurrentRoute 时从 URL 中提取 __params_key 重建 params
  */
-declare const ROUTER_SYMBOL: unique symbol;
-/**
- * 创建 uni-app 路由器实例
- *
- * @param options - 路由器初始化选项
- * @returns 路由器实例
- *
- * @example
- * ```ts
- * const router = createRouter({
- *   routes: [
- *     { path: 'pages/index/index', name: 'home', meta: { title: '首页' } },
- *     { path: 'pages/about/about', name: 'about', meta: { requireAuth: true } },
- *     { path: 'pages/user/user', name: 'user', meta: { isTab: true } }
- *   ],
- *   strict: true
- * })
- *
- * // 注册到 Vue 应用
- * app.use(router)
- *
- * // 导航
- * await router.push('/pages/about/about')
- * await router.push({ name: 'about', query: { id: '1' } })
- * await router.back()
- * ```
- */
-declare function createRouter(options: RouterOptions): Router;
+declare const ParamsPlugin: RouterPlugin;
 
 /**
- * 获取当前路由器实例
+ * AnimationPlugin - 导航动画插件
  *
- * 必须在 Vue 组件的 setup() 函数中调用，且需先通过 `app.use(router)` 安装路由器。
- * 内部通过 Vue 的 inject 机制获取路由器实例。
- *
- * @returns 路由器实例
- * @throws {RouterError} 在 setup 外调用或未安装路由器时抛出 SETUP_ERROR
- *
- * @example
- * ```ts
- * import { useRouter } from '@meng-xi/uni-router'
- *
- * const router = useRouter()
- * await router.push({ name: 'home' })
- * ```
+ * 提供导航动画配置能力：
+ * - 从路由位置中提取 animation 参数
+ * - 在 prepareNavigation 阶段将动画设置到 navOptions
+ * - 通过模块增强为 back() 的 options 添加 animation 字段
  */
-declare function useRouter(): Router;
+declare const AnimationPlugin: RouterPlugin;
+
 /**
- * 获取当前路由位置的响应式引用
+ * ChannelPlugin - 页面间通信通道插件
  *
- * 必须在 Vue 组件的 setup() 函数中调用，且需先通过 `app.use(router)` 安装路由器。
- * 返回的是响应式的路由位置 ref，当路由变化时组件会自动重新渲染。
- *
- * @returns 响应式路由位置 ref
- * @throws {RouterError} 在 setup 外调用或未安装路由器时抛出 SETUP_ERROR
- *
- * @example
- * ```ts
- * import { useRoute } from '@meng-xi/uni-router'
- *
- * const route = useRoute()
- * // 在模板中直接使用 route.path、route.query 等
- * // 路由变化时组件会自动更新
- * ```
+ * 提供页面间通信能力：
+ * - useUniEventChannel: true 时，所有导航方式都支持页面通信
+ * - 基于 uni.$emit/$on 全局事件总线实现
+ * - 每次导航生成唯一 navId 隔离事件通道
+ * - 目标页面通过 usePageChannel() 获取通道
  */
-declare function useRoute(): Ref<RouteLocation>;
+declare const ChannelPlugin: RouterPlugin;
 /**
  * 获取当前页面的通信通道
  *
@@ -727,92 +870,13 @@ declare function useRoute(): Ref<RouteLocation>;
 declare function usePageChannel(): EventChannel;
 
 /**
- * 基于 uni.$emit/$on 全局事件的页面间通信通道
+ * InterceptorPlugin - uni API 拦截器插件
  *
- * 实现与 uni.navigateTo 原生 eventChannel 相同的 EventChannel 接口，
- * 但通过 uni.$emit/$on 全局事件总线通信，使所有导航方法（push/replace/relaunch/back/switchTab）都支持页面通信。
- *
- * 事件名通过 `uni-router:<navId>:<event>` 格式隔离，避免全局事件冲突。
- *
- * 粘性事件缓存：emit 时总是缓存事件参数；on/once 注册监听器时若有缓存，异步触发（不删除缓存）。
- * 解决导航方 emit 与目标页面 setup 注册监听器的时序竞争问题——无论 emit 和 on/once 的先后顺序，
- * 所有监听器都能收到最后一次 emit 的数据。once 通过缓存触发时手动 uni.$off 防止重复触发。
+ * 提供拦截 uni 原生导航 API 的能力：
+ * - 拦截 navigateTo、redirectTo、switchTab、navigateBack
+ * - 将外部直接调用重定向到路由器实例，确保路由守卫始终生效
+ * - 通过模块增强为 RouterOptions 添加 interceptUniApi 选项
  */
-declare class UniEventChannel implements EventChannel {
-    private readonly navId;
-    /** 按 event 名分组的监听器集合，用于 destroy 时批量清理 */
-    private readonly listeners;
-    /** 粘性事件缓存：无监听器时 emit 的事件参数，on/once 注册时异步触发 */
-    private readonly pendingEvents;
-    private destroyed;
-    constructor(navId: string);
-    on(event: string, callback: (...args: any[]) => void): EventChannel;
-    once(event: string, callback: (...args: any[]) => void): EventChannel;
-    off(event: string, callback?: (...args: any[]) => void): EventChannel;
-    emit(event: string, ...args: any[]): EventChannel;
-    /**
-     * 销毁通道，清理所有监听器和待处理事件
-     *
-     * 框架内部在页面卸载时调用，防止监听器累积导致内存泄漏。
-     */
-    destroy(): void;
-}
-/**
- * 空操作通道
- *
- * 当目标页面无 __nav_id 时由 usePageChannel() 返回，避免调用方需判空。
- */
-declare const noopChannel: EventChannel;
+declare const InterceptorPlugin: RouterPlugin;
 
-/**
- * 路由错误类，表示路由过程中产生的错误
- */
-declare class RouterError extends Error {
-    /** 错误码 */
-    readonly code: RouterErrorCode;
-    /**
-     * @param code - 错误码
-     * @param message - 错误信息（会自动添加 [uni-router] 前缀）
-     */
-    constructor(code: RouterErrorCode, message: string);
-}
-
-/**
- * 导航失败类，表示导航过程中产生的失败，包含来源和目标路由信息
- */
-declare class NavigationFailure extends RouterError {
-    /** 目标路由 */
-    readonly to: RouteLocation;
-    /** 来源路由 */
-    readonly from: RouteLocation;
-    /** 原始错误原因 */
-    readonly cause?: UniApiError$1;
-    /**
-     * @param to - 目标路由
-     * @param from - 来源路由
-     * @param code - 错误码
-     * @param message - 可选的错误信息，默认自动生成
-     * @param cause - 原始错误原因
-     */
-    constructor(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: UniApiError$1);
-}
-
-/**
- * uni API 调用失败时的错误封装
- *
- * 当 uni.navigateTo / uni.redirectTo 等导航 API 调用失败时，
- * 将错误原因封装为此类实例，作为 {@link NavigationFailure.cause} 传递。
- */
-declare class UniApiError extends Error {
-    /** 调用失败的 API 名称（如 navigateTo / redirectTo） */
-    readonly api: string;
-    /** 原始错误原因 */
-    readonly cause: UniApiCause;
-    /**
-     * @param api - 失败的 uni API 名称
-     * @param cause - 原始错误对象
-     */
-    constructor(api: string, cause: UniApiCause);
-}
-
-export { DEFAULT_ANIMATION_DURATION, type EventChannel, type EventListeners, type GuardRouteOptions, type NavigationAnimation, NavigationFailure, type NavigationGuard, type NavigationGuardNext, type NavigationGuardNextOptions, type NavigationRedirectMode, type NavigationResult, type ParamObject, type ParamValue, type ParamsInput, type PostNavigationGuard, type QueryValue, ROUTER_SYMBOL, type RouteConfig, type RouteLocation, type RouteLocationNamedRaw, type RouteLocationPathRaw, type RouteLocationRaw, type RouteMeta, type RouteName, type RouteNameMap, type RoutePath, type Router, RouterError, RouterErrorCode, type RouterOnError, type RouterOptions, type UniAnimationType, type UniApiCause, UniApiError, UniEventChannel, createRouter, noopChannel, usePageChannel, useRoute, useRouter };
+export { AnimationPlugin as A, type RouterPlugin as B, ChannelPlugin as C, DEFAULT_ANIMATION_DURATION as D, type EventChannel as E, type UniAnimationType as F, type GuardRouteOptions as G, usePageChannel as H, InterceptorPlugin as I, type NavigationAnimation as N, type ParamObject as P, type QueryValue as Q, type RouterOptions as R, type UniApiError as U, type Router as a, type RouteLocation as b, RouterErrorCode as c, type UniApiCause as d, type EventListeners as e, type NavigationCompleteContext as f, type NavigationGuard as g, type NavigationGuardNext as h, type NavigationGuardNextOptions as i, type NavigationPrepareContext as j, type NavigationRedirectMode as k, type NavigationResult as l, type ParamValue as m, type ParamsInput as n, ParamsPlugin as o, type PluginContext as p, type PostNavigationGuard as q, type RouteConfig as r, type RouteLocationNamedRaw as s, type RouteLocationPathRaw as t, type RouteLocationRaw as u, type RouteMeta as v, type RouteName as w, type RouteNameMap as x, type RoutePath as y, type RouterOnError as z };

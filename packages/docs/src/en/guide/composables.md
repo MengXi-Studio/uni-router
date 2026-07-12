@@ -186,6 +186,9 @@ const list = route.value.params.list as Item[]
 ```
 
 ::: warning params Limitations
+`params` functionality requires registering `ParamsPlugin`. Using it without registration throws a `PLUGIN_REQUIRED` error.
+
+Other limitations:
 - params is stored in memory and lost on H5 refresh
 - params is only available with `push`; may be lost after `replace` / `relaunch`
 - See [Navigation - Passing Complex Data with params](./navigation#passing-complex-data-with-params)
@@ -196,7 +199,17 @@ const list = route.value.params.list as Item[]
 Gets the bidirectional communication channel between the current page and the navigation initiator. Must be called inside a Vue component's `setup()` function.
 
 ::: tip Prerequisite
-Requires enabling the built-in communication manager via `createRouter({ useUniEventChannel: true })`. In default mode, it returns a no-op channel (calling `on` / `emit` has no effect).
+Requires registering `ChannelPlugin` and setting `useUniEventChannel: true`:
+```ts
+import { createRouter, ChannelPlugin } from '@meng-xi/uni-router'
+
+const router = createRouter({
+  routes: [...],
+  plugins: [ChannelPlugin],
+  useUniEventChannel: true
+})
+```
+Without ChannelPlugin registered, the `events` parameter will throw a `PLUGIN_REQUIRED` error. In the default mode (`useUniEventChannel: false`), `usePageChannel()` returns a no-op channel.
 :::
 
 ### Basic Usage
@@ -550,4 +563,5 @@ async function replaceHome() {
 
 - [Route Configuration](./route-config) — Detailed route configuration
 - [Navigation](./navigation) — Navigation API usage
+- [Plugin System](./plugins) — Learn about plugin registration
 - [API Reference](../api/create-router) — Complete API documentation

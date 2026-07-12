@@ -8,6 +8,7 @@
 interface RouterOptions {
   routes: RouteConfig[]
   strict?: boolean
+  plugins?: RouterPlugin[]
   interceptUniApi?: boolean
   guardTimeout?: number
   readyTimeout?: number
@@ -61,6 +62,24 @@ const router = createRouter({ routes, strict: false })
 - 生产环境建议保持 `true`，尽早发现配置错误
 :::
 
+### plugins
+
+- **类型**: `RouterPlugin[]`
+- **默认值**: `undefined`
+
+路由器插件列表。插件按数组顺序依次安装，注册 hook 到路由器的导航流程中。核心仅提供基础导航能力，所有扩展功能（params、animation、channel、interceptor）均通过插件提供，用户需显式引入并注册。
+
+```ts
+import { createRouter, ParamsPlugin, InterceptorPlugin } from '@meng-xi/uni-router'
+
+const router = createRouter({
+  routes: [...],
+  plugins: [ParamsPlugin, InterceptorPlugin]
+})
+```
+
+详见[插件系统](../guide/plugins)和[RouterPlugin 类型](./type-router-plugin)。
+
 ### interceptUniApi
 
 - **类型**: `boolean`
@@ -89,6 +108,8 @@ const router = createRouter({
 :::
 
 详见[拦截器机制](../guide/interceptor)。
+
+需要注册 `InterceptorPlugin` 才生效。若设置了此选项但未注册插件，路由器会输出警告。
 
 ### guardTimeout
 
@@ -171,13 +192,15 @@ await router.push({
 - 持久化的 params 应及时清理（`router` 会在页面关闭时自动清理）
 :::
 
+需要注册 `ParamsPlugin` 才生效。若设置了此选项但未注册插件，路由器会输出警告。
+
 ### useUniEventChannel
 
 - **类型**: `boolean`
 - **默认值**: `false`
-- **说明**: 是否使用内置通信管理器替代 `uni.navigateTo` 的原生 EventChannel
-  - `false`（默认）：`push` 使用 `uni.navigateTo` 原生 EventChannel，其他导航方式（`replace` / `relaunch` / `back`）不支持页面通信
-  - `true`：所有导航方式（`push` / `replace` / `relaunch`）都使用内置通信管理器，返回的 `eventChannel` 均可用
+- **说明**: 是否使用内置通信管理器替代 uni.navigateTo 的原生 EventChannel。需要注册 `ChannelPlugin` 才生效。若设置了此选项但未注册插件，路由器会输出警告。
+  - `false`（默认）：push 使用 uni.navigateTo 原生 EventChannel，其他导航方式不支持页面通信
+  - `true`：所有导航方式（push/replace/relaunch/back）都使用内置通信管理器
 
 内置通信管理器基于 `uni.$emit` / `uni.$on` / `uni.$off` 全局事件总线实现：
 - 每次导航生成唯一 `navigationId` 隔离事件通道，避免全局事件冲突
@@ -214,7 +237,7 @@ eventChannel.emit('init', { source: 'replace' })
 ## 完整示例
 
 ```ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, InterceptorPlugin, ParamsPlugin } from '@meng-xi/uni-router'
 import type { RouteConfig } from '@meng-xi/uni-router'
 
 const routes: RouteConfig[] = [
@@ -226,11 +249,12 @@ const routes: RouteConfig[] = [
 
 const router = createRouter({
   routes,
+  plugins: [InterceptorPlugin, ParamsPlugin],  // 注册插件
   strict: true,              // 严格模式
-  interceptUniApi: true,     // 拦截原生 API
+  interceptUniApi: true,     // 拦截原生 API（需 InterceptorPlugin）
   guardTimeout: 15000,       // 守卫超时 15 秒
   readyTimeout: 5000,        // 就绪超时 5 秒
-  paramsPersistent: false,   // params 默认不持久化
+  paramsPersistent: false,   // params 默认不持久化（需 ParamsPlugin）
   useUniEventChannel: false  // 默认仅 push 支持通信
 })
 
@@ -253,8 +277,11 @@ const router = createRouter({
 ### 生产环境推荐配置
 
 ```ts
+import { InterceptorPlugin, ParamsPlugin } from '@meng-xi/uni-router'
+
 const router = createRouter({
   routes,
+  plugins: [InterceptorPlugin, ParamsPlugin],  // 注册所需插件
   strict: true,              // 尽早发现配置错误
   interceptUniApi: true,     // 统一守卫流程
   guardTimeout: 15000,       // 适配网络请求
@@ -266,8 +293,11 @@ const router = createRouter({
 ### 高安全场景配置
 
 ```ts
+import { InterceptorPlugin, ParamsPlugin } from '@meng-xi/uni-router'
+
 const router = createRouter({
   routes,
+  plugins: [InterceptorPlugin, ParamsPlugin],
   strict: true,
   interceptUniApi: true,     // 确保所有导航经过权限校验
   guardTimeout: 30000,       // 适配复杂权限校验
@@ -321,4 +351,6 @@ router.guardRoute(undefined, {
 
 - [createRouter()](./create-router) — 创建路由器实例
 - [RouteConfig 类型](./type-route-config) — 路由配置项类型
+- [RouterPlugin 类型](./type-router-plugin) — 插件类型定义
+- [插件系统](../guide/plugins) — 插件架构与使用指南
 - [拦截器机制](../guide/interceptor) — 拦截原生 API 的原理

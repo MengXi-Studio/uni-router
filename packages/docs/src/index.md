@@ -28,7 +28,7 @@ features:
     details: push / replace / relaunch / back 四种导航，自动识别 TabBar，声明式 RouterLink
   - icon: 🛡️
     title: 路由守卫
-    details: 全局前置/解析/后置守卫与路由独享守卫，guardRoute 冷启动补执行，拦截原生 API 确保全拦截
+    details: 全局前置/解析/后置守卫与路由独享守卫，guardRoute 冷启动补执行，InterceptorPlugin 拦截原生 API 确保全拦截
   - icon: 📦
     title: 参数传递与查询增强
     details: params 传递复杂数据不暴露 URL，back() 后自动保留，queryInt / queryNumber / queryBool 便捷解析
@@ -40,7 +40,7 @@ features:
     details: RouterLink 导航组件 + TabBar / TabBarItem 自定义底部导航，SCSS 变量与 CSS 自定义属性主题定制
   - icon: 🔄
     title: 路由状态自动同步
-    details: 全局 Mixin 自动调用 syncRoute()，浏览器后退、物理返回键等场景自动同步，无需手动处理
+    details: install 时注入全局 Mixin 自动调用 syncRoute()，浏览器后退、物理返回键等场景自动同步，无需手动处理
   - icon: ⚠️
     title: 错误处理
     details: RouterError / NavigationFailure / UniApiError 完整体系，onError 全局捕获，instanceof 精准判断

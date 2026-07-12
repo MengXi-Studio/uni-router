@@ -109,7 +109,7 @@ router.onError((err) => {
 
 ## RouterErrorCode
 
-Error code enum, 6 in total:
+Error code enum, 7 in total:
 
 | Error Code | Description | Trigger Scenario | Recoverable |
 | --- | --- | --- | --- |
@@ -118,6 +118,7 @@ Error code enum, 6 in total:
 | `NAVIGATION_DUPLICATED` | Duplicate navigation | `push` to the page already on | Yes |
 | `ROUTE_NOT_FOUND` | Route not found | Using an undefined named route in strict mode | Yes |
 | `NAVIGATION_API_ERROR` | uni API call failed | `uni.navigateTo` etc. failed (e.g., stack overflow) | Yes |
+| `PLUGIN_REQUIRED` | Plugin not registered | Using a plugin-provided feature without registering the corresponding plugin | Yes |
 | `SETUP_ERROR` | Initialization/usage error | `useRouter()` called outside setup | No |
 
 ::: tip Error Code Checking
@@ -274,6 +275,30 @@ router.onError((err) => {
 })
 ```
 
+### PLUGIN_REQUIRED
+
+Using a plugin-provided feature without registering the corresponding plugin.
+
+```ts
+// Using params without registering ParamsPlugin
+await router.push({ path: '/detail', params: { id: 123 } })
+// → PLUGIN_REQUIRED
+
+// Using animation without registering AnimationPlugin
+await router.push({ path: '/detail', animation: { type: 'fade-in' } })
+// → PLUGIN_REQUIRED
+```
+
+**Trigger scenarios**:
+
+| Feature | Required Plugin |
+| --- | --- |
+| `params` / `persistent` | `ParamsPlugin` |
+| `animation` | `AnimationPlugin` |
+| `events` | `ChannelPlugin` |
+
+**Resolution**: Register the corresponding plugin or use `router.hasPlugin()` to check before using. See [Plugin System](../guide/plugins) for details.
+
 ### SETUP_ERROR
 
 Router initialization or usage error, not recoverable:
@@ -303,6 +328,7 @@ router.onError((err) => {
     // Severe errors: modal prompt
     case RouterErrorCode.ROUTE_NOT_FOUND:
     case RouterErrorCode.NAVIGATION_API_ERROR:
+    case RouterErrorCode.PLUGIN_REQUIRED:
       uni.showModal({
         title: 'Error',
         content: err.message,

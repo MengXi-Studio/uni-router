@@ -50,6 +50,8 @@ export interface ParamsManager {
 	cleanupStale(): void
 	/** 清理所有 params（路由器初始化时调用） */
 	cleanupAll(): void
+	/** 设置全局默认持久化策略 */
+	setDefaultPersistent(persistent: boolean): void
 }
 
 /**
@@ -64,9 +66,15 @@ export interface ParamsManager {
 export function createParamsManager(defaultPersistent: boolean): ParamsManager {
 	/** 内存存储 */
 	const memoryMap = new Map<string, ParamObject>()
+	/** 全局默认持久化策略（可由插件动态更新） */
+	let currentDefaultPersistent = defaultPersistent
+
+	function setDefaultPersistent(persistent: boolean): void {
+		currentDefaultPersistent = persistent
+	}
 
 	function set(params: ParamObject, persistent?: boolean): string {
-		const useStorage = persistent ?? defaultPersistent
+		const useStorage = persistent ?? currentDefaultPersistent
 		const key = generateKey()
 
 		// 校验可序列化性
@@ -195,5 +203,5 @@ export function createParamsManager(defaultPersistent: boolean): ParamsManager {
 		}
 	}
 
-	return { set, get, peek, remove, cleanupStale, cleanupAll }
+	return { set, get, peek, remove, cleanupStale, cleanupAll, setDefaultPersistent }
 }

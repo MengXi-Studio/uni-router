@@ -32,8 +32,11 @@ uni.navigateTo({ url: '/pages/protected/protected' })
 启用 `interceptUniApi` 后，所有原生导航 API 调用都会被拦截并转由路由器处理：
 
 ```ts
+import { createRouter, InterceptorPlugin } from '@meng-xi/uni-router'
+
 const router = createRouter({
   routes,
+  plugins: [InterceptorPlugin],  // 注册拦截器插件
   interceptUniApi: true // 启用拦截
 })
 
@@ -45,11 +48,18 @@ uni.navigateTo({ url: '/pages/protected/protected' }) // → 转由 router.push 
 ## 启用与配置
 
 ```ts
+import { createRouter, InterceptorPlugin } from '@meng-xi/uni-router'
+
 const router = createRouter({
   routes: [...],
+  plugins: [InterceptorPlugin],  // 注册拦截器插件
   interceptUniApi: true  // 默认 false
 })
 ```
+
+::: warning 需要注册 InterceptorPlugin
+`interceptUniApi: true` 需要 `InterceptorPlugin` 已注册。若设置了 `interceptUniApi: true` 但未注册 `InterceptorPlugin`，路由器会输出警告，拦截器不会安装。
+:::
 
 ::: warning 默认关闭
 `interceptUniApi` 默认为 `false`。这是为了渐进式采用——你可以先在不启用拦截器的情况下集成路由器，逐步将 `uni.navigateTo` 迁移为 `router.push`，确认无误后再启用拦截器作为"兜底"。
@@ -389,13 +399,17 @@ uni.navigateTo({ url: '/protected' })
 
 ### 安装
 
-`interceptUniApi: true` 时，路由器构造函数中自动安装：
+`InterceptorPlugin` 在 `install()` 时自动安装拦截器：
 
 ```ts
-constructor(options: RouterOptions) {
-  // ...
-  if (this._interceptUniApi) {
-    installInterceptors(this)
+// InterceptorPlugin 内部逻辑
+export const InterceptorPlugin: RouterPlugin = {
+  name: 'interceptor',
+  install(context, options) {
+    const interceptUniApi = options.interceptUniApi ?? false
+    if (!interceptUniApi) return
+    installInterceptors(context.router)
+    // ...
   }
 }
 ```
@@ -420,7 +434,7 @@ if (import.meta.hot) {
 ## 完整示例
 
 ```ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, InterceptorPlugin } from '@meng-xi/uni-router'
 
 const router = createRouter({
   routes: [
@@ -428,6 +442,7 @@ const router = createRouter({
     { path: 'pages/about/about', name: 'about', meta: { requireAuth: true } },
     { path: 'pages/login/login', name: 'login' }
   ],
+  plugins: [InterceptorPlugin],
   interceptUniApi: true // 启用拦截
 })
 
@@ -454,6 +469,7 @@ uni.navigateTo({ url: '/pages/about/about' })
 
 ## 下一步
 
+- [插件系统](./plugins) — 插件机制与扩展
 - [导航流程原理](./navigation-flow) — 拦截器在完整流程中的位置
 - [平台兼容性](./compatibility) — 各平台限制
 - [实战指南](./recipes) — 完整业务方案

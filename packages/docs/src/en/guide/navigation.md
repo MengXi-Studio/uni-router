@@ -13,6 +13,8 @@ Route navigation is Uni Router's core capability. This chapter dives deep into t
 
 > ¹ `events` not supported by default; with `useUniEventChannel: true` enabled, `replace` / `relaunch` also support page communication and the returned `eventChannel` is available.
 
+> Features marked ✅ require registering the corresponding plugin: `animation` requires AnimationPlugin, `events` requires ChannelPlugin, `params` requires ParamsPlugin
+
 ::: tip TabBar Page Auto-Detection
 When the target route's `meta.isTab` is `true`, `push` / `replace` / `relaunch` all automatically switch to `uni.switchTab`. You don't need to manually check—just declare `isTab` correctly in the route config.
 :::
@@ -250,6 +252,10 @@ Named routes decouple from paths. When refactoring, just modify `path` in the ro
 
 ## Special Usage: params for Complex Data
 
+::: info Requires ParamsPlugin
+The `params` and `persistent` features require registering `ParamsPlugin`. Using them without registration throws a `PLUGIN_REQUIRED` error.
+:::
+
 uni-app native navigation only supports URL query (strings). Uni Router's `params` breaks this limitation:
 
 ### Passing Arbitrary JSON Data
@@ -323,6 +329,8 @@ Uni Router provides two page communication modes: native EventChannel (default) 
 
 ### Mode 1: Native EventChannel (Default)
 
+In the default mode, `events` works with `push` only and does not require ChannelPlugin.
+
 `push` supports `events` + `eventChannel` bidirectional communication, corresponding to `uni.navigateTo`'s EventChannel mechanism:
 
 ```ts
@@ -362,6 +370,10 @@ eventChannel.emit('update', { status: 'loaded' })
 :::
 
 ### Mode 2: Built-in Communication Manager (useUniEventChannel)
+
+::: info Requires ChannelPlugin
+Enabling `useUniEventChannel: true` requires registering `ChannelPlugin`. Using it without registration throws a `PLUGIN_REQUIRED` error.
+:::
 
 With `createRouter({ useUniEventChannel: true })` enabled, all navigation methods (`push` / `replace` / `relaunch`) use the built-in communication manager, and the target page obtains the channel via [`usePageChannel()`](../api/use-page-channel):
 
@@ -417,6 +429,10 @@ The built-in channel implements a sticky event mechanism: `emit` **always** cach
 :::
 
 ## Special Usage: Navigation Animation
+
+::: info Requires AnimationPlugin
+The navigation animation feature requires registering `AnimationPlugin`. Using `animation` parameters without registration throws a `PLUGIN_REQUIRED` error.
+:::
 
 App supports custom navigation animation with three-level priority:
 
@@ -527,6 +543,9 @@ try {
         break
       case RouterErrorCode.NAVIGATION_API_ERROR:
         console.error('uni API failed', error.cause)
+        break
+      case RouterErrorCode.PLUGIN_REQUIRED:
+        console.error('Used plugin feature without registering plugin:', error.message)
         break
     }
   }

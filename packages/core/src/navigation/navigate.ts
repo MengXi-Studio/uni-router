@@ -2,7 +2,7 @@ import type { RouteMeta, NavigationAnimation, EventChannel, EventListeners } fro
 import type { UniApiCause } from '@/types/error'
 import { buildFullPath } from '@/utils/path'
 import { warn } from '@/utils/general'
-import { markRouterCall } from '@/interceptor'
+import { markRouterCall } from '@/plugins/interceptor/install'
 import { UniApiError } from '@/errors/uni-api-error'
 
 /**

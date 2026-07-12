@@ -28,7 +28,7 @@ features:
     details: push / replace / relaunch / back, auto-detect TabBar, declarative RouterLink
   - icon: 🛡️
     title: Route Guards
-    details: Global beforeEach / beforeResolve / afterEach and per-route guards, guardRoute for cold-start execution, intercept native APIs
+    details: Global beforeEach / beforeResolve / afterEach and per-route guards, guardRoute for cold-start execution, InterceptorPlugin intercepts native APIs
   - icon: 📦
     title: Params & Query Enhancement
     details: params for complex data without URL exposure, auto-preserved after back(), queryInt / queryNumber / queryBool convenience methods
@@ -40,7 +40,7 @@ features:
     details: RouterLink navigation + TabBar / TabBarItem custom bottom navigation, SCSS variables and CSS custom properties for theming
   - icon: 🔄
     title: Auto Route State Sync
-    details: Global mixin auto-invokes syncRoute(), handles browser back, physical back button, etc. No manual sync needed
+    details: Global mixin injected at install auto-invokes syncRoute(), handles browser back, physical back button, etc. No manual sync needed
   - icon: ⚠️
     title: Error Handling
     details: RouterError / NavigationFailure / UniApiError complete system, onError global capture, instanceof discrimination

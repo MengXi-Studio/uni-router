@@ -1,4 +1,10 @@
 {
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "Uni Router Demo",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
 	"pages": [
 		{
 			"path": "pages/index/index",
@@ -50,10 +56,12 @@
 			}
 		}
 	],
-	"globalStyle": {
-		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "Uni Router Demo",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+	"easycom": {
+		"autoscan": true,
+		"custom": {
+			"^RouterLink$": "@/uni_modules/mxuni-router-v2/components/router-link/router-link.vue",
+			"^TabBar$": "@/uni_modules/mxuni-router-v2/components/tab-bar/tab-bar.vue",
+			"^TabBarItem$": "@/uni_modules/mxuni-router-v2/components/tab-bar-item/tab-bar-item.vue"
+		}
 	}
 }

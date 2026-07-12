@@ -49,6 +49,7 @@ interface UniApiCause {
 | `NAVIGATION_DUPLICATED` | 重复导航 | `push` 到当前已处于的页面 | 是 |
 | `ROUTE_NOT_FOUND` | 路由未找到 | 严格模式下使用未定义的命名路由 | 是 |
 | `NAVIGATION_API_ERROR` | uni API 调用失败 | `uni.navigateTo` 等调用失败 | 是 |
+| `PLUGIN_REQUIRED` | 插件功能未注册 | 使用 `params`/`events`/`animation` 等插件依赖功能但未注册对应插件 | 是 |
 | `SETUP_ERROR` | 初始化错误 | `useRouter()` 在 setup 外调用 | 否 |
 
 ### 错误码触发条件
@@ -120,6 +121,22 @@ await router.push({ name: 'page11' }) // 小程序页面栈已达 10 层
 // err.cause.cause.errMsg 包含 'limit exceed'
 ```
 
+#### PLUGIN_REQUIRED
+
+```ts
+// 未注册 ParamsPlugin 时使用 params
+await router.push({ path: '/detail', params: { id: 123 } })
+// → 抛出 PLUGIN_REQUIRED: Plugin "params" is required to use params
+
+// 未注册 AnimationPlugin 时使用 animation
+await router.push({ path: '/detail', animation: { type: 'fade-in' } })
+// → 抛出 PLUGIN_REQUIRED: Plugin "animation" is required to use animation
+
+// 未注册 ChannelPlugin 时使用 events
+await router.push({ path: '/detail', events: { update: fn } })
+// → 抛出 PLUGIN_REQUIRED: Plugin "channel" is required to use events
+```
+
 ## 错误处理方式
 
 ### 方式一：全局 onError
@@ -148,6 +165,9 @@ const removeHandler = router.onError((error, to, from) => {
       break
     case 'ROUTE_NOT_FOUND':
       uni.showToast({ title: '页面不存在', icon: 'none' })
+      break
+    case 'PLUGIN_REQUIRED':
+      console.error('使用了插件功能但未注册插件:', error.message)
       break
   }
 })
@@ -178,6 +198,10 @@ async function navigate() {
     }
     if (error.code === 'NAVIGATION_ABORTED') {
       console.log('导航被守卫中止')
+      return
+    }
+    if (error.code === 'PLUGIN_REQUIRED') {
+      console.error('请先注册对应插件:', error.message)
       return
     }
     // 其他错误重新抛出或处理
@@ -428,6 +452,9 @@ router.onError((error) => {
     case RouterErrorCodes.NAVIGATION_DUPLICATED:
       // ...
       break
+    case RouterErrorCodes.PLUGIN_REQUIRED:
+      // 插件未注册
+      break
     // ...
   }
 })
@@ -438,3 +465,4 @@ router.onError((error) => {
 - [常见问题](./faq) — 排查具体问题
 - [导航流程原理](./navigation-flow) — 理解错误产生的时机
 - [实战指南](./recipes) — 完整业务方案
+- [插件系统](./plugins) — 了解插件注册机制

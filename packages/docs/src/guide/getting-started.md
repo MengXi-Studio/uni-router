@@ -40,7 +40,7 @@ yarn add @meng-xi/uni-router
 
 ```ts
 // src/router/index.ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin } from '@meng-xi/uni-router'
 import type { RouteConfig } from '@meng-xi/uni-router'
 
 const routes: RouteConfig[] = [
@@ -69,14 +69,19 @@ const routes: RouteConfig[] = [
 const router = createRouter({
   routes,
   strict: true,
-  interceptUniApi: true,  // 拦截原生 API，确保守卫生效
-  guardTimeout: 15000     // 守卫超时（毫秒）
+  plugins: [ParamsPlugin, ChannelPlugin, InterceptorPlugin],
+  paramsPersistent: false,     // 需要 ParamsPlugin
+  useUniEventChannel: true,    // 需要 ChannelPlugin
+  interceptUniApi: true,       // 需要 InterceptorPlugin，拦截原生 API 确保守卫生效
+  guardTimeout: 15000          // 守卫超时（毫秒）
 })
 
 export default router
 ```
 
-::: tip 自动生成
+::: tip 插件按需引入
+`plugins` 中的插件按需注册，未注册的插件功能不可用（使用时抛出 `PLUGIN_REQUIRED` 错误）。如果你不需要参数传递或 API 拦截，只需注册需要的插件即可。详见[插件系统](./plugins)。
+
 推荐使用 [`@meng-xi/vite-plugin`](./auto-generate) 从 `pages.json` 自动生成路由配置，避免手动维护。
 :::
 
@@ -227,24 +232,39 @@ import { RouterLink } from '@meng-xi/uni-router'
 </script>
 ```
 
-## 第六步：处理页面同步
+## 第六步：处理冷启动守卫
 
-在 `App.vue` 中处理路由状态同步（物理返回等场景）：
+当用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，页面由 uni-app 框架直接加载，不经过路由器导航，守卫（`beforeEach` 等）未执行。使用 `guardRoute()` 可对当前页面补执行守卫链：
 
-```vue
-<!-- App.vue -->
-<script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
-import { useRouter } from '@meng-xi/uni-router'
-
-const router = useRouter()
-
-onShow(() => {
-  // 同步路由状态（处理物理返回等场景）
-  router.syncRoute()
+```ts
+// router/index.ts
+router.isReady().then(() => {
+  router.guardRoute(undefined, {
+    onAbort: () => {
+      // 守卫中止：页面已加载无法阻止，手动跳转到安全页面
+      router.relaunch({ name: 'home' })
+    }
+  })
 })
-</script>
 ```
+
+::: tip 路由状态自动同步
+`app.use(router)` 安装时，路由器会注入全局 mixin，在每个页面 `onShow` 时自动调用 `syncRoute()` 同步路由状态。因此你**无需**手动在 `App.vue` 的 `onShow` 中调用 `syncRoute()`。
+
+如果你需要在 `onLoad` 中获取路由信息（`onLoad` 早于 `onShow`），可手动调用：
+
+```ts
+import { onLoad } from '@dcloudio/uni-app'
+import { useRoute } from '@meng-xi/uni-router'
+
+onLoad(() => {
+  const route = useRoute()
+  // 此时 route.value 可能还是旧值，手动同步
+  router.syncRoute()
+  console.log(route.value.query)
+})
+```
+:::
 
 ## 完整示例
 
@@ -347,6 +367,7 @@ src/
 
 ## 下一步
 
+- [插件系统](./plugins) — 理解核心 + 插件架构
 - [路由配置](./route-config) — 详细了解路由配置
 - [导航](./navigation) — 四种导航方式详解
 - [路由守卫](./guards) — 完整守卫机制

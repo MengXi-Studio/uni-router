@@ -8,6 +8,7 @@ Router initialization options, passed to [`createRouter()`](./create-router).
 interface RouterOptions {
   routes: RouteConfig[]
   strict?: boolean
+  plugins?: RouterPlugin[]
   interceptUniApi?: boolean
   guardTimeout?: number
   readyTimeout?: number
@@ -61,6 +62,24 @@ const router = createRouter({ routes, strict: false })
 - For production, keep `true` to catch configuration errors early
 :::
 
+### plugins
+
+- **Type**: `RouterPlugin[]`
+- **Default**: `undefined`
+
+Router plugin list. Plugins are installed in array order, registering hooks into the router's navigation flow. The core only provides basic navigation capabilities; all extended features (params, animation, channel, interceptor) are provided through plugins. Users must explicitly import and register them.
+
+```ts
+import { createRouter, ParamsPlugin, InterceptorPlugin } from '@meng-xi/uni-router'
+
+const router = createRouter({
+  routes: [...],
+  plugins: [ParamsPlugin, InterceptorPlugin]
+})
+```
+
+See [Plugin System](../guide/plugins) and [RouterPlugin Type](./type-router-plugin) for details.
+
 ### interceptUniApi
 
 - **Type**: `boolean`
@@ -89,6 +108,8 @@ const router = createRouter({
 :::
 
 See [Interceptor Mechanism](../guide/interceptor) for details.
+
+Requires `InterceptorPlugin` to be registered to take effect. If this option is set but the plugin is not registered, the router will output a warning.
 
 ### guardTimeout
 
@@ -171,11 +192,13 @@ Persistence writes to storage; frequent use of large objects increases storage o
 - Persisted params should be cleaned up promptly (the `router` auto-cleans on page close)
 :::
 
+Requires `ParamsPlugin` to be registered to take effect. If this option is set but the plugin is not registered, the router will output a warning.
+
 ### useUniEventChannel
 
 - **Type**: `boolean`
 - **Default**: `false`
-- **Description**: Whether to use the built-in communication manager instead of `uni.navigateTo`'s native EventChannel
+- **Description**: Whether to use the built-in communication manager instead of `uni.navigateTo`'s native EventChannel. Requires `ChannelPlugin` to be registered to take effect. If this option is set but the plugin is not registered, the router will output a warning.
   - `false` (default): `push` uses `uni.navigateTo`'s native EventChannel; other navigation methods (`replace` / `relaunch` / `back`) don't support page communication
   - `true`: All navigation methods (`push` / `replace` / `relaunch`) use the built-in communication manager; the returned `eventChannel` is always available
 
@@ -214,7 +237,7 @@ See [Page Communication](../guide/navigation#special-usage-page-communication) a
 ## Full Example
 
 ```ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, InterceptorPlugin, ParamsPlugin } from '@meng-xi/uni-router'
 import type { RouteConfig } from '@meng-xi/uni-router'
 
 const routes: RouteConfig[] = [
@@ -226,11 +249,12 @@ const routes: RouteConfig[] = [
 
 const router = createRouter({
   routes,
+  plugins: [InterceptorPlugin, ParamsPlugin],  // Register plugins
   strict: true,              // Strict mode
-  interceptUniApi: true,     // Intercept native APIs
+  interceptUniApi: true,     // Intercept native APIs (requires InterceptorPlugin)
   guardTimeout: 15000,       // Guard timeout 15s
   readyTimeout: 5000,        // Ready timeout 5s
-  paramsPersistent: false,   // params not persisted by default
+  paramsPersistent: false,   // params not persisted by default (requires ParamsPlugin)
   useUniEventChannel: false  // Only push supports communication by default
 })
 
@@ -253,8 +277,11 @@ const router = createRouter({
 ### Production Recommended Configuration
 
 ```ts
+import { InterceptorPlugin, ParamsPlugin } from '@meng-xi/uni-router'
+
 const router = createRouter({
   routes,
+  plugins: [InterceptorPlugin, ParamsPlugin],  // Register needed plugins
   strict: true,              // Catch configuration errors early
   interceptUniApi: true,     // Unify guard flow
   guardTimeout: 15000,       // Adapt to network requests
@@ -266,8 +293,11 @@ const router = createRouter({
 ### High-Security Scenario Configuration
 
 ```ts
+import { InterceptorPlugin, ParamsPlugin } from '@meng-xi/uni-router'
+
 const router = createRouter({
   routes,
+  plugins: [InterceptorPlugin, ParamsPlugin],
   strict: true,
   interceptUniApi: true,     // Ensure all navigation goes through permission checks
   guardTimeout: 30000,       // Adapt to complex permission checks
@@ -321,4 +351,6 @@ See [Router Instance - guardRoute()](./router-instance#guardroute) and [Route Gu
 
 - [createRouter()](./create-router) — Create a router instance
 - [RouteConfig Type](./type-route-config) — Route configuration type
+- [RouterPlugin Type](./type-router-plugin) — Plugin type definition
+- [Plugin System](../guide/plugins) — Plugin architecture and usage guide
 - [Interceptor Mechanism](../guide/interceptor) — Principle of intercepting native APIs

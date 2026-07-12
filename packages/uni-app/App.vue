@@ -1,6 +1,6 @@
 <script>
 import router from './router'
-import { RouterErrorCode } from './uni_modules/mxuni-router/js_sdk/index.js'
+import { RouterErrorCode } from './uni_modules/mxuni-router-v2/js_sdk/index.js'
 
 export default {
 	onLaunch: function () {

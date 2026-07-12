@@ -519,6 +519,43 @@ onLaunch((options) => {
 两者可配合使用：`syncRoute` 用于物理返回后的状态同步，`guardRoute` 用于冷启动时的守卫补执行。
 :::
 
+### hasPlugin()
+
+检查指定插件是否已注册。
+
+**类型**
+
+```ts
+hasPlugin(name: string): boolean
+```
+
+**参数**
+
+- `name` — 插件名称（对应 `RouterPlugin.name`），内置插件名称：`'params'`、`'animation'`、`'channel'`、`'interceptor'`
+
+**返回值**
+
+- `true` — 插件已注册
+- `false` — 插件未注册
+
+**示例**
+
+```ts
+if (router.hasPlugin('params')) {
+  await router.push({ path: '/detail', params: { id: 123 } })
+}
+
+if (router.hasPlugin('animation')) {
+  await router.back(1, { animation: { type: 'slide-out-right' } })
+}
+```
+
+**说明**
+
+- 插件未注册时使用其功能将抛出 `PLUGIN_REQUIRED` 错误
+- 可在组件中通过 `useRouter().hasPlugin()` 调用
+- 详见[插件系统](../guide/plugins)
+
 ## 安装方法
 
 ### install()
@@ -556,6 +593,7 @@ install(app: App): void
 | `onError()` | 注册错误处理 | 移除函数 |
 | `syncRoute()` | 同步状态 | `void` |
 | `guardRoute()` | 冷启动守卫检查 | `Promise<RouteLocation>` |
+| `hasPlugin()` | 检查插件是否注册 | `boolean` |
 | `install()` | 安装到 Vue | `void` |
 
 ## 下一步

@@ -70,6 +70,9 @@ export enum RouterErrorCode {
 	/** uni 导航 API 调用失败 */
 	NAVIGATION_API_ERROR = 'NAVIGATION_API_ERROR',
 
+	/** 使用了插件提供的功能但对应插件未注册 */
+	PLUGIN_REQUIRED = 'PLUGIN_REQUIRED',
+
 	/** 路由器初始化或使用方式错误 */
 	SETUP_ERROR = 'SETUP_ERROR'
 }
