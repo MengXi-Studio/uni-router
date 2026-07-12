@@ -134,7 +134,12 @@
 		<view class="section">
 			<view class="section-title">RouterLink - events 与 navigated</view>
 			<view class="info-text">通过 events 属性监听目标页面事件，通过 @navigated 获取 eventChannel 向目标页面发送数据。</view>
-			<RouterLink :to="{ path: '/pages/detail/detail', query: { id: 'link-ec' } }" :events="{ receiveData: data => onReceiveData(data) }" custom @navigated="onNavigated" @error="onRouterLinkError">
+			<RouterLink
+				:to="{ path: '/pages/detail/detail', query: { id: 'link-ec' } }"
+				:events="{ receiveData: (data: Record<string, unknown>) => onReceiveData(data) }"
+				custom
+				@navigated="onNavigated"
+				@error="onRouterLinkError">
 				<view class="btn btn-success">RouterLink - events + navigated</view>
 			</RouterLink>
 			<view class="code-block">
@@ -148,11 +153,12 @@
 			<view class="info-text">自定义底部导航栏组件，支持徽标、切换拦截、SCSS 主题定制。此处演示内嵌样式，实际使用通常 fixed 在页面底部。</view>
 			<TabBar :fixed="false" :border="true" selected-color="#007aff" @change="onTabBarChange">
 				<TabBarItem to="/pages/index/index" icon-path="/static/tab/home.svg" selected-icon-path="/static/tab/home-active.svg" text="首页" />
-				<TabBarItem to="/pages/navigation/navigation" icon-path="/static/tab/nav.svg"	 selected-icon-path="/static/tab/nav-active.svg" text="导航" :badge="5" />
+				<TabBarItem to="/pages/navigation/navigation" icon-path="/static/tab/nav.svg" selected-icon-path="/static/tab/nav-active.svg" text="导航" :badge="5" />
 				<TabBarItem to="/pages/about/about" icon-path="/static/tab/user.svg" selected-icon-path="/static/tab/user-active.svg" text="我的" dot />
 			</TabBar>
 			<view class="code-block">
-				&lt;TabBar :fixed="false" @change="onChange"&gt;\n  &lt;TabBarItem to="/pages/index/index" icon-path="/static/home.png" text="首页" /&gt;\n  &lt;TabBarItem to="/pages/msg/msg" text="消息" :badge="5" /&gt;\n  &lt;TabBarItem to="/pages/user/user" text="我的" dot /&gt;\n&lt;/TabBar&gt;
+				&lt;TabBar :fixed="false" @change="onChange"&gt;\n &lt;TabBarItem to="/pages/index/index" icon-path="/static/home.png" text="首页" /&gt;\n &lt;TabBarItem to="/pages/msg/msg" text="消息" :badge="5" /&gt;\n
+				&lt;TabBarItem to="/pages/user/user" text="我的" dot /&gt;\n&lt;/TabBar&gt;
 			</view>
 			<view v-if="tabBarLog" class="info-text" style="color: #34c759">{{ tabBarLog }}</view>
 		</view>
@@ -167,14 +173,11 @@
 			<view class="btn btn-success" @click="interceptedSwitchTab">uni.switchTab（被拦截转为 push）</view>
 			<view class="btn btn-danger" @click="interceptedReLaunch">uni.reLaunch（被拦截转为 relaunch）</view>
 			<view class="btn btn-gray" @click="interceptedNavigateBack">uni.navigateBack（被拦截转为 back）</view>
-			<view class="info-text" style="color: #ff9500; margin-top: 16rpx">
-				⚠️ H5 平台特殊处理：在 H5 平台下，uni.switchTab 不会被拦截转为 push，而是放行原始调用并在 success 回调中同步路由状态。这是因为同步阻止 switchTab 会导致 H5 TabBar 组件状态卡死。因此 H5 平台下外部 uni.switchTab
-				调用不经过前置守卫，TabBar 页面的权限控制需在页面 onShow 生命周期中处理。小程序和 App 平台则走完整的拦截 + 转发流程。
-			</view>
+			<view class="info-text" style="color: #34c759; margin-top: 16rpx"> ✅ 所有平台（H5/小程序/App）的 switchTab 都走完整守卫链，可在守卫中拦截 TabBar 切换（如未登录时跳转个人中心）。 </view>
 			<view class="code-block">
 				// 启用 interceptUniApi: true 后\nuni.navigateTo({ url: '/pages/detail/detail?id=1' })\n// => 自动转为 router.push({ path: '/pages/detail/detail', query: { id: '1' } })\n// 守卫链（beforeEach → beforeResolve →
-				afterEach）照常执行\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链\n\n// H5 平台下的 switchTab 特殊处理\nuni.switchTab({ url: '/pages/index/index' })\n// 小程序/App: 拦截转为
-				router.push，守卫正常执行\n// H5: 放行原始调用，在 success 中 syncRoute()，不经过守卫
+				afterEach）照常执行\n\nuni.switchTab({ url: '/pages/index/index' })\n// => 自动转为 router.push，守卫正常执行\n// 守卫可拦截：router.beforeEach((to, from, next) => {\n// if (to.meta.requireAuth && !isLoggedIn())
+				next({ name: 'login' })\n// })\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链
 			</view>
 		</view>
 	</view>
@@ -182,11 +185,11 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter, NavigationFailure, RouterErrorCode, type EventChannel,  } from '@meng-xi/uni-router'
+import { useRouter, NavigationFailure, RouterErrorCode, type EventChannel } from '@meng-xi/uni-router'
 import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 import TabBar from '@meng-xi/uni-router/components/tab-bar/tab-bar.vue'
 import TabBarItem from '@meng-xi/uni-router/components/tab-bar-item/tab-bar-item.vue'
-import type { TabBarItemProps } from '@meng-xi/uni-router/components/tab-bar/context'
+import type { TabBarItemProps } from '@meng-xi/uni-router/components/tab-bar/context.ts'
 
 const router = useRouter()
 const routerLinkLog = ref('')
@@ -318,8 +321,7 @@ function interceptedRedirectTo() {
 }
 
 function interceptedSwitchTab() {
-	// 小程序/App: 会被拦截，自动转为 router.push('/pages/index/index')
-	// H5: 放行原始调用，在 success 中 syncRoute()，不经过守卫
+	// 所有平台都会被拦截，自动转为 router.push，走完整守卫链
 	uni.switchTab({ url: '/pages/index/index' })
 }
 

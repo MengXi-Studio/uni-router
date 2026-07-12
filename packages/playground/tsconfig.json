@@ -8,7 +8,7 @@
 		"paths": {
 			"@/*": ["./src/*"]
 		},
-		"types": ["@dcloudio/types"]
+		"types": ["@dcloudio/types", "@meng-xi/uni-router"]
 	},
 	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
 	"exclude": ["node_modules", "dist", "unpackage"]

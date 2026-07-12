@@ -1,16 +1,18 @@
 import { createSSRApp } from 'vue'
 import App from './App.vue'
-import { createRouter, NavigationFailure, RouterError, RouterErrorCode } from '@meng-xi/uni-router'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin, NavigationFailure, RouterError, RouterErrorCode } from '@meng-xi/uni-router'
 import routes from './router.config'
 import { isLoggedIn } from './utils/auth'
 
 const router = createRouter({
 	routes,
 	strict: true,
-	interceptUniApi: true, // 拦截 uni 原生导航 API，确保守卫始终生效
+	plugins: [ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin], // 按需注册插件
+	interceptUniApi: true, // 需要 InterceptorPlugin，拦截原生 API 确保守卫生效
 	guardTimeout: 15000, // 守卫超时 15 秒，适用于异步请求较慢的场景
 	readyTimeout: 5000, // 路由器就绪超时 5 秒，防止初始化异常时 isReady() 永久挂起
-	useUniEventChannel: true // 启用内置通信管理器，所有导航方法（push/replace/relaunch）都支持页面间通信
+	useUniEventChannel: true, // 需要 ChannelPlugin，启用内置通信管理器，所有导航方式都支持页面间通信
+	paramsPersistent: false // 需要 ParamsPlugin，params 默认不持久化
 })
 
 // ===== 等待路由器初始化完成 =====
