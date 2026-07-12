@@ -40,6 +40,12 @@ export function createRouteSync(routeState: RouteState, matcher: RouteMatcher, o
 		const from = routeState.getCurrentRoute()
 		const currentPath = getCurrentPagePath()
 		const currentQuery = getCurrentPageQuery()
+
+		// 先对 URL query 执行 sync hooks 移除内部 key（如 __nav_id、__params_key），
+		// 再与 currentRoute.query 比较，避免因内部 key 差异导致重复同步
+		const ignoredParams: Record<string, any> = {}
+		runSyncHooks(currentQuery, ignoredParams)
+
 		// 若当前页面与路由状态一致（路径和查询参数均相同），无需更新
 		if (currentPath === from.path && isSameQuery(currentQuery, from.query)) return
 		syncCurrentRoute()

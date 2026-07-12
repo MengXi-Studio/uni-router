@@ -12,6 +12,7 @@ import { createRouteMatcher } from '@/matcher'
 import { createParamsManager } from '@/plugins/params/params-manager'
 import type { ParamsManager } from '@/plugins/params/params-manager'
 import { warn } from '@/utils/general'
+import { buildFullPath, createRouteLocation } from '@/utils'
 import { isSameRouteLocation } from './location'
 import { createRouteSync, type RouteSync } from './sync'
 
@@ -622,8 +623,11 @@ class UniRouter implements Router {
 		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, mode, redirectDepth, pluginData)
 		if (handledResolve) return handledResolve
 
-		// 提前更新 currentRoute，确保目标页 onLoad/onShow 时 route.value 已是完整目标路由
-		this.routeState.setCurrentRoute(to)
+		// 守卫通过，提前更新 currentRoute，确保目标页 onLoad/onShow 时 route.value 已是完整目标路由
+		// 在设置前先执行 routeSync hooks，将 __nav_id 等内部 key 从 query 提取到 params
+		// 确保目标页 onLoad 中 usePageChannel() 能正确读取 params.__navId
+		const toWithSyncedParams = this.applySyncHooks(to)
+		this.routeState.setCurrentRoute(toWithSyncedParams)
 
 		try {
 			// 构建 navigation 选项
@@ -748,6 +752,23 @@ class UniRouter implements Router {
 				// abort hooks should not throw
 			}
 		}
+	}
+
+	/**
+	 * 对路由位置执行 routeSync hooks，将内部 key（如 __nav_id）从 query 提取到 params
+	 *
+	 * 用于导航时 setCurrentRoute 前预处理，确保目标页 onLoad 时 params 已包含插件数据。
+	 * 同时从 query 中移除内部 key，避免暴露给用户。
+	 */
+	private applySyncHooks(to: RouteLocation): RouteLocation {
+		const query = { ...to.query }
+		const params: Record<string, any> = { ...to.params }
+		for (const hook of this.routeSyncHooks) {
+			hook(query, params)
+		}
+		// 如果 hooks 修改了 query，需要重建 fullPath
+		const fullPath = buildFullPath(to.path, query)
+		return createRouteLocation({ ...to, query, fullPath, params: Object.keys(params).length > 0 ? params : undefined })
 	}
 
 	/**
