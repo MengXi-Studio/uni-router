@@ -186,6 +186,9 @@ const list = route.value.params.list as Item[]
 ```
 
 ::: warning params 限制
+`params` 功能需要注册 `ParamsPlugin`。未注册时使用将抛出 `PLUGIN_REQUIRED` 错误。
+
+其余限制：
 - params 通过内存存储，H5 刷新后丢失
 - params 仅在 `push` 时可用，`replace` / `relaunch` 后可能丢失
 - 详见[导航 - params 传递复杂数据](./navigation#params-传递复杂数据)
@@ -196,7 +199,17 @@ const list = route.value.params.list as Item[]
 获取当前页面与导航方之间的双向通信通道。必须在 Vue 组件的 `setup()` 函数中调用。
 
 ::: tip 前置条件
-需在 `createRouter({ useUniEventChannel: true })` 时启用内置通信管理器。默认模式下返回 no-op channel（调用 `on` / `emit` 均无效果）。
+需注册 `ChannelPlugin` 并设置 `useUniEventChannel: true`：
+```ts
+import { createRouter, ChannelPlugin } from '@meng-xi/uni-router'
+
+const router = createRouter({
+  routes: [...],
+  plugins: [ChannelPlugin],
+  useUniEventChannel: true
+})
+```
+未注册 ChannelPlugin 时，`events` 参数将抛出 `PLUGIN_REQUIRED` 错误。默认模式下（`useUniEventChannel: false`），`usePageChannel()` 返回 no-op channel。
 :::
 
 ### 基本用法
@@ -550,4 +563,5 @@ async function replaceHome() {
 
 - [路由配置](./route-config) — 路由配置详解
 - [导航](./navigation) — 导航 API 用法
+- [插件系统](./plugins) — 了解插件注册机制
 - [API 参考](../api/create-router) — 完整 API 文档

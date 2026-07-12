@@ -40,7 +40,7 @@ Create `src/router/index.ts` and define route configurations consistent with `pa
 
 ```ts
 // src/router/index.ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin } from '@meng-xi/uni-router'
 import type { RouteConfig } from '@meng-xi/uni-router'
 
 const routes: RouteConfig[] = [
@@ -69,14 +69,19 @@ const routes: RouteConfig[] = [
 const router = createRouter({
   routes,
   strict: true,
-  interceptUniApi: true,  // Intercept native API, ensure guards take effect
-  guardTimeout: 15000     // Guard timeout (ms)
+  plugins: [ParamsPlugin, ChannelPlugin, InterceptorPlugin],
+  paramsPersistent: false,     // Requires ParamsPlugin
+  useUniEventChannel: true,    // Requires ChannelPlugin
+  interceptUniApi: true,       // Requires InterceptorPlugin, intercept native API to ensure guards take effect
+  guardTimeout: 15000          // Guard timeout (ms)
 })
 
 export default router
 ```
 
-::: tip Auto Generation
+::: tip Register Plugins on Demand
+Plugins in `plugins` are registered on demand. Unregistered plugin features are unavailable (using them throws a `PLUGIN_REQUIRED` error). If you don't need param passing or API interception, just register the plugins you need. See [Plugin System](./plugins).
+
 Recommended to use [`@meng-xi/vite-plugin`](./auto-generate) to automatically generate route configurations from `pages.json`, avoiding manual maintenance.
 :::
 
@@ -227,24 +232,39 @@ import { RouterLink } from '@meng-xi/uni-router'
 </script>
 ```
 
-## Step 6: Handle Page Synchronization
+## Step 6: Handle Cold-Start Guards
 
-Handle route state synchronization in `App.vue` (for physical back and other scenarios):
+When a user directly enters a page via H5 URL / mini-program scene value / App deeplink, the page is loaded directly by the uni-app framework without going through the router's navigation, meaning guards (`beforeEach` etc.) are not executed. Use `guardRoute()` to retroactively execute the guard chain for the current page:
 
-```vue
-<!-- App.vue -->
-<script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
-import { useRouter } from '@meng-xi/uni-router'
-
-const router = useRouter()
-
-onShow(() => {
-  // Sync route state (handle physical back and other scenarios)
-  router.syncRoute()
+```ts
+// router/index.ts
+router.isReady().then(() => {
+  router.guardRoute(undefined, {
+    onAbort: () => {
+      // Guard aborted: page already loaded, cannot prevent entry. Manually redirect to safe page
+      router.relaunch({ name: 'home' })
+    }
+  })
 })
-</script>
 ```
+
+::: tip Auto Route State Sync
+When `app.use(router)` is called, the router injects a global mixin that automatically calls `syncRoute()` on each page's `onShow` lifecycle to synchronize route state. Therefore, you **don't need** to manually call `syncRoute()` in `App.vue`'s `onShow`.
+
+If you need to access route info in `onLoad` (which fires before `onShow`), you can call it manually:
+
+```ts
+import { onLoad } from '@dcloudio/uni-app'
+import { useRoute } from '@meng-xi/uni-router'
+
+onLoad(() => {
+  const route = useRoute()
+  // route.value may still be stale here, sync manually
+  router.syncRoute()
+  console.log(route.value.query)
+})
+```
+:::
 
 ## Complete Example
 
@@ -347,6 +367,7 @@ src/
 
 ## Next Steps
 
+- [Plugin System](./plugins) — Understand the core + plugin architecture
 - [Route Configuration](./route-config) — Learn more about route configuration
 - [Navigation](./navigation) — Four navigation methods explained
 - [Route Guards](./guards) — Complete guard mechanism

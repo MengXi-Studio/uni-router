@@ -18,10 +18,12 @@ Router initialization options, type [`RouterOptions`](./type-router-options).
 interface RouterOptions {
   routes: RouteConfig[]
   strict?: boolean
+  plugins?: RouterPlugin[]
   interceptUniApi?: boolean
   guardTimeout?: number
   readyTimeout?: number
   paramsPersistent?: boolean
+  useUniEventChannel?: boolean
 }
 ```
 
@@ -47,6 +49,25 @@ uni-app pages are statically declared in `pages.json`. Uni Router does not auto-
 Only disable during migration or rapid prototyping. For production, keep `true` to catch route configuration errors early.
 :::
 
+#### options.plugins
+
+- **Type**: `RouterPlugin[]`
+- **Default**: `undefined`
+- **Description**: Router plugin list. Plugins are installed in array order, registering hooks into the router's navigation flow. The core only provides basic navigation capabilities; all extended features (params, animation, channel, interceptor) are provided through plugins. Users must explicitly import and register them.
+
+```ts
+import { createRouter, ParamsPlugin, AnimationPlugin, ChannelPlugin, InterceptorPlugin } from '@meng-xi/uni-router'
+
+const router = createRouter({
+  routes: [...],
+  plugins: [ParamsPlugin, AnimationPlugin, ChannelPlugin, InterceptorPlugin]
+})
+```
+
+::: tip Register only what you need
+Only register the plugins you use. Using a feature without registering its plugin will throw a `PLUGIN_REQUIRED` error. See [Plugin System](../guide/plugins) for details.
+:::
+
 #### options.interceptUniApi
 
 - **Type**: `boolean`
@@ -62,6 +83,10 @@ When enabled, direct calls to `uni.navigateTo()` and similar methods will be int
 :::
 
 See [Interceptor Mechanism](../guide/interceptor) for details.
+
+::: warning Requires InterceptorPlugin
+`interceptUniApi: true` requires `InterceptorPlugin` to be registered. If this option is set but the plugin is not registered, the router will output a warning.
+:::
 
 #### options.guardTimeout
 
@@ -118,6 +143,22 @@ await router.push({ path: '/detail', params: { id: 123 }, persistent: false }) /
 Persistence writes to storage; frequent use of large objects increases storage overhead. Only enable it for scenarios that need data recovery after H5 refresh.
 :::
 
+::: warning Requires ParamsPlugin
+`paramsPersistent: true` requires `ParamsPlugin` to be registered. If this option is set but the plugin is not registered, the router will output a warning.
+:::
+
+#### options.useUniEventChannel
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Whether to use the built-in communication manager instead of `uni.navigateTo`'s native EventChannel
+  - `false` (default): `push` uses `uni.navigateTo`'s native EventChannel; other navigation methods (`replace` / `relaunch` / `back`) don't support page communication
+  - `true`: All navigation methods (`push` / `replace` / `relaunch` / `back`) use the built-in communication manager
+
+::: warning Requires ChannelPlugin
+`useUniEventChannel: true` requires `ChannelPlugin` to be registered. If this option is set but the plugin is not registered, the router will output a warning.
+:::
+
 ## Return Value
 
 Returns a [`Router`](./router-instance) instance.
@@ -142,7 +183,7 @@ export default router
 ### Full Configuration
 
 ```ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, ParamsPlugin, AnimationPlugin, ChannelPlugin, InterceptorPlugin } from '@meng-xi/uni-router'
 import type { RouteConfig } from '@meng-xi/uni-router'
 
 const routes: RouteConfig[] = [
@@ -154,11 +195,13 @@ const routes: RouteConfig[] = [
 
 const router = createRouter({
   routes,
-  strict: true,              // Strict mode, throws on unmatched routes
-  interceptUniApi: true,     // Intercept native APIs, unify guard flow
-  guardTimeout: 15000,       // Guard timeout 15s
-  readyTimeout: 5000,        // Ready timeout 5s
-  paramsPersistent: false    // params not persisted by default
+  plugins: [ParamsPlugin, AnimationPlugin, ChannelPlugin, InterceptorPlugin],
+  strict: true,
+  paramsPersistent: false,
+  useUniEventChannel: false,
+  interceptUniApi: true,
+  guardTimeout: 15000,
+  readyTimeout: 5000
 })
 
 export default router
@@ -216,7 +259,7 @@ A: The `path` must have a corresponding declaration in `pages.json`. `name` and 
 
 ### Q: After enabling interceptUniApi, will existing uni.navigateTo code still work?
 
-A: Yes, but behavior changes. After enabling, `uni.navigateTo` is intercepted and redirected through the router; `success` / `fail` callbacks will not fire. It's recommended to gradually migrate to `router.push()` and similar APIs.
+A: Yes, but behavior changes. After enabling, `uni.navigateTo` is intercepted and redirected through the router; `success` / `fail` callbacks will not fire. It's recommended to gradually migrate to `router.push()` and similar APIs. Note: `interceptUniApi` requires `InterceptorPlugin` to be registered to take effect.
 
 ### Q: Can multiple router instances coexist?
 

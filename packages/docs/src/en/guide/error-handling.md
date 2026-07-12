@@ -49,6 +49,7 @@ interface UniApiCause {
 | `NAVIGATION_DUPLICATED` | Duplicate navigation        | `push()` to a page already at                     |
 | `ROUTE_NOT_FOUND`       | Route not found             | Using undefined named route in strict mode        |
 | `NAVIGATION_API_ERROR`  | uni API call failed         | `uni.navigateTo` etc. call failed                 |
+| `PLUGIN_REQUIRED`       | Plugin feature not registered | Using `params`/`events`/`animation` etc. plugin-dependent features without registering the corresponding plugin |
 | `SETUP_ERROR`           | Setup error                 | `useRouter()` called outside setup                |
 
 ## router.onError()
@@ -66,6 +67,9 @@ const removeHandler = router.onError((error, to, from) => {
 			break
 		case 'NAVIGATION_API_ERROR':
 			console.error('uni API call failed', error.cause)
+			break
+		case 'PLUGIN_REQUIRED':
+			console.error('Used plugin feature without registering plugin:', error.message)
 			break
 	}
 })
@@ -92,6 +96,10 @@ try {
 	}
 	if (error.code === 'NAVIGATION_ABORTED') {
 		console.log('Navigation aborted by guard')
+		return
+	}
+	if (error.code === 'PLUGIN_REQUIRED') {
+		console.error('Please register the corresponding plugin first:', error.message)
 		return
 	}
 	throw error
@@ -128,3 +136,10 @@ router.onError(async (error, to) => {
 	}
 })
 ```
+
+## Next Steps
+
+- [FAQ](./faq) — Troubleshoot specific issues
+- [Navigation Flow](./navigation-flow) — Understand when errors occur
+- [Recipes](./recipes) — Complete business solutions
+- [Plugin System](./plugins) — Learn about plugin registration

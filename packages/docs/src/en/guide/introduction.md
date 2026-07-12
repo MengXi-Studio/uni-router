@@ -19,7 +19,7 @@ uni-app natively uses `uni.navigateTo`, `uni.redirectTo`, `uni.switchTab` and ot
 | Fragmented API | Manually choose navigateTo / switchTab | Auto-select based on `meta.isTab` |
 | No composables | Cannot access router in setup | `useRouter()` / `useRoute()` |
 | Inconsistent error handling | Callback-style, no structured error codes | `NavigationFailure` + error codes |
-| Limited param passing | Only URL query supported | `params` supports complex data + persistence |
+| Limited param passing | Only URL query supported | `ParamsPlugin` supports complex data + persistence |
 
 ## Architecture Overview
 
@@ -41,10 +41,15 @@ Understanding Uni Router's architecture helps you master all its features.
 │  │ Guards→API→State       │  │  path/name match  │   │
 │  └────────┬──────────────┘  └───────────────────┘   │
 │           │                                          │
-│  ┌────────▼──────┐  ┌────────────┐  ┌────────────┐  │
-│  │ Interceptor   │  │ Params Mgr │  │ State Sync │  │
-│  │ interceptUniApi│  │ params Map │  │ syncRoute  │  │
-│  └───────────────┘  └────────────┘  └────────────┘  │
+│  ┌────────▼──────────────────────────────────────┐   │
+│  │            Plugin Layer (register on demand)    │   │
+│  │ ParamsPlugin │ AnimationPlugin │ ChannelPlugin │   │
+│  │         InterceptorPlugin │ Custom Plugin       │   │
+│  └───────────────────────────────────────────────┘   │
+│  ┌────────────┐                                      │
+│  │ State Sync │                                      │
+│  │ syncRoute  │                                      │
+│  └────────────┘                                      │
 ├─────────────────────────────────────────────────────┤
 │              uni-app Native Navigation API           │
 │     uni.navigateTo / redirectTo / switchTab / ...    │
@@ -56,9 +61,10 @@ Understanding Uni Router's architecture helps you master all its features.
 ### Layer Responsibilities
 
 1. **Application Layer**: Your code calls `router.push()` and other APIs
-2. **Uni Router Layer**: Guard chain scheduling, route matching, state management, param passing
-3. **uni-app Layer**: Native APIs that actually execute page navigation
-4. **Page Stack**: Page stack managed by uni-app framework, statically declared by `pages.json`
+2. **Uni Router Layer**: Guard chain scheduling, route matching, state management
+3. **Plugin Layer**: Extended features like ParamsPlugin, AnimationPlugin, ChannelPlugin, InterceptorPlugin — registered on demand
+4. **uni-app Layer**: Native APIs that actually execute page navigation
+5. **Page Stack**: Page stack managed by uni-app framework, statically declared by `pages.json`
 
 ::: tip Key Insight
 Uni Router **does not replace** uni-app's navigation mechanism; it adds a "scheduling layer" on top. All navigation ultimately executes through `uni.navigateTo` and other APIs, so all uni-app limitations (like `switchTab` not supporting query) still exist. Uni Router just provides elegant wrappers and hints on top of these limitations.
@@ -112,18 +118,30 @@ Guards can pass via `next()`, abort via `next(false)`, or redirect via `next(loc
 
 ### State Synchronization
 
-Since physical back buttons and browser back **don't go through the router**, the router's `currentRoute` may be out of sync with the actual page. Uni Router provides `syncRoute()` to read the real state from the page stack and update.
+Since physical back buttons and browser back **don't go through the router**, the router's `currentRoute` may be out of sync with the actual page. Uni Router injects a global mixin during `app.use(router)` installation that automatically calls `syncRoute()` on each page's `onShow` lifecycle, so no manual handling is needed.
 
 ```
 User presses physical back
   → uni-app native navigateBack (bypasses router)
   → router currentRoute is still old value
-  → Call syncRoute() in page onShow
+  → Page onShow auto-triggers syncRoute() (global mixin)
   → currentRoute updates to real page
 ```
 
+### Cold-Start Guards
+
+When a user directly enters a page via H5 URL / mini-program scene value / App deeplink, the page is loaded directly by the uni-app framework **without going through the router's navigation**, meaning guards (`beforeEach` etc.) are not executed. The `guardRoute()` method retroactively executes the guard chain for the current page and decides whether to redirect based on guard results:
+
+```ts
+router.isReady().then(() => {
+  router.guardRoute(undefined, {
+    onAbort: () => router.relaunch({ name: 'home' })
+  })
+})
+```
+
 ::: warning This is an inherent uni-app limitation
-The router cannot intercept physical back buttons and browser back. You must call `syncRoute()` in the page's `onShow` lifecycle to maintain state consistency. See [Platform Compatibility](./compatibility).
+The router cannot intercept physical back buttons and browser back. `syncRoute()` is automatically handled via global mixin. `guardRoute()` must be called manually, typically in the `router.isReady()` callback. See [Platform Compatibility](./compatibility).
 :::
 
 ## Design Philosophy
@@ -132,7 +150,7 @@ The router cannot intercept physical back buttons and browser back. You must cal
 
 2. **Static page model**: uni-app uses `pages.json` to statically declare pages. Uni Router respects this model and doesn't provide dynamic route registration (`addRoute` / `removeRoute`).
 
-3. **Progressive adoption**: You can use just `push` / `replace` basic navigation, or enable guards, interceptors, param passing and other advanced features. `interceptUniApi` is disabled by default and doesn't affect existing code.
+3. **Progressive adoption**: The core provides only basic navigation; extended features (params, animation, communication, interception) are introduced via plugins on demand. Unregistered plugins don't add bundle size or runtime overhead.
 
 4. **Type safety**: Through `@meng-xi/vite-plugin`'s `dts` feature, route names and paths get autocompletion and type checking.
 
@@ -140,13 +158,14 @@ The router cannot intercept physical back buttons and browser back. You must cal
 
 - 🧭 **Four navigation types** — `push` / `replace` / `relaunch` / `back`, auto-detect TabBar pages
 - 🛡️ **Complete guard chain** — `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
+- 🧊 **Cold-start guards** — `guardRoute()` retroactively executes guard chain for H5 URL / mini-program scene / App deeplink direct entry
 - 🔄 **Controllable redirect** — `next(location, { mode })` in guards to specify redirect method
-- 📦 **Page params** — `params` passes complex data, not exposed in URL, supports persistence
+- 📦 **Page params** (ParamsPlugin) — `params` passes complex data, not exposed in URL, supports persistence
 - 🔢 **Query enhancement** — `queryInt()` / `queryNumber()` / `queryBool()` type parsing
-- 📡 **Page communication** — `events` + `eventChannel` bidirectional communication; `useUniEventChannel` supports all navigation methods
-- 🎬 **Navigation animation** — App custom animation, route-level defaults
+- 📡 **Page communication** (ChannelPlugin) — `events` + `eventChannel` bidirectional communication; `useUniEventChannel` supports all navigation methods
+- 🎬 **Navigation animation** (AnimationPlugin) — App custom animation, route-level defaults
 - 🪝 **Composables** — `useRouter()` / `useRoute()` / `usePageChannel()` reactive access
-- ⚡ **API interception** — Optional interception of native navigation APIs, unified guard flow
+- ⚡ **API interception** (InterceptorPlugin) — Optional interception of native navigation APIs, unified guard flow
 - 🛡️ **Timeout protection** — `guardTimeout` / `readyTimeout` prevent hanging
 - 💪 **TypeScript** — Complete type definitions + intellisense
 
@@ -172,3 +191,4 @@ These limitations stem from the uni-app framework's design, not from this librar
 - [Navigation](./navigation) — Deep dive into the four navigation methods
 - [Route Guards](./guards) — Understand guard mechanism and practices
 - [Navigation Flow](./navigation-flow) — Understand the complete navigation process from source code perspective
+- [Plugin System](./plugins) — Understand the core + plugin architecture

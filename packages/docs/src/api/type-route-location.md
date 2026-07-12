@@ -61,12 +61,12 @@ router.push('about')
 interface RouteLocationPath {
   path: string
   query?: Record<string, any>
-  params?: Record<string, any>
+  params?: Record<string, any>          // （需 ParamsPlugin）
   hash?: string
-  animation?: NavigationAnimation
-  events?: Record<string, Function>
+  animation?: NavigationAnimation       // （需 AnimationPlugin）
+  events?: Record<string, Function>     // （需 ChannelPlugin）
   mode?: NavigationMode
-  persistent?: boolean
+  persistent?: boolean                  // （需 ParamsPlugin）
 }
 ```
 
@@ -91,12 +91,12 @@ await router.push({
 interface RouteLocationName {
   name: string
   query?: Record<string, any>
-  params?: Record<string, any>
+  params?: Record<string, any>          // （需 ParamsPlugin）
   hash?: string
-  animation?: NavigationAnimation
-  events?: Record<string, Function>
+  animation?: NavigationAnimation       // （需 AnimationPlugin）
+  events?: Record<string, Function>     // （需 ChannelPlugin）
   mode?: NavigationMode
-  persistent?: boolean
+  persistent?: boolean                  // （需 ParamsPlugin）
 }
 ```
 
@@ -115,6 +115,10 @@ await router.push({
 :::
 
 ## 属性详解
+
+::: info 插件依赖
+`params`、`persistent`、`animation`、`events` 字段类型始终可用（提供完整类型提示），但运行时需要注册对应插件才生效。未注册插件时使用将抛出 `PLUGIN_REQUIRED` 错误。详见[插件系统](../guide/plugins)。
+:::
 
 ### path / name
 

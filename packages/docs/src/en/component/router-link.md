@@ -57,6 +57,24 @@ After registration, you can use `<RouterLink>` directly in any component without
 When passing an object to the `to` prop, use `:to` binding (`v-bind:to`), not the string attribute `to`. The string form `to="pages/about/about"` can be used directly.
 :::
 
+::: info Plugin-dependent fields
+Plugin-dependent fields such as `params`, `animation`, and `events` are passed through the `to` object, not as standalone Props. Register the corresponding plugin before using them:
+
+```vue
+<!-- Pass params (requires ParamsPlugin) -->
+<RouterLink :to="{ path: 'pages/detail/detail', params: { id: 123 } }">
+  <text>View Details</text>
+</RouterLink>
+
+<!-- Pass animation (requires AnimationPlugin) -->
+<RouterLink :to="{ path: 'pages/about/about', animation: { type: 'slide-in-bottom' } }">
+  <text>Slide In Bottom</text>
+</RouterLink>
+```
+
+See [Plugin System](../guide/plugins) for details.
+:::
+
 ### replace
 
 - **Type**: `boolean`
@@ -89,94 +107,6 @@ When passing an object to the `to` prop, use `:to` binding (`v-bind:to`), not th
 <!-- Return to home from a deep page -->
 <RouterLink to="pages/index/index" relaunch>
   <text>Back to Home</text>
-</RouterLink>
-```
-
-### animation
-
-- **Type**: `NavigationAnimation | undefined`
-- **Default**: `undefined`
-- **Description**: Navigation animation (App only), overrides `meta.animation`. Falls back to the target route's `meta.animation` when not specified
-
-```ts
-interface NavigationAnimation {
-  type: UniAnimationType
-  duration?: number // default 300ms
-}
-```
-
-```vue
-<RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom' }">
-  <text>Slide In Bottom</text>
-</RouterLink>
-
-<RouterLink to="pages/about/about" :animation="{ type: 'fade-in', duration: 500 }">
-  <text>Fade In (500ms)</text>
-</RouterLink>
-```
-
-::: warning Platform limitations
-Animation **only works on App**. Navigation animations on mini-programs and H5 are system-controlled and cannot be customized. `relaunch` does not support animation even on App.
-:::
-
-### events
-
-- **Type**: `EventListeners | undefined`
-- **Default**: `undefined`
-- **Description**: Page communication event listeners, corresponding to the `events` parameter of `uni.navigateTo`, used to listen for events sent by the target page via `eventChannel.emit`. Only effective in `push` mode by default; with `useUniEventChannel` enabled, all navigation methods are supported.
-
-```ts
-type EventListeners = Record<string, (...args: any[]) => void>
-```
-
-```vue
-<RouterLink
-  :to="{ path: 'pages/detail/detail', query: { id: '1' } }"
-  :events="{ update: (data) => console.log('Received update:', data) }"
-  @navigated="onNavigated"
->
-  <text>View Details</text>
-</RouterLink>
-```
-
-### params
-
-- **Type**: `ParamObject | undefined`
-- **Default**: `undefined`
-- **Description**: Page parameters, supports passing complex data (objects, arrays, and other JSON-serializable values) without exposing in the URL. Stored via internal Map, target page reads via `route.params`.
-
-```vue
-<!-- Pass simple data -->
-<RouterLink :to="{ path: 'pages/detail/detail' }" :params="{ id: 123 }">
-  <text>View Details</text>
-</RouterLink>
-
-<!-- Pass complex data -->
-<RouterLink
-  :to="{ path: 'pages/detail/detail' }"
-  :params="{ id: 123, info: { name: 'Tom', age: 20 }, tags: ['a', 'b'] }"
->
-  <text>View Details</text>
-</RouterLink>
-```
-
-::: tip params vs query
-- `query`: Appended to URL, supports strings only, suitable for simple params (e.g., id, page)
-- `params`: In-memory storage, supports complex data, not exposed in URL, suitable for large objects
-
-TabBar pages can only use `params` (`switchTab` does not support query).
-:::
-
-### persistent
-
-- **Type**: `boolean | undefined`
-- **Default**: `undefined`
-- **Description**: Whether to persist page parameters to storage. When set to `true`, parameters are persisted via `uni.setStorageSync`, readable after H5 refresh. Falls back to `RouterOptions.paramsPersistent` default when not specified.
-
-```vue
-<!-- Persist per navigation -->
-<RouterLink :to="{ path: 'pages/detail/detail' }" :params="{ id: 123 }" persistent>
-  <text>View Details (survives H5 refresh)</text>
 </RouterLink>
 ```
 
@@ -248,7 +178,6 @@ When the `error` event is not listened to, navigation failures are silently hand
 ```vue
 <RouterLink
   :to="{ path: 'pages/detail/detail', query: { id: '1' } }"
-  :events="{ update: (data) => console.log('Received update:', data) }"
   @navigated="onNavigated"
 >
   <text>View Details</text>
@@ -331,49 +260,6 @@ import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.v
 </RouterLink>
 ```
 
-### With Page Parameters (params)
-
-```vue
-<!-- Pass complex data -->
-<RouterLink
-  :to="{ path: 'pages/detail/detail' }"
-  :params="{ id: 123, info: { name: 'Tom', age: 20 } }"
->
-  <text>View Details</text>
-</RouterLink>
-```
-
-### Page Communication
-
-```vue
-<RouterLink
-  :to="{ path: 'pages/detail/detail', query: { id: '1' } }"
-  :events="{ update: handleUpdate }"
-  @navigated="onNavigated"
->
-  <text>View Details</text>
-</RouterLink>
-
-<script setup lang="ts">
-function handleUpdate(data: any) {
-  console.log('Received update from target page:', data)
-}
-
-function onNavigated(eventChannel: any) {
-  // Send init data to the target page
-  eventChannel?.emit('init', { message: 'Init data' })
-}
-</script>
-```
-
-### Custom Animation
-
-```vue
-<RouterLink to="pages/about/about" :animation="{ type: 'slide-in-bottom', duration: 500 }">
-  <text>Slide In Bottom</text>
-</RouterLink>
-```
-
 ### Handling Navigation Errors
 
 ```vue
@@ -391,7 +277,6 @@ function onNavigated(eventChannel: any) {
       v-for="item in list"
       :key="item.id"
       :to="{ name: 'detail', query: { id: item.id } }"
-      :params="{ item }"
     >
       <view class="card">
         <text>{{ item.title }}</text>
@@ -414,10 +299,6 @@ function onNavigated(eventChannel: any) {
 | `exact-active-class` | ✅                 | ❌                 |
 | `v-slot` scoped slot | ✅                 | ❌                 |
 | `hover-class`        | ❌                 | ✅                 |
-| `animation`          | ❌                 | ✅                 |
-| `events`             | ❌                 | ✅                 |
-| `params`             | ❌                 | ✅                 |
-| `persistent`         | ❌                 | ✅                 |
 | `error` event        | ❌                 | ✅                 |
 | `navigated` event    | ❌                 | ✅                 |
 
@@ -449,3 +330,4 @@ vue-router's `custom` allows fully custom rendering logic, relying on `<a>` tags
 - [Router Instance](../api/router-instance) — Programmatic navigation API
 - [Route Navigation](../guide/navigation) — Deep dive into the four navigation modes
 - [RouteLocationRaw Type](../api/type-route-location) — Type definition of the `to` prop
+- [Plugin System](../guide/plugins) — Learn about the plugin registration mechanism

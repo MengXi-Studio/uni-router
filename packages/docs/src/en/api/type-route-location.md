@@ -61,12 +61,12 @@ Specify the target path via `path`:
 interface RouteLocationPath {
   path: string
   query?: Record<string, any>
-  params?: Record<string, any>
+  params?: Record<string, any>          // (requires ParamsPlugin)
   hash?: string
-  animation?: NavigationAnimation
-  events?: Record<string, Function>
+  animation?: NavigationAnimation       // (requires AnimationPlugin)
+  events?: Record<string, Function>     // (requires ChannelPlugin)
   mode?: NavigationMode
-  persistent?: boolean
+  persistent?: boolean                  // (requires ParamsPlugin)
 }
 ```
 
@@ -91,12 +91,12 @@ Specify a named route via `name`:
 interface RouteLocationName {
   name: string
   query?: Record<string, any>
-  params?: Record<string, any>
+  params?: Record<string, any>          // (requires ParamsPlugin)
   hash?: string
-  animation?: NavigationAnimation
-  events?: Record<string, Function>
+  animation?: NavigationAnimation       // (requires AnimationPlugin)
+  events?: Record<string, Function>     // (requires ChannelPlugin)
   mode?: NavigationMode
-  persistent?: boolean
+  persistent?: boolean                  // (requires ParamsPlugin)
 }
 ```
 
@@ -115,6 +115,10 @@ await router.push({
 :::
 
 ## Property Details
+
+::: info Plugin dependencies
+The `params`, `persistent`, `animation`, and `events` field types are always available (providing complete type hints), but at runtime they require the corresponding plugin to be registered to take effect. Using them without registering the plugin will throw a `PLUGIN_REQUIRED` error. See [Plugin System](../guide/plugins) for details.
+:::
 
 ### path / name
 

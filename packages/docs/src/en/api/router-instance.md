@@ -521,6 +521,43 @@ In cold start scenarios the page is already loaded, so `guardRoute()` cannot tru
 Both can be used together: `syncRoute` for state sync after physical back, `guardRoute` for guard re-execution during cold start.
 :::
 
+### hasPlugin()
+
+Check if a specified plugin is registered.
+
+**Type**
+
+```ts
+hasPlugin(name: string): boolean
+```
+
+**Parameters**
+
+- `name` — Plugin name (corresponding to `RouterPlugin.name`). Built-in plugin names: `'params'`, `'animation'`, `'channel'`, `'interceptor'`
+
+**Return Value**
+
+- `true` — Plugin is registered
+- `false` — Plugin is not registered
+
+**Example**
+
+```ts
+if (router.hasPlugin('params')) {
+  await router.push({ path: '/detail', params: { id: 123 } })
+}
+
+if (router.hasPlugin('animation')) {
+  await router.back(1, { animation: { type: 'slide-out-right' } })
+}
+```
+
+**Notes**
+
+- Using a plugin's feature without registering it will throw a `PLUGIN_REQUIRED` error
+- Can be called in components via `useRouter().hasPlugin()`
+- See [Plugin System](../guide/plugins) for details
+
 ## Installation Method
 
 ### install()
@@ -558,6 +595,7 @@ The installation registers the following:
 | `onError()` | Register error handler | Remove function |
 | `syncRoute()` | Sync state | `void` |
 | `guardRoute()` | Cold start guard check | `Promise<RouteLocation>` |
+| `hasPlugin()` | Check plugin registered | `boolean` |
 | `install()` | Install to Vue | `void` |
 
 ## Next Steps

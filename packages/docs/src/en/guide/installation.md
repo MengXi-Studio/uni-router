@@ -138,28 +138,35 @@ yarn add -D @dcloudio/types
 ### 1. Create Router Instance
 
 ```ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin } from '@meng-xi/uni-router'
 
 const router = createRouter({
   routes: [
-    { path: 'pages/index/index', name: 'home' }
-  ]
+    { path: 'pages/index/index', name: 'home', meta: { isTab: true } }
+  ],
+  plugins: [ParamsPlugin, ChannelPlugin, InterceptorPlugin],
+  interceptUniApi: true // Requires InterceptorPlugin
 })
 
 console.log(router.currentRoute.path) // Output: /
 ```
+
+::: tip Register Plugins on Demand
+Extended features (params, animation, channel, interceptor) are provided via `plugins` registered on demand. Unregistered plugin features are unavailable (using them throws a `PLUGIN_REQUIRED` error). See [Plugin System](./plugins).
+:::
 
 ### 2. Check Type Hints
 
 Type the following code in your editor, you should get type hints:
 
 ```ts
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, AnimationPlugin } from '@meng-xi/uni-router'
 
 const router = createRouter({
   routes: [
     { path: 'pages/index/index', name: 'home', meta: { title: 'Home' } }
-  ]
+  ],
+  plugins: [AnimationPlugin]
 })
 
 // Should have hints for push / replace / back methods
