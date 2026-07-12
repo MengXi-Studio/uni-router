@@ -1,10 +1,381 @@
-'use strict';
-
-var vue = require('vue');
+import { inject, onUnmounted, ref } from 'vue';
 
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+
+// src/utils/general.ts
+function warn(message) {
+  if (typeof console !== "undefined") {
+    console.warn(`[uni-router] ${message}`);
+  }
+}
+function isObject(value) {
+  return value !== null && typeof value === "object";
+}
+function safeGetCurrentPages() {
+  if (typeof getCurrentPages !== "function") return [];
+  return getCurrentPages();
+}
+
+// src/plugins/params/params-manager.ts
+var PARAMS_STORAGE_PREFIX = "__uni_router_params__";
+var PARAMS_KEY = "__params_key";
+function generateKey() {
+  const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+  return `pk_${hex}`;
+}
+function isPageInStack(key) {
+  const pages = safeGetCurrentPages();
+  const encodedKey = encodeURIComponent(key);
+  return pages.some((page) => {
+    const fullPath = page.$page?.fullPath ?? "";
+    return fullPath.includes(`${PARAMS_KEY}=${encodedKey}`);
+  });
+}
+function createParamsManager(defaultPersistent) {
+  const memoryMap = /* @__PURE__ */ new Map();
+  let currentDefaultPersistent = defaultPersistent;
+  function setDefaultPersistent(persistent) {
+    currentDefaultPersistent = persistent;
+  }
+  function set(params, persistent) {
+    const useStorage = persistent ?? currentDefaultPersistent;
+    const key = generateKey();
+    try {
+      JSON.stringify(params);
+    } catch {
+      warn("params must be JSON-serializable. Non-serializable values will be lost.");
+    }
+    if (useStorage) {
+      try {
+        uni.setStorageSync(PARAMS_STORAGE_PREFIX + key, JSON.stringify(params));
+      } catch {
+        warn("Failed to write params to storage, falling back to memory storage.");
+        memoryMap.set(key, params);
+      }
+    } else {
+      memoryMap.set(key, params);
+    }
+    return key;
+  }
+  function get(key) {
+    if (memoryMap.has(key)) {
+      if (!isPageInStack(key)) {
+        memoryMap.delete(key);
+        return void 0;
+      }
+      return memoryMap.get(key);
+    }
+    try {
+      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
+      if (raw) {
+        if (!isPageInStack(key)) {
+          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
+          return void 0;
+        }
+        try {
+          return JSON.parse(raw);
+        } catch {
+          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
+          return void 0;
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
+  function peek(key) {
+    if (memoryMap.has(key)) {
+      return memoryMap.get(key);
+    }
+    try {
+      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
+      if (raw) {
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return void 0;
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
+  function remove(key) {
+    memoryMap.delete(key);
+    try {
+      uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
+    } catch {
+    }
+  }
+  function cleanupStale() {
+    for (const key of memoryMap.keys()) {
+      if (!isPageInStack(key)) {
+        memoryMap.delete(key);
+      }
+    }
+    try {
+      const info = uni.getStorageInfoSync();
+      for (const k of info.keys) {
+        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
+          const paramsKey = k.slice(PARAMS_STORAGE_PREFIX.length);
+          if (!isPageInStack(paramsKey)) {
+            uni.removeStorageSync(k);
+          }
+        }
+      }
+    } catch {
+    }
+  }
+  function cleanupAll() {
+    memoryMap.clear();
+    try {
+      const info = uni.getStorageInfoSync();
+      for (const k of info.keys) {
+        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
+          uni.removeStorageSync(k);
+        }
+      }
+    } catch {
+    }
+  }
+  return { set, get, peek, remove, cleanupStale, cleanupAll, setDefaultPersistent };
+}
+
+// src/utils/route.ts
+function injectQueryKey(location, key, value) {
+  if (typeof location === "string") {
+    return { path: location, query: { [key]: value } };
+  }
+  if ("path" in location) {
+    const pathLoc = location;
+    return {
+      ...pathLoc,
+      query: { ...pathLoc.query, [key]: value }
+    };
+  }
+  if ("name" in location) {
+    const namedLoc = location;
+    return {
+      ...namedLoc,
+      query: { ...namedLoc.query, [key]: value }
+    };
+  }
+  return location;
+}
+function extractQueryKey(location, key) {
+  if (typeof location === "string") return void 0;
+  if (typeof location === "object" && "query" in location) {
+    const query = location.query;
+    return query?.[key];
+  }
+  return void 0;
+}
+
+// src/plugins/params/index.ts
+var PLUGIN_DATA_KEY = "params";
+function enrichLocationWithParams(location, paramsManager) {
+  if (typeof location === "string") return location;
+  const loc = location;
+  const hasParams = "params" in loc && loc.params;
+  if (!hasParams || Object.keys(loc.params).length === 0) return location;
+  const params = loc.params;
+  const persistent = "persistent" in loc ? loc.persistent : void 0;
+  const key = paramsManager.set(params, persistent);
+  return injectQueryKey(location, PARAMS_KEY, key);
+}
+function extractParamsKey(location) {
+  return extractQueryKey(location, PARAMS_KEY);
+}
+var ParamsPlugin = {
+  name: "params",
+  install(context, options) {
+    const paramsManager = context.paramsManager;
+    const persistent = options.paramsPersistent ?? false;
+    if (persistent) {
+      paramsManager.setDefaultPersistent(persistent);
+    }
+    context.onEnrichLocation((location) => {
+      return enrichLocationWithParams(location, paramsManager);
+    });
+    context.onAfterResolve((enrichedLocation, pluginData) => {
+      const paramsKey = extractParamsKey(enrichedLocation);
+      if (paramsKey) {
+        pluginData[PLUGIN_DATA_KEY] = { paramsKey };
+      }
+    });
+    context.onPrepareNavigation((ctx) => {
+      const data = ctx.pluginData[PLUGIN_DATA_KEY];
+      if (data?.paramsKey) {
+        ctx.query[PARAMS_KEY] = data.paramsKey;
+      }
+    });
+    context.onRouteSync((query, params) => {
+      const paramsKey = query[PARAMS_KEY];
+      if (paramsKey) {
+        const resolved = paramsManager.peek(decodeURIComponent(paramsKey));
+        if (resolved) {
+          Object.assign(params, resolved);
+        }
+        delete query[PARAMS_KEY];
+      }
+    });
+  }
+};
+
+// src/plugins/animation/index.ts
+var PLUGIN_DATA_KEY2 = "animation";
+function extractAnimation(location) {
+  if (typeof location === "string") return void 0;
+  if (typeof location === "object" && "animation" in location) return location.animation;
+  return void 0;
+}
+var AnimationPlugin = {
+  name: "animation",
+  install(context, _options) {
+    context.onAfterResolve((enrichedLocation, pluginData) => {
+      const animation = extractAnimation(enrichedLocation);
+      if (animation) {
+        pluginData[PLUGIN_DATA_KEY2] = { animation };
+      }
+    });
+    context.onPrepareNavigation((ctx) => {
+      const data = ctx.pluginData[PLUGIN_DATA_KEY2];
+      if (data?.animation) {
+        ctx.options.animation = data.animation;
+      }
+    });
+  }
+};
+
+// src/plugins/channel/uni-event-channel.ts
+var NAV_ID_KEY = "__nav_id";
+var navIdSeq = 0;
+function generateNavId() {
+  return `nav-${Date.now()}-${++navIdSeq}`;
+}
+var NAV_EVENT_PREFIX = "uni-router";
+function wrapEventName(navId, event) {
+  return `${NAV_EVENT_PREFIX}:${navId}:${event}`;
+}
+var UniEventChannel = class {
+  constructor(navId) {
+    __publicField(this, "navId");
+    /** 按 event 名分组的监听器集合，用于 destroy 时批量清理 */
+    __publicField(this, "listeners", /* @__PURE__ */ new Map());
+    /** 粘性事件缓存：无监听器时 emit 的事件参数，on/once 注册时异步触发 */
+    __publicField(this, "pendingEvents", /* @__PURE__ */ new Map());
+    __publicField(this, "destroyed", false);
+    this.navId = navId;
+  }
+  on(event, callback) {
+    if (this.destroyed) return this;
+    const name = wrapEventName(this.navId, event);
+    let set = this.listeners.get(event);
+    if (!set) {
+      set = /* @__PURE__ */ new Set();
+      this.listeners.set(event, set);
+    }
+    set.add(callback);
+    uni.$on(name, callback);
+    const pending = this.pendingEvents.get(event);
+    if (pending) {
+      Promise.resolve().then(() => callback(...pending));
+    }
+    return this;
+  }
+  once(event, callback) {
+    if (this.destroyed) return this;
+    const name = wrapEventName(this.navId, event);
+    const wrapper = (...args) => {
+      this.listeners.get(event)?.delete(wrapper);
+      callback(...args);
+    };
+    let set = this.listeners.get(event);
+    if (!set) {
+      set = /* @__PURE__ */ new Set();
+      this.listeners.set(event, set);
+    }
+    set.add(wrapper);
+    uni.$once(name, wrapper);
+    const pending = this.pendingEvents.get(event);
+    if (pending) {
+      Promise.resolve().then(() => {
+        uni.$off(name, wrapper);
+        wrapper(...pending);
+      });
+    }
+    return this;
+  }
+  off(event, callback) {
+    const name = wrapEventName(this.navId, event);
+    const set = this.listeners.get(event);
+    if (callback) {
+      uni.$off(name, callback);
+      set?.delete(callback);
+    } else if (set) {
+      set.forEach((cb) => uni.$off(name, cb));
+      set.clear();
+    }
+    return this;
+  }
+  emit(event, ...args) {
+    if (this.destroyed) return this;
+    this.pendingEvents.set(event, args);
+    const set = this.listeners.get(event);
+    if (set && set.size > 0) {
+      const name = wrapEventName(this.navId, event);
+      uni.$emit(name, ...args);
+    }
+    return this;
+  }
+  /**
+   * 销毁通道，清理所有监听器和待处理事件
+   *
+   * 框架内部在页面卸载时调用，防止监听器累积导致内存泄漏。
+   */
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    for (const [event, set] of this.listeners) {
+      const name = wrapEventName(this.navId, event);
+      set.forEach((cb) => uni.$off(name, cb));
+      set.clear();
+    }
+    this.listeners.clear();
+    this.pendingEvents.clear();
+  }
+};
+var noopChannel = {
+  on: () => noopChannel,
+  once: () => noopChannel,
+  off: () => noopChannel,
+  emit: () => noopChannel
+};
+
+// src/plugins/channel/registry.ts
+var channelRegistry = /* @__PURE__ */ new Map();
+function registerChannel(navId, channel) {
+  if (!channelRegistry.has(navId)) {
+    channelRegistry.set(navId, channel);
+  }
+}
+function destroyChannel(navId) {
+  const channel = channelRegistry.get(navId);
+  if (channel) {
+    channel.destroy();
+    channelRegistry.delete(navId);
+  }
+}
+function getOrCreateChannel(navId) {
+  let channel = channelRegistry.get(navId);
+  if (!channel) {
+    channel = new UniEventChannel(navId);
+    channelRegistry.set(navId, channel);
+  }
+  return channel;
+}
 
 // src/types/error.ts
 var RouterErrorCode = /* @__PURE__ */ ((RouterErrorCode2) => {
@@ -76,20 +447,6 @@ var UniApiError = class extends Error {
 };
 function isUniApiError(error) {
   return error instanceof UniApiError;
-}
-
-// src/utils/general.ts
-function warn(message) {
-  if (typeof console !== "undefined") {
-    console.warn(`[uni-router] ${message}`);
-  }
-}
-function isObject(value) {
-  return value !== null && typeof value === "object";
-}
-function safeGetCurrentPages() {
-  if (typeof getCurrentPages !== "function") return [];
-  return getCurrentPages();
 }
 
 // src/guard/index.ts
@@ -609,36 +966,6 @@ function createStartLocation() {
   });
 }
 
-// src/utils/route.ts
-function injectQueryKey(location, key, value) {
-  if (typeof location === "string") {
-    return { path: location, query: { [key]: value } };
-  }
-  if ("path" in location) {
-    const pathLoc = location;
-    return {
-      ...pathLoc,
-      query: { ...pathLoc.query, [key]: value }
-    };
-  }
-  if ("name" in location) {
-    const namedLoc = location;
-    return {
-      ...namedLoc,
-      query: { ...namedLoc.query, [key]: value }
-    };
-  }
-  return location;
-}
-function extractQueryKey(location, key) {
-  if (typeof location === "string") return void 0;
-  if (typeof location === "object" && "query" in location) {
-    const query = location.query;
-    return query?.[key];
-  }
-  return void 0;
-}
-
 // src/state/index.ts
 var START_LOCATION = createStartLocation();
 var DEFAULT_READY_TIMEOUT = 0;
@@ -722,131 +1049,6 @@ function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
     onReady,
     onRouteChange
   };
-}
-
-// src/plugins/params/params-manager.ts
-var PARAMS_STORAGE_PREFIX = "__uni_router_params__";
-var PARAMS_KEY = "__params_key";
-function generateKey() {
-  const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
-  return `pk_${hex}`;
-}
-function isPageInStack(key) {
-  const pages = safeGetCurrentPages();
-  const encodedKey = encodeURIComponent(key);
-  return pages.some((page) => {
-    const fullPath = page.$page?.fullPath ?? "";
-    return fullPath.includes(`${PARAMS_KEY}=${encodedKey}`);
-  });
-}
-function createParamsManager(defaultPersistent) {
-  const memoryMap = /* @__PURE__ */ new Map();
-  let currentDefaultPersistent = defaultPersistent;
-  function setDefaultPersistent(persistent) {
-    currentDefaultPersistent = persistent;
-  }
-  function set(params, persistent) {
-    const useStorage = persistent ?? currentDefaultPersistent;
-    const key = generateKey();
-    try {
-      JSON.stringify(params);
-    } catch {
-      warn("params must be JSON-serializable. Non-serializable values will be lost.");
-    }
-    if (useStorage) {
-      try {
-        uni.setStorageSync(PARAMS_STORAGE_PREFIX + key, JSON.stringify(params));
-      } catch {
-        warn("Failed to write params to storage, falling back to memory storage.");
-        memoryMap.set(key, params);
-      }
-    } else {
-      memoryMap.set(key, params);
-    }
-    return key;
-  }
-  function get(key) {
-    if (memoryMap.has(key)) {
-      if (!isPageInStack(key)) {
-        memoryMap.delete(key);
-        return void 0;
-      }
-      return memoryMap.get(key);
-    }
-    try {
-      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
-      if (raw) {
-        if (!isPageInStack(key)) {
-          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
-          return void 0;
-        }
-        try {
-          return JSON.parse(raw);
-        } catch {
-          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
-          return void 0;
-        }
-      }
-    } catch {
-    }
-    return void 0;
-  }
-  function peek(key) {
-    if (memoryMap.has(key)) {
-      return memoryMap.get(key);
-    }
-    try {
-      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
-      if (raw) {
-        try {
-          return JSON.parse(raw);
-        } catch {
-          return void 0;
-        }
-      }
-    } catch {
-    }
-    return void 0;
-  }
-  function remove(key) {
-    memoryMap.delete(key);
-    try {
-      uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
-    } catch {
-    }
-  }
-  function cleanupStale() {
-    for (const key of memoryMap.keys()) {
-      if (!isPageInStack(key)) {
-        memoryMap.delete(key);
-      }
-    }
-    try {
-      const info = uni.getStorageInfoSync();
-      for (const k of info.keys) {
-        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
-          const paramsKey = k.slice(PARAMS_STORAGE_PREFIX.length);
-          if (!isPageInStack(paramsKey)) {
-            uni.removeStorageSync(k);
-          }
-        }
-      }
-    } catch {
-    }
-  }
-  function cleanupAll() {
-    memoryMap.clear();
-    try {
-      const info = uni.getStorageInfoSync();
-      for (const k of info.keys) {
-        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
-          uni.removeStorageSync(k);
-        }
-      }
-    } catch {
-    }
-  }
-  return { set, get, peek, remove, cleanupStale, cleanupAll, setDefaultPersistent };
 }
 
 // src/matcher/index.ts
@@ -1643,10 +1845,12 @@ var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
 function createRouter(options) {
   return new UniRouter(options);
 }
+
+// src/composables/index.ts
 function useRouter() {
   let router;
   try {
-    router = vue.inject(ROUTER_SYMBOL);
+    router = inject(ROUTER_SYMBOL);
   } catch {
     throw new RouterError("SETUP_ERROR" /* SETUP_ERROR */, "useRouter() must be called inside setup() of a Vue component");
   }
@@ -1659,7 +1863,7 @@ var reactiveRouteMap = /* @__PURE__ */ new WeakMap();
 function getReactiveRoute(router) {
   let routeRef = reactiveRouteMap.get(router);
   if (routeRef) return routeRef;
-  routeRef = vue.ref(router.currentRoute);
+  routeRef = ref(router.currentRoute);
   reactiveRouteMap.set(router, routeRef);
   router.onRouteChange((to) => {
     routeRef.value = to;
@@ -1669,210 +1873,6 @@ function getReactiveRoute(router) {
 function useRoute() {
   const router = useRouter();
   return getReactiveRoute(router);
-}
-
-// src/plugins/params/index.ts
-var PLUGIN_DATA_KEY = "params";
-function enrichLocationWithParams(location, paramsManager) {
-  if (typeof location === "string") return location;
-  const loc = location;
-  const hasParams = "params" in loc && loc.params;
-  if (!hasParams || Object.keys(loc.params).length === 0) return location;
-  const params = loc.params;
-  const persistent = "persistent" in loc ? loc.persistent : void 0;
-  const key = paramsManager.set(params, persistent);
-  return injectQueryKey(location, PARAMS_KEY, key);
-}
-function extractParamsKey(location) {
-  return extractQueryKey(location, PARAMS_KEY);
-}
-var ParamsPlugin = {
-  name: "params",
-  install(context, options) {
-    const paramsManager = context.paramsManager;
-    const persistent = options.paramsPersistent ?? false;
-    if (persistent) {
-      paramsManager.setDefaultPersistent(persistent);
-    }
-    context.onEnrichLocation((location) => {
-      return enrichLocationWithParams(location, paramsManager);
-    });
-    context.onAfterResolve((enrichedLocation, pluginData) => {
-      const paramsKey = extractParamsKey(enrichedLocation);
-      if (paramsKey) {
-        pluginData[PLUGIN_DATA_KEY] = { paramsKey };
-      }
-    });
-    context.onPrepareNavigation((ctx) => {
-      const data = ctx.pluginData[PLUGIN_DATA_KEY];
-      if (data?.paramsKey) {
-        ctx.query[PARAMS_KEY] = data.paramsKey;
-      }
-    });
-    context.onRouteSync((query, params) => {
-      const paramsKey = query[PARAMS_KEY];
-      if (paramsKey) {
-        const resolved = paramsManager.peek(decodeURIComponent(paramsKey));
-        if (resolved) {
-          Object.assign(params, resolved);
-        }
-        delete query[PARAMS_KEY];
-      }
-    });
-  }
-};
-
-// src/plugins/animation/index.ts
-var PLUGIN_DATA_KEY2 = "animation";
-function extractAnimation(location) {
-  if (typeof location === "string") return void 0;
-  if (typeof location === "object" && "animation" in location) return location.animation;
-  return void 0;
-}
-var AnimationPlugin = {
-  name: "animation",
-  install(context, _options) {
-    context.onAfterResolve((enrichedLocation, pluginData) => {
-      const animation = extractAnimation(enrichedLocation);
-      if (animation) {
-        pluginData[PLUGIN_DATA_KEY2] = { animation };
-      }
-    });
-    context.onPrepareNavigation((ctx) => {
-      const data = ctx.pluginData[PLUGIN_DATA_KEY2];
-      if (data?.animation) {
-        ctx.options.animation = data.animation;
-      }
-    });
-  }
-};
-
-// src/plugins/channel/uni-event-channel.ts
-var NAV_ID_KEY = "__nav_id";
-var navIdSeq = 0;
-function generateNavId() {
-  return `nav-${Date.now()}-${++navIdSeq}`;
-}
-var NAV_EVENT_PREFIX = "uni-router";
-function wrapEventName(navId, event) {
-  return `${NAV_EVENT_PREFIX}:${navId}:${event}`;
-}
-var UniEventChannel = class {
-  constructor(navId) {
-    __publicField(this, "navId");
-    /** 按 event 名分组的监听器集合，用于 destroy 时批量清理 */
-    __publicField(this, "listeners", /* @__PURE__ */ new Map());
-    /** 粘性事件缓存：无监听器时 emit 的事件参数，on/once 注册时异步触发 */
-    __publicField(this, "pendingEvents", /* @__PURE__ */ new Map());
-    __publicField(this, "destroyed", false);
-    this.navId = navId;
-  }
-  on(event, callback) {
-    if (this.destroyed) return this;
-    const name = wrapEventName(this.navId, event);
-    let set = this.listeners.get(event);
-    if (!set) {
-      set = /* @__PURE__ */ new Set();
-      this.listeners.set(event, set);
-    }
-    set.add(callback);
-    uni.$on(name, callback);
-    const pending = this.pendingEvents.get(event);
-    if (pending) {
-      Promise.resolve().then(() => callback(...pending));
-    }
-    return this;
-  }
-  once(event, callback) {
-    if (this.destroyed) return this;
-    const name = wrapEventName(this.navId, event);
-    const wrapper = (...args) => {
-      this.listeners.get(event)?.delete(wrapper);
-      callback(...args);
-    };
-    let set = this.listeners.get(event);
-    if (!set) {
-      set = /* @__PURE__ */ new Set();
-      this.listeners.set(event, set);
-    }
-    set.add(wrapper);
-    uni.$once(name, wrapper);
-    const pending = this.pendingEvents.get(event);
-    if (pending) {
-      Promise.resolve().then(() => {
-        uni.$off(name, wrapper);
-        wrapper(...pending);
-      });
-    }
-    return this;
-  }
-  off(event, callback) {
-    const name = wrapEventName(this.navId, event);
-    const set = this.listeners.get(event);
-    if (callback) {
-      uni.$off(name, callback);
-      set?.delete(callback);
-    } else if (set) {
-      set.forEach((cb) => uni.$off(name, cb));
-      set.clear();
-    }
-    return this;
-  }
-  emit(event, ...args) {
-    if (this.destroyed) return this;
-    this.pendingEvents.set(event, args);
-    const set = this.listeners.get(event);
-    if (set && set.size > 0) {
-      const name = wrapEventName(this.navId, event);
-      uni.$emit(name, ...args);
-    }
-    return this;
-  }
-  /**
-   * 销毁通道，清理所有监听器和待处理事件
-   *
-   * 框架内部在页面卸载时调用，防止监听器累积导致内存泄漏。
-   */
-  destroy() {
-    if (this.destroyed) return;
-    this.destroyed = true;
-    for (const [event, set] of this.listeners) {
-      const name = wrapEventName(this.navId, event);
-      set.forEach((cb) => uni.$off(name, cb));
-      set.clear();
-    }
-    this.listeners.clear();
-    this.pendingEvents.clear();
-  }
-};
-var noopChannel = {
-  on: () => noopChannel,
-  once: () => noopChannel,
-  off: () => noopChannel,
-  emit: () => noopChannel
-};
-
-// src/plugins/channel/registry.ts
-var channelRegistry = /* @__PURE__ */ new Map();
-function registerChannel(navId, channel) {
-  if (!channelRegistry.has(navId)) {
-    channelRegistry.set(navId, channel);
-  }
-}
-function destroyChannel(navId) {
-  const channel = channelRegistry.get(navId);
-  if (channel) {
-    channel.destroy();
-    channelRegistry.delete(navId);
-  }
-}
-function getOrCreateChannel(navId) {
-  let channel = channelRegistry.get(navId);
-  if (!channel) {
-    channel = new UniEventChannel(navId);
-    channelRegistry.set(navId, channel);
-  }
-  return channel;
 }
 var PLUGIN_DATA_KEY3 = "channel";
 function extractEvents(location) {
@@ -1951,7 +1951,7 @@ function usePageChannel() {
   const navId = route.value.params?.__navId;
   if (!navId) return noopChannel;
   const channel = getOrCreateChannel(navId);
-  vue.onUnmounted(() => {
+  onUnmounted(() => {
     destroyChannel(navId);
   });
   return channel;
@@ -1972,22 +1972,4 @@ var InterceptorPlugin = {
   }
 };
 
-// src/types/route.ts
-var DEFAULT_ANIMATION_DURATION = 300;
-
-exports.AnimationPlugin = AnimationPlugin;
-exports.ChannelPlugin = ChannelPlugin;
-exports.DEFAULT_ANIMATION_DURATION = DEFAULT_ANIMATION_DURATION;
-exports.InterceptorPlugin = InterceptorPlugin;
-exports.NavigationFailure = NavigationFailure;
-exports.ParamsPlugin = ParamsPlugin;
-exports.ROUTER_SYMBOL = ROUTER_SYMBOL;
-exports.RouterError = RouterError;
-exports.RouterErrorCode = RouterErrorCode;
-exports.UniApiError = UniApiError;
-exports.UniEventChannel = UniEventChannel;
-exports.createRouter = createRouter;
-exports.noopChannel = noopChannel;
-exports.usePageChannel = usePageChannel;
-exports.useRoute = useRoute;
-exports.useRouter = useRouter;
+export { AnimationPlugin, ChannelPlugin, InterceptorPlugin, NavigationFailure, ParamsPlugin, ROUTER_SYMBOL, RouterError, RouterErrorCode, UniApiError, UniEventChannel, createRouter, noopChannel, usePageChannel, useRoute, useRouter };
