@@ -1,20 +1,20 @@
 {
 	"id": "mxuni-router-v2",
 	"displayName": "基于 uni-app 路由管理，提供 vue-router 风格的 API",
-	"version": "1.11.0",
-	"description": "mxuni-router 是一个基于 uni-app 的路由插件，提供 vue-router 风格的 API。",
+	"version": "2.0.0",
+	"description": "mxuni-router-v2 是一个基于 uni-app 的路由插件，提供 vue-router 风格的 API。",
 	"keywords": [
-		"@meng-xi/uni-router",
-		"meng-xi",
-		"router",
-		"路由",
-		"路由拦截"
-	],
+        "@meng-xi/uni-router",
+        "meng-xi",
+        "router",
+        "路由",
+        "路由拦截"
+    ],
 	"repository": "https://github.com/MengXi-Studio/uni-router",
 	"engines": {
 		"HBuilderX": "^3.1.0",
-		"uni-app": "^3.7.10",
-		"uni-app-x": "^3.7.10"
+		"uni-app": "^3.7.11",
+		"uni-app-x": "^3.7.11"
 	},
 	"dcloudext": {
 		"type": "component-vue",
