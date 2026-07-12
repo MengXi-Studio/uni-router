@@ -80,7 +80,7 @@
 
 <script>
 import router from '../../router'
-import { usePageChannel, noopChannel } from '../../uni_modules/mxuni-router/js_sdk/index.js'
+import { usePageChannel, noopChannel } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
 
 export default {
 	// usePageChannel() 在 setup 顶层调用，读取 route.params.__navId 获取通信通道

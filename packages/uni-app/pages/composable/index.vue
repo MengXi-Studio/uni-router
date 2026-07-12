@@ -96,7 +96,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { useRouter, useRoute, usePageChannel, noopChannel } from '../../uni_modules/mxuni-router/js_sdk/index.js'
+import { useRouter, useRoute, usePageChannel, noopChannel } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
 import router from '../../router'
 
 // 使用组合式 API 获取路由器和路由位置

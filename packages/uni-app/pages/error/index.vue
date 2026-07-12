@@ -107,7 +107,7 @@
 
 <script>
 import router from '../../router'
-import { NavigationFailure, RouterErrorCode } from '../../uni_modules/mxuni-router/js_sdk/index.js'
+import { NavigationFailure, RouterErrorCode } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
 
 export default {
 	data() {

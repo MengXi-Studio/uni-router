@@ -1,10 +1,10 @@
 /**
  * @plugin generate-router
- * @date 2026-07-13 00:02:47
+ * @date 2026-07-13 00:19:54
  * @version 1.0.0
  */
 
-import type { RouteConfig } from '@meng-xi/uni-router'
+import type { RouteConfig } from './uni_modules/mxuni-router-v2/js_sdk/index'
 
 /**
  * 路由配置列表

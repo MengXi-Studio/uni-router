@@ -1,4 +1,4 @@
-import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin, NavigationFailure, RouterError, RouterErrorCode } from './uni_modules/mxuni-router/js_sdk/index.js'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin, NavigationFailure, RouterError, RouterErrorCode } from './uni_modules/mxuni-router-v2/js_sdk/index.js'
 import routes from './router.config'
 
 const router = createRouter({

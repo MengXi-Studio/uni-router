@@ -1,5 +1,5 @@
 {
-	"id": "mxuni-router",
+	"id": "mxuni-router-v2",
 	"displayName": "基于 uni-app 路由管理，提供 vue-router 风格的 API",
 	"version": "1.11.0",
 	"description": "mxuni-router 是一个基于 uni-app 的路由插件，提供 vue-router 风格的 API。",
@@ -42,6 +42,14 @@
 	"uni_modules": {
 		"dependencies": [],
 		"encrypt": [],
+		"easycom": {
+			"autoscan": true,
+			"custom": {
+				"^mxuni-router-link$": "./components/router-link/router-link.vue",
+				"^mxuni-tab-bar$": "./components/tab-bar/tab-bar.vue",
+				"^mxuni-tab-bar-item$": "./components/tab-bar-item/tab-bar-item.vue"
+			}
+		},
 		"platforms": {
 			"cloud": {
 				"tcb": "√",
