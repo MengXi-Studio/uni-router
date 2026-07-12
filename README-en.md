@@ -21,14 +21,14 @@
 - **vue-router-style API** - `push` / `replace` / `relaunch` / `back`
 - **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`, `guardRoute` for cold-start execution
 - **Named Routes & Route Meta** - Navigate by `name`, carry custom data via `meta`
+- **Plugin Architecture** - ParamsPlugin / AnimationPlugin / ChannelPlugin / InterceptorPlugin registered on demand
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths
-- **uni API Interception** - Optionally intercept native navigation APIs to enforce guard flow
 - **Page Communication** - `useUniEventChannel` built-in manager, all navigation methods support `eventChannel`
 - **Declarative Navigation** - `RouterLink` + `TabBar` / `TabBarItem` components with SCSS theming
 - **Page Params** - `params` passes complex data without URL exposure, auto-preserved after `back()`
 - **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()`
 - **Navigation Animation** - `push` / `replace` / `back` support animation params, App only
-- **Auto Route State Sync** - Global mixin auto-invokes `syncRoute()`, no manual sync needed
+- **Auto Route State Sync** - `app.use(router)` injects global mixin that auto-invokes `syncRoute()`
 - **Error Handling** - `RouterError` / `NavigationFailure` / `UniApiError`, supports `instanceof` discrimination
 - **Composables** - `useRouter()` / `useRoute()` / `usePageChannel()`
 
@@ -51,18 +51,19 @@ pnpm add @meng-xi/vite-plugin -D
 ```typescript
 // src/main.ts
 import { createSSRApp } from 'vue'
-import { createRouter } from '@meng-xi/uni-router'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin } from '@meng-xi/uni-router'
 import routes from './router.config'
 import App from './App.vue'
 
 const router = createRouter({
 	routes,
-	interceptUniApi: true // Intercept uni native navigation APIs to ensure guards work
+	plugins: [ParamsPlugin, ChannelPlugin, InterceptorPlugin], // Register plugins on demand
+	interceptUniApi: true // Requires InterceptorPlugin, intercept native APIs to ensure guards work
 })
 
 export function createApp() {
 	const app = createSSRApp(App)
-	app.use(router) // Auto-registers a global mixin that syncs currentRoute on each page's onShow
+	app.use(router) // Injects global mixin that auto-invokes syncRoute() on each page's onShow
 	return { app }
 }
 ```
