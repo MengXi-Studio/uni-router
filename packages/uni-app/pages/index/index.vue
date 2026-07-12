@@ -94,7 +94,7 @@
 			<text class="card-title">TabBar / TabBarItem 组件</text>
 			<text class="hint">自定义底部导航栏，支持徽标、切换拦截、SCSS 主题定制（此处 fixed=false 内嵌展示）</text>
 			<TabBar :fixed="false" :border="true" selected-color="#007aff" @change="onTabBarChange">
-				<TabBarItem to="/pages/index/index" icon-path="/static/tab/home.svg" selected-icon-path="/static/tab/home-active.svg" text="首页" />	
+				<TabBarItem to="/pages/index/index" icon-path="/static/tab/home.svg" selected-icon-path="/static/tab/home-active.svg" text="首页" />
 				<TabBarItem to="/pages/guards/index" icon-path="/static/tab/nav.svg" selected-icon-path="/static/tab/nav-active.svg" text="守卫" :badge="3" />
 				<TabBarItem to="/pages/about/index" icon-path="/static/tab/user.svg" selected-icon-path="/static/tab/user-active.svg" text="关于" dot />
 			</TabBar>
@@ -262,8 +262,7 @@
 				<text class="btn-text-secondary">uni.navigateBack（被拦截转为 back）</text>
 			</view>
 			<view class="warn-tip">
-				⚠️ 关于 uni.switchTab：本项目未配置 TabBar，故未提供演示。switchTab 同样会被拦截转为 router.push（TabBar 页面自动使用 switchTab 导航）。注意 H5 平台对 switchTab 有特殊处理（放行原始调用 + success
-				回调同步状态），详见官方文档。
+				⚠️ 关于 uni.switchTab：本项目未配置 TabBar，故未提供演示。switchTab 同样会被拦截并走完整守卫链（包括 H5 平台），守卫中可通过 next(false) 拒绝 TabBar 切换（如未登录时跳转个人中心）。详见官方文档。
 			</view>
 		</view>
 

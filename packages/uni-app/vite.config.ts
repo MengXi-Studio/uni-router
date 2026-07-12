@@ -1,6 +1,6 @@
 import { defineConfig, type PluginOption } from 'vite'
 import uni from '@dcloudio/vite-plugin-uni'
-import { generateRouter } from './uni_modules/vite-plugin/js_sdk/plugins/generate/generateRouter'
+import { generateRouter } from './uni_modules/vite-plugin/js_sdk/plugins/generate/generateRouter/index.mjs'
 
 export default defineConfig({
 	plugins: [
