@@ -1,6 +1,10 @@
 # Route Guards
 
-Route guards are Uni Router's core capability, allowing you to insert custom logic during navigation: authentication, logging, data preloading, leave confirmation, etc. This chapter dives deep into the guard execution mechanism, all behaviors of `next()`, and the controllable redirect introduced in v1.7.0.
+Route guards are Uni Router's core capability, allowing you to insert custom logic during navigation: authentication, logging, data preloading, leave confirmation, etc. This chapter dives deep into the guard execution mechanism, the return-value pattern (recommended), and the legacy `next()` callback pattern (deprecated).
+
+::: tip v2.1.0 Changes
+Since v2.1.0, guards fully support the **return-value pattern** (consistent with Vue Router 4.x), controlling navigation behavior through return values. The legacy `next()` callback pattern remains compatible but is marked as deprecated. New code should use the return-value pattern.
+:::
 
 ## Guard Overview
 
@@ -31,7 +35,7 @@ Navigation triggered
 | `beforeEach` | `router.beforeEach(fn)` | Auth check, permission check, global logging |
 | `beforeEnter` | `RouteConfig.beforeEnter` | Route-specific validation (like reading specific data) |
 | `beforeResolve` | `router.beforeResolve(fn)` | Final confirmation after data preload completes |
-| `afterEach` | `router.afterEach(fn)` | Set title, analytics, cleanup state |
+| `afterEach` | `router.afterEach(fn)` | Set title, analytics, cleanup state, receive failure info |
 
 ::: tip beforeResolve's Purpose
 `beforeResolve` executes after `beforeEnter`, when all pre-validation has passed. Suitable for "after all guards agree" final logic, like confirming data is fully loaded. Its difference from `beforeEach` is only in execution timing.
@@ -44,26 +48,29 @@ Navigation triggered
 ```ts
 const router = createRouter({ routes })
 
-// Pre guard
-const removeBefore = router.beforeEach((to, from, next) => {
+// Pre guard (return-value pattern, recommended)
+const removeBefore = router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }  // redirect
   }
+  // Return undefined or true to proceed
 })
 
-// Resolve guard
-router.beforeResolve(async (to, from, next) => {
+// Resolve guard (return-value pattern)
+router.beforeResolve(async (to) => {
   // After all pre guards pass, preload data
   if (to.name === 'detail') {
     await store.fetchDetail(to.query.id)
   }
-  next()
+  // No return value = proceed
 })
 
-// Post hook
-router.afterEach((to, from) => {
+// Post hook (receives failure parameter)
+router.afterEach((to, from, failure) => {
+  if (failure) {
+    console.error('Navigation failed:', failure.message)
+    return
+  }
   if (to.meta.title) {
     uni.setNavigationBarTitle({ title: to.meta.title as string })
   }
@@ -81,9 +88,9 @@ const routes = [
     path: 'pages/admin/admin',
     name: 'admin',
     meta: { requireAdmin: true },
-    beforeEnter: (to, from, next) => {
-      if (user.role === 'admin') next()
-      else next({ name: '403' })
+    beforeEnter: (to, from) => {
+      if (user.role === 'admin') return true  // proceed
+      return { name: '403' }  // redirect
     }
   },
   {
@@ -103,52 +110,83 @@ const routes = [
 `beforeEnter` supports passing an array, executing in order. If any guard aborts or redirects, subsequent guards won't execute.
 :::
 
-## All Behaviors of next()
+## Guard Return Values
 
-`next` is the third parameter of the guard function and **must be called** to resolve the guard. It has three behaviors:
+The return-value pattern is the recommended guard style since v2.1.0. Guards control navigation behavior through return values, no need to call `next()` callback.
 
-### 1. Pass: `next()` or `next(undefined)`
+### 1. Pass: `return undefined` / `return true`
 
 ```ts
-router.beforeEach((to, from, next) => {
-  next() // Pass, continue to next guard
+router.beforeEach((to, from) => {
+  return true // Pass, continue to next guard
+})
+
+// No return also means pass
+router.beforeEach((to, from) => {
+  // Default: pass
 })
 ```
 
-### 2. Abort: `next(false)`
+### 2. Abort: `return false`
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (isOffline()) {
     uni.showToast({ title: 'Network unavailable', icon: 'none' })
-    next(false) // Abort navigation, stay on current page
-  } else {
-    next()
+    return false // Abort navigation, stay on current page
   }
 })
 ```
 
 Abort throws `NavigationFailure` (`NAVIGATION_ABORTED`).
 
-### 3. Redirect: `next(location)`
+### 3. Redirect: `return RouteLocationRaw`
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
     // Redirect to login page, carry original target for post-login return
-    next({ name: 'login', query: { redirect: to.fullPath } })
-  } else {
-    next()
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 })
 ```
 
 Redirects **re-trigger the complete guard chain** (starting from `beforeEach`) and increment the redirect depth counter.
 
+### 4. Throw Error to Abort
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth) {
+    throw new Error('Permission denied')  // Cancel navigation (NAVIGATION_CANCELLED)
+  }
+})
+
+// Or return an Error object
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth) {
+    return new Error('Permission denied')  // Cancel navigation (NAVIGATION_CANCELLED)
+  }
+})
+```
+
+### Return Value Summary
+
+| Return Value | Behavior |
+| --- | --- |
+| `undefined` / `void` / `true` | Pass, continue to next guard |
+| `false` | Abort navigation (`NAVIGATION_ABORTED`) |
+| `string` (e.g. `'/login'`) | Redirect to path |
+| `RouteLocationRaw` (e.g. `{ name: 'login' }`) | Redirect to route location |
+| `Error` object | Cancel navigation (`NAVIGATION_CANCELLED`) |
+| Thrown exception | Cancel navigation (`NAVIGATION_CANCELLED`) |
+
 ## Controllable Redirect (v1.7.0+)
 
 ::: tip v1.7.0 New
 This feature was introduced in v1.7.0. In previous versions, the redirect method was fixed to the original navigation method that triggered the guard.
+
+In the return-value pattern, the redirect method is controlled via the `mode` field in the returned object.
 :::
 
 ### Default Redirect Method
@@ -158,12 +196,12 @@ When `mode` is not specified, the redirect uses the original navigation method:
 ```ts
 // Original navigation is push
 await router.push({ name: 'protected' })
-// In beforeEach: next({ name: 'login' })
+// In beforeEach: return { name: 'login' }
 // → Redirect uses push method (navigateTo)
 
 // Original navigation is replace
 await router.replace({ name: 'protected' })
-// In beforeEach: next({ name: 'login' })
+// In beforeEach: return { name: 'login' }
 // → Redirect uses replace method (redirectTo)
 ```
 
@@ -173,15 +211,13 @@ When the original navigation is `back`, the redirect cannot use `back` (target i
 
 ### Specifying Redirect Method
 
-Explicitly specify via the second parameter `options.mode`:
+Explicitly specify via the `mode` field in the returned object:
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
     // Use replace for login page, avoiding users returning to the protected page's intermediate state
-    next({ name: 'login' }, { mode: 'replace' })
-  } else {
-    next()
+    return { location: { name: 'login' }, mode: 'replace' }
   }
 })
 ```
@@ -201,18 +237,14 @@ type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
 ### Practice: Choosing Login Redirect Method
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
     if (from.name === 'login') {
       // Already on login page without permissions, use replace to avoid stack buildup
-      next(false)
-    } else {
-      // Use replace to go to login page, then replace back to target after login success
-      // This way users won't return to the "unauthenticated intermediate state"
-      next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
+      return false
     }
-  } else {
-    next()
+    // Use replace to go to login page, then replace back to target after login success
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
 })
 
@@ -226,12 +258,10 @@ async function onLoginSuccess(redirect: string) {
 ### Practice: Clear Stack on Insufficient Permissions
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.roles && !hasRole(to.meta.roles)) {
     // Insufficient permissions, clear stack and return home
-    next({ name: 'home' }, { mode: 'relaunch' })
-  } else {
-    next()
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
 })
 ```
@@ -241,39 +271,23 @@ router.beforeEach((to, from, next) => {
 Guards support `async` functions and returning Promises:
 
 ```ts
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   // Async validate token validity
   const valid = await checkToken()
   if (!valid) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }  // Redirect to login page
   }
+  // Pass
 })
 ```
-
-### Promise Resolve Auto-Pass
-
-If the guard is an async function and the Promise resolves **without calling next**, it auto-passes:
-
-```ts
-router.beforeEach(async (to, from, next) => {
-  await preloadData(to)
-  // Didn't call next, but Promise resolved → auto next()
-})
-```
-
-::: warning Recommend Explicit next Call
-While auto-pass is convenient, explicitly calling `next()` is more readable and avoids ambiguity in complex logic.
-:::
 
 ### Promise Reject Aborts Navigation
 
 ```ts
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   try {
     await fetchUserProfile()
-    next()
+    // Pass
   } catch (err) {
     // reject will abort navigation (NAVIGATION_CANCELLED)
     throw err
@@ -281,11 +295,11 @@ router.beforeEach(async (to, from, next) => {
 })
 ```
 
-::: warning reject vs next(false)
-- `next(false)` → `NAVIGATION_ABORTED` (user actively aborts)
+::: warning Return Value vs Exception
+- `return false` → `NAVIGATION_ABORTED` (user actively aborts)
 - `throw` / `reject` → `NAVIGATION_CANCELLED` (exception causes cancellation)
 
-Recommend using `next(false)` for "active abort" and exceptions for "unexpected errors".
+Recommend using `return false` for "active abort" and exceptions for "unexpected errors".
 :::
 
 ## Timeout Protection
@@ -301,7 +315,7 @@ const router = createRouter({
 
 ```
 Guard execution
-  → Doesn't call next() or resolve/reject within 10 seconds
+  → Doesn't return a result or throw within 10 seconds
   → Outputs warning: "Navigation guard did not resolve within 10s"
   → Auto-aborts navigation (NAVIGATION_CANCELLED)
 ```
@@ -340,31 +354,27 @@ guard1 → guard2 → guard3 → beforeEnter → beforeResolve1 → beforeResolv
 If any guard aborts or redirects, **subsequent guards won't execute**:
 
 ```ts
-router.beforeEach((to, from, next) => {
-  next(false) // Abort
+router.beforeEach((to, from) => {
+  return false // Abort
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   console.log('Will not execute')
-  next()
 })
 ```
 
 ### Redirect Re-triggers Guard Chain
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.name === 'a') {
-    next({ name: 'b' }) // Redirect to b
-    return
+    return { name: 'b' } // Redirect to b
   }
-  next()
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // When redirecting to b, this guard executes again
   console.log(to.name) // 'b'
-  next()
 })
 ```
 
@@ -381,10 +391,16 @@ Redirect depth limit is 10. A→B→A→B... loop will throw `NAVIGATION_CANCELL
 
 ## afterEach Post Hooks
 
-`afterEach` executes after navigation completes and **cannot change the navigation result** (doesn't accept `next` parameter):
+`afterEach` executes after navigation completes and **cannot change the navigation result** (doesn't accept `next` parameter), but receives a third `failure` parameter for navigation failure info:
 
 ```ts
-router.afterEach((to, from) => {
+router.afterEach((to, from, failure) => {
+  if (failure) {
+    // Log error on navigation failure
+    console.error('Navigation failed:', failure.message)
+    return
+  }
+
   // Set page title
   if (to.meta.title) {
     uni.setNavigationBarTitle({ title: to.meta.title as string })
@@ -421,18 +437,18 @@ router.onRouteChange((to, from) => {
 
 ```ts
 // Global pre guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
 
   if (to.meta.requireAuth && !isLoggedIn) {
     // Not logged in → go to login page, replace to avoid returning to protected page
-    next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
-  } else if (to.name === 'login' && isLoggedIn) {
-    // Already logged in accessing login page → go to home
-    next({ name: 'home' }, { mode: 'replace' })
-  } else {
-    next()
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
+  if (to.name === 'login' && isLoggedIn) {
+    // Already logged in accessing login page → go to home
+    return { location: { name: 'home' }, mode: 'replace' }
+  }
+  // Pass
 })
 ```
 
@@ -446,14 +462,12 @@ declare module '@meng-xi/uni-router' {
   }
 }
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const userRoles = getUserRoles()
 
   if (to.meta.roles && !to.meta.roles.some(r => userRoles.includes(r))) {
     // Insufficient permissions → clear stack and return home
-    next({ name: 'home' }, { mode: 'relaunch' })
-  } else {
-    next()
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
 })
 ```
@@ -470,22 +484,23 @@ const routes = [
   }
 ]
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (from.meta.dirty) {
-    uni.showModal({
-      title: 'Notice',
-      content: 'You have unsaved changes. Leave anyway?',
-      success: (res) => {
-        if (res.confirm) {
-          from.meta.dirty = false // Reset
-          next()
-        } else {
-          next(false)
+    // Leave confirmation needs async dialog, wrap with Promise
+    return new Promise((resolve) => {
+      uni.showModal({
+        title: 'Notice',
+        content: 'You have unsaved changes. Leave anyway?',
+        success: (res) => {
+          if (res.confirm) {
+            from.meta.dirty = false // Reset
+            resolve(true) // Pass
+          } else {
+            resolve(false) // Abort
+          }
         }
-      }
+      })
     })
-  } else {
-    next()
   }
 })
 ```
@@ -494,7 +509,7 @@ router.beforeEach((to, from, next) => {
 
 ```ts
 // Preload in beforeResolve (all pre-validation has passed)
-router.beforeResolve(async (to, from, next) => {
+router.beforeResolve(async (to) => {
   try {
     switch (to.name) {
       case 'detail':
@@ -504,10 +519,10 @@ router.beforeResolve(async (to, from, next) => {
         await store.fetchList(to.queryInt('page', 1))
         break
     }
-    next()
+    // Pass
   } catch (err) {
     uni.showToast({ title: 'Load failed', icon: 'none' })
-    next(false) // Data load failed, abort navigation
+    return false // Data load failed, abort navigation
   }
 })
 ```
@@ -534,20 +549,16 @@ const routes = [
     name: 'order',
     beforeEnter: [
       // Must select address first
-      (to, from, next) => {
+      (to, from) => {
         if (!store.selectedAddress) {
           uni.showToast({ title: 'Please select an address first', icon: 'none' })
-          next(false)
-        } else {
-          next()
+          return false
         }
       },
       // Must have products
-      (to, from, next) => {
+      (to, from) => {
         if (store.cart.length === 0) {
-          next({ name: 'cart' })
-        } else {
-          next()
+          return { name: 'cart' }
         }
       }
     ]
@@ -671,9 +682,9 @@ When `onLaunch` fires, the page stack is empty and `router.currentRoute` is stil
 
 | Guard Result | Behavior |
 | --- | --- |
-| Pass (`next()`) | No navigation, resolves with the target route |
-| Redirect (`next(location)`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
-| Abort (`next(false)`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
+| Pass (`return undefined` / `return true`) | No navigation, resolves with the target route |
+| Redirect (`return location`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
+| Abort (`return false`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
 
 ::: warning Cold start cannot truly "block entry"
 In cold start scenarios the page is already loaded, so `guardRoute()` cannot truly prevent the page from displaying. When a guard aborts, using the `onAbort` callback to execute `router.relaunch()` to navigate to a safe page is the recommended approach.
@@ -696,30 +707,76 @@ See [Router Instance - guardRoute()](../api/router-instance#guardroute) for deta
 ## Guard Type Definitions
 
 ```ts
-// Pre guard
+// Guard return value type
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+
+// Pre guard (return-value pattern, recommended)
 type NavigationGuard = (
   to: RouteLocation,
   from: RouteLocation,
-  next: NavigationGuardNext
-) => void | Promise<void>
+  next?: NavigationGuardNext  // Deprecated, use return value for new code
+) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 
-// next callback
+// next callback (deprecated)
 type NavigationGuardNext = (
   to?: RouteLocationRaw | false,
   options?: NavigationGuardNextOptions
 ) => void
 
-// next options
+// next options (deprecated)
 interface NavigationGuardNextOptions {
   mode?: NavigationRedirectMode // 'push' | 'replace' | 'relaunch'
 }
 
-// Post hook
+// Redirect mode
+type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
+
+// Post hook (receives failure parameter)
 type PostNavigationGuard = (
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  failure?: NavigationFailure | null
 ) => void
 ```
+
+## Legacy next() Callback Pattern (Deprecated)
+
+::: warning Compatibility Note
+The `next()` callback pattern remains compatible in v2.1.0 but is marked as deprecated. New code should use the return-value pattern.
+
+- Guard mode is auto-detected by parameter count: `(to, from, next)` three params → callback mode; `(to, from)` two params → return-value mode
+- Mixing both patterns will trigger a warning in the console
+:::
+
+```ts
+// Callback style (deprecated)
+router.beforeEach((to, from, next) => {
+  if (condition) {
+    next({ name: 'login' })  // redirect
+  } else {
+    next()  // pass
+  }
+})
+
+// With redirect options
+router.beforeEach((to, from, next) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    next({ name: 'login' }, { mode: 'replace' })
+  } else {
+    next()
+  }
+})
+```
+
+### next() Behaviors
+
+| Call | Behavior | Equivalent Return Value |
+| --- | --- | --- |
+| `next()` | Pass | `return undefined` / `return true` |
+| `next(false)` | Abort (`NAVIGATION_ABORTED`) | `return false` |
+| `next(location)` | Redirect | `return location` |
+| `next(error)` | Cancel (`NAVIGATION_CANCELLED`) | `throw error` / `return error` |
+| `next(location, { mode })` | Redirect + mode | `return { location, mode }` |
 
 ## Best Practices
 
@@ -732,23 +789,24 @@ router.beforeEach(checkPermission)
 router.beforeEach(checkMaintenance)
 
 // ❌ One guard does everything
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // 100 lines of mixed logic...
 })
 ```
 
-### 2. Explicitly Call next
+### 2. Use Return-Value Pattern
 
 ```ts
-// ✅ Clear
+// ✅ Recommended: return-value pattern, clean and concise
+router.beforeEach(async (to, from) => {
+  const ok = await check()
+  if (!ok) return { name: 'login' }
+})
+
+// ⚠️ Deprecated: next callback pattern
 router.beforeEach(async (to, from, next) => {
   const ok = await check()
   next(ok ? undefined : { name: 'login' })
-})
-
-// ⚠️ Relies on auto-pass, poor readability
-router.beforeEach(async (to, from) => {
-  await check()
 })
 ```
 
@@ -756,13 +814,12 @@ router.beforeEach(async (to, from) => {
 
 ```ts
 // ✅ Avoid loops
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.name === 'login' && isLoggedIn()) {
-    next({ name: 'home' }) // Already logged in accessing login → go home
-  } else if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' }) // Not logged in accessing protected → go to login
-  } else {
-    next()
+    return { name: 'home' } // Already logged in accessing login → go home
+  }
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    return { name: 'login' } // Not logged in accessing protected → go to login
   }
 })
 ```
@@ -771,9 +828,8 @@ router.beforeEach((to, from, next) => {
 
 ```ts
 // ✅ Preload after pre-validation passes
-router.beforeResolve(async (to, from, next) => {
+router.beforeResolve(async (to) => {
   await preloadData(to)
-  next()
 })
 
 // ❌ Putting in beforeEach blocks other guards

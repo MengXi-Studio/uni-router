@@ -70,11 +70,9 @@ await router.back()
 ### 3. 路由守卫
 
 ```typescript
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		next({ name: 'login' }, { mode: 'replace' })
-	} else {
-		next()
+		return { location: { name: 'login' }, mode: 'replace' }
 	}
 })
 ```

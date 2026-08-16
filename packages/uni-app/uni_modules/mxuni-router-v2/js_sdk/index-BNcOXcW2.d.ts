@@ -1,6 +1,70 @@
 import { App } from 'vue';
 
 /**
+ * 路由错误接口，描述路由过程中产生的错误
+ */
+interface RouterError {
+    /** 错误码 */
+    readonly code: RouterErrorCode;
+    /** 错误信息 */
+    readonly message: string;
+}
+/**
+ * uni-app API 失败时的错误原因
+ *
+ * uni-app 导航 API（navigateTo / redirectTo 等）的 fail 回调始终传入此结构的错误对象。
+ */
+interface UniApiCause {
+    /** 错误描述信息 */
+    errMsg: string;
+}
+/**
+ * uni-app API 调用失败的错误信息
+ *
+ * 包含失败的 API 名称和原始错误原因，作为 {@link NavigationFailure.cause} 传递。
+ */
+interface UniApiError {
+    /** 调用失败的 API 名称（如 navigateTo / redirectTo） */
+    readonly api: string;
+    /** 原始错误原因 */
+    readonly cause: UniApiCause;
+}
+/**
+ * 导航失败接口，描述导航过程中产生的失败，包含来源和目标路由信息
+ */
+interface NavigationFailure extends RouterError {
+    /** 目标路由 */
+    readonly to: RouteLocation;
+    /** 来源路由 */
+    readonly from: RouteLocation;
+    /**
+     * 原始错误原因
+     *
+     * 仅当 `code` 为 `NAVIGATION_API_ERROR` 时存在，包含失败的 API 名称和原始错误信息。
+     */
+    readonly cause?: UniApiError;
+}
+/**
+ * 路由错误码枚举
+ */
+declare enum RouterErrorCode {
+    /** 导航被守卫中止 */
+    NAVIGATION_ABORTED = "NAVIGATION_ABORTED",
+    /** 导航被取消（守卫抛出异常或重定向超限） */
+    NAVIGATION_CANCELLED = "NAVIGATION_CANCELLED",
+    /** 重复导航到当前位置 */
+    NAVIGATION_DUPLICATED = "NAVIGATION_DUPLICATED",
+    /** 未找到匹配的路由 */
+    ROUTE_NOT_FOUND = "ROUTE_NOT_FOUND",
+    /** uni 导航 API 调用失败 */
+    NAVIGATION_API_ERROR = "NAVIGATION_API_ERROR",
+    /** 使用了插件提供的功能但对应插件未注册 */
+    PLUGIN_REQUIRED = "PLUGIN_REQUIRED",
+    /** 路由器初始化或使用方式错误 */
+    SETUP_ERROR = "SETUP_ERROR"
+}
+
+/**
  * 导航守卫重定向方式
  *
  * 用于 next(location, options) 的 options.mode，指定重定向使用的导航方式。
@@ -9,6 +73,9 @@ import { App } from 'vue';
 type NavigationRedirectMode = 'push' | 'replace' | 'relaunch';
 /**
  * 导航守卫 next 回调的可选参数
+ *
+ * @deprecated 自 v2.1.0 起弃用，新代码应使用返回值模式替代 next 回调。
+ * 详见 NavigationGuard 文档。
  */
 interface NavigationGuardNextOptions {
     /**
@@ -22,23 +89,78 @@ interface NavigationGuardNextOptions {
 }
 /**
  * 导航守卫的 next 回调函数
+ *
+ * @deprecated 自 v2.1.0 起弃用，新代码应使用返回值模式。
+ * 守卫函数通过返回值控制导航行为：
+ * - `return undefined` / `return true` — 放行
+ * - `return false` — 中止导航
+ * - `return '/login'` / `return { name: 'login' }` — 重定向
+ * - `throw new Error()` — 取消导航
+ *
  * @param to - 传入 false 中断导航，传入路由位置重定向，不传参数则放行
  * @param options - 重定向选项，仅在传入 location 重定向时生效
  */
 type NavigationGuardNext = (to?: RouteLocationRaw | false, options?: NavigationGuardNextOptions) => void;
 /**
+ * 导航守卫的返回值类型
+ *
+ * 守卫函数可通过返回值控制导航行为：
+ * - `undefined` / `void` / `true` — 放行导航
+ * - `false` — 中止导航（NAVIGATION_ABORTED）
+ * - `string` — 重定向到路径（如 `'/login'`）
+ * - `RouteLocationRaw` — 重定向到路由位置（如 `{ name: 'login' }`）
+ * - `Error` — 取消导航（NAVIGATION_CANCELLED）
+ * - `null` — 等同于 undefined，放行导航
+ */
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null;
+/**
  * 前置导航守卫函数类型
+ *
+ * 支持两种模式：
+ *
+ * **1. 返回值模式（推荐，v2.1.0+）**
+ * ```typescript
+ * router.beforeEach((to, from) => {
+ *   if (to.meta.requireAuth && !isLoggedIn()) {
+ *     return { name: 'login' }  // 重定向
+ *   }
+ *   // 不返回值或 return true 表示放行
+ * })
+ *
+ * // 异步守卫
+ * router.beforeEach(async (to) => {
+ *   const user = await fetchUser()
+ *   if (!user) return '/login'
+ * })
+ * ```
+ *
+ * **2. next 回调模式（已弃用，v2.0.x 及更早）**
+ * ```typescript
+ * router.beforeEach((to, from, next) => {
+ *   if (condition) {
+ *     next('/login')
+ *   } else {
+ *     next()
+ *   }
+ * })
+ * ```
+ *
  * @param to - 即将进入的目标路由
  * @param from - 当前导航正要离开的路由
- * @param next - 必须调用以 resolve 此守卫
+ * @param next - （已弃用）必须调用以 resolve 此守卫。新代码应使用返回值模式
  */
-type NavigationGuard = (to: RouteLocation, from: RouteLocation, next: NavigationGuardNext) => void | Promise<void>;
+type NavigationGuard = (to: RouteLocation, from: RouteLocation, next?: NavigationGuardNext) => NavigationGuardReturn | Promise<NavigationGuardReturn>;
 /**
  * 后置导航钩子函数类型
+ *
+ * 在导航完成后执行，不影响导航结果。
+ * 第三个参数 failure 在导航失败时传入，可用于区分成功/失败导航。
+ *
  * @param to - 已进入的目标路由
  * @param from - 离开的路由
+ * @param failure - 导航失败时的错误信息，成功时为空
  */
-type PostNavigationGuard = (to: RouteLocation, from: RouteLocation) => void;
+type PostNavigationGuard = (to: RouteLocation, from: RouteLocation, failure?: NavigationFailure | null) => void;
 
 /**
  * 导航动画类型
@@ -319,70 +441,6 @@ interface RouteLocationNamedRaw {
  * 原始路由位置，支持路径字符串、路径对象或命名对象
  */
 type RouteLocationRaw = string | RouteLocationPathRaw | RouteLocationNamedRaw;
-
-/**
- * 路由错误接口，描述路由过程中产生的错误
- */
-interface RouterError {
-    /** 错误码 */
-    readonly code: RouterErrorCode;
-    /** 错误信息 */
-    readonly message: string;
-}
-/**
- * uni-app API 失败时的错误原因
- *
- * uni-app 导航 API（navigateTo / redirectTo 等）的 fail 回调始终传入此结构的错误对象。
- */
-interface UniApiCause {
-    /** 错误描述信息 */
-    errMsg: string;
-}
-/**
- * uni-app API 调用失败的错误信息
- *
- * 包含失败的 API 名称和原始错误原因，作为 {@link NavigationFailure.cause} 传递。
- */
-interface UniApiError {
-    /** 调用失败的 API 名称（如 navigateTo / redirectTo） */
-    readonly api: string;
-    /** 原始错误原因 */
-    readonly cause: UniApiCause;
-}
-/**
- * 导航失败接口，描述导航过程中产生的失败，包含来源和目标路由信息
- */
-interface NavigationFailure extends RouterError {
-    /** 目标路由 */
-    readonly to: RouteLocation;
-    /** 来源路由 */
-    readonly from: RouteLocation;
-    /**
-     * 原始错误原因
-     *
-     * 仅当 `code` 为 `NAVIGATION_API_ERROR` 时存在，包含失败的 API 名称和原始错误信息。
-     */
-    readonly cause?: UniApiError;
-}
-/**
- * 路由错误码枚举
- */
-declare enum RouterErrorCode {
-    /** 导航被守卫中止 */
-    NAVIGATION_ABORTED = "NAVIGATION_ABORTED",
-    /** 导航被取消（守卫抛出异常或重定向超限） */
-    NAVIGATION_CANCELLED = "NAVIGATION_CANCELLED",
-    /** 重复导航到当前位置 */
-    NAVIGATION_DUPLICATED = "NAVIGATION_DUPLICATED",
-    /** 未找到匹配的路由 */
-    ROUTE_NOT_FOUND = "ROUTE_NOT_FOUND",
-    /** uni 导航 API 调用失败 */
-    NAVIGATION_API_ERROR = "NAVIGATION_API_ERROR",
-    /** 使用了插件提供的功能但对应插件未注册 */
-    PLUGIN_REQUIRED = "PLUGIN_REQUIRED",
-    /** 路由器初始化或使用方式错误 */
-    SETUP_ERROR = "SETUP_ERROR"
-}
 
 /**
  * uni 导航 API 的统一选项

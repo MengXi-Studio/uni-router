@@ -68,13 +68,13 @@ const routes = [
 ]
 
 // Global before guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
 
   if (to.meta.requireAuth && !isLoggedIn) {
-    next({ name: 'login', query: { redirect: to.fullPath } })
+    return { name: 'login', query: { redirect: to.fullPath } }
   } else {
-    next()
+    return
   }
 })
 ```
@@ -188,15 +188,14 @@ const routes: RouteConfig[] = [
 ]
 
 // Access in guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.roles) {
     const userRoles = getUserRoles()
     if (!to.meta.roles.some(r => userRoles.includes(r))) {
-      next({ name: '403' })
-      return
+      return { name: '403' }
     }
   }
-  next()
+  return
 })
 ```
 
@@ -232,16 +231,14 @@ const routes: RouteConfig[] = [
   }
 ]
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.roles && !hasRole(to.meta.roles)) {
-    next({ name: '403' }, { mode: 'relaunch' })
-    return
+    return { location: { name: '403' }, mode: 'relaunch' }
   }
   if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
-    next({ name: '403' })
-    return
+    return { name: '403' }
   }
-  next()
+  return
 })
 ```
 

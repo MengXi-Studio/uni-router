@@ -75,11 +75,9 @@ const routes = [
   { path: 'pages/profile/profile', name: 'profile', meta: { requireAuth: true } }
 ]
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' }, { mode: 'replace' })
-  } else {
-    next()
+    return { location: { name: 'login' }, mode: 'replace' }
   }
 })
 ```
@@ -159,11 +157,9 @@ const routes: RouteConfig[] = [
 ]
 
 // 守卫中访问 meta 字段无需断言
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.roles && !hasRole(to.meta.roles)) {  // ✅ 类型为 string[]
-    next(false)
-  } else {
-    next()
+    return false
   }
 })
 ```
@@ -229,10 +225,9 @@ console.log(route.value.meta.requireAuth)
 ### 在守卫中
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   console.log(to.meta.requireAuth)  // 直接访问
   console.log(to.meta.roles)        // 扩展字段
-  next()
 })
 ```
 
@@ -274,22 +269,18 @@ const routes = [
 ]
 
 // 守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // 角色检查
   if (to.meta.roles && !hasRole(to.meta.roles)) {
     uni.showToast({ title: '无权访问', icon: 'none' })
-    next({ name: 'home' }, { mode: 'relaunch' })
-    return
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
 
   // 权限检查
   if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
     uni.showToast({ title: '权限不足', icon: 'none' })
-    next({ name: 'home' }, { mode: 'relaunch' })
-    return
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
-
-  next()
 })
 ```
 
@@ -350,16 +341,13 @@ const preloaders = {
   }
 }
 
-router.beforeResolve(async (to, from, next) => {
+router.beforeResolve(async (to, from) => {
   if (to.meta.preload && to.meta.preloadKey) {
     try {
       await preloaders[to.meta.preloadKey](to)
-      next()
     } catch {
-      next(false)
+      return false
     }
-  } else {
-    next()
   }
 })
 ```

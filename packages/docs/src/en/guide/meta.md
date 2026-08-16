@@ -75,12 +75,11 @@ const routes = [
   { path: 'pages/profile/profile', name: 'profile', meta: { requireAuth: true } }
 ]
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' }, { mode: 'replace' })
-  } else {
-    next()
+    return { location: { name: 'login' }, mode: 'replace' }
   }
+  // else: pass (return undefined)
 })
 ```
 
@@ -159,12 +158,11 @@ const routes: RouteConfig[] = [
 ]
 
 // Accessing meta fields in guards doesn't need assertion
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.roles && !hasRole(to.meta.roles)) {  // ✅ Type is string[]
-    next(false)
-  } else {
-    next()
+    return false
   }
+  // else: pass (return undefined)
 })
 ```
 
@@ -229,10 +227,10 @@ console.log(route.value.meta.requireAuth)
 ### In Guards
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   console.log(to.meta.requireAuth)  // Direct access
   console.log(to.meta.roles)        // Extended field
-  next()
+  // pass (return undefined)
 })
 ```
 
@@ -274,22 +272,20 @@ const routes = [
 ]
 
 // Guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // Role check
   if (to.meta.roles && !hasRole(to.meta.roles)) {
     uni.showToast({ title: 'No permission', icon: 'none' })
-    next({ name: 'home' }, { mode: 'relaunch' })
-    return
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
 
   // Permission check
   if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
     uni.showToast({ title: 'Insufficient permissions', icon: 'none' })
-    next({ name: 'home' }, { mode: 'relaunch' })
-    return
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
 
-  next()
+  // else: pass (return undefined)
 })
 ```
 
@@ -350,17 +346,16 @@ const preloaders = {
   }
 }
 
-router.beforeResolve(async (to, from, next) => {
+router.beforeResolve(async (to, from) => {
   if (to.meta.preload && to.meta.preloadKey) {
     try {
       await preloaders[to.meta.preloadKey](to)
-      next()
+      // pass (return undefined)
     } catch {
-      next(false)
+      return false
     }
-  } else {
-    next()
   }
+  // else: pass (return undefined)
 })
 ```
 

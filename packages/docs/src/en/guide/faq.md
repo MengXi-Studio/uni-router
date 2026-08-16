@@ -25,43 +25,41 @@ await router.push({ name: 'about' })
 **2. Is the guard returning correctly**
 
 ```ts
-// ❌ Forgot to call next
-router.beforeEach((to, from, next) => {
+// ❌ Forgot to return a value
+router.beforeEach((to, from) => {
   if (needAuth) {
-    next({ name: 'login' })
+    return { name: 'login' }
   }
-  // Missing next() in else branch
+  // Missing return in else branch
 })
 
-// ✅ All branches call next
-router.beforeEach((to, from, next) => {
+// ✅ All branches return a value
+router.beforeEach((to, from) => {
   if (needAuth) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }
   }
+  // else: pass (return undefined)
 })
 ```
 
 **3. Are async guards properly awaited**
 
 ```ts
-// ❌ Async operation not awaited, next called before async completes
-router.beforeEach((to, from, next) => {
+// ❌ Async operation not awaited, guard resolves before async completes
+router.beforeEach((to, from) => {
   fetchUser().then(user => {
-    if (!user) next({ name: 'login' })
+    if (!user) return { name: 'login' }
   })
-  next() // Executes immediately here
+  // Returns undefined immediately here, without waiting for fetchUser
 })
 
 // ✅ Use async/await for async guards
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   const user = await fetchUser()
   if (!user) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }
   }
+  // else: pass (return undefined)
 })
 ```
 
@@ -271,9 +269,9 @@ Calling `router.push()` in a guard causes navigation to hang.
 
 ```ts
 // ❌ Deadlock
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   router.push({ name: 'other' }) // Triggers new navigation, waits for current
-  next()                          // Current navigation waits for guard to complete
+  // Returns undefined, but current navigation waits for the nested push
   // Mutual wait → deadlock
 })
 ```
@@ -284,12 +282,11 @@ Use `next(location)` redirect instead of calling `router.push` in guards:
 
 ```ts
 // ✅ Redirect
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (needRedirect) {
-    next({ name: 'other' }) // Redirect, no deadlock
-  } else {
-    next()
+    return { name: 'other' } // Redirect, no deadlock
   }
+  // else: pass (return undefined)
 })
 ```
 
@@ -591,15 +588,15 @@ Move time-consuming operations to `beforeResolve` or page `onLoad`:
 
 ```ts
 // ❌ Time-consuming request in beforeEach
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   await fetchLargeData() // Time-consuming
-  next()
+  // pass (return undefined)
 })
 
 // ✅ Move to page onLoad
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // Only quick checks
-  next()
+  // pass (return undefined)
 })
 
 // In page

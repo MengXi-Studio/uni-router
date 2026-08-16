@@ -10,11 +10,9 @@ Uni Router 提供可选的 `interceptUniApi` 选项，拦截 `uni.navigateTo` �
 
 ```ts
 // 路由器配置了登录守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }
   }
 })
 
@@ -447,12 +445,10 @@ const router = createRouter({
 })
 
 // 登录守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
-  if (to.meta.requireAuth && !isLoggedIn) {
-    next({ name: 'login' }, { mode: 'replace' })
-  } else {
-    next()
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    return { location: { name: 'login' }, mode: 'replace' }
   }
 })
 

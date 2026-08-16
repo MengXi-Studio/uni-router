@@ -57,12 +57,10 @@ interface UniApiCause {
 #### NAVIGATION_ABORTED
 
 ```ts
-// 守卫调用 next(false)
-router.beforeEach((to, from, next) => {
+// 守卫返回 false 中止导航
+router.beforeEach((to, from) => {
   if (someCondition) {
-    next(false) // 抛出 NAVIGATION_ABORTED
-  } else {
-    next()
+    return false // 抛出 NAVIGATION_ABORTED
   }
 })
 ```
@@ -73,9 +71,8 @@ router.beforeEach((to, from, next) => {
 
 ```ts
 // 1. 守卫超时（超过 guardTimeout）
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   await verySlowOperation() // 超时
-  next()
 })
 
 // 2. 守卫抛出异常
@@ -84,8 +81,8 @@ router.beforeEach(() => {
 })
 
 // 3. 重定向超限（>10 次）
-router.beforeEach((to, from, next) => {
-  next({ name: 'a' }) // a → b → a → b ... 超过 10 次
+router.beforeEach((to, from) => {
+  return { name: 'a' } // a → b → a → b ... 超过 10 次
 })
 
 // 4. back() 时栈不足
@@ -329,20 +326,18 @@ router.onError((error, to, from) => {
 ### 守卫中的错误
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   try {
     // 同步错误
     throw new Error('同步错误')
   } catch (err) {
     // 守卫内捕获，导航继续
-    next()
   }
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   // 异步错误未捕获 → 转为 NAVIGATION_CANCELLED
   await someAsyncOperation() // 抛出异常
-  next()
 })
 ```
 
@@ -350,17 +345,15 @@ router.beforeEach(async (to, from, next) => {
 守卫中未捕获的异常会被转为 `NAVIGATION_CANCELLED` 错误。建议在守卫中用 try-catch 处理异常：
 
 ```ts
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   try {
     const user = await fetchUser()
     if (!user) {
-      next({ name: 'login' })
-    } else {
-      next()
+      return { name: 'login' }
     }
   } catch (err) {
     console.error('获取用户信息失败:', err)
-    next(false) // 显式中止，而非让异常传播
+    return false // 显式中止，而非让异常传播
   }
 })
 ```
@@ -422,14 +415,12 @@ if (import.meta.env.DEV) {
 ### 4. 守卫执行追踪
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   console.log(`[beforeEach] ${from.path} → ${to.path}`)
-  next()
 })
 
-router.beforeResolve((to, from, next) => {
+router.beforeResolve((to, from) => {
   console.log(`[beforeResolve] ${from.path} → ${to.path}`)
-  next()
 })
 
 router.afterEach((to, from) => {

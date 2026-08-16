@@ -1,3 +1,26 @@
+## 2.1.0（2026-08-17）
+
+### 新增
+
+- **守卫返回值模式（Vue Router 4.x 兼容）** - 守卫全面支持通过返回值控制导航行为，无需调用 `next()` 回调
+  - `return undefined` / `return true` — 放行
+  - `return false` — 中止导航（`NAVIGATION_ABORTED`）
+  - `return RouteLocationRaw` — 重定向
+  - `return Error` / `throw Error` — 取消导航（`NAVIGATION_CANCELLED`）
+  - `return { location, mode }` — 重定向 + 指定导航方式
+- **`NavigationGuardReturn` 类型** - 守卫返回值类型，支持 `void | undefined | boolean | RouteLocationRaw | Error | null`
+- **`afterEach` 接收 `failure` 参数** - 后置钩子第三个参数 `failure` 在导航失败时传入，可用于区分成功/失败导航
+
+### 优化
+
+- **守卫模式自动检测** - 通过函数参数个数自动识别模式：`(to, from, next)` 三个参数→回调模式（兼容旧版），`(to, from)` 两个参数→返回值模式（推荐）
+- **混用警告** - 同时使用 `next()` 回调和返回值时，控制台输出警告提示
+
+### 兼容性
+
+- `next()` 回调模式保持完全兼容，标记为已弃用
+- 旧版守卫代码无需修改即可继续使用
+
 ## 2.0.0（2026-07-13）
 
 ### 新增

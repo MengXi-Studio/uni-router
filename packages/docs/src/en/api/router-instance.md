@@ -187,12 +187,11 @@ beforeEach(guard: NavigationGuard): () => void
 - **Returns**: A function to remove this guard
 
 ```ts
-const remove = router.beforeEach((to, from, next) => {
+const remove = router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }
   }
+  return true
 })
 
 // Remove when no longer needed
@@ -214,12 +213,12 @@ beforeResolve(guard: NavigationGuard): () => void
 ```
 
 ```ts
-router.beforeResolve(async (to, from, next) => {
+router.beforeResolve(async (to) => {
   // All before checks have passed, safe to prefetch data
   if (to.name === 'detail') {
     await store.fetchDetail(to.query.id)
   }
-  next()
+  return true
 })
 ```
 
@@ -236,13 +235,17 @@ afterEach(guard: PostNavigationGuard): () => void
 ```
 
 ```ts
-router.afterEach((to, from) => {
+router.afterEach((to, from, failure) => {
   // Set page title
   if (to.meta.title) {
     uni.setNavigationBarTitle({ title: to.meta.title as string })
   }
   // Analytics tracking
   trackPageView(to.path, from.path)
+  // When navigation fails (e.g., aborted by guard), failure contains error info
+  if (failure) {
+    console.warn('Navigation failed:', failure.message)
+  }
 })
 ```
 

@@ -1,6 +1,10 @@
 # 路由守卫
 
-路由守卫是 Uni Router 的核心能力，允许在导航过程中插入自定义逻辑：鉴权、日志、数据预取、离开确认等。本章将深入讲解守卫的执行机制、`next()` 的所有行为、以及 v1.7.0 引入的可控重定向。
+路由守卫是 Uni Router 的核心能力，允许在导航过程中插入自定义逻辑：鉴权、日志、数据预取、离开确认等。本章将深入讲解守卫的执行机制、返回值模式（推荐）和兼容的 `next()` 回调模式（已弃用）。
+
+::: tip v2.1.0 变更
+自 v2.1.0 起，守卫全面支持 **返回值模式**（与 Vue Router 4.x 一致），通过返回值控制导航行为。旧版 `next()` 回调模式保持兼容，但标记为已弃用，新代码建议使用返回值模式。
+:::
 
 ## 守卫全景
 
@@ -31,7 +35,7 @@ Uni Router 提供四种守卫，按执行顺序：
 | `beforeEach` | `router.beforeEach(fn)` | 登录鉴权、权限检查、全局日志 |
 | `beforeEnter` | `RouteConfig.beforeEnter` | 某路由的专属校验（如需读取特定数据） |
 | `beforeResolve` | `router.beforeResolve(fn)` | 数据预取完成后的最终确认 |
-| `afterEach` | `router.afterEach(fn)` | 设置标题、埋点、清理状态 |
+| `afterEach` | `router.afterEach(fn)` | 设置标题、埋点、清理状态，接收失败信息 |
 
 ::: tip beforeResolve 的定位
 `beforeResolve` 在 `beforeEnter` 之后执行，此时所有前置校验已通过。适合放"所有守卫都同意后"的最终逻辑，如确认数据已加载完毕。它与 `beforeEach` 的区别仅在于执行时机。
@@ -44,26 +48,29 @@ Uni Router 提供四种守卫，按执行顺序：
 ```ts
 const router = createRouter({ routes })
 
-// 前置守卫
-const removeBefore = router.beforeEach((to, from, next) => {
+// 前置守卫（返回值模式，推荐）
+const removeBefore = router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }  // 重定向
   }
+  // 不返回值或 return true 表示放行
 })
 
-// 解析守卫
-router.beforeResolve(async (to, from, next) => {
+// 解析守卫（返回值模式）
+router.beforeResolve(async (to) => {
   // 所有前置守卫通过后，预取数据
   if (to.name === 'detail') {
     await store.fetchDetail(to.query.id)
   }
-  next()
+  // 不返回值 = 放行
 })
 
-// 后置钩子
-router.afterEach((to, from) => {
+// 后置钩子（接收 failure 参数）
+router.afterEach((to, from, failure) => {
+  if (failure) {
+    console.error('导航失败:', failure.message)
+    return
+  }
   if (to.meta.title) {
     uni.setNavigationBarTitle({ title: to.meta.title as string })
   }
@@ -81,9 +88,9 @@ const routes = [
     path: 'pages/admin/admin',
     name: 'admin',
     meta: { requireAdmin: true },
-    beforeEnter: (to, from, next) => {
-      if (user.role === 'admin') next()
-      else next({ name: '403' })
+    beforeEnter: (to, from) => {
+      if (user.role === 'admin') return true  // 放行
+      return { name: '403' }  // 重定向
     }
   },
   {
@@ -103,52 +110,83 @@ const routes = [
 `beforeEnter` 支持传入数组，按顺序执行。任一守卫中止或重定向，后续守卫不再执行。
 :::
 
-## next() 的所有行为
+## 守卫返回值
 
-`next` 是守卫函数的第三个参数，**必须调用**以 resolve 守卫。它有三种行为：
+返回值模式是 v2.1.0 推荐的守卫写法，守卫通过返回值控制导航行为，无需调用 `next()` 回调。
 
-### 1. 放行：`next()` 或 `next(undefined)`
+### 1. 放行：`return undefined` / `return true`
 
 ```ts
-router.beforeEach((to, from, next) => {
-  next() // 放行，继续执行下一个守卫
+router.beforeEach((to, from) => {
+  return true // 放行，继续执行下一个守卫
+})
+
+// 不写 return 也等同于放行
+router.beforeEach((to, from) => {
+  // 默认放行
 })
 ```
 
-### 2. 中止：`next(false)`
+### 2. 中止：`return false`
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (isOffline()) {
     uni.showToast({ title: '网络不可用', icon: 'none' })
-    next(false) // 中止导航，停留在当前页
-  } else {
-    next()
+    return false // 中止导航，停留在当前页
   }
 })
 ```
 
 中止会抛出 `NavigationFailure`（`NAVIGATION_ABORTED`）。
 
-### 3. 重定向：`next(location)`
+### 3. 重定向：`return RouteLocationRaw`
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
     // 重定向到登录页，携带原目标用于登录后跳回
-    next({ name: 'login', query: { redirect: to.fullPath } })
-  } else {
-    next()
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 })
 ```
 
 重定向会**重新触发完整的守卫链**（从 `beforeEach` 开始），并增加重定向深度计数。
 
+### 4. 抛出错误中止
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth) {
+    throw new Error('权限不足')  // 取消导航（NAVIGATION_CANCELLED）
+  }
+})
+
+// 或返回 Error 对象
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth) {
+    return new Error('权限不足')  // 取消导航（NAVIGATION_CANCELLED）
+  }
+})
+```
+
+### 返回值总结
+
+| 返回值 | 行为 |
+| --- | --- |
+| `undefined` / `void` / `true` | 放行，继续执行下一个守卫 |
+| `false` | 中止导航（`NAVIGATION_ABORTED`） |
+| `string`（如 `'/login'`） | 重定向到路径 |
+| `RouteLocationRaw`（如 `{ name: 'login' }`） | 重定向到路由位置 |
+| `Error` 对象 | 取消导航（`NAVIGATION_CANCELLED`） |
+| 抛出异常 | 取消导航（`NAVIGATION_CANCELLED`） |
+
 ## 可控重定向（v1.7.0+）
 
 ::: tip v1.7.0 新增
 此功能在 v1.7.0 引入。之前的版本重定向方式固定为触发守卫的原始导航方式。
+
+在返回值模式中，重定向方式通过返回对象中的 `mode` 字段控制。
 :::
 
 ### 默认重定向方式
@@ -158,12 +196,12 @@ router.beforeEach((to, from, next) => {
 ```ts
 // 原始导航是 push
 await router.push({ name: 'protected' })
-// beforeEach 中 next({ name: 'login' })
+// beforeEach 中 return { name: 'login' }
 // → 重定向用 push 方式（navigateTo）
 
 // 原始导航是 replace
 await router.replace({ name: 'protected' })
-// beforeEach 中 next({ name: 'login' })
+// beforeEach 中 return { name: 'login' }
 // → 重定向用 replace 方式（redirectTo）
 ```
 
@@ -173,15 +211,13 @@ await router.replace({ name: 'protected' })
 
 ### 指定重定向方式
 
-通过第二个参数 `options.mode` 显式指定：
+通过返回对象中的 `mode` 字段显式指定：
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
     // 登录页用 replace，避免用户返回到受保护页面的中间状态
-    next({ name: 'login' }, { mode: 'replace' })
-  } else {
-    next()
+    return { location: { name: 'login' }, mode: 'replace' }
   }
 })
 ```
@@ -201,18 +237,14 @@ type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
 ### 实战：登录重定向方式选择
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
     if (from.name === 'login') {
       // 已在登录页还无权限，用 replace 避免栈堆积
-      next(false)
-    } else {
-      // 用 replace 跳登录页，登录成功后 replace 回目标页
-      // 这样用户不会返回到"未登录的中间态"
-      next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
+      return false
     }
-  } else {
-    next()
+    // 用 replace 跳登录页，登录成功后 replace 回目标页
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
 })
 
@@ -226,12 +258,10 @@ async function onLoginSuccess(redirect: string) {
 ### 实战：权限不足清栈
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.roles && !hasRole(to.meta.roles)) {
     // 权限不足，清空栈回到首页
-    next({ name: 'home' }, { mode: 'relaunch' })
-  } else {
-    next()
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
 })
 ```
@@ -241,39 +271,23 @@ router.beforeEach((to, from, next) => {
 守卫支持 `async` 函数和返回 Promise：
 
 ```ts
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   // 异步校验 token 有效性
   const valid = await checkToken()
   if (!valid) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }  // 重定向到登录页
   }
+  // 放行
 })
 ```
-
-### Promise resolve 自动放行
-
-如果守卫是 async 函数且 Promise resolve 时**未调用 next**，会自动放行：
-
-```ts
-router.beforeEach(async (to, from, next) => {
-  await preloadData(to)
-  // 未调用 next，但 Promise resolve → 自动 next()
-})
-```
-
-::: warning 建议显式调用 next
-虽然自动放行很方便，但显式调用 `next()` 可读性更好，且能在复杂逻辑中避免歧义。
-:::
 
 ### Promise reject 中止导航
 
 ```ts
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   try {
     await fetchUserProfile()
-    next()
+    // 放行
   } catch (err) {
     // reject 会中止导航（NAVIGATION_CANCELLED）
     throw err
@@ -281,11 +295,11 @@ router.beforeEach(async (to, from, next) => {
 })
 ```
 
-::: warning reject vs next(false)
-- `next(false)` → `NAVIGATION_ABORTED`（用户主动中止）
+::: warning 返回值 vs 异常抛出
+- `return false` → `NAVIGATION_ABORTED`（用户主动中止）
 - `throw` / `reject` → `NAVIGATION_CANCELLED`（异常导致取消）
 
-建议用 `next(false)` 表达"主动中止"，用异常表达"意外错误"。
+建议用 `return false` 表达"主动中止"，用异常表达"意外错误"。
 :::
 
 ## 超时保护
@@ -301,7 +315,7 @@ const router = createRouter({
 
 ```
 守卫执行
-  → 10 秒内未调用 next() 也未 resolve/reject
+  → 10 秒内未返回结果也未抛出异常
   → 输出警告: "Navigation guard did not resolve within 10s"
   → 自动中止导航 (NAVIGATION_CANCELLED)
 ```
@@ -340,31 +354,27 @@ guard1 → guard2 → guard3 → beforeEnter → beforeResolve1 → beforeResolv
 任一守卫中止或重定向，**后续守卫不再执行**：
 
 ```ts
-router.beforeEach((to, from, next) => {
-  next(false) // 中止
+router.beforeEach((to, from) => {
+  return false // 中止
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   console.log('不会执行')
-  next()
 })
 ```
 
 ### 重定向重新触发守卫链
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.name === 'a') {
-    next({ name: 'b' }) // 重定向到 b
-    return
+    return { name: 'b' } // 重定向到 b
   }
-  next()
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // 重定向到 b 时，此守卫会再次执行
   console.log(to.name) // 'b'
-  next()
 })
 ```
 
@@ -381,10 +391,16 @@ push(a) → beforeEach[1] 重定向到 b
 
 ## afterEach 后置钩子
 
-`afterEach` 在导航完成后执行，**无法改变导航结果**（不接受 `next` 参数）：
+`afterEach` 在导航完成后执行，**无法改变导航结果**（不接受 `next` 参数），但接收第三个参数 `failure` 获取导航失败信息：
 
 ```ts
-router.afterEach((to, from) => {
+router.afterEach((to, from, failure) => {
+  if (failure) {
+    // 导航失败时记录错误
+    console.error('导航失败:', failure.message)
+    return
+  }
+
   // 设置页面标题
   if (to.meta.title) {
     uni.setNavigationBarTitle({ title: to.meta.title as string })
@@ -421,18 +437,18 @@ router.onRouteChange((to, from) => {
 
 ```ts
 // 全局前置守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
 
   if (to.meta.requireAuth && !isLoggedIn) {
     // 未登录 → 跳登录页，replace 避免返回到受保护页
-    next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
-  } else if (to.name === 'login' && isLoggedIn) {
-    // 已登录访问登录页 → 跳首页
-    next({ name: 'home' }, { mode: 'replace' })
-  } else {
-    next()
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
+  if (to.name === 'login' && isLoggedIn) {
+    // 已登录访问登录页 → 跳首页
+    return { location: { name: 'home' }, mode: 'replace' }
+  }
+  // 放行
 })
 ```
 
@@ -446,14 +462,12 @@ declare module '@meng-xi/uni-router' {
   }
 }
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const userRoles = getUserRoles()
 
   if (to.meta.roles && !to.meta.roles.some(r => userRoles.includes(r))) {
     // 权限不足 → 清栈回首页
-    next({ name: 'home' }, { mode: 'relaunch' })
-  } else {
-    next()
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
 })
 ```
@@ -470,22 +484,23 @@ const routes = [
   }
 ]
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (from.meta.dirty) {
-    uni.showModal({
-      title: '提示',
-      content: '有未保存的修改，确认离开？',
-      success: (res) => {
-        if (res.confirm) {
-          from.meta.dirty = false // 重置
-          next()
-        } else {
-          next(false)
+    // 离开确认需要异步对话框，使用 Promise 包装
+    return new Promise((resolve) => {
+      uni.showModal({
+        title: '提示',
+        content: '有未保存的修改，确认离开？',
+        success: (res) => {
+          if (res.confirm) {
+            from.meta.dirty = false // 重置
+            resolve(true) // 放行
+          } else {
+            resolve(false) // 中止
+          }
         }
-      }
+      })
     })
-  } else {
-    next()
   }
 })
 ```
@@ -494,7 +509,7 @@ router.beforeEach((to, from, next) => {
 
 ```ts
 // beforeResolve 中预取（所有前置校验已通过）
-router.beforeResolve(async (to, from, next) => {
+router.beforeResolve(async (to) => {
   try {
     switch (to.name) {
       case 'detail':
@@ -504,10 +519,10 @@ router.beforeResolve(async (to, from, next) => {
         await store.fetchList(to.queryInt('page', 1))
         break
     }
-    next()
+    // 放行
   } catch (err) {
     uni.showToast({ title: '加载失败', icon: 'none' })
-    next(false) // 数据加载失败，中止导航
+    return false // 数据加载失败，中止导航
   }
 })
 ```
@@ -534,20 +549,16 @@ const routes = [
     name: 'order',
     beforeEnter: [
       // 必须先选择地址
-      (to, from, next) => {
+      (to, from) => {
         if (!store.selectedAddress) {
           uni.showToast({ title: '请先选择地址', icon: 'none' })
-          next(false)
-        } else {
-          next()
+          return false
         }
       },
       // 必须有商品
-      (to, from, next) => {
+      (to, from) => {
         if (store.cart.length === 0) {
-          next({ name: 'cart' })
-        } else {
-          next()
+          return { name: 'cart' }
         }
       }
     ]
@@ -669,9 +680,9 @@ onLaunch((options) => {
 
 | 守卫结果 | 行为 |
 | --- | --- |
-| 放行（`next()`） | 不执行导航，resolve 目标路由 |
-| 重定向（`next(location)`） | 按守卫指定的方式（默认 `relaunch`）跳转到重定向目标 |
-| 中止（`next(false)`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
+| 放行（`return undefined` / `return true`） | 不执行导航，resolve 目标路由 |
+| 重定向（`return location`） | 按守卫指定的方式（默认 `relaunch`）跳转到重定向目标 |
+| 中止（`return false`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
 
 ::: warning 冷启动无法真正"阻止进入"
 冷启动场景下页面已加载，`guardRoute()` 无法真正阻止页面显示。当守卫中止时，通过 `onAbort` 回调执行 `router.relaunch()` 跳转到安全页面是推荐的应对方式。
@@ -694,30 +705,76 @@ onLaunch((options) => {
 ## 守卫类型定义
 
 ```ts
-// 前置守卫
+// 守卫返回值类型
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+
+// 前置守卫（返回值模式，推荐）
 type NavigationGuard = (
   to: RouteLocation,
   from: RouteLocation,
-  next: NavigationGuardNext
-) => void | Promise<void>
+  next?: NavigationGuardNext  // 已弃用，新代码使用返回值
+) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 
-// next 回调
+// next 回调（已弃用）
 type NavigationGuardNext = (
   to?: RouteLocationRaw | false,
   options?: NavigationGuardNextOptions
 ) => void
 
-// next 选项
+// next 选项（已弃用）
 interface NavigationGuardNextOptions {
   mode?: NavigationRedirectMode // 'push' | 'replace' | 'relaunch'
 }
 
-// 后置钩子
+// 重定向方式
+type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
+
+// 后置钩子（接收 failure 参数）
 type PostNavigationGuard = (
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  failure?: NavigationFailure | null
 ) => void
 ```
+
+## 旧版 next() 回调模式（已弃用）
+
+::: warning 兼容性说明
+`next()` 回调模式在 v2.1.0 中保持兼容，但标记为已弃用。新代码请使用返回值模式。
+
+- 守卫通过参数个数自动检测模式：`(to, from, next)` 三个参数 → 回调模式；`(to, from)` 两个参数 → 返回值模式
+- 两种模式混用时，工具会输出警告提示
+:::
+
+```ts
+// 回调式（已弃用）
+router.beforeEach((to, from, next) => {
+  if (condition) {
+    next({ name: 'login' })  // 重定向
+  } else {
+    next()  // 放行
+  }
+})
+
+// 带重定向选项
+router.beforeEach((to, from, next) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    next({ name: 'login' }, { mode: 'replace' })
+  } else {
+    next()
+  }
+})
+```
+
+### next() 的行为
+
+| 调用方式 | 行为 | 对应返回值模式 |
+| --- | --- | --- |
+| `next()` | 放行 | `return undefined` / `return true` |
+| `next(false)` | 中止（`NAVIGATION_ABORTED`） | `return false` |
+| `next(location)` | 重定向 | `return location` |
+| `next(error)` | 取消（`NAVIGATION_CANCELLED`） | `throw error` / `return error` |
+| `next(location, { mode })` | 重定向 + 指定方式 | `return { location, mode }` |
 
 ## 最佳实践
 
@@ -730,23 +787,24 @@ router.beforeEach(checkPermission)
 router.beforeEach(checkMaintenance)
 
 // ❌ 一个守卫做所有事
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // 100 行混合逻辑...
 })
 ```
 
-### 2. 显式调用 next
+### 2. 使用返回值模式
 
 ```ts
-// ✅ 清晰
+// ✅ 推荐：返回值模式，清晰简洁
+router.beforeEach(async (to, from) => {
+  const ok = await check()
+  if (!ok) return { name: 'login' }
+})
+
+// ⚠️ 已弃用：next 回调模式
 router.beforeEach(async (to, from, next) => {
   const ok = await check()
   next(ok ? undefined : { name: 'login' })
-})
-
-// ⚠️ 依赖自动放行，可读性差
-router.beforeEach(async (to, from) => {
-  await check()
 })
 ```
 
@@ -754,13 +812,12 @@ router.beforeEach(async (to, from) => {
 
 ```ts
 // ✅ 避免循环
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.name === 'login' && isLoggedIn()) {
-    next({ name: 'home' }) // 已登录访问登录页 → 跳首页
-  } else if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' }) // 未登录访问受保护页 → 跳登录页
-  } else {
-    next()
+    return { name: 'home' } // 已登录访问登录页 → 跳首页
+  }
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    return { name: 'login' } // 未登录访问受保护页 → 跳登录页
   }
 })
 ```
@@ -769,9 +826,8 @@ router.beforeEach((to, from, next) => {
 
 ```ts
 // ✅ 前置校验通过后再预取
-router.beforeResolve(async (to, from, next) => {
+router.beforeResolve(async (to) => {
   await preloadData(to)
-  next()
 })
 
 // ❌ 放 beforeEach 会阻塞其他守卫

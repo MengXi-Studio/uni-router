@@ -38,24 +38,18 @@ function isLoggedIn(): boolean {
   return !!uni.getStorageSync('token')
 }
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // 1. 未登录访问受保护页面 → 跳登录页
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next(
-      { name: 'login', query: { redirect: to.fullPath } },
-      { mode: 'replace' } // replace 避免返回到受保护页的中间态
-    )
-    return
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' } // replace 避免返回到受保护页的中间态
   }
 
   // 2. 已登录访问登录页 → 跳首页
   if (to.name === 'login' && isLoggedIn()) {
-    next({ name: 'home' }, { mode: 'replace' })
-    return
+    return { location: { name: 'home' }, mode: 'replace' }
   }
 
   // 3. 其他情况放行
-  next()
 })
 
 export default router
@@ -194,17 +188,15 @@ export function clearUser() {
 import { fetchUserInfo, hasRole, hasPermission } from '@/utils/auth'
 
 export function setupPermissionGuard(router: Router) {
-  router.beforeEach(async (to, from, next) => {
+  router.beforeEach(async (to, from) => {
     // 不需要权限的页面直接放行
     if (!to.meta.roles && !to.meta.permissions) {
-      next()
       return
     }
 
     // 未登录
     if (!uni.getStorageSync('token')) {
-      next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
-      return
+      return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
     }
 
     // 获取用户信息（带缓存）
@@ -214,25 +206,20 @@ export function setupPermissionGuard(router: Router) {
       // 获取失败，token 可能过期
       uni.removeStorageSync('token')
       clearUser()
-      next({ name: 'login' }, { mode: 'relaunch' })
-      return
+      return { location: { name: 'login' }, mode: 'relaunch' }
     }
 
     // 角色检查
     if (to.meta.roles && !hasRole(to.meta.roles)) {
       uni.showToast({ title: '无权访问', icon: 'none' })
-      next({ name: 'home' }, { mode: 'relaunch' })
-      return
+      return { location: { name: 'home' }, mode: 'relaunch' }
     }
 
     // 权限检查
     if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
       uni.showToast({ title: '权限不足', icon: 'none' })
-      next({ name: 'home' }, { mode: 'relaunch' })
-      return
+      return { location: { name: 'home' }, mode: 'relaunch' }
     }
-
-    next()
   })
 }
 ```
@@ -459,23 +446,23 @@ export function useDirtyGuard(dirty: Ref<boolean>, onLeave?: () => void) {
   const router = useRouter()
 
   // 编程式导航的守卫（router.push / router.back 等）
-  const guard = router.beforeEach((to, from, next) => {
+  const guard = router.beforeEach((to, from) => {
     if (from.meta._dirty && dirty.value) {
-      uni.showModal({
-        title: '提示',
-        content: '有未保存的修改，确认离开？',
-        success: (res) => {
-          if (res.confirm) {
-            dirty.value = false
-            onLeave?.()
-            next()
-          } else {
-            next(false)
+      return new Promise((resolve) => {
+        uni.showModal({
+          title: '提示',
+          content: '有未保存的修改，确认离开？',
+          success: (res) => {
+            if (res.confirm) {
+              dirty.value = false
+              onLeave?.()
+              resolve() // 放行
+            } else {
+              resolve(false) // 中止
+            }
           }
-        }
+        })
       })
-    } else {
-      next()
     }
   })
 
@@ -567,21 +554,18 @@ const preloaders: Record<string, (to: RouteLocation) => Promise<void>> = {
 }
 
 export function setupPreloadGuard(router: Router) {
-  router.beforeResolve(async (to, from, next) => {
+  router.beforeResolve(async (to, from) => {
     const preloader = preloaders[to.name as string]
     if (preloader) {
       try {
         uni.showLoading({ title: '加载中...' })
         await preloader(to)
-        next()
       } catch (err) {
         uni.showToast({ title: '加载失败', icon: 'none' })
-        next(false) // 数据加载失败，中止导航
+        return false // 数据加载失败，中止导航
       } finally {
         uni.hideLoading()
       }
-    } else {
-      next()
     }
   })
 }
@@ -594,22 +578,20 @@ const cache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_TTL = 5 * 60 * 1000 // 5 分钟
 
 export function setupCachedPreload(router: Router) {
-  router.beforeResolve(async (to, from, next) => {
+  router.beforeResolve(async (to, from) => {
     const cacheKey = `${to.name}:${to.fullPath}`
     const cached = cache.get(cacheKey)
 
     // 缓存未过期，直接放行
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      next()
       return
     }
 
     try {
       const data = await fetchData(to)
       cache.set(cacheKey, { data, timestamp: Date.now() })
-      next()
     } catch {
-      next(false)
+      return false
     }
   })
 }
@@ -707,20 +689,16 @@ export const useAppStore = defineStore('app', () => {
 export function setupMaintenanceGuard(router: Router) {
   const appStore = useAppStore()
 
-  router.beforeEach((to, from, next) => {
+  router.beforeEach((to, from) => {
     // 维护页本身放行
     if (to.name === 'maintenance') {
-      next()
       return
     }
 
     // 维护模式，重定向到维护页
     if (appStore.maintenanceMode) {
-      next({ name: 'maintenance' }, { mode: 'relaunch' })
-      return
+      return { location: { name: 'maintenance' }, mode: 'relaunch' }
     }
-
-    next()
   })
 
   // 定期检查维护状态

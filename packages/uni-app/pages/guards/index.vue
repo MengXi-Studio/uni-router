@@ -57,8 +57,8 @@
 		<!-- 守卫重定向方式可控（1.7.0 新增） -->
 		<view class="card">
 			<text class="card-title">守卫重定向方式可控（v1.7.0 新增）</text>
-			<text class="desc">next(location, { mode }) 可在守卫重定向时指定导航方式（push / replace / relaunch）。未指定 mode 时沿用触发守卫的原始导航方式；原始导航为 back 时回退为 relaunch。</text>
-			<view class="code-block"> router.beforeEach((to, from, next) => {\n next('/pages/about/index', { mode: 'relaunch' })\n}) </view>
+			<text class="desc">通过返回值中的 `mode` 字段可在守卫重定向时指定导航方式（push / replace / relaunch）。未指定 mode 时沿用触发守卫的原始导航方式；原始导航为 back 时回退为 relaunch。</text>
+			<view class="code-block"> router.beforeEach((to, from) => {\n return { location: '/pages/about/index', mode: 'relaunch' }\n}) </view>
 			<text class="hint">点击下方按钮会临时注册一次性守卫，将 push 到受保护页面的导航重定向到关于页。观察页面栈差异：</text>
 			<view class="info-row">
 				<text class="info-label">push 模式</text>
@@ -87,7 +87,7 @@
 		<view class="card">
 			<text class="card-title">beforeEnter - 路由独享守卫</text>
 			<text class="desc">定义在路由配置上的守卫，仅对该路由生效。本页（guards）已配置 beforeEnter，进入时会输出日志。</text>
-			<view class="code-block"> // router.config.ts { path: '/pages/guards/index', name: 'pagesGuardsIndex', beforeEnter: (to, from, next) => { console.log('[beforeEnter] 路由独享守卫 - guards 页面') next() } } </view>
+			<view class="code-block"> // router.config.ts { path: '/pages/guards/index', name: 'pagesGuardsIndex', beforeEnter: (to, from) => { console.log('[beforeEnter] 路由独享守卫 - guards 页面') } } </view>
 			<text class="hint">执行顺序：beforeEach → beforeEnter → beforeResolve → afterEach。点击下方按钮重新进入本页，观察控制台日志。</text>
 			<view class="btn" @click="reenterGuards">
 				<text class="btn-text">replace 重新进入本页（查看控制台）</text>
@@ -161,16 +161,15 @@ export default {
 		redirectWithMode(mode) {
 			this.addLog(`注册一次性守卫，mode: ${mode}，即将重定向到关于页...`)
 			// 注册前置守卫，返回移除函数
-			const removeGuard = router.beforeEach((to, from, next) => {
+			const removeGuard = router.beforeEach((to, from) => {
 				// 立即移除自身，确保只生效一次
 				removeGuard()
 				if (to.path === '/pages/protected/index') {
 					this.addLog(`守卫拦截 ${to.path}，以 ${mode} 方式重定向到关于页`)
-					// next(location, { mode }) 指定重定向使用的导航方式
-					next({ path: '/pages/about/index', query: { redirectMode: mode } }, { mode })
-				} else {
-					next()
+					// 通过返回值中的 mode 字段指定重定向使用的导航方式
+					return { location: { path: '/pages/about/index', query: { redirectMode: mode } }, mode }
 				}
+				// 放行
 			})
 			// 触发导航（会被守卫拦截重定向）
 			router.push('/pages/protected/index').catch(e => {
@@ -208,11 +207,11 @@ export default {
 		},
 		testGuardRouteAbort() {
 			this.guardRouteLog = ''
-			this.addLog('注册一次性守卫调用 next(false)，再执行 guardRoute()...')
-			// 临时注册一个调用 next(false) 的守卫
-			const removeGuard = router.beforeEach((_to, _from, next) => {
-				next(false)
+			this.addLog('注册一次性守卫返回 false，再执行 guardRoute()...')
+			// 临时注册一个返回 false 的守卫（中止导航）
+			const removeGuard = router.beforeEach(() => {
 				removeGuard()
+				return false
 			})
 			router
 				.guardRoute(undefined, {

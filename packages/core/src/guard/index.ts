@@ -1,5 +1,6 @@
-import type { NavigationGuard, NavigationGuardNext, NavigationGuardNextOptions, NavigationRedirectMode, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw } from '@/types'
+import type { NavigationGuard, NavigationGuardNext, NavigationGuardNextOptions, NavigationGuardReturn, NavigationRedirectMode, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw } from '@/types'
 import { RouterErrorCode } from '@/types/error'
+import type { NavigationFailure } from '@/types/error'
 import { warn } from '@/utils/general'
 
 /**
@@ -73,26 +74,44 @@ export interface GuardManager {
 	 * 依次执行全局后置钩子
 	 * @param to - 目标路由
 	 * @param from - 来源路由
+	 * @param failure - 导航失败时的错误信息，成功时为空
 	 */
-	runAfterGuards(to: RouteLocation, from: RouteLocation): void
+	runAfterGuards(to: RouteLocation, from: RouteLocation, failure?: NavigationFailure | null): void
 }
 
 /**
- * 执行单个导航守卫，将回调风格的 next 转换为 Promise 形式的 GuardResult
+ * 将守卫返回值转换为 GuardResult
  *
- * 守卫函数可通过以下方式决定导航行为：
- * - 调用 `next()` 放行导航
- * - 调用 `next(false)` 中止导航
- * - 调用 `next(location)` 重定向到新位置
- * - 调用 `next(location, { mode })` 重定向并指定导航方式（push/replace/relaunch）
- * - 抛出异常或返回 rejected Promise 将取消导航
+ * @param value - 守卫返回值
+ * @returns 对应的 GuardResult
+ */
+function resolveGuardReturn(value: NavigationGuardReturn): GuardResult {
+	if (value === false) {
+		return { type: 'abort', code: RouterErrorCode.NAVIGATION_ABORTED }
+	}
+	if (value instanceof Error) {
+		return { type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED }
+	}
+	if (value === true || value === undefined || value === null || value === void 0) {
+		return { type: 'next' }
+	}
+	// 其他值视为 RouteLocationRaw（string 或对象），重定向
+	return { type: 'next', redirect: value as RouteLocationRaw }
+}
+
+/**
+ * 使用 next 回调模式执行守卫（兼容旧版）
+ *
+ * 通过函数参数个数检测（guard.length >= 3）判断守卫使用旧版回调模式。
+ * 守卫通过调用 `next()` / `next(false)` / `next(location)` 控制导航行为。
  *
  * @param guard - 导航守卫函数
  * @param to - 目标路由
  * @param from - 来源路由
+ * @param timeout - 超时时间（毫秒）
  * @returns 守卫执行结果
  */
-function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation, timeout: number): Promise<GuardResult> {
+function runGuardWithNext(guard: NavigationGuard, to: RouteLocation, from: RouteLocation, timeout: number): Promise<GuardResult> {
 	return new Promise(resolve => {
 		let resolved = false
 		let timer: ReturnType<typeof setTimeout> | undefined
@@ -111,54 +130,152 @@ function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation
 			}
 		}
 
-		// 超时保护：守卫未在指定时间内调用 next() 时，输出警告并中止导航
-		// timeout 为 0 时禁用超时保护
+		// 超时保护
 		if (timeout > 0) {
 			timer = setTimeout(() => {
 				if (!resolved) {
 					resolved = true
-					warn(`Navigation guard "${guard.name || 'anonymous'}" did not resolve within ${timeout / 1000}s. ` + 'Make sure to call next() in your guard function.')
+					warn(`Navigation guard "${guard.name || 'anonymous'}" timed out after ${timeout / 1000}s. ` + 'Make sure to call next() in your guard function, or migrate to the return-value pattern.')
 					resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED })
 				}
 			}, timeout)
 		}
 
-		let promiseResult: Promise<void> | undefined
-
 		try {
-			promiseResult = guard(to, from, next) as Promise<void> | undefined
+			const returnValue = guard(to, from, next) as NavigationGuardReturn | Promise<NavigationGuardReturn>
+
+			// 如果守卫返回了 Promise，处理其 resolve/reject
+			if (returnValue && typeof (returnValue as Promise<NavigationGuardReturn>).then === 'function') {
+				;(returnValue as Promise<NavigationGuardReturn>)
+					.then(resolvedValue => {
+						if (!resolved) {
+							// next() 未调用但 Promise resolve 了
+							// 如果 Promise 有返回值，则按返回值模式处理
+							if (resolvedValue !== undefined && resolvedValue !== void 0) {
+								warn(`Navigation guard "${guard.name || 'anonymous'}" used both next() callback and Promise return value. Use only one pattern.`)
+								resolved = true
+								if (timer) clearTimeout(timer)
+								resolve(resolveGuardReturn(resolvedValue))
+							}
+							// 无返回值：自动放行（Promise resolve 视为守卫完成）
+						} else {
+							// next() 已调用且 Promise 有返回值：混用模式
+							if (resolvedValue !== undefined && resolvedValue !== void 0) {
+								warn(`Navigation guard "${guard.name || 'anonymous'}" called next() and also returned a value. Use either next() callback or return value, not both.`)
+							}
+						}
+					})
+					.catch(() => {
+						if (!resolved) {
+							resolved = true
+							if (timer) clearTimeout(timer)
+							resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED })
+						}
+					})
+			}
 		} catch {
 			if (!resolved) {
 				resolved = true
 				if (timer) clearTimeout(timer)
 				resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED })
 			}
-			return
-		}
-
-		if (promiseResult) {
-			promiseResult
-				.then(() => {
-					// Promise 守卫 resolve 时，若未调用 next() 则自动放行
-					if (!resolved) {
-						resolved = true
-						if (timer) clearTimeout(timer)
-						resolve({ type: 'next' })
-					} else {
-						// next() 已被调用且守卫返回了 Promise：两种解析模式混用
-						// next() 之后的异步错误会被静默吞掉，开发者应选择其中一种
-						warn(`Navigation guard "${guard.name || 'anonymous'}" called next() and also returned a Promise. Use either next() callback or async/await, not both.`)
-					}
-				})
-				.catch(() => {
-					if (!resolved) {
-						resolved = true
-						if (timer) clearTimeout(timer)
-						resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED })
-					}
-				})
 		}
 	})
+}
+
+/**
+ * 使用返回值模式执行守卫（推荐，v2.1.0+）
+ *
+ * 守卫通过返回值控制导航行为：
+ * - `undefined` / `true` — 放行
+ * - `false` — 中止
+ * - `RouteLocationRaw` — 重定向
+ * - `Error` — 取消
+ * - 抛出异常 — 取消
+ *
+ * @param guard - 导航守卫函数
+ * @param to - 目标路由
+ * @param from - 来源路由
+ * @param timeout - 超时时间（毫秒）
+ * @returns 守卫执行结果
+ */
+async function runGuardWithReturn(guard: NavigationGuard, to: RouteLocation, from: RouteLocation, timeout: number): Promise<GuardResult> {
+	let resolved = false
+	let timer: ReturnType<typeof setTimeout> | undefined
+
+	// 超时保护
+	const timeoutPromise = new Promise<GuardResult>(resolve => {
+		if (timeout > 0) {
+			timer = setTimeout(() => {
+				if (!resolved) {
+					resolved = true
+					warn(`Navigation guard "${guard.name || 'anonymous'}" timed out after ${timeout / 1000}s. ` + 'Make sure your guard resolves (returns a value or throws).')
+					resolve({ type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED })
+				}
+			}, timeout)
+		}
+	})
+
+	try {
+		const returnValue = guard(to, from)
+
+		// 超时与守卫执行竞速
+		const result = await Promise.race([
+			Promise.resolve(returnValue).then((value): GuardResult => {
+				resolved = true
+				if (timer) clearTimeout(timer)
+				return resolveGuardReturn(value)
+			}),
+			timeoutPromise
+		])
+
+		return result
+	} catch {
+		if (!resolved) {
+			resolved = true
+			if (timer) clearTimeout(timer)
+			return { type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED }
+		}
+		// 超时已触发，忽略捕获的异常
+		return { type: 'abort', code: RouterErrorCode.NAVIGATION_CANCELLED }
+	}
+}
+
+/**
+ * 执行单个导航守卫，将守卫结果转换为 Promise 形式的 GuardResult
+ *
+ * 自动检测守卫使用的模式：
+ * - 守卫函数参数个数 >= 3：使用 next 回调模式（兼容旧版）
+ * - 守卫函数参数个数 < 3：使用返回值模式（推荐）
+ *
+ * 返回值模式支持的返回类型：
+ * - `undefined` / `void` / `true` — 放行导航
+ * - `false` — 中止导航（NAVIGATION_ABORTED）
+ * - `string` — 重定向到路径（如 `'/login'`）
+ * - `RouteLocationRaw` — 重定向到路由位置（如 `{ name: 'login' }`）
+ * - `Error` — 取消导航（NAVIGATION_CANCELLED）
+ * - `null` — 等同于 undefined，放行导航
+ * - 抛出异常 — 取消导航
+ *
+ * @param guard - 导航守卫函数
+ * @param to - 目标路由
+ * @param from - 来源路由
+ * @param timeout - 超时时间（毫秒），0 表示禁用超时保护
+ * @returns 守卫执行结果
+ */
+function runGuard(guard: NavigationGuard, to: RouteLocation, from: RouteLocation, timeout: number): Promise<GuardResult> {
+	// 通过函数参数个数检测守卫模式
+	// guard.length 返回函数声明的参数个数
+	// (to, from, next) => {} → length = 3 → 旧版回调模式
+	// (to, from) => {} → length = 2 → 新版返回值模式
+	// 使用 ...args 剩余参数时 length = 0 → 按返回值模式处理
+	const useNextCallback = guard.length >= 3
+
+	if (useNextCallback) {
+		return runGuardWithNext(guard, to, from, timeout)
+	}
+
+	return runGuardWithReturn(guard, to, from, timeout)
 }
 
 /**
@@ -262,11 +379,12 @@ export function createGuardManager(guardTimeout: number = DEFAULT_GUARD_TIMEOUT)
 	 * 执行全局后置钩子，钩子中的异常不会影响导航
 	 * @param to - 目标路由
 	 * @param from - 来源路由
+	 * @param failure - 导航失败时的错误信息，成功时为空
 	 */
-	function runAfterGuards(to: RouteLocation, from: RouteLocation): void {
+	function runAfterGuards(to: RouteLocation, from: RouteLocation, failure?: NavigationFailure | null): void {
 		for (const guard of afterGuards) {
 			try {
-				guard(to, from)
+				guard(to, from, failure)
 			} catch {
 				// afterEach hooks should not affect navigation
 			}

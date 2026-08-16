@@ -26,29 +26,32 @@ router
 		console.error('[isReady] 路由器初始化超时:', error.message)
 	})
 
-// ===== 全局前置守卫 =====
-router.beforeEach((to, from, next) => {
+// ===== 全局前置守卫（返回值模式，推荐） =====
+router.beforeEach((to, from) => {
 	console.log('[beforeEach]', `从 ${from.fullPath} -> ${to.fullPath}`)
 
 	// 需要登录认证的页面
 	if (to.meta.requireAuth && !isLoggedIn.value) {
 		console.log('[beforeEach] 需要登录，重定向到登录页')
-		// 使用 replace 模式重定向，避免登录页之后残留受保护页面的历史
-		next({ name: 'pagesLoginLogin', query: { redirect: to.fullPath } }, { mode: 'replace' })
-		return
+		// 返回路由位置重定向，避免登录页之后残留受保护页面的历史
+		return { name: 'pagesLoginLogin', query: { redirect: to.fullPath } }
 	}
 
-	next()
+	// 不返回值（或 return true）表示放行
 })
 
 // ===== 全局解析守卫 =====
-router.beforeResolve((to, from, next) => {
+router.beforeResolve((to, from) => {
 	console.log('[beforeResolve]', `从 ${from.fullPath} -> ${to.fullPath}`)
-	next()
+	// 不返回值表示放行
 })
 
-// ===== 全局后置钩子 =====
-router.afterEach((to, from) => {
+// ===== 全局后置钩子（支持 failure 参数） =====
+router.afterEach((to, from, failure) => {
+	if (failure) {
+		console.error('[afterEach] 导航失败:', failure.message)
+		return
+	}
 	console.log('[afterEach]', `导航完成: ${from.fullPath} -> ${to.fullPath}`)
 	if (to.meta.title) {
 		console.log('[afterEach] 页面标题:', to.meta.title)

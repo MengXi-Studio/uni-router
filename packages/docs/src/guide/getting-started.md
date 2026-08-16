@@ -113,23 +113,16 @@ function isLoggedIn(): boolean {
 }
 
 // 全局前置守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // 未登录访问受保护页面
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next(
-      { name: 'login', query: { redirect: to.fullPath } },
-      { mode: 'replace' }
-    )
-    return
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
 
   // 已登录访问登录页
   if (to.name === 'login' && isLoggedIn()) {
-    next({ name: 'home' }, { mode: 'replace' })
-    return
+    return { location: { name: 'home' }, mode: 'replace' }
   }
-
-  next()
 })
 
 // 全局后置钩子

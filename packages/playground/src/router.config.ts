@@ -1,7 +1,7 @@
 /**
  * @plugin generate-router
- * @date 2026-07-12 23:04:40
- * @version 1.0.0
+ * @date 2026-08-17 00:22:19
+ * @version 1.1.0
  */
 
 import type { RouteConfig } from '@meng-xi/uni-router'

@@ -342,7 +342,7 @@ generateRouter({
 	path: '/pages/admin/admin',
 	name: 'pagesAdminAdmin',
 	meta: { requireAuth: true, role: 'admin' },
-	beforeEnter: (to, from, next) => { /* ... */ }
+	beforeEnter: (to, from) => { /* ... */ }
 }
 
 // pages.json 变化后重新生成 — 用户修改被保留
@@ -350,7 +350,7 @@ generateRouter({
 	path: '/pages/admin/admin',
 	name: 'pagesAdminAdmin',
 	meta: { requireAuth: true, role: 'admin' },  // role 保留
-	beforeEnter: (to, from, next) => { /* ... */ }  // beforeEnter 保留
+	beforeEnter: (to, from) => { /* ... */ }  // beforeEnter 保留
 }
 ```
 
