@@ -5,11 +5,13 @@
 ## 类型定义
 
 ```ts
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+
 type NavigationGuard = (
   to: RouteLocationNormalized,
   from: RouteLocationNormalized,
-  next: NavigationGuardNext
-) => void | Promise<void | boolean | RouteLocationRaw>
+  next?: NavigationGuardNext
+) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 ```
 
 ### 参数
@@ -18,26 +20,26 @@ type NavigationGuard = (
 | --- | --- | --- |
 | `to` | `RouteLocationNormalized` | 即将进入的目标路由 |
 | `from` | `RouteLocationNormalized` | 当前离开的路由 |
-| `next` | `NavigationGuardNext` | 控制导航流向的回调函数 |
+| `next` | `NavigationGuardNext` | 控制导航流向的回调函数（可选，已弃用，推荐使用返回值） |
 
 ### 返回值
 
 守卫支持两种写法：
 
-1. **回调式**：通过 `next()` 控制
-2. **Promise 式**：直接返回值，路由器自动处理
+1. **Promise 式（推荐）**：直接返回值，路由器自动处理
+2. **回调式（已弃用）**：通过 `next()` 控制
 
 ```ts
-// 回调式
-router.beforeEach((to, from, next) => {
-  if (isLoggedIn()) next()
-  else next({ name: 'login' })
-})
-
 // Promise 式（推荐）
 router.beforeEach(async (to, from) => {
   if (isLoggedIn()) return true
   return { name: 'login' }
+})
+
+// 回调式（已弃用）
+router.beforeEach((to, from, next) => {
+  if (isLoggedIn()) next()
+  else next({ name: 'login' })
 })
 ```
 
@@ -58,7 +60,6 @@ type NavigationGuardNext = {
   (location: RouteLocationRaw): void                    // 重定向
   (location: RouteLocationRaw, options: NavigationGuardNextOptions): void  // 重定向 + 选项
   (error: Error): void                                  // 抛出错误
-  (cb: (vm: ComponentPublicInstance) => void): void     // 访问组件实例
 }
 ```
 
@@ -129,38 +130,28 @@ return {
 ### 抛出错误
 
 ```ts
-next(new Error('权限不足'))
-// Promise 式
+// Promise 式（推荐）
 throw new Error('权限不足')
+// 或
+return new Error('权限不足')
+
+// 回调式（已弃用）
+next(new Error('权限不足'))
 ```
 
 错误会被 `router.onError` 捕获，并中止导航。
-
-### 访问组件实例
-
-```ts
-next((vm) => {
-  // vm 是目标页面组件实例
-  vm.fetchData()
-})
-```
-
-::: warning 限制
-此形式仅 `beforeRouteEnter` 守卫支持（uni-app 中较少使用，因为页面是独立组件）。`beforeEach` / `beforeResolve` / `afterEach` 不支持。
-:::
 
 ## 守卫类型分类
 
 ### 全局前置守卫
 
 ```ts
-const removeGuard = router.beforeEach((to, from, next) => {
+const removeGuard = router.beforeEach((to, from) => {
   // 权限校验、登录检查、埋点等
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
-  } else {
-    next()
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
+  return true
 })
 
 // 移除守卫
@@ -204,9 +195,9 @@ const routes = [
   {
     path: 'pages/admin/admin',
     name: 'admin',
-    beforeEnter: (to, from, next) => {
-      if (hasRole('admin')) next()
-      else next({ name: '403' })
+    beforeEnter: (to, from) => {
+      if (hasRole('admin')) return true
+      return { name: '403' }
     }
   }
 ]
@@ -239,7 +230,7 @@ const routes = [
 ## Promise 式返回值
 
 ```ts
-type GuardResult = void | boolean | RouteLocationRaw | {
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null | {
   location: RouteLocationRaw
   mode?: NavigationRedirectMode
 }
@@ -248,10 +239,12 @@ type GuardResult = void | boolean | RouteLocationRaw | {
 | 返回值 | 等价于 next() | 说明 |
 | --- | --- | --- |
 | `undefined` / `void` | `next()` | 放行 |
+| `null` | `next()` | 放行 |
 | `true` | `next()` | 放行 |
 | `false` | `next(false)` | 中止 |
 | `RouteLocationRaw` | `next(RouteLocationRaw)` | 重定向（push） |
 | `{ location, mode }` | `next(location, { mode })` | 重定向 + 方式控制 |
+| `Error` | `next(Error)` | 抛出错误，中止导航 |
 
 ```ts
 // 放行
@@ -268,6 +261,11 @@ router.beforeEach(() => ({
   location: { name: 'login' },
   mode: 'replace'
 }))
+
+// 抛出错误
+router.beforeEach(() => {
+  return new Error('权限不足')
+})
 ```
 
 ## 实战示例
@@ -363,13 +361,12 @@ router.afterEach((to) => {
 ```ts
 let isNavigating = false
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (isNavigating) {
-    next(false)
-    return
+    return false
   }
   isNavigating = true
-  next()
+  return true
 })
 
 router.afterEach(() => {
@@ -381,16 +378,16 @@ router.afterEach(() => {
 
 ### 忘记调用 next() 会怎样？
 
-守卫超时后（默认 10 秒，可通过 `guardTimeout` 配置）会自动中止导航并输出警告：
+使用回调式时，若忘记调用 `next()`，守卫超时后（默认 10 秒，可通过 `guardTimeout` 配置）会自动中止导航并输出警告：
 
 ```
 [uni-router] Guard timeout after 10000ms, navigation aborted
 ```
 
 ::: tip 解决方案
-- 使用 Promise 式，避免忘记调用 `next()`
+- **推荐使用 Promise 式**，通过返回值控制导航，从根本上避免忘记调用 `next()`
+- 使用回调式时，检查守卫中的所有分支是否都调用了 `next()`
 - 调整 `guardTimeout` 适配异步操作
-- 检查守卫中的所有分支是否都调用了 `next()`
 :::
 
 ### 守卫中可以访问组件实例吗？

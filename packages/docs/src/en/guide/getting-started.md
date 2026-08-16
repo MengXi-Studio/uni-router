@@ -113,23 +113,16 @@ function isLoggedIn(): boolean {
 }
 
 // Global before guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // Not logged in accessing protected page
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next(
-      { name: 'login', query: { redirect: to.fullPath } },
-      { mode: 'replace' }
-    )
-    return
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
 
   // Already logged in accessing login page
   if (to.name === 'login' && isLoggedIn()) {
-    next({ name: 'home' }, { mode: 'replace' })
-    return
+    return { location: { name: 'home' }, mode: 'replace' }
   }
-
-  next()
 })
 
 // Global after hook

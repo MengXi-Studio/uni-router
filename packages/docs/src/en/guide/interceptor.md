@@ -10,12 +10,11 @@ Without the interceptor enabled, directly calling uni native APIs **bypasses rou
 
 ```ts
 // Router configured with auth guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }
   }
+  // else: pass (return undefined)
 })
 
 // ✅ Via router → guard takes effect
@@ -443,13 +442,12 @@ const router = createRouter({
 })
 
 // Auth guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
-  if (to.meta.requireAuth && !isLoggedIn) {
-    next({ name: 'login' }, { mode: 'replace' })
-  } else {
-    next()
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    return { location: { name: 'login' }, mode: 'replace' }
   }
+  // else: pass (return undefined)
 })
 
 // The following three approaches are equivalent, guards take effect for all

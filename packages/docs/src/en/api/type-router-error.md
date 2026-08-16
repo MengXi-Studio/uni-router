@@ -198,11 +198,11 @@ They **do not conflict**; after `onError` fires, the Promise still rejects and c
 Guard calls `next(false)` to abort navigation:
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next(false) // Throws NAVIGATION_ABORTED
+    return false // Throws NAVIGATION_ABORTED
   } else {
-    next()
+    return
   }
 })
 ```
@@ -213,9 +213,9 @@ Triggered by multiple scenarios:
 
 ```ts
 // 1. Guard timeout (exceeds guardTimeout)
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   await verySlowOperation() // timeout
-  next()
+  return
 })
 
 // 2. Guard throws an uncaught exception
@@ -224,8 +224,8 @@ router.beforeEach(() => {
 })
 
 // 3. Redirect limit exceeded (>10 times)
-router.beforeEach((to, from, next) => {
-  next({ name: 'a' }) // a → b → a → b ... exceeds 10 times
+router.beforeEach((to, from) => {
+  return { name: 'a' } // a → b → a → b ... exceeds 10 times
 })
 
 // 4. Insufficient stack when calling back()

@@ -331,11 +331,11 @@ route.value.matched.forEach((config, index) => {
 If this navigation was triggered by a guard redirect, records the original target:
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
+    return { name: 'login' }
   } else {
-    next()
+    return
   }
 })
 
@@ -593,11 +593,11 @@ await router.push({ name: 'home', mode: 'replace' })
 await router.push({ name: 'login', mode: 'relaunch' })
 
 // Specify mode when redirecting in guards
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' }, { mode: 'replace' })  // Replace, avoid going back to protected page
+    return { location: { name: 'login' }, mode: 'replace' }  // Replace, avoid going back to protected page
   } else {
-    next()
+    return
   }
 })
 ```

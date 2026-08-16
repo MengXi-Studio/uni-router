@@ -193,12 +193,11 @@ If the page stack is insufficient (`targetIndex < 0`), throws `NAVIGATION_CANCEL
 - `next(location)` to redirect to another page
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (from.meta.dirty && !confirm('Unsaved changes will be lost. Leave anyway?')) {
-    next(false) // Block return
-  } else {
-    next()
+    return false // Block return
   }
+  // else: pass (return undefined)
 })
 ```
 
@@ -507,9 +506,9 @@ Concurrent navigation queueing ensures only one navigation is in progress at a t
 
 ```ts
 // Error example: A→B→A→B→... infinite redirect
-router.beforeEach((to, from, next) => {
-  if (to.name === 'a') next({ name: 'b' })
-  else if (to.name === 'b') next({ name: 'a' })
+router.beforeEach((to, from) => {
+  if (to.name === 'a') return { name: 'b' }
+  else if (to.name === 'b') return { name: 'a' }
 })
 ```
 
@@ -611,16 +610,17 @@ await router.back(3)
 ### 5. Use back Guard for Form Page Interception
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (from.meta.dirty) {
-    uni.showModal({
-      title: 'Notice',
-      content: 'Unsaved changes will be lost. Leave anyway?',
-      success: (res) => res.confirm ? next() : next(false)
+    return new Promise((resolve) => {
+      uni.showModal({
+        title: 'Notice',
+        content: 'Unsaved changes will be lost. Leave anyway?',
+        success: (res) => resolve(res.confirm ? undefined : false)
+      })
     })
-  } else {
-    next()
   }
+  // else: pass (return undefined)
 })
 ```
 

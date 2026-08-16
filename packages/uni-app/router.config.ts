@@ -22,9 +22,8 @@ export const routes: RouteConfig[] = [
 		meta: { title: '路由守卫' },
 		// 路由独享守卫：进入此页面时触发，可在控制台查看日志
 		// preserveRouteChanges: true 保留此手动添加的守卫
-		beforeEnter: (_to, _from, next) => {
+		beforeEnter: (_to, _from) => {
 			console.log('[beforeEnter] 路由独享守卫 - guards 页面')
-			next()
 		}
 	},
 	{

@@ -451,7 +451,19 @@ function isUniApiError(error) {
 
 // src/guard/index.ts
 var DEFAULT_GUARD_TIMEOUT = 1e4;
-function runGuard(guard, to, from, timeout) {
+function resolveGuardReturn(value) {
+  if (value === false) {
+    return { type: "abort", code: "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */ };
+  }
+  if (value instanceof Error) {
+    return { type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ };
+  }
+  if (value === true || value === void 0 || value === null || value === void 0) {
+    return { type: "next" };
+  }
+  return { type: "next", redirect: value };
+}
+function runGuardWithNext(guard, to, from, timeout) {
   return new Promise((resolve) => {
     let resolved = false;
     let timer;
@@ -471,40 +483,85 @@ function runGuard(guard, to, from, timeout) {
       timer = setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          warn(`Navigation guard "${guard.name || "anonymous"}" did not resolve within ${timeout / 1e3}s. Make sure to call next() in your guard function.`);
+          warn(`Navigation guard "${guard.name || "anonymous"}" timed out after ${timeout / 1e3}s. Make sure to call next() in your guard function, or migrate to the return-value pattern.`);
           resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
         }
       }, timeout);
     }
-    let promiseResult;
     try {
-      promiseResult = guard(to, from, next);
+      const returnValue = guard(to, from, next);
+      if (returnValue && typeof returnValue.then === "function") {
+        ;
+        returnValue.then((resolvedValue) => {
+          if (!resolved) {
+            if (resolvedValue !== void 0 && resolvedValue !== void 0) {
+              warn(`Navigation guard "${guard.name || "anonymous"}" used both next() callback and Promise return value. Use only one pattern.`);
+              resolved = true;
+              if (timer) clearTimeout(timer);
+              resolve(resolveGuardReturn(resolvedValue));
+            }
+          } else {
+            if (resolvedValue !== void 0 && resolvedValue !== void 0) {
+              warn(`Navigation guard "${guard.name || "anonymous"}" called next() and also returned a value. Use either next() callback or return value, not both.`);
+            }
+          }
+        }).catch(() => {
+          if (!resolved) {
+            resolved = true;
+            if (timer) clearTimeout(timer);
+            resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
+          }
+        });
+      }
     } catch {
       if (!resolved) {
         resolved = true;
         if (timer) clearTimeout(timer);
         resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
       }
-      return;
-    }
-    if (promiseResult) {
-      promiseResult.then(() => {
-        if (!resolved) {
-          resolved = true;
-          if (timer) clearTimeout(timer);
-          resolve({ type: "next" });
-        } else {
-          warn(`Navigation guard "${guard.name || "anonymous"}" called next() and also returned a Promise. Use either next() callback or async/await, not both.`);
-        }
-      }).catch(() => {
-        if (!resolved) {
-          resolved = true;
-          if (timer) clearTimeout(timer);
-          resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
-        }
-      });
     }
   });
+}
+async function runGuardWithReturn(guard, to, from, timeout) {
+  let resolved = false;
+  let timer;
+  const timeoutPromise = new Promise((resolve) => {
+    if (timeout > 0) {
+      timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          warn(`Navigation guard "${guard.name || "anonymous"}" timed out after ${timeout / 1e3}s. Make sure your guard resolves (returns a value or throws).`);
+          resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
+        }
+      }, timeout);
+    }
+  });
+  try {
+    const returnValue = guard(to, from);
+    const result = await Promise.race([
+      Promise.resolve(returnValue).then((value) => {
+        resolved = true;
+        if (timer) clearTimeout(timer);
+        return resolveGuardReturn(value);
+      }),
+      timeoutPromise
+    ]);
+    return result;
+  } catch {
+    if (!resolved) {
+      resolved = true;
+      if (timer) clearTimeout(timer);
+      return { type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ };
+    }
+    return { type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ };
+  }
+}
+function runGuard(guard, to, from, timeout) {
+  const useNextCallback = guard.length >= 3;
+  if (useNextCallback) {
+    return runGuardWithNext(guard, to, from, timeout);
+  }
+  return runGuardWithReturn(guard, to, from, timeout);
 }
 async function runGuardQueue(guards, to, from, timeout) {
   for (const guard of guards) {
@@ -550,10 +607,10 @@ function createGuardManager(guardTimeout = DEFAULT_GUARD_TIMEOUT) {
     const guards = Array.isArray(route.beforeEnter) ? route.beforeEnter : [route.beforeEnter];
     return runGuardQueue(guards, to, from, guardTimeout);
   }
-  function runAfterGuards(to, from) {
+  function runAfterGuards(to, from, failure) {
     for (const guard of afterGuards) {
       try {
-        guard(to, from);
+        guard(to, from, failure);
       } catch {
       }
     }
@@ -1423,6 +1480,7 @@ var UniRouter = class {
       const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
       const cause = isUniApiError(error) ? error : void 0;
       const failure = new NavigationFailure(to, from, code, void 0, cause);
+      this.guardManager.runAfterGuards(to, from, failure);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
@@ -1750,6 +1808,7 @@ var UniRouter = class {
       const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
       const cause = isUniApiError(error) ? error : void 0;
       const failure = new NavigationFailure(to, from, code, void 0, cause);
+      this.guardManager.runAfterGuards(to, from, failure);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }
@@ -1766,6 +1825,7 @@ var UniRouter = class {
     if (result.type === "abort") {
       this.runAbortHooks(pluginData);
       const failure = new NavigationFailure(to, from, result.code);
+      this.guardManager.runAfterGuards(to, from, failure);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
     }

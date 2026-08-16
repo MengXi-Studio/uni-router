@@ -331,11 +331,11 @@ route.value.matched.forEach((config, index) => {
 如果本次导航是由守卫重定向触发的，记录原始目标：
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
+    return { name: 'login' }
   } else {
-    next()
+    return
   }
 })
 
@@ -545,11 +545,11 @@ await router.push({ name: 'home', mode: 'replace' })
 await router.push({ name: 'login', mode: 'relaunch' })
 
 // 守卫中重定向时指定方式
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' }, { mode: 'replace' })  // 替换，避免返回到受保护页
+    return { location: { name: 'login' }, mode: 'replace' }  // 替换，避免返回到受保护页
   } else {
-    next()
+    return
   }
 })
 ```

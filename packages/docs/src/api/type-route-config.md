@@ -105,11 +105,11 @@ const routes: RouteConfig[] = [
     path: 'pages/admin/admin',
     name: 'admin',
     meta: { requireAdmin: true },
-    beforeEnter: (to, from, next) => {
+    beforeEnter: (to, from) => {
       if (user.role === 'admin') {
-        next()
+        return
       } else {
-        next({ name: '403' })
+        return { name: '403' }
       }
     }
   }
@@ -125,30 +125,30 @@ const routes: RouteConfig[] = [
     name: 'order',
     beforeEnter: [
       // 1. 必须先选择地址
-      (to, from, next) => {
+      (to, from) => {
         if (!store.selectedAddress) {
           uni.showToast({ title: '请先选择地址', icon: 'none' })
-          next(false)
+          return false
         } else {
-          next()
+          return
         }
       },
       // 2. 必须有商品
-      (to, from, next) => {
+      (to, from) => {
         if (store.cart.length === 0) {
-          next({ name: 'cart' })
+          return { name: 'cart' }
         } else {
-          next()
+          return
         }
       },
       // 3. 检查库存
-      async (to, from, next) => {
+      async (to, from) => {
         const hasStock = await checkStock(store.cart)
         if (!hasStock) {
           uni.showToast({ title: '商品库存不足', icon: 'none' })
-          next(false)
+          return false
         } else {
-          next()
+          return
         }
       }
     ]
@@ -179,9 +179,9 @@ const routes: RouteConfig[] = [
     path: 'pages/about/about',
     name: 'about',
     meta: { title: '关于', requireAuth: true },
-    beforeEnter: (to, from, next) => {
-      if (isLoggedIn()) next()
-      else next({ name: 'login' })
+    beforeEnter: (to, from) => {
+      if (isLoggedIn()) return
+      else return { name: 'login' }
     }
   },
   // 用户页（TabBar）

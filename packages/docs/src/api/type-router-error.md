@@ -198,11 +198,11 @@ try {
 守卫调用 `next(false)` 中止导航：
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next(false) // 抛出 NAVIGATION_ABORTED
+    return false // 抛出 NAVIGATION_ABORTED
   } else {
-    next()
+    return
   }
 })
 ```
@@ -213,9 +213,9 @@ router.beforeEach((to, from, next) => {
 
 ```ts
 // 1. 守卫超时（超过 guardTimeout）
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   await verySlowOperation() // 超时
-  next()
+  return
 })
 
 // 2. 守卫抛出未捕获异常
@@ -224,8 +224,8 @@ router.beforeEach(() => {
 })
 
 // 3. 重定向超限（>10 次）
-router.beforeEach((to, from, next) => {
-  next({ name: 'a' }) // a → b → a → b ... 超过 10 次
+router.beforeEach((to, from) => {
+  return { name: 'a' } // a → b → a → b ... 超过 10 次
 })
 
 // 4. back() 时栈不足

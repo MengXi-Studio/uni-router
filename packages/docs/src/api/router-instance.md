@@ -187,12 +187,11 @@ beforeEach(guard: NavigationGuard): () => void
 - **返回值**: 用于移除此守卫的函数
 
 ```ts
-const remove = router.beforeEach((to, from, next) => {
+const remove = router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }
   }
+  return true
 })
 
 // 需要时移除
@@ -214,12 +213,12 @@ beforeResolve(guard: NavigationGuard): () => void
 ```
 
 ```ts
-router.beforeResolve(async (to, from, next) => {
+router.beforeResolve(async (to) => {
   // 所有前置校验已通过，可安全预取数据
   if (to.name === 'detail') {
     await store.fetchDetail(to.query.id)
   }
-  next()
+  return true
 })
 ```
 
@@ -236,13 +235,17 @@ afterEach(guard: PostNavigationGuard): () => void
 ```
 
 ```ts
-router.afterEach((to, from) => {
+router.afterEach((to, from, failure) => {
   // 设置页面标题
   if (to.meta.title) {
     uni.setNavigationBarTitle({ title: to.meta.title as string })
   }
   // 埋点
   trackPageView(to.path, from.path)
+  // 导航失败时（如被守卫中止），failure 包含错误信息
+  if (failure) {
+    console.warn('导航失败:', failure.message)
+  }
 })
 ```
 

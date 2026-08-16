@@ -377,9 +377,8 @@ try {
 
 ```ts
 // ❌ 死锁
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   router.push({ name: 'other' }) // 触发新导航，等待当前导航
-  next()
 })
 ```
 

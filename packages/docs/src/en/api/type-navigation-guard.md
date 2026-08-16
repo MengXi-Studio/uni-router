@@ -5,11 +5,13 @@ Navigation guard function type, used to perform validation, redirection, analyti
 ## Type Definition
 
 ```ts
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+
 type NavigationGuard = (
   to: RouteLocationNormalized,
   from: RouteLocationNormalized,
-  next: NavigationGuardNext
-) => void | Promise<void | boolean | RouteLocationRaw>
+  next?: NavigationGuardNext
+) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 ```
 
 ### Parameters
@@ -18,26 +20,26 @@ type NavigationGuard = (
 | --- | --- | --- |
 | `to` | `RouteLocationNormalized` | The target route being navigated to |
 | `from` | `RouteLocationNormalized` | The current route being navigated away from |
-| `next` | `NavigationGuardNext` | Callback function that controls the navigation flow |
+| `next` | `NavigationGuardNext` | Callback function that controls the navigation flow (optional, deprecated, use return value instead) |
 
 ### Return Value
 
 Guards support two writing styles:
 
-1. **Callback style**: Control via `next()`
-2. **Promise style**: Return a value directly, the router handles it automatically
+1. **Promise style (recommended)**: Return a value directly, the router handles it automatically
+2. **Callback style (deprecated)**: Control via `next()`
 
 ```ts
-// Callback style
-router.beforeEach((to, from, next) => {
-  if (isLoggedIn()) next()
-  else next({ name: 'login' })
-})
-
 // Promise style (recommended)
 router.beforeEach(async (to, from) => {
   if (isLoggedIn()) return true
   return { name: 'login' }
+})
+
+// Callback style (deprecated)
+router.beforeEach((to, from, next) => {
+  if (isLoggedIn()) next()
+  else next({ name: 'login' })
 })
 ```
 
@@ -58,7 +60,6 @@ type NavigationGuardNext = {
   (location: RouteLocationRaw): void                    // Redirect
   (location: RouteLocationRaw, options: NavigationGuardNextOptions): void  // Redirect + options
   (error: Error): void                                  // Throw error
-  (cb: (vm: ComponentPublicInstance) => void): void     // Access component instance
 }
 ```
 
@@ -129,38 +130,28 @@ See [Guard Redirect Mode](../guide/guards#redirect-mode-control).
 ### Throw Error
 
 ```ts
-next(new Error('Insufficient permissions'))
-// Promise style
+// Promise style (recommended)
 throw new Error('Insufficient permissions')
+// or
+return new Error('Insufficient permissions')
+
+// Callback style (deprecated)
+next(new Error('Insufficient permissions'))
 ```
 
 The error will be caught by `router.onError` and navigation will be aborted.
-
-### Access Component Instance
-
-```ts
-next((vm) => {
-  // vm is the target page component instance
-  vm.fetchData()
-})
-```
-
-::: warning Limitation
-This form is only supported by the `beforeRouteEnter` guard (rarely used in uni-app because pages are independent components). `beforeEach` / `beforeResolve` / `afterEach` do not support it.
-:::
 
 ## Guard Type Classification
 
 ### Global Before Guard
 
 ```ts
-const removeGuard = router.beforeEach((to, from, next) => {
+const removeGuard = router.beforeEach((to, from) => {
   // Permission validation, login check, analytics, etc.
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
-  } else {
-    next()
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
+  return true
 })
 
 // Remove guard
@@ -204,9 +195,9 @@ const routes = [
   {
     path: 'pages/admin/admin',
     name: 'admin',
-    beforeEnter: (to, from, next) => {
-      if (hasRole('admin')) next()
-      else next({ name: '403' })
+    beforeEnter: (to, from) => {
+      if (hasRole('admin')) return true
+      return { name: '403' }
     }
   }
 ]
@@ -239,7 +230,7 @@ The guard execution order for a complete navigation:
 ## Promise Style Return Value
 
 ```ts
-type GuardResult = void | boolean | RouteLocationRaw | {
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null | {
   location: RouteLocationRaw
   mode?: NavigationRedirectMode
 }
@@ -248,10 +239,12 @@ type GuardResult = void | boolean | RouteLocationRaw | {
 | Return Value | Equivalent to next() | Description |
 | --- | --- | --- |
 | `undefined` / `void` | `next()` | Allow |
+| `null` | `next()` | Allow |
 | `true` | `next()` | Allow |
 | `false` | `next(false)` | Abort |
 | `RouteLocationRaw` | `next(RouteLocationRaw)` | Redirect (push) |
 | `{ location, mode }` | `next(location, { mode })` | Redirect + mode control |
+| `Error` | `next(Error)` | Throw error, abort navigation |
 
 ```ts
 // Allow
@@ -268,6 +261,11 @@ router.beforeEach(() => ({
   location: { name: 'login' },
   mode: 'replace'
 }))
+
+// Throw error
+router.beforeEach(() => {
+  return new Error('Insufficient permissions')
+})
 ```
 
 ## Practical Examples
@@ -363,13 +361,12 @@ router.afterEach((to) => {
 ```ts
 let isNavigating = false
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (isNavigating) {
-    next(false)
-    return
+    return false
   }
   isNavigating = true
-  next()
+  return true
 })
 
 router.afterEach(() => {
@@ -381,16 +378,16 @@ router.afterEach(() => {
 
 ### What happens if I forget to call next()?
 
-After the guard times out (default 10 seconds, configurable via `guardTimeout`), it automatically aborts navigation and outputs a warning:
+When using the callback style, if you forget to call `next()`, after the guard times out (default 10 seconds, configurable via `guardTimeout`), it automatically aborts navigation and outputs a warning:
 
 ```
 [uni-router] Guard timeout after 10000ms, navigation aborted
 ```
 
 ::: tip Solutions
-- Use Promise style to avoid forgetting to call `next()`
+- **Use Promise style** to control navigation via return values, fundamentally avoiding forgetting to call `next()`
+- When using callback style, check that all branches in the guard call `next()`
 - Adjust `guardTimeout` for async operations
-- Check that all branches in the guard call `next()`
 :::
 
 ### Can I access the component instance in a guard?

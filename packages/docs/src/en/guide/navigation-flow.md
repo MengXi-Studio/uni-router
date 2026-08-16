@@ -377,9 +377,10 @@ Calling `router.push()` in a guard causes the current navigation to wait for the
 
 ```ts
 // ❌ Deadlock
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   router.push({ name: 'other' }) // triggers new navigation, waits for current
-  next()
+  // Returns undefined, but current navigation waits for the nested push
+  // Mutual wait → deadlock
 })
 ```
 

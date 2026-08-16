@@ -25,20 +25,18 @@ await router.push({ name: 'about' })
 **2. 守卫是否正确返回**
 
 ```ts
-// ❌ 忘记调用 next
-router.beforeEach((to, from, next) => {
+// ❌ 忘记 return
+router.beforeEach((to, from) => {
   if (needAuth) {
-    next({ name: 'login' })
+    return { name: 'login' }
   }
-  // 漏了 else 分支的 next()
+  // 漏了 else 分支的 return
 })
 
-// ✅ 所有分支都调用 next
-router.beforeEach((to, from, next) => {
+// ✅ 所有分支都有 return
+router.beforeEach((to, from) => {
   if (needAuth) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }
   }
 })
 ```
@@ -46,21 +44,19 @@ router.beforeEach((to, from, next) => {
 **3. 异步守卫是否正确 await**
 
 ```ts
-// ❌ 异步操作未 await，next 在异步前调用
-router.beforeEach((to, from, next) => {
+// ❌ 异步操作未 await，return 在异步前调用
+router.beforeEach((to, from) => {
   fetchUser().then(user => {
-    if (!user) next({ name: 'login' })
+    if (!user) return { name: 'login' }
   })
-  next() // 这里立即执行了
+  // 这里立即执行了
 })
 
 // ✅ 异步守卫用 async/await
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   const user = await fetchUser()
   if (!user) {
-    next({ name: 'login' })
-  } else {
-    next()
+    return { name: 'login' }
   }
 })
 ```
@@ -271,24 +267,22 @@ router.onRouteChange((to, from) => {
 
 ```ts
 // ❌ 死锁
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   router.push({ name: 'other' }) // 触发新导航，等待当前导航完成
-  next()                          // 当前导航等待守卫完成
+  // 当前导航等待守卫完成
   // 互相等待 → 死锁
 })
 ```
 
 ### 解决方案
 
-用 `next(location)` 重定向，而非在守卫中调用 `router.push`：
+用 `return location` 重定向，而非在守卫中调用 `router.push`：
 
 ```ts
 // ✅ 重定向
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (needRedirect) {
-    next({ name: 'other' }) // 重定向，不形成死锁
-  } else {
-    next()
+    return { name: 'other' } // 重定向，不形成死锁
   }
 })
 ```
@@ -591,15 +585,13 @@ const router = createRouter({
 
 ```ts
 // ❌ beforeEach 中做耗时请求
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   await fetchLargeData() // 耗时
-  next()
 })
 
 // ✅ 移到页面 onLoad
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // 仅做快速检查
-  next()
 })
 
 // 页面中

@@ -164,13 +164,24 @@ next(false)               // Abort
 next('/path')             // Redirect
 next({ name: 'route' })   // Redirect
 
-// Uni Router (v1.7.0+)
+// Uni Router — Callback style (v1.7.0+)
 next()                                          // Proceed
 next(false)                                     // Abort
 next('/path')                                   // Redirect (default push)
 next({ name: 'route' })                         // Redirect (default push)
 next({ name: 'route' }, { mode: 'replace' })    // Redirect (specify mode)
 next({ name: 'route' }, { mode: 'relaunch' })   // Redirect (clear stack)
+```
+
+The callback style `next()` is deprecated. Return values are recommended:
+
+```ts
+// Uni Router — Return value style (recommended)
+return true                                     // Proceed
+return false                                    // Abort
+return { name: 'route' }                        // Redirect (default push)
+return { location: { name: 'route' }, mode: 'replace' }  // Redirect (specify mode)
+return new Error('Insufficient permissions')    // Throw error
 ```
 
 ### Redirect Depth Limit

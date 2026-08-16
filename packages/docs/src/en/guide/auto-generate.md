@@ -343,7 +343,7 @@ When `preserveRouteChanges` is enabled (default), the plugin preserves user modi
 	path: '/pages/admin/admin',
 	name: 'pagesAdminAdmin',
 	meta: { requireAuth: true, role: 'admin' },
-	beforeEnter: (to, from, next) => { /* ... */ }
+	beforeEnter: (to, from) => { /* ... */ }
 }
 
 // Regenerated after pages.json changes — user modifications preserved
@@ -351,7 +351,7 @@ When `preserveRouteChanges` is enabled (default), the plugin preserves user modi
 	path: '/pages/admin/admin',
 	name: 'pagesAdminAdmin',
 	meta: { requireAuth: true, role: 'admin' },  // role preserved
-	beforeEnter: (to, from, next) => { /* ... */ }  // beforeEnter preserved
+	beforeEnter: (to, from) => { /* ... */ }  // beforeEnter preserved
 }
 ```
 

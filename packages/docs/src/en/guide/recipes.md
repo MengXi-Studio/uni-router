@@ -38,24 +38,18 @@ function isLoggedIn(): boolean {
   return !!uni.getStorageSync('token')
 }
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // 1. Not logged in accessing protected page → go to login
   if (to.meta.requireAuth && !isLoggedIn()) {
-    next(
-      { name: 'login', query: { redirect: to.fullPath } },
-      { mode: 'replace' } // replace avoids returning to protected page's intermediate state
-    )
-    return
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
 
   // 2. Already logged in accessing login page → go to home
   if (to.name === 'login' && isLoggedIn()) {
-    next({ name: 'home' }, { mode: 'replace' })
-    return
+    return { location: { name: 'home' }, mode: 'replace' }
   }
 
   // 3. Other cases pass
-  next()
 })
 
 export default router
@@ -194,17 +188,15 @@ export function clearUser() {
 import { fetchUserInfo, hasRole, hasPermission } from '@/utils/auth'
 
 export function setupPermissionGuard(router: Router) {
-  router.beforeEach(async (to, from, next) => {
+  router.beforeEach(async (to, from) => {
     // Pages without permission requirements pass directly
     if (!to.meta.roles && !to.meta.permissions) {
-      next()
       return
     }
 
     // Not logged in
     if (!uni.getStorageSync('token')) {
-      next({ name: 'login', query: { redirect: to.fullPath } }, { mode: 'replace' })
-      return
+      return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
     }
 
     // Get user info (with cache)
@@ -214,25 +206,20 @@ export function setupPermissionGuard(router: Router) {
       // Fetch failed, token might be expired
       uni.removeStorageSync('token')
       clearUser()
-      next({ name: 'login' }, { mode: 'relaunch' })
-      return
+      return { location: { name: 'login' }, mode: 'relaunch' }
     }
 
     // Role check
     if (to.meta.roles && !hasRole(to.meta.roles)) {
       uni.showToast({ title: 'Access denied', icon: 'none' })
-      next({ name: 'home' }, { mode: 'relaunch' })
-      return
+      return { location: { name: 'home' }, mode: 'relaunch' }
     }
 
     // Permission check
     if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
       uni.showToast({ title: 'Insufficient permissions', icon: 'none' })
-      next({ name: 'home' }, { mode: 'relaunch' })
-      return
+      return { location: { name: 'home' }, mode: 'relaunch' }
     }
-
-    next()
   })
 }
 ```
@@ -459,24 +446,25 @@ export function useDirtyGuard(dirty: Ref<boolean>, onLeave?: () => void) {
   const router = useRouter()
 
   // Guard for programmatic navigation (router.push / router.back etc.)
-  const guard = router.beforeEach((to, from, next) => {
+  const guard = router.beforeEach((to, from) => {
     if (from.meta._dirty && dirty.value) {
-      uni.showModal({
-        title: 'Notice',
-        content: 'You have unsaved changes. Leave anyway?',
-        success: (res) => {
-          if (res.confirm) {
-            dirty.value = false
-            onLeave?.()
-            next()
-          } else {
-            next(false)
+      return new Promise((resolve) => {
+        uni.showModal({
+          title: 'Notice',
+          content: 'You have unsaved changes. Leave anyway?',
+          success: (res) => {
+            if (res.confirm) {
+              dirty.value = false
+              onLeave?.()
+              resolve(undefined) // pass
+            } else {
+              resolve(false) // abort
+            }
           }
-        }
+        })
       })
-    } else {
-      next()
     }
+    // else: pass (return undefined)
   })
 
   // App: physical back button
@@ -567,22 +555,21 @@ const preloaders: Record<string, (to: RouteLocation) => Promise<void>> = {
 }
 
 export function setupPreloadGuard(router: Router) {
-  router.beforeResolve(async (to, from, next) => {
+  router.beforeResolve(async (to, from) => {
     const preloader = preloaders[to.name as string]
     if (preloader) {
       try {
         uni.showLoading({ title: 'Loading...' })
         await preloader(to)
-        next()
+        // pass (return undefined)
       } catch (err) {
         uni.showToast({ title: 'Load failed', icon: 'none' })
-        next(false) // Data load failed, abort navigation
+        return false // Data load failed, abort navigation
       } finally {
         uni.hideLoading()
       }
-    } else {
-      next()
     }
+    // else: pass (return undefined)
   })
 }
 ```
@@ -594,22 +581,21 @@ const cache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 export function setupCachedPreload(router: Router) {
-  router.beforeResolve(async (to, from, next) => {
+  router.beforeResolve(async (to, from) => {
     const cacheKey = `${to.name}:${to.fullPath}`
     const cached = cache.get(cacheKey)
 
     // Cache not expired, pass directly
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      next()
-      return
+      return // pass
     }
 
     try {
       const data = await fetchData(to)
       cache.set(cacheKey, { data, timestamp: Date.now() })
-      next()
+      // pass (return undefined)
     } catch {
-      next(false)
+      return false
     }
   })
 }
@@ -707,20 +693,18 @@ export const useAppStore = defineStore('app', () => {
 export function setupMaintenanceGuard(router: Router) {
   const appStore = useAppStore()
 
-  router.beforeEach((to, from, next) => {
+  router.beforeEach((to, from) => {
     // Maintenance page itself passes
     if (to.name === 'maintenance') {
-      next()
       return
     }
 
     // Maintenance mode, redirect to maintenance page
     if (appStore.maintenanceMode) {
-      next({ name: 'maintenance' }, { mode: 'relaunch' })
-      return
+      return { location: { name: 'maintenance' }, mode: 'relaunch' }
     }
 
-    next()
+    // else: pass (return undefined)
   })
 
   // Periodically check maintenance status

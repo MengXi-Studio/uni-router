@@ -164,13 +164,24 @@ next(false)               // 中止
 next('/path')             // 重定向
 next({ name: 'route' })   // 重定向
 
-// Uni Router（v1.7.0+）
+// Uni Router — 回调式（v1.7.0+）
 next()                                          // 放行
 next(false)                                     // 中止
 next('/path')                                   // 重定向（默认 push）
 next({ name: 'route' })                         // 重定向（默认 push）
 next({ name: 'route' }, { mode: 'replace' })    // 重定向（指定方式）
 next({ name: 'route' }, { mode: 'relaunch' })   // 重定向（清空栈）
+```
+
+回调式 `next()` 已弃用，推荐使用返回值：
+
+```ts
+// Uni Router — 返回值式（推荐）
+return true                                     // 放行
+return false                                    // 中止
+return { name: 'route' }                        // 重定向（默认 push）
+return { location: { name: 'route' }, mode: 'replace' }  // 重定向（指定方式）
+return new Error('权限不足')                     // 抛出错误
 ```
 
 ### 重定向深度限制

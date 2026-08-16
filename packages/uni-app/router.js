@@ -27,22 +27,20 @@ router
 let isLoggedIn = false
 
 // 全局前置守卫 - 登录验证
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
 	console.log(`[beforeEach] ${from.path} → ${to.path}`)
 
 	if (to.meta.requireAuth && !isLoggedIn) {
 		console.log('[beforeEach] 需要登录，重定向到登录页')
 		// 使用 replace 模式重定向，避免登录页之后残留受保护页面的历史
-		next({ path: '/pages/login/index', query: { redirect: to.fullPath } }, { mode: 'replace' })
-	} else {
-		next()
+		return { location: { path: '/pages/login/index', query: { redirect: to.fullPath } }, mode: 'replace' }
 	}
+	// 不返回值 = 放行
 })
 
 // 全局解析守卫
-router.beforeResolve((to, from, next) => {
+router.beforeResolve((to, from) => {
 	console.log(`[beforeResolve] ${from.path} → ${to.path}`)
-	next()
 })
 
 // 全局后置钩子

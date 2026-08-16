@@ -292,6 +292,7 @@ class UniRouter implements Router {
 			const code = RouterErrorCode.NAVIGATION_API_ERROR
 			const cause = isUniApiError(error) ? error : undefined
 			const failure = new NavigationFailure(to, from, code, undefined, cause)
+			this.guardManager.runAfterGuards(to, from, failure)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
 		}
@@ -689,6 +690,7 @@ class UniRouter implements Router {
 			const code = RouterErrorCode.NAVIGATION_API_ERROR
 			const cause = isUniApiError(error) ? error : undefined
 			const failure = new NavigationFailure(to, from, code, undefined, cause)
+			this.guardManager.runAfterGuards(to, from, failure)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
 		}
@@ -711,9 +713,10 @@ class UniRouter implements Router {
 		pluginData: Record<string, any>
 	): Promise<NavigationResult> | null {
 		if (result.type === 'abort') {
-			// 中止时调用 abort hooks 清理插件资源
+			// 中止时调用 abort hooks 清理插件资源，并触发 afterEach 通知失败
 			this.runAbortHooks(pluginData)
 			const failure = new NavigationFailure(to, from, result.code)
+			this.guardManager.runAfterGuards(to, from, failure)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
 		}

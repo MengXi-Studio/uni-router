@@ -105,11 +105,11 @@ const routes: RouteConfig[] = [
     path: 'pages/admin/admin',
     name: 'admin',
     meta: { requireAdmin: true },
-    beforeEnter: (to, from, next) => {
+    beforeEnter: (to, from) => {
       if (user.role === 'admin') {
-        next()
+        return
       } else {
-        next({ name: '403' })
+        return { name: '403' }
       }
     }
   }
@@ -125,30 +125,30 @@ const routes: RouteConfig[] = [
     name: 'order',
     beforeEnter: [
       // 1. Must select an address first
-      (to, from, next) => {
+      (to, from) => {
         if (!store.selectedAddress) {
           uni.showToast({ title: 'Please select an address', icon: 'none' })
-          next(false)
+          return false
         } else {
-          next()
+          return
         }
       },
       // 2. Must have products
-      (to, from, next) => {
+      (to, from) => {
         if (store.cart.length === 0) {
-          next({ name: 'cart' })
+          return { name: 'cart' }
         } else {
-          next()
+          return
         }
       },
       // 3. Check stock
-      async (to, from, next) => {
+      async (to, from) => {
         const hasStock = await checkStock(store.cart)
         if (!hasStock) {
           uni.showToast({ title: 'Insufficient stock', icon: 'none' })
-          next(false)
+          return false
         } else {
-          next()
+          return
         }
       }
     ]
@@ -179,9 +179,9 @@ const routes: RouteConfig[] = [
     path: 'pages/about/about',
     name: 'about',
     meta: { title: 'About', requireAuth: true },
-    beforeEnter: (to, from, next) => {
-      if (isLoggedIn()) next()
-      else next({ name: 'login' })
+    beforeEnter: (to, from) => {
+      if (isLoggedIn()) return
+      else return { name: 'login' }
     }
   },
   // User (TabBar)

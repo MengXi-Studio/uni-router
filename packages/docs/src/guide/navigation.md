@@ -193,11 +193,9 @@ back(2) → 目标是 B (index = 4-1-2 = 1)
 - `next(location)` 重定向到其他页面
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (from.meta.dirty && !confirm('未保存的修改将丢失，确认离开？')) {
-    next(false) // 阻止返回
-  } else {
-    next()
+    return false // 阻止返回
   }
 })
 ```
@@ -507,9 +505,9 @@ router.push({ name: 'b' })  // 等待第一次完成后再执行
 
 ```ts
 // 错误示例：A→B→A→B→... 无限重定向
-router.beforeEach((to, from, next) => {
-  if (to.name === 'a') next({ name: 'b' })
-  else if (to.name === 'b') next({ name: 'a' })
+router.beforeEach((to, from) => {
+  if (to.name === 'a') return { name: 'b' }
+  else if (to.name === 'b') return { name: 'a' }
 })
 ```
 
@@ -611,15 +609,15 @@ await router.back(3)
 ### 5. 表单页用 back 守卫拦截
 
 ```ts
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   if (from.meta.dirty) {
-    uni.showModal({
-      title: '提示',
-      content: '未保存的修改将丢失，确认离开？',
-      success: (res) => res.confirm ? next() : next(false)
+    return new Promise((resolve) => {
+      uni.showModal({
+        title: '提示',
+        content: '未保存的修改将丢失，确认离开？',
+        success: (res) => resolve(res.confirm ? undefined : false)
+      })
     })
-  } else {
-    next()
   }
 })
 ```

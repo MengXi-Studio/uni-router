@@ -82,12 +82,11 @@ await router.back()
 ### 3. Route Guards
 
 ```typescript
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		next({ name: 'login' }, { mode: 'replace' })
-	} else {
-		next()
+		return { name: 'login' }  // redirect
 	}
+	// return undefined or true to proceed
 })
 ```
 

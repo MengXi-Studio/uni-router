@@ -6,45 +6,47 @@
 		</view>
 
 		<view class="section">
-			<view class="section-title">beforeEach - 全局前置守卫</view>
-			<view class="info-text">在每次导航前执行，可用于权限校验、登录检查等。</view>
-			<view class="code-block"> router.beforeEach((to, from, next) => {\n if (to.meta.requireAuth && !isLoggedIn) {\n next({ name: 'pagesLoginLogin' })\n } else {\n next()\n }\n}) </view>
+			<view class="section-title">beforeEach - 全局前置守卫（推荐返回值模式）</view>
+			<view class="info-text">在每次导航前执行，可用于权限校验、登录检查等。通过返回值控制导航行为，无需调用 next 回调。</view>
+			<view class="code-block"> router.beforeEach((to, from) => {\n if (to.meta.requireAuth && !isLoggedIn) {\n return { name: 'pagesLoginLogin' } // 重定向\n }\n // 不返回值或 return true 表示放行\n}) </view>
 			<view class="btn btn-warn" @click="goProtected">测试：访问需登录页面</view>
 		</view>
 
 		<view class="section">
 			<view class="section-title">beforeResolve - 全局解析守卫</view>
 			<view class="info-text">在所有前置守卫和路由独享守卫完成后执行，适合做最终确认。</view>
-			<view class="code-block"> router.beforeResolve((to, from, next) => {\n console.log('所有前置守卫已通过')\n next()\n}) </view>
+			<view class="code-block"> router.beforeResolve((to, from) => {\n console.log('所有前置守卫已通过')\n // 不返回值表示放行\n}) </view>
 		</view>
 
 		<view class="section">
-			<view class="section-title">afterEach - 全局后置钩子</view>
-			<view class="info-text">导航完成后执行，适合做页面统计、标题设置等。</view>
-			<view class="code-block"> router.afterEach((to, from) => {\n console.log('导航完成:', from.fullPath, '->', to.fullPath)\n}) </view>
+			<view class="section-title">afterEach - 全局后置钩子（支持 failure 参数）</view>
+			<view class="info-text">导航完成后执行，适合做页面统计、标题设置等。第三个参数 failure 在导航失败时传入。</view>
+			<view class="code-block">
+				router.afterEach((to, from, failure) => {\n if (failure) {\n console.error('导航失败:', failure.message)\n return\n }\n console.log('导航完成:', from.fullPath, '->', to.fullPath)\n})
+			</view>
 		</view>
 
 		<view class="section">
 			<view class="section-title">beforeEnter - 路由独享守卫</view>
 			<view class="info-text">定义在路由配置上，仅对该路由生效。本页配置了 beforeEnter 守卫。</view>
-			<view class="code-block"> // 在路由配置中定义\n{\n path: '/pages/guards/guards',\n name: 'pagesGuardsGuards',\n beforeEnter: (to, from, next) => {\n console.log('[beforeEnter] 路由独享守卫')\n next()\n }\n} </view>
+			<view class="code-block"> // 在路由配置中定义\n{\n path: '/pages/guards/guards',\n name: 'pagesGuardsGuards',\n beforeEnter: (to, from) => {\n console.log('[beforeEnter] 路由独享守卫')\n // 放行\n }\n} </view>
 		</view>
 
 		<view class="section">
 			<view class="section-title">守卫重定向</view>
-			<view class="info-text">在守卫中调用 next(newLocation) 可重定向到其他路由。</view>
+			<view class="info-text">在守卫中 return 路由位置可重定向到其他路由。</view>
 			<view class="btn btn-danger" @click="testRedirect">测试：守卫重定向到首页</view>
 		</view>
 
 		<view class="section">
 			<view class="section-title">守卫中止导航</view>
-			<view class="info-text">在守卫中调用 next(false) 可中止当前导航。</view>
+			<view class="info-text">在守卫中 return false 可中止当前导航。</view>
 			<view class="btn btn-gray" @click="testAbort">测试：中止导航</view>
 		</view>
 
 		<view class="section">
 			<view class="section-title">守卫超时保护</view>
-			<view class="info-text">守卫未调用 next() 或抛出异常时，导航不会永久挂起。超时时间可通过 guardTimeout 配置（默认 10 秒，本应用设为 15 秒）。</view>
+			<view class="info-text">守卫未返回结果或抛出异常时，导航不会永久挂起。超时时间可通过 guardTimeout 配置（默认 10 秒，本应用设为 15 秒）。</view>
 			<view class="btn btn-danger" @click="testTimeout">测试：守卫超时</view>
 			<view class="code-block"> const router = createRouter({\n routes,\n guardTimeout: 15000 // 15秒超时\n}) </view>
 		</view>
@@ -57,7 +59,10 @@
 			<view class="info-text" style="color: #007aff; margin-top: 12rpx"> 本应用已在 App.vue 的 onLaunch 中调用 guardRoute()，冷启动进入受保护页面时将自动重定向到首页。 </view>
 			<view class="btn" @click="testGuardRoute">测试：对当前路由执行 guardRoute()</view>
 			<view class="btn btn-warn" @click="testGuardRouteAbort">测试：guardRoute() 被守卫中止</view>
-			<view class="code-block"> // App.vue onLaunch 中\nonLaunch((options) => {\n router.isReady().then(() => {\n // onLaunch 时页面栈可能为空，currentRoute 仍是 START_LOCATION\n // 必须传入 options.path，否则守卫会校验 / 而非真实入口页面\n const launchPath = options?.path ? `/${options.path}` : undefined\n router.guardRoute(launchPath, {\n onAbort: (failure) => {\n // 守卫中止，跳转到安全页面\n router.relaunch({ name: 'pagesIndexIndex' })\n }\n })\n })\n})\n\n// 手动调用：检查指定路由\nawait router.guardRoute({ name: 'pagesProtectedProtected' }, {\n onAbort: () => console.log('被中止')\n}) </view>
+			<view class="code-block">
+				// App.vue onLaunch 中\nonLaunch((options) => {\n router.isReady().then(() => {\n const launchPath = options?.path ? `/${options.path}` : undefined\n router.guardRoute(launchPath, {\n onAbort: (failure) => {\n
+				router.relaunch({ name: 'pagesIndexIndex' })\n }\n })\n })\n})\n\n// 手动调用：检查指定路由\nawait router.guardRoute({ name: 'pagesProtectedProtected' }, {\n onAbort: () => console.log('被中止')\n})
+			</view>
 			<view v-if="guardRouteLog" class="info-text" style="color: #34c759; margin-top: 12rpx">{{ guardRouteLog }}</view>
 		</view>
 	</view>
@@ -88,15 +93,13 @@ function testRedirect() {
 }
 
 function testAbort() {
-	// 动态注册一个一次性守卫来中止导航
-	const removeGuard = router.beforeEach((to, _from, next) => {
+	// 动态注册一个一次性守卫来中止导航（返回值模式）
+	const removeGuard = router.beforeEach((to, _from) => {
 		if (to.name === 'pagesDetailDetail') {
 			uni.showToast({ title: '导航已被守卫中止', icon: 'none' })
-			next(false)
 			removeGuard()
-			return
+			return false
 		}
-		next()
 	})
 	router.push({ name: 'pagesDetailDetail' }).catch(() => {
 		// 守卫中止导航时产生的 NavigationFailure 已在 onError 中处理
@@ -104,15 +107,15 @@ function testAbort() {
 }
 
 function testTimeout() {
-	// 注册一个不调用 next() 的守卫，模拟超时
-	const removeGuard = router.beforeEach(() => {
-		// 故意不调用 next()，等待超时
-		uni.showToast({ title: '守卫未调用 next()，等待超时...', icon: 'none' })
-		setTimeout(() => {
-			removeGuard()
-		}, 1000)
+	// 注册一个无限等待的守卫，模拟超时
+	const removeGuard = router.beforeEach(async () => {
+		uni.showToast({ title: '守卫未返回结果，等待超时...', icon: 'none' })
+		// 不返回任何值，模拟死循环
+		await new Promise(() => {}) // 永不 resolve
 	})
-	router.push({ name: 'pagesDetailDetail' }).catch(() => {})
+	router.push({ name: 'pagesDetailDetail' }).catch(() => {
+		removeGuard()
+	})
 }
 
 function testGuardRoute() {
@@ -130,10 +133,10 @@ function testGuardRoute() {
 
 function testGuardRouteAbort() {
 	guardRouteLog.value = ''
-	// 动态注册一次性守卫来中止 guardRoute
-	const removeGuard = router.beforeEach((_to, _from, next) => {
-		next(false)
+	// 动态注册一次性守卫来中止 guardRoute（返回值模式）
+	const removeGuard = router.beforeEach(() => {
 		removeGuard()
+		return false
 	})
 	router
 		.guardRoute(undefined, {
