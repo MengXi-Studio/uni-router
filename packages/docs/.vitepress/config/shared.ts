@@ -13,9 +13,9 @@ const asset = (p: string) => base + p.replace(/^\//, '')
  * v1 分支切出后：改为 v1 标为当前，v2 用绝对 URL（link: '/' 在 v1 下会解析为 /uni-router/v1/）
  */
 export const versionNav = {
-	text: 'v2.0.0',
+	text: 'v2.1.0',
 	items: [
-		{ text: 'v2.0.0', link: '/' },
+		{ text: 'v2.1.0', link: '/' },
 		{ text: 'v1.11.0', link: 'https://mengxi-studio.github.io/uni-router/v1/' }
 	]
 }

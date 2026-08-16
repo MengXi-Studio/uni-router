@@ -84,7 +84,7 @@ await router.back()
 ```typescript
 router.beforeEach((to, from) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		return { name: 'login' }  // redirect
+		return { name: 'login' } // redirect
 	}
 	// return undefined or true to proceed
 })
@@ -105,7 +105,7 @@ router.beforeEach((to, from) => {
 
 ## Documentation
 
-📖 **[https://mengxi-studio.github.io/uni-router/v1/](https://mengxi-studio.github.io/uni-router/v1/)**
+📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
 ## License
 

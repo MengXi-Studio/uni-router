@@ -82,12 +82,11 @@ await router.back()
 ### 3. 路由守卫
 
 ```typescript
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		next({ name: 'login' }, { mode: 'replace' })
-	} else {
-		next()
+		return { name: 'login' } // 重定向
 	}
+	// 不返回值或 return true 表示放行
 })
 ```
 
@@ -106,7 +105,7 @@ router.beforeEach((to, from, next) => {
 
 ## 文档
 
-📖 **[https://mengxi-studio.github.io/uni-router/v1/](https://mengxi-studio.github.io/uni-router/v1/)**
+📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
 ## License
 

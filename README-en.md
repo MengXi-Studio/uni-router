@@ -82,12 +82,11 @@ await router.back()
 ### 3. Route Guards
 
 ```typescript
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		next({ name: 'login' }, { mode: 'replace' })
-	} else {
-		next()
+		return { name: 'login' } // redirect
 	}
+	// return undefined or true to proceed
 })
 ```
 
@@ -106,7 +105,7 @@ router.beforeEach((to, from, next) => {
 
 ## Documentation
 
-📖 **[https://mengxi-studio.github.io/uni-router/v1/](https://mengxi-studio.github.io/uni-router/v1/)**
+📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
 ## License
 

@@ -84,7 +84,7 @@ await router.back()
 ```typescript
 router.beforeEach((to, from) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		return { name: 'login' }  // 重定向
+		return { name: 'login' } // 重定向
 	}
 	// 不返回值或 return true 表示放行
 })
@@ -105,7 +105,7 @@ router.beforeEach((to, from) => {
 
 ## 文档
 
-📖 **[https://mengxi-studio.github.io/uni-router/v1/](https://mengxi-studio.github.io/uni-router/v1/)**
+📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
 ## License
 
