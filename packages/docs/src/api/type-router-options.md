@@ -115,7 +115,7 @@ const router = createRouter({
 
 - **类型**: `number`
 - **默认值**: `10000`（10 秒）
-- **说明**: 守卫超时时间（毫秒）。当守卫函数在此时间内既未调用 `next()` 也未返回 rejected Promise 时，将输出警告并自动中止导航以防止永久挂起
+- **说明**: 守卫超时时间（毫秒）。当守卫函数在此时间内既未返回也未抛出异常时，将输出警告并自动中止导航以防止永久挂起
 
 ```ts
 const router = createRouter({
@@ -325,7 +325,7 @@ interface GuardRouteOptions {
 - **类型**: `(failure: NavigationFailure) => void`
 - **说明**: 守卫中止时的回调
 
-冷启动场景下页面已加载，无法真正"阻止进入"。当守卫调用 `next(false)` 中止时，将调用此回调并传入 `NavigationFailure` 对象。用户可在此回调中执行 `router.relaunch()` 等操作跳转到安全页面。
+冷启动场景下页面已加载，无法真正"阻止进入"。当守卫 `return false` 中止时，将调用此回调并传入 `NavigationFailure` 对象。用户可在此回调中执行 `router.relaunch()` 等操作跳转到安全页面。
 
 ```ts
 router.guardRoute(undefined, {
@@ -340,9 +340,9 @@ router.guardRoute(undefined, {
 ::: tip 守卫结果处理
 | 守卫结果 | 行为 |
 | --- | --- |
-| 放行（`next()`） | 不执行导航，resolve 目标路由 |
-| 重定向（`next(location)`） | 按守卫指定的方式（默认 `relaunch`）跳转 |
-| 中止（`next(false)`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
+| 放行（`return true` / `undefined`） | 不执行导航，resolve 目标路由 |
+| 重定向（`return location`） | 按守卫指定的方式（默认 `relaunch`）跳转 |
+| 中止（`return false`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
 :::
 
 详见 [Router 实例 - guardRoute()](./router-instance#guardroute) 和 [路由守卫 - 冷启动守卫检查](../guide/guards#冷启动守卫检查)。

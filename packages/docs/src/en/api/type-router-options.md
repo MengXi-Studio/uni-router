@@ -115,7 +115,7 @@ Requires `InterceptorPlugin` to be registered to take effect. If this option is 
 
 - **Type**: `number`
 - **Default**: `10000` (10 seconds)
-- **Description**: Guard timeout in milliseconds. When a guard function neither calls `next()` nor returns a rejected Promise within this time, a warning is output and navigation is automatically aborted to prevent permanent hanging
+- **Description**: Guard timeout in milliseconds. When a guard function neither returns a value nor throws an exception within this time, a warning is output and navigation is automatically aborted to prevent permanent hanging
 
 ```ts
 const router = createRouter({
@@ -325,7 +325,7 @@ interface GuardRouteOptions {
 - **Type**: `(failure: NavigationFailure) => void`
 - **Description**: Callback when the guard aborts
 
-In cold start scenarios the page is already loaded and cannot truly be "blocked from entry". When a guard calls `next(false)` to abort, this callback is invoked with a `NavigationFailure` object. Users can use this callback to execute `router.relaunch()` etc. to navigate to a safe page.
+In cold start scenarios the page is already loaded and cannot truly be "blocked from entry". When a guard `return false` aborts, this callback is invoked with a `NavigationFailure` object. Users can use this callback to execute `router.relaunch()` etc. to navigate to a safe page.
 
 ```ts
 router.guardRoute(undefined, {
@@ -340,9 +340,9 @@ router.guardRoute(undefined, {
 ::: tip Guard Result Handling
 | Guard Result | Behavior |
 | --- | --- |
-| Pass (`next()`) | No navigation, resolves with the target route |
-| Redirect (`next(location)`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
-| Abort (`next(false)`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
+| Pass (`return true` / `undefined`) | No navigation, resolves with the target route |
+| Redirect (`return location`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
+| Abort (`return false`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
 :::
 
 See [Router Instance - guardRoute()](./router-instance#guardroute) and [Route Guards - Cold Start Guard Check](../guide/guards#cold-start-guard-check).

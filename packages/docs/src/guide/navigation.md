@@ -188,9 +188,9 @@ back(2) → 目标是 B (index = 4-1-2 = 1)
 
 `back` 执行完整的守卫链（`beforeEach` → `beforeResolve`），守卫可以：
 
-- `next()` 放行返回
-- `next(false)` 阻止返回（如"表单未保存"提示）
-- `next(location)` 重定向到其他页面
+- `return true` / `undefined` 放行返回
+- `return false` 阻止返回（如"表单未保存"提示）
+- `return location` 重定向到其他页面
 
 ```ts
 router.beforeEach((to, from) => {
@@ -501,7 +501,7 @@ router.push({ name: 'b' })  // 等待第一次完成后再执行
 
 ## 重定向深度保护
 
-守卫中的 `next(location)` 会触发重定向，Uni Router 限制最大重定向深度为 **10 层**，超过时抛出 `NAVIGATION_CANCELLED`：
+守卫中 `return location` 会触发重定向，Uni Router 限制最大重定向深度为 **10 层**，超过时抛出 `NAVIGATION_CANCELLED`：
 
 ```ts
 // 错误示例：A→B→A→B→... 无限重定向

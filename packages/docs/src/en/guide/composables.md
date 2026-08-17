@@ -1,6 +1,6 @@
 # Composables
 
-Uni Router provides three composable functions for accessing the router instance, current route, and inter-page communication channel in Vue 3's `<script setup>`. This chapter covers usage, reactivity principles, and practical tips in detail.
+Uni Router provides four composable functions for accessing the router instance, current route, registering component-level guards, and inter-page communication in Vue 3's `<script setup>`. This chapter covers usage, reactivity principles, and practical tips in detail.
 
 ## useRouter()
 
@@ -291,6 +291,52 @@ channel.once('init', (data) => {
 :::
 
 See [`usePageChannel()` API](../api/use-page-channel) and [Page Communication](./navigation#special-usage-page-communication) for details.
+
+## onBeforeRouteLeave()
+
+A component-level leave guard that executes when the current component is about to leave. Controls navigation behavior through return values, consistent with Vue Router 4.x's `onBeforeRouteLeave`.
+
+::: tip Implementation
+Internally registers a guard via `router.beforeEach`, which only executes the user's guard when the `from` path matches the current component's path. Automatically removed on component unmount, no manual cleanup required.
+:::
+
+### Basic Usage
+
+```ts
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+onBeforeRouteLeave((to, from) => {
+  if (hasUnsavedChanges) {
+    return false // abort navigation
+  }
+  // return undefined or true to proceed
+})
+```
+
+### Leave Confirmation Dialog
+
+```ts
+onBeforeRouteLeave((to, from) => {
+  if (from.meta.dirty) {
+    return new Promise((resolve) => {
+      uni.showModal({
+        title: 'Confirm',
+        content: 'You have unsaved changes. Leave anyway?',
+        success: (res) => resolve(res.confirm ? true : false)
+      })
+    })
+  }
+})
+```
+
+### Notes
+
+| Scenario | Description |
+| --- | --- |
+| Guard not registered | No interception, navigation proceeds normally |
+| Async guards | Supports async/await and returning Promises |
+| Component unmount | Guard is automatically removed, no cleanup needed |
+| Global guards | `onBeforeRouteLeave` guards have lower priority than `router.beforeEach` global guards |
 
 ## Using Outside Components
 

@@ -507,9 +507,9 @@ onLaunch(() => {
 
 | 守卫结果 | 行为 |
 | --- | --- |
-| 放行（`next()`） | 不执行导航，resolve 目标路由 |
-| 重定向（`next(location)`） | 按守卫指定的方式（默认 `relaunch`）跳转 |
-| 中止（`next(false)`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
+| 放行（`return true` / `undefined`） | 不执行导航，resolve 目标路由 |
+| 重定向（`return location`） | 按守卫指定的方式（默认 `relaunch`）跳转 |
+| 中止（`return false`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
 
 ::: warning 冷启动无法真正"阻止进入"
 冷启动场景下页面已加载，`guardRoute()` 无法真正阻止页面显示。当守卫中止时，通过 `onAbort` 回调执行 `router.relaunch()` 跳转到安全页面是推荐的应对方式。

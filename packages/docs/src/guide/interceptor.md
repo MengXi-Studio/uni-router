@@ -387,7 +387,7 @@ uni.navigateTo({ url: '/protected' })
   → 拦截器拦截
   → router.push({ path: 'protected' })
   → beforeEach 守卫
-    → 未登录 → next({ name: 'login' })
+    → 未登录 → return { name: 'login' }
   → 重定向到 login
 ```
 

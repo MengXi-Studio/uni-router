@@ -44,7 +44,7 @@ interface UniApiCause {
 
 | 错误码 | 说明 | 触发场景 | 是否可恢复 |
 | --- | --- | --- | --- |
-| `NAVIGATION_ABORTED` | 导航被守卫中止 | 守卫调用 `next(false)` | 是 |
+| `NAVIGATION_ABORTED` | 导航被守卫中止 | 守卫 `return false` | 是 |
 | `NAVIGATION_CANCELLED` | 导航被取消 | 守卫超时/异常、重定向超限、栈不足 | 是 |
 | `NAVIGATION_DUPLICATED` | 重复导航 | `push` 到当前已处于的页面 | 是 |
 | `ROUTE_NOT_FOUND` | 路由未找到 | 严格模式下使用未定义的命名路由 | 是 |

@@ -10,7 +10,6 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 type NavigationGuard = (
   to: RouteLocationNormalized,
   from: RouteLocationNormalized,
-  next?: NavigationGuardNext
 ) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 ```
 
@@ -20,85 +19,24 @@ type NavigationGuard = (
 | --- | --- | --- |
 | `to` | `RouteLocationNormalized` | 即将进入的目标路由 |
 | `from` | `RouteLocationNormalized` | 当前离开的路由 |
-| `next` | `NavigationGuardNext` | 控制导航流向的回调函数（可选，已弃用，推荐使用返回值） |
 
 ### 返回值
 
-守卫支持两种写法：
-
-1. **Promise 式（推荐）**：直接返回值，路由器自动处理
-2. **回调式（已弃用）**：通过 `next()` 控制
+守卫通过返回值控制导航流向：
 
 ```ts
-// Promise 式（推荐）
 router.beforeEach(async (to, from) => {
   if (isLoggedIn()) return true
   return { name: 'login' }
 })
-
-// 回调式（已弃用）
-router.beforeEach((to, from, next) => {
-  if (isLoggedIn()) next()
-  else next({ name: 'login' })
-})
 ```
 
-::: tip 推荐使用 Promise 式
-- 更符合 async/await 风格，代码更清晰
-- 避免忘记调用 `next()` 导致导航挂起
-- 异常会自动转为 `next(false)`，无需 try-catch
-:::
+## 重定向 + 选项（v1.7.0+）
 
-## NavigationGuardNext
-
-控制导航流向的回调函数，支持多种调用形式：
+通过 `{ location, mode }` 对象控制重定向方式：
 
 ```ts
-type NavigationGuardNext = {
-  (): void                                              // 放行
-  (valid: boolean): void                                // true=放行，false=中止
-  (location: RouteLocationRaw): void                    // 重定向
-  (location: RouteLocationRaw, options: NavigationGuardNextOptions): void  // 重定向 + 选项
-  (error: Error): void                                  // 抛出错误
-}
-```
-
-### 放行
-
-```ts
-next()        // 回调式
-return true   // Promise 式
-```
-
-### 中止
-
-中止导航，停留在当前页面：
-
-```ts
-next(false)        // 回调式
-return false       // Promise 式
-```
-
-### 重定向
-
-重定向到其他路由：
-
-```ts
-// 基础重定向（默认使用 push 方式）
-next({ name: 'login' })
-next('/pages/login/login')
-next({ path: '/pages/login/login', query: { redirect: to.fullPath } })
-
-// Promise 式
-return { name: 'login' }
-```
-
-### 重定向 + 选项（v1.7.0+）
-
-通过 `NavigationGuardNextOptions` 控制重定向方式：
-
-```ts
-interface NavigationGuardNextOptions {
+interface RedirectOptions {
   mode?: NavigationRedirectMode  // 'push' | 'replace' | 'relaunch'
 }
 
@@ -107,16 +45,16 @@ type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
 
 ```ts
 // 替换模式：重定向后不保留当前页在栈中
-next({ name: 'login' }, { mode: 'replace' })
-
-// 重启模式：清空页面栈
-next({ name: 'home' }, { mode: 'relaunch' })
-
-// Promise 式（通过返回对象）
-return {
+router.beforeEach(() => ({
   location: { name: 'login' },
   mode: 'replace'
-}
+}))
+
+// 重启模式：清空页面栈
+router.beforeEach(() => ({
+  location: { name: 'home' },
+  mode: 'relaunch'
+}))
 ```
 
 ::: tip mode 的应用场景
@@ -130,13 +68,10 @@ return {
 ### 抛出错误
 
 ```ts
-// Promise 式（推荐）
+// 抛出错误
 throw new Error('权限不足')
 // 或
 return new Error('权限不足')
-
-// 回调式（已弃用）
-next(new Error('权限不足'))
 ```
 
 错误会被 `router.onError` 捕获，并中止导航。
@@ -205,6 +140,35 @@ const routes = [
 
 详见 [RouteConfig.beforeEnter](./type-route-config#beforeenter)。
 
+### 组件内离开守卫
+
+通过 `onBeforeRouteLeave` 在组件 `<script setup>` 中注册离开守卫，组件卸载时自动移除：
+
+```ts
+type RouteLeaveGuard = (to: RouteLocation, from: RouteLocation) => NavigationGuardReturn | Promise<NavigationGuardReturn>
+```
+
+```ts
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+onBeforeRouteLeave((to, from) => {
+  if (hasUnsavedChanges()) {
+    uni.showModal({
+      title: '提示',
+      content: '有未保存的修改，确定离开吗？',
+      success: (res) => {
+        if (res.confirm) {
+          // 用户确认离开，放行
+          return true
+        }
+      }
+    })
+    return false // 中止导航
+  }
+  return true
+})
+```
+
 ## 执行顺序
 
 完整导航的守卫执行顺序：
@@ -236,15 +200,15 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 }
 ```
 
-| 返回值 | 等价于 next() | 说明 |
-| --- | --- | --- |
-| `undefined` / `void` | `next()` | 放行 |
-| `null` | `next()` | 放行 |
-| `true` | `next()` | 放行 |
-| `false` | `next(false)` | 中止 |
-| `RouteLocationRaw` | `next(RouteLocationRaw)` | 重定向（push） |
-| `{ location, mode }` | `next(location, { mode })` | 重定向 + 方式控制 |
-| `Error` | `next(Error)` | 抛出错误，中止导航 |
+| 返回值 | 说明 |
+| --- | --- |
+| `undefined` / `void` | 放行 |
+| `null` | 放行 |
+| `true` | 放行 |
+| `false` | 中止 |
+| `RouteLocationRaw` | 重定向（push） |
+| `{ location, mode }` | 重定向 + 方式控制 |
+| `Error` | 抛出错误，中止导航 |
 
 ```ts
 // 放行
@@ -376,25 +340,11 @@ router.afterEach(() => {
 
 ## 常见问题
 
-### 忘记调用 next() 会怎样？
-
-使用回调式时，若忘记调用 `next()`，守卫超时后（默认 10 秒，可通过 `guardTimeout` 配置）会自动中止导航并输出警告：
-
-```
-[uni-router] Guard timeout after 10000ms, navigation aborted
-```
-
-::: tip 解决方案
-- **推荐使用 Promise 式**，通过返回值控制导航，从根本上避免忘记调用 `next()`
-- 使用回调式时，检查守卫中的所有分支是否都调用了 `next()`
-- 调整 `guardTimeout` 适配异步操作
-:::
-
 ### 守卫中可以访问组件实例吗？
 
 - `beforeEach` / `beforeResolve`：**不可以**，此时目标组件尚未创建
 - `afterEach`：**不可以**，但可以通过 `getCurrentPages()` 获取页面实例
-- `beforeRouteEnter`：可以通过 `next((vm) => {...})` 访问
+- `beforeRouteEnter`：**不支持**，该守卫已从核心库中移除，请使用其他守卫替代
 
 ### 守卫中抛出异常会怎样？
 

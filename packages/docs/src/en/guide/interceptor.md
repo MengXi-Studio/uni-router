@@ -388,7 +388,7 @@ uni.navigateTo({ url: '/protected' })
   → interceptor intercepts
   → router.push({ path: 'protected' })
   → beforeEach guard
-    → not logged in → next({ name: 'login' })
+    → not logged in → return { name: 'login' }
   → redirect to login
 ```
 

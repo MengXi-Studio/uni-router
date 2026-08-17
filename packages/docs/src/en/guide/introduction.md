@@ -114,7 +114,7 @@ Navigation triggered
   → afterEach (global post)
 ```
 
-Guards can pass via `next()`, abort via `next(false)`, or redirect via `next(location)`. See [Route Guards](./guards).
+Guards can pass via `return true` / `undefined`, abort via `return false`, or redirect via `return location`. See [Route Guards](./guards).
 
 ### State Synchronization
 
@@ -159,7 +159,7 @@ The router cannot intercept physical back buttons and browser back. `syncRoute()
 - 🧭 **Four navigation types** — `push` / `replace` / `relaunch` / `back`, auto-detect TabBar pages
 - 🛡️ **Complete guard chain** — `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
 - 🧊 **Cold-start guards** — `guardRoute()` retroactively executes guard chain for H5 URL / mini-program scene / App deeplink direct entry
-- 🔄 **Controllable redirect** — `next(location, { mode })` in guards to specify redirect method
+- 🔄 **Controllable redirect** — `return { location, mode }` in guards to specify redirect method
 - 📦 **Page params** (ParamsPlugin) — `params` passes complex data, not exposed in URL, supports persistence
 - 🔢 **Query enhancement** — `queryInt()` / `queryNumber()` / `queryBool()` type parsing
 - 📡 **Page communication** (ChannelPlugin) — `events` + `eventChannel` bidirectional communication; `useUniEventChannel` supports all navigation methods

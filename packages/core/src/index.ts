@@ -1,5 +1,5 @@
 export { createRouter, ROUTER_SYMBOL } from '@/router'
-export { useRouter, useRoute } from '@/composables'
+export { useRouter, useRoute, onBeforeRouteLeave } from '@/composables'
 
 // 插件导出（用户需要引入并注册）
 export { ParamsPlugin, AnimationPlugin, ChannelPlugin, InterceptorPlugin } from '@/plugins'
@@ -24,11 +24,10 @@ export type {
 	EventChannel,
 	EventListeners,
 	NavigationResult,
-	NavigationGuardNext,
-	NavigationGuardNextOptions,
 	NavigationRedirectMode,
 	NavigationGuard,
 	PostNavigationGuard,
+	RouteLeaveGuard,
 	RouterOnError,
 	RouterOptions,
 	Router,

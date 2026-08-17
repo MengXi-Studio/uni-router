@@ -44,7 +44,7 @@ interface UniApiCause {
 
 | Error Code              | Description                 | Trigger                                           |
 | ----------------------- | --------------------------- | ------------------------------------------------- |
-| `NAVIGATION_ABORTED`    | Navigation aborted by guard | Guard calls `next(false)`                         |
+| `NAVIGATION_ABORTED`    | Navigation aborted by guard | Guard `return false`                         |
 | `NAVIGATION_CANCELLED`  | Navigation cancelled        | Guard exception, redirect limit exceeded, or insufficient page stack (`back()`) |
 | `NAVIGATION_DUPLICATED` | Duplicate navigation        | `push()` to a page already at                     |
 | `ROUTE_NOT_FOUND`       | Route not found             | Using undefined named route in strict mode        |

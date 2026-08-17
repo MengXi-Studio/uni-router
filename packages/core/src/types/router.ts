@@ -20,7 +20,7 @@ export interface GuardRouteOptions {
 	 * 守卫中止时的回调
 	 *
 	 * 冷启动场景下页面已加载，无法真正"阻止进入"。
-	 * 当守卫调用 `next(false)` 中止时，将调用此回调并传入 `NavigationFailure` 对象。
+	 * 当守卫 `return false` 中止时，将调用此回调并传入 `NavigationFailure` 对象。
 	 * 用户可在此回调中执行 `router.relaunch()` 等操作跳转到安全页面。
 	 *
 	 * @param failure - 导航失败对象
@@ -45,7 +45,7 @@ export interface RouterOptions {
 	/**
 	 * 守卫超时时间（毫秒）
 	 *
-	 * 当守卫函数在此时间内既未调用 next() 也未返回 rejected Promise 时，
+	 * 当守卫函数在此时间内未返回结果或抛出异常时，
 	 * 将输出警告并自动中止导航以防止永久挂起。
 	 * 适用于守卫中包含耗时异步操作（如网络请求）的场景。
 	 *

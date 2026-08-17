@@ -278,7 +278,7 @@ router.beforeEach((to, from) => {
 
 ### Solution
 
-Use `next(location)` redirect instead of calling `router.push` in guards:
+Use `return location` redirect instead of calling `router.push` in guards:
 
 ```ts
 // ✅ Redirect

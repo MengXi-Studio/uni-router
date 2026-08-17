@@ -113,7 +113,7 @@ Error code enum, 7 in total:
 
 | Error Code | Description | Trigger Scenario | Recoverable |
 | --- | --- | --- | --- |
-| `NAVIGATION_ABORTED` | Navigation aborted by guard | Guard called `next(false)` | Yes |
+| `NAVIGATION_ABORTED` | Navigation aborted by guard | Guard `return false` | Yes |
 | `NAVIGATION_CANCELLED` | Navigation cancelled | Guard timeout/exception, redirect limit, insufficient stack | Yes |
 | `NAVIGATION_DUPLICATED` | Duplicate navigation | `push` to the page already on | Yes |
 | `ROUTE_NOT_FOUND` | Route not found | Using an undefined named route in strict mode | Yes |
@@ -195,7 +195,7 @@ They **do not conflict**; after `onError` fires, the Promise still rejects and c
 
 ### NAVIGATION_ABORTED
 
-Guard calls `next(false)` to abort navigation:
+Guard calls `return false` to abort navigation:
 
 ```ts
 router.beforeEach((to, from) => {

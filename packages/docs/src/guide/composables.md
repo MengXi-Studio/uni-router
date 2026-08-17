@@ -1,6 +1,6 @@
 # 组合式 API
 
-Uni Router 提供三个组合式函数（Composables），用于在 Vue 3 的 `<script setup>` 中访问路由器实例、当前路由以及页面间通信通道。本章详细讲解用法、响应式原理和实战技巧。
+Uni Router 提供四个组合式函数（Composables），用于在 Vue 3 的 `<script setup>` 中访问路由器实例、当前路由、注册组件内守卫以及页面间通信通道。本章详细讲解用法、响应式原理和实战技巧。
 
 ## useRouter()
 
@@ -291,6 +291,52 @@ channel.once('init', (data) => {
 :::
 
 详见 [`usePageChannel()` API](../api/use-page-channel) 与[页面间通信](./navigation#特殊用法-页面间通信)。
+
+## onBeforeRouteLeave()
+
+组件内离开守卫，在当前组件即将离开时执行。通过返回值控制导航行为，与 Vue Router 4.x 的 `onBeforeRouteLeave` 一致。
+
+::: tip 实现原理
+内部通过 `router.beforeEach` 注册守卫，仅在 `from` 路径匹配当前组件路径时执行用户守卫。组件卸载时自动移除，无需手动清理。
+:::
+
+### 基本用法
+
+```ts
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+onBeforeRouteLeave((to, from) => {
+  if (hasUnsavedChanges) {
+    return false // 中止导航
+  }
+  // 不返回值或 return true 表示放行
+})
+```
+
+### 离开确认对话框
+
+```ts
+onBeforeRouteLeave((to, from) => {
+  if (from.meta.dirty) {
+    return new Promise((resolve) => {
+      uni.showModal({
+        title: '提示',
+        content: '有未保存的修改，确认离开？',
+        success: (res) => resolve(res.confirm ? true : false)
+      })
+    })
+  }
+})
+```
+
+### 注意事项
+
+| 场景 | 说明 |
+| --- | --- |
+| 未注册守卫 | 不拦截，正常放行 |
+| 异步守卫 | 支持 async/await 和返回 Promise |
+| 组件卸载 | 自动移除守卫，无需手动清理 |
+| 全局守卫 | `onBeforeRouteLeave` 注册的守卫优先级低于 `router.beforeEach` 注册的全局守卫 |
 
 ## 在非组件中使用
 

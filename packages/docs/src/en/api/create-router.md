@@ -92,7 +92,7 @@ See [Interceptor Mechanism](../guide/interceptor) for details.
 
 - **Type**: `number`
 - **Default**: `10000` (10 seconds)
-- **Description**: Guard timeout in milliseconds. When a guard function neither calls `next()` nor returns a rejected Promise within this time, a warning is output and navigation is automatically aborted to prevent permanent hanging
+- **Description**: Guard timeout in milliseconds. When a guard function neither returns a value nor throws an exception within this time, a warning is output and navigation is automatically aborted to prevent permanent hanging
 
 ```ts
 const router = createRouter({

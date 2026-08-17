@@ -158,7 +158,7 @@ const routes: RouteConfig[] = [
 
 ::: warning Guard array execution rules
 - Execute in array order
-- If any guard aborts (`next(false)`) or redirects (`next(location)`), subsequent guards do not execute
+- If any guard aborts (`return false`) or redirects (`return location`), subsequent guards do not execute
 - After all guards pass, `beforeResolve` is executed
 :::
 

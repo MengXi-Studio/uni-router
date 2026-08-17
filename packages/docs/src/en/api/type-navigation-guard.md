@@ -10,7 +10,6 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 type NavigationGuard = (
   to: RouteLocationNormalized,
   from: RouteLocationNormalized,
-  next?: NavigationGuardNext
 ) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 ```
 
@@ -20,126 +19,16 @@ type NavigationGuard = (
 | --- | --- | --- |
 | `to` | `RouteLocationNormalized` | The target route being navigated to |
 | `from` | `RouteLocationNormalized` | The current route being navigated away from |
-| `next` | `NavigationGuardNext` | Callback function that controls the navigation flow (optional, deprecated, use return value instead) |
 
 ### Return Value
 
-Guards support two writing styles:
-
-1. **Promise style (recommended)**: Return a value directly, the router handles it automatically
-2. **Callback style (deprecated)**: Control via `next()`
-
 ```ts
-// Promise style (recommended)
+// Return a value directly, the router handles it automatically
 router.beforeEach(async (to, from) => {
   if (isLoggedIn()) return true
   return { name: 'login' }
 })
-
-// Callback style (deprecated)
-router.beforeEach((to, from, next) => {
-  if (isLoggedIn()) next()
-  else next({ name: 'login' })
-})
 ```
-
-::: tip Recommended to use Promise style
-- Better fits async/await style, cleaner code
-- Avoids forgetting to call `next()` causing navigation to hang
-- Exceptions automatically convert to `next(false)`, no try-catch needed
-:::
-
-## NavigationGuardNext
-
-Callback function that controls the navigation flow, supporting multiple call forms:
-
-```ts
-type NavigationGuardNext = {
-  (): void                                              // Allow
-  (valid: boolean): void                                // true=allow, false=abort
-  (location: RouteLocationRaw): void                    // Redirect
-  (location: RouteLocationRaw, options: NavigationGuardNextOptions): void  // Redirect + options
-  (error: Error): void                                  // Throw error
-}
-```
-
-### Allow
-
-```ts
-next()        // Callback style
-return true   // Promise style
-```
-
-### Abort
-
-Abort navigation, stay on the current page:
-
-```ts
-next(false)        // Callback style
-return false       // Promise style
-```
-
-### Redirect
-
-Redirect to another route:
-
-```ts
-// Basic redirect (uses push mode by default)
-next({ name: 'login' })
-next('/pages/login/login')
-next({ path: '/pages/login/login', query: { redirect: to.fullPath } })
-
-// Promise style
-return { name: 'login' }
-```
-
-### Redirect + Options (v1.7.0+)
-
-Control the redirect mode via `NavigationGuardNextOptions`:
-
-```ts
-interface NavigationGuardNextOptions {
-  mode?: NavigationRedirectMode  // 'push' | 'replace' | 'relaunch'
-}
-
-type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
-```
-
-```ts
-// Replace mode: don't keep current page in stack after redirect
-next({ name: 'login' }, { mode: 'replace' })
-
-// Relaunch mode: clear page stack
-next({ name: 'home' }, { mode: 'relaunch' })
-
-// Promise style (via return object)
-return {
-  location: { name: 'login' },
-  mode: 'replace'
-}
-```
-
-::: tip mode use cases
-- **`push` (default)**: Regular redirect, keeps current page in stack
-- **`replace`**: Login redirect (avoids returning to protected page), jump after form submission
-- **`relaunch`**: Logout, switch user, return to home
-
-See [Guard Redirect Mode](../guide/guards#redirect-mode-control).
-:::
-
-### Throw Error
-
-```ts
-// Promise style (recommended)
-throw new Error('Insufficient permissions')
-// or
-return new Error('Insufficient permissions')
-
-// Callback style (deprecated)
-next(new Error('Insufficient permissions'))
-```
-
-The error will be caught by `router.onError` and navigation will be aborted.
 
 ## Guard Type Classification
 
@@ -173,7 +62,7 @@ router.beforeResolve(async (to) => {
 
 ### Global After Hook
 
-Executes after navigation completes, **does not accept `next` parameter**, cannot change navigation flow:
+Executes after navigation completes, **cannot change navigation flow**:
 
 ```ts
 router.afterEach((to, from) => {
@@ -204,6 +93,36 @@ const routes = [
 ```
 
 See [RouteConfig.beforeEnter](./type-route-config#beforeenter).
+
+### Component-level Leave Guard
+
+```ts
+type RouteLeaveGuard = (
+  to: RouteLocation,
+  from: RouteLocation,
+) => NavigationGuardReturn | Promise<NavigationGuardReturn>
+```
+
+Registered via `onBeforeRouteLeave(fn)` in `<script setup>`, automatically removed when the component is unmounted:
+
+```ts
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+// In <script setup>
+onBeforeRouteLeave((to, from) => {
+  if (hasUnsavedChanges()) {
+    uni.showModal({
+      title: 'Confirm',
+      content: 'You have unsaved changes. Leave?',
+      success: (res) => {
+        if (res.confirm) return true
+      }
+    })
+    return false
+  }
+  return true
+})
+```
 
 ## Execution Order
 
@@ -236,15 +155,15 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 }
 ```
 
-| Return Value | Equivalent to next() | Description |
-| --- | --- | --- |
-| `undefined` / `void` | `next()` | Allow |
-| `null` | `next()` | Allow |
-| `true` | `next()` | Allow |
-| `false` | `next(false)` | Abort |
-| `RouteLocationRaw` | `next(RouteLocationRaw)` | Redirect (push) |
-| `{ location, mode }` | `next(location, { mode })` | Redirect + mode control |
-| `Error` | `next(Error)` | Throw error, abort navigation |
+| Return Value | Description |
+| --- | --- |
+| `undefined` / `void` | Allow |
+| `null` | Allow |
+| `true` | Allow |
+| `false` | Abort |
+| `RouteLocationRaw` | Redirect (push) |
+| `{ location, mode }` | Redirect + mode control |
+| `Error` | Throw error, abort navigation |
 
 ```ts
 // Allow
@@ -376,25 +295,13 @@ router.afterEach(() => {
 
 ## FAQ
 
-### What happens if I forget to call next()?
-
-When using the callback style, if you forget to call `next()`, after the guard times out (default 10 seconds, configurable via `guardTimeout`), it automatically aborts navigation and outputs a warning:
-
-```
-[uni-router] Guard timeout after 10000ms, navigation aborted
-```
-
-::: tip Solutions
-- **Use Promise style** to control navigation via return values, fundamentally avoiding forgetting to call `next()`
-- When using callback style, check that all branches in the guard call `next()`
-- Adjust `guardTimeout` for async operations
-:::
-
 ### Can I access the component instance in a guard?
 
 - `beforeEach` / `beforeResolve`: **No**, the target component hasn't been created yet
 - `afterEach`: **No**, but you can get the page instance via `getCurrentPages()`
-- `beforeRouteEnter`: Can access via `next((vm) => {...})`
+- Component-level `onBeforeRouteLeave`: **No**, the component instance is still active but the guard is called before the navigation completes
+
+> **Note**: `beforeRouteEnter` is not supported. Use `onBeforeRouteLeave` for component-level leave guard, or use global guards for enter logic.
 
 ### What happens if an exception is thrown in a guard?
 

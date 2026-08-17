@@ -84,3 +84,5 @@ export function useRoute(): Ref<RouteLocation> {
 	const router = useRouter()
 	return getReactiveRoute(router)
 }
+
+export { onBeforeRouteLeave } from './guard/route-leave'

@@ -153,35 +153,24 @@ await router.replace({ name: 'user' }) // user 是 TabBar 页面
 
 ## 守卫差异
 
-### next() 行为
+### 守卫返回值
 
-两者的 `next()` 行为基本一致，但 Uni Router 有以下扩展：
+两者行为一致，但 Uni Router 支持扩展的返回值模式来控制重定向方式：
 
 ```ts
 // vue-router
-next()                    // 放行
-next(false)               // 中止
-next('/path')             // 重定向
-next({ name: 'route' })   // 重定向
+return true                         // 放行
+return false                        // 中止
+return { name: 'route' }            // 重定向
+return '/path'                      // 重定向
 
-// Uni Router — 回调式（v1.7.0+）
-next()                                          // 放行
-next(false)                                     // 中止
-next('/path')                                   // 重定向（默认 push）
-next({ name: 'route' })                         // 重定向（默认 push）
-next({ name: 'route' }, { mode: 'replace' })    // 重定向（指定方式）
-next({ name: 'route' }, { mode: 'relaunch' })   // 重定向（清空栈）
-```
-
-回调式 `next()` 已弃用，推荐使用返回值：
-
-```ts
-// Uni Router — 返回值式（推荐）
-return true                                     // 放行
-return false                                    // 中止
-return { name: 'route' }                        // 重定向（默认 push）
-return { location: { name: 'route' }, mode: 'replace' }  // 重定向（指定方式）
-return new Error('权限不足')                     // 抛出错误
+// Uni Router（与 Vue Router 4.x 一致）
+return true                         // 放行
+return false                        // 中止
+return { name: 'route' }            // 重定向（默认 push）
+return { location: { name: 'route' }, mode: 'replace' }   // 重定向（指定方式）
+return { location: { name: 'route' }, mode: 'relaunch' }  // 重定向（清空栈）
+return new Error('权限不足')         // 抛出错误
 ```
 
 ### 重定向深度限制

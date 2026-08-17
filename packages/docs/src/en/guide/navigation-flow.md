@@ -28,9 +28,9 @@ router.push({ name: 'about' })
 │    │                                                    │
 │    ├─ 2.1 runBeforeGuards()                             │
 │    │      └─ execute beforeEach guards in order         │
-│    │           ├─ next() → continue                     │
-│    │           ├─ next(false) → abort (ABORTED)         │
-│    │           ├─ next(location) → redirect             │
+│    │           ├─ return true / undefined → continue         │
+│    │           ├─ return false → abort (ABORTED)         │
+│    │           ├─ return location → redirect             │
 │    │           └─ timeout/exception → cancel (CANCELLED)│
 │    │                                                    │
 │    ├─ 2.2 runBeforeEnterGuards()                        │
@@ -185,7 +185,7 @@ type GuardResult =
 
 ### 2.4 Redirect Handling
 
-When a guard calls `next(location, { mode })`:
+When a guard uses `return { location, mode }`:
 
 ```ts
 const redirectMode = result.mode ?? (mode === 'back' ? 'relaunch' : mode)
@@ -384,7 +384,7 @@ router.beforeEach((to, from) => {
 })
 ```
 
-To navigate in a guard, use `next(location)` redirect.
+To navigate in a guard, use `return location` redirect.
 :::
 
 ## Error Propagation
@@ -394,7 +394,7 @@ To navigate in a guard, use `next(location)` redirect.
 | Phase | Error Code | Trigger Condition |
 | --- | --- | --- |
 | Duplicate check | `NAVIGATION_DUPLICATED` | push to same location |
-| Guard abort | `NAVIGATION_ABORTED` | `next(false)` |
+| Guard abort | `NAVIGATION_ABORTED` | `return false` |
 | Guard timeout | `NAVIGATION_CANCELLED` | Guard didn't resolve in time |
 | Guard exception | `NAVIGATION_CANCELLED` | Guard throw / reject |
 | Redirect limit | `NAVIGATION_CANCELLED` | depth > 10 |
@@ -465,7 +465,7 @@ Taking "unauthenticated user accessing a protected page" as an example:
 3. executeNavigation(to, from, 'push', depth=0):
    ├─ beforeEach:
    │   └─ detect requireAuth && !isLoggedIn
-   │   └─ next({ name: 'login' }, { mode: 'replace' })
+   │   └─ return { location: { name: 'login' }, mode: 'replace' }
    │   └─ returns { type: 'next', redirect: {name:'login'}, mode: 'replace' }
    │
    ├─ handleGuardResult:
@@ -475,7 +475,7 @@ Taking "unauthenticated user accessing a protected page" as an example:
 4. executeNavigation(login, from, 'replace', depth=1):
    ├─ beforeEach:
    │   └─ to.name === 'login' && !isLoggedIn → pass
-   │   └─ next()
+  │   └─ return true
    ├─ beforeEnter: (login route has no specific guard)
    ├─ beforeResolve: pass
    ├─ setCurrentRoute(login)  ← update in advance, ensures target page's onLoad/onShow sees route.value ready
