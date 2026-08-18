@@ -20,20 +20,20 @@
 
 		<view class="section">
 			<view class="section-title">NAVIGATION_ABORTED - 导航被守卫中止</view>
-			<view class="info-text">守卫中调用 next(false) 中止导航时抛出。</view>
+			<view class="info-text">守卫中 return false 中止导航时抛出。</view>
 			<view class="btn btn-danger" @click="testAborted">测试中止导航</view>
-			<view class="code-block"> router.beforeEach((to, from, next) => {\n next(false) // 中止导航\n})\n// => NavigationFailure: NAVIGATION_ABORTED </view>
+			<view class="code-block"> router.beforeEach((to, from) => {\n return false // 中止导航\n})\n// => NavigationFailure: NAVIGATION_ABORTED </view>
 		</view>
 
 		<view class="section">
 			<view class="section-title">NAVIGATION_CANCELLED - 导航被取消</view>
-			<view class="info-text">守卫超时未调用 next()、守卫抛出异常、重定向超限、或 back() 页面栈不足时抛出。</view>
+			<view class="info-text">守卫超时未返回结果、守卫抛出异常、重定向超限、或 back() 页面栈不足时抛出。</view>
 			<view class="btn btn-warn" @click="testCancelledTimeout">测试：守卫超时</view>
 			<view class="btn btn-danger" @click="testCancelledException">测试：守卫抛出异常</view>
 			<view class="btn btn-gray" @click="testCancelledBackStack">测试：back() 栈不足</view>
 			<view class="code-block">
-				// 1. 守卫超时（guardTimeout）\nrouter.beforeEach(async (to, from, next) => {\n await verySlowOperation() // 超时\n next()\n})\n// => NAVIGATION_CANCELLED\n\n// 2. 守卫抛出未捕获异常\nrouter.beforeEach(() => {\n
-				throw new Error('guard error')\n})\n// => NAVIGATION_CANCELLED\n\n// 3. back() 页面栈不足\nrouter.back(10) // 当前栈仅 1-2 层\n// => NAVIGATION_CANCELLED
+				// 1. 守卫超时（guardTimeout）\nrouter.beforeEach(async () => {\n await new Promise(() => {}) // 永不 resolve，触发 guardTimeout\n})\n// => NAVIGATION_CANCELLED\n\n// 2. 守卫抛出未捕获异常\nrouter.beforeEach(()
+				=> {\n throw new Error('guard error')\n})\n// => NAVIGATION_CANCELLED\n\n// 3. back() 页面栈不足\nrouter.back(10) // 当前栈仅 1-2 层\n// => NAVIGATION_CANCELLED
 			</view>
 		</view>
 
@@ -67,7 +67,7 @@
 		<view class="section">
 			<view class="section-title">错误码一览</view>
 			<view class="code-block">
-				enum RouterErrorCode {\n NAVIGATION_ABORTED // 导航被守卫中止（next(false)）\n NAVIGATION_CANCELLED // 导航被取消（超时/异常/重定向超限/栈不足）\n NAVIGATION_DUPLICATED // 重复导航\n ROUTE_NOT_FOUND //
+				enum RouterErrorCode {\n NAVIGATION_ABORTED // 导航被守卫中止（return false）\n NAVIGATION_CANCELLED // 导航被取消（超时/异常/重定向超限/栈不足）\n NAVIGATION_DUPLICATED // 重复导航\n ROUTE_NOT_FOUND //
 				路由未找到\n NAVIGATION_API_ERROR // uni API 调用失败\n SETUP_ERROR // 初始化错误\n}
 			</view>
 		</view>
@@ -94,13 +94,11 @@ async function testDuplicate() {
 }
 
 async function testAborted() {
-	const removeGuard = router.beforeEach((to, _from, next) => {
+	const removeGuard = router.beforeEach(to => {
 		if (to.path === '/pages/about/about') {
-			next(false)
 			removeGuard()
-			return
+			return false
 		}
-		next()
 	})
 
 	try {
@@ -113,12 +111,10 @@ async function testAborted() {
 }
 
 async function testCancelledTimeout() {
-	const removeGuard = router.beforeEach(() => {
-		// 故意不调用 next()，等待超时
-		uni.showToast({ title: '守卫未调用 next()，等待超时...', icon: 'none' })
-		setTimeout(() => {
-			removeGuard()
-		}, 1000)
+	const removeGuard = router.beforeEach(async () => {
+		// 守卫不返回结果，触发 guardTimeout
+		uni.showToast({ title: '守卫未返回结果，等待超时...', icon: 'none' })
+		await new Promise(() => {}) // 永不 resolve
 	})
 
 	try {
@@ -127,6 +123,8 @@ async function testCancelledTimeout() {
 		if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_CANCELLED) {
 			uni.showToast({ title: '捕获导航取消（超时）', icon: 'none' })
 		}
+	} finally {
+		removeGuard()
 	}
 }
 

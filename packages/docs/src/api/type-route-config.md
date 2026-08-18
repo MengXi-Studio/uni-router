@@ -158,7 +158,7 @@ const routes: RouteConfig[] = [
 
 ::: warning 数组守卫的执行规则
 - 按数组顺序执行
-- 任一守卫中止（`next(false)`）或重定向（`next(location)`），后续守卫不再执行
+- 任一守卫中止（`return false`）或重定向（`return location`），后续守卫不再执行
 - 所有守卫通过后，才会执行 `beforeResolve`
 :::
 

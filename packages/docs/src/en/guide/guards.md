@@ -1,10 +1,6 @@
 # Route Guards
 
-Route guards are Uni Router's core capability, allowing you to insert custom logic during navigation: authentication, logging, data preloading, leave confirmation, etc. This chapter dives deep into the guard execution mechanism, the return-value pattern (recommended), and the legacy `next()` callback pattern (deprecated).
-
-::: tip v2.1.0 Changes
-Since v2.1.0, guards fully support the **return-value pattern** (consistent with Vue Router 4.x), controlling navigation behavior through return values. The legacy `next()` callback pattern remains compatible but is marked as deprecated. New code should use the return-value pattern.
-:::
+Route guards are Uni Router's core capability, allowing you to insert custom logic during navigation: authentication, logging, data preloading, leave confirmation, etc. This chapter dives deep into the guard execution mechanism and the return-value pattern (recommended).
 
 ## Guard Overview
 
@@ -713,20 +709,8 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 // Pre guard (return-value pattern, recommended)
 type NavigationGuard = (
   to: RouteLocation,
-  from: RouteLocation,
-  next?: NavigationGuardNext  // Deprecated, use return value for new code
+  from: RouteLocation
 ) => NavigationGuardReturn | Promise<NavigationGuardReturn>
-
-// next callback (deprecated)
-type NavigationGuardNext = (
-  to?: RouteLocationRaw | false,
-  options?: NavigationGuardNextOptions
-) => void
-
-// next options (deprecated)
-interface NavigationGuardNextOptions {
-  mode?: NavigationRedirectMode // 'push' | 'replace' | 'relaunch'
-}
 
 // Redirect mode
 type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
@@ -737,46 +721,68 @@ type PostNavigationGuard = (
   from: RouteLocation,
   failure?: NavigationFailure | null
 ) => void
+
+// Component leave guard (used with onBeforeRouteLeave)
+type RouteLeaveGuard = (
+  to: RouteLocation,
+  from: RouteLocation
+) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 ```
 
-## Legacy next() Callback Pattern (Deprecated)
+## onBeforeRouteLeave Component Leave Guard
 
-::: warning Compatibility Note
-The `next()` callback pattern remains compatible in v2.1.0 but is marked as deprecated. New code should use the return-value pattern.
+`onBeforeRouteLeave` is a Composition API function that registers a leave guard within a component's `<script setup>`. It provides a convenient way to intercept navigation away from the current component's page.
 
-- Guard mode is auto-detected by parameter count: `(to, from, next)` three params → callback mode; `(to, from)` two params → return-value mode
-- Mixing both patterns will trigger a warning in the console
-:::
+Internally, it registers the guard via `router.beforeEach` and automatically removes it when the component is unmounted, so no manual cleanup is needed.
+
+### Example: Leave Confirmation Dialog
 
 ```ts
-// Callback style (deprecated)
-router.beforeEach((to, from, next) => {
-  if (condition) {
-    next({ name: 'login' })  // redirect
-  } else {
-    next()  // pass
-  }
-})
+<script setup lang="ts">
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+import { ref } from 'vue'
 
-// With redirect options
-router.beforeEach((to, from, next) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' }, { mode: 'replace' })
-  } else {
-    next()
+const hasUnsavedChanges = ref(false)
+
+onBeforeRouteLeave((to, from) => {
+  if (hasUnsavedChanges.value) {
+    return new Promise((resolve) => {
+      uni.showModal({
+        title: 'Confirm',
+        content: 'You have unsaved changes. Leave anyway?',
+        success: (res) => {
+          resolve(res.confirm ? true : false)
+        }
+      })
+    })
   }
 })
+</script>
 ```
 
-### next() Behaviors
+### Example: Save Data Before Leaving
 
-| Call | Behavior | Equivalent Return Value |
-| --- | --- | --- |
-| `next()` | Pass | `return undefined` / `return true` |
-| `next(false)` | Abort (`NAVIGATION_ABORTED`) | `return false` |
-| `next(location)` | Redirect | `return location` |
-| `next(error)` | Cancel (`NAVIGATION_CANCELLED`) | `throw error` / `return error` |
-| `next(location, { mode })` | Redirect + mode | `return { location, mode }` |
+```ts
+<script setup lang="ts">
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+onBeforeRouteLeave(async (to, from) => {
+  // Auto-save draft before leaving
+  if (isDirty.value) {
+    try {
+      await saveDraft()
+      uni.showToast({ title: 'Draft saved', icon: 'success' })
+    } catch (err) {
+      return false // Abort navigation if save fails
+    }
+  }
+})
+</script>
+```
+
+::: tip Scope
+`onBeforeRouteLeave` only guards navigations where the **current component's page** is the `from` route. It does not affect navigations from other pages or components.
+:::
 
 ## Best Practices
 
@@ -801,12 +807,6 @@ router.beforeEach((to, from) => {
 router.beforeEach(async (to, from) => {
   const ok = await check()
   if (!ok) return { name: 'login' }
-})
-
-// ⚠️ Deprecated: next callback pattern
-router.beforeEach(async (to, from, next) => {
-  const ok = await check()
-  next(ok ? undefined : { name: 'login' })
 })
 ```
 

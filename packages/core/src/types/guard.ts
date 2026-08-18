@@ -4,42 +4,10 @@ import type { NavigationFailure } from './error'
 /**
  * 导航守卫重定向方式
  *
- * 用于 next(location, options) 的 options.mode，指定重定向使用的导航方式。
+ * 通过守卫返回值中的 `mode` 字段指定重定向使用的导航方式。
  * 未指定时沿用触发守卫的原始导航方式。
  */
 export type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
-
-/**
- * 导航守卫 next 回调的可选参数
- *
- * @deprecated 自 v2.1.0 起弃用，新代码应使用返回值模式替代 next 回调。
- * 详见 NavigationGuard 文档。
- */
-export interface NavigationGuardNextOptions {
-	/**
-	 * 重定向使用的导航方式
-	 *
-	 * 仅在 next(location) 重定向时生效。
-	 * 未指定时沿用触发守卫的原始导航方式（push/replace/relaunch）；
-	 * 原始导航为 back 时，重定向回退为 relaunch。
-	 */
-	mode?: NavigationRedirectMode
-}
-
-/**
- * 导航守卫的 next 回调函数
- *
- * @deprecated 自 v2.1.0 起弃用，新代码应使用返回值模式。
- * 守卫函数通过返回值控制导航行为：
- * - `return undefined` / `return true` — 放行
- * - `return false` — 中止导航
- * - `return '/login'` / `return { name: 'login' }` — 重定向
- * - `throw new Error()` — 取消导航
- *
- * @param to - 传入 false 中断导航，传入路由位置重定向，不传参数则放行
- * @param options - 重定向选项，仅在传入 location 重定向时生效
- */
-export type NavigationGuardNext = (to?: RouteLocationRaw | false, options?: NavigationGuardNextOptions) => void
 
 /**
  * 导航守卫的返回值类型
@@ -57,9 +25,8 @@ export type NavigationGuardReturn = void | undefined | boolean | RouteLocationRa
 /**
  * 前置导航守卫函数类型
  *
- * 支持两种模式：
+ * 通过返回值控制导航行为，与 Vue Router 4.x 一致：
  *
- * **1. 返回值模式（推荐，v2.1.0+）**
  * ```typescript
  * router.beforeEach((to, from) => {
  *   if (to.meta.requireAuth && !isLoggedIn()) {
@@ -75,22 +42,11 @@ export type NavigationGuardReturn = void | undefined | boolean | RouteLocationRa
  * })
  * ```
  *
- * **2. next 回调模式（已弃用，v2.0.x 及更早）**
- * ```typescript
- * router.beforeEach((to, from, next) => {
- *   if (condition) {
- *     next('/login')
- *   } else {
- *     next()
- *   }
- * })
- * ```
- *
  * @param to - 即将进入的目标路由
  * @param from - 当前导航正要离开的路由
- * @param next - （已弃用）必须调用以 resolve 此守卫。新代码应使用返回值模式
+ * @returns 返回值控制导航行为：undefined/true=放行，false=中止，RouteLocationRaw=重定向，Error=取消
  */
-export type NavigationGuard = (to: RouteLocation, from: RouteLocation, next?: NavigationGuardNext) => NavigationGuardReturn | Promise<NavigationGuardReturn>
+export type NavigationGuard = (to: RouteLocation, from: RouteLocation) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 
 /**
  * 后置导航钩子函数类型
@@ -103,3 +59,15 @@ export type NavigationGuard = (to: RouteLocation, from: RouteLocation, next?: Na
  * @param failure - 导航失败时的错误信息，成功时为空
  */
 export type PostNavigationGuard = (to: RouteLocation, from: RouteLocation, failure?: NavigationFailure | null) => void
+
+/**
+ * 组件内离开守卫函数类型
+ *
+ * 用于 onBeforeRouteLeave 组合式 API，与 Vue Router 4.x 一致。
+ * 通过返回值控制导航行为。
+ *
+ * @param to - 即将进入的目标路由
+ * @param from - 当前正要离开的路由
+ * @returns 返回值控制导航行为：undefined/true=放行，false=中止，RouteLocationRaw=重定向，Error=取消
+ */
+export type RouteLeaveGuard = (to: RouteLocation, from: RouteLocation) => NavigationGuardReturn | Promise<NavigationGuardReturn>

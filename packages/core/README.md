@@ -19,7 +19,7 @@
 ## 特性
 
 - **vue-router 风格 API** - `push` / `replace` / `relaunch` / `back`
-- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`，`guardRoute` 冷启动补执行
+- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave`，`guardRoute` 冷启动补执行
 - **命名路由 & 路由元信息** - 通过 `name` 导航，`meta` 携带自定义数据
 - **插件架构** - ParamsPlugin / AnimationPlugin / ChannelPlugin / InterceptorPlugin 按需注册
 - **TypeScript 类型提示** - 路由名称和路径自动补全与类型检查
@@ -30,7 +30,7 @@
 - **导航动画** - `push` / `replace` / `back` 支持动画参数，仅 App 端
 - **路由状态自动同步** - `app.use(router)` 注入全局 Mixin 自动 `syncRoute()`
 - **错误处理** - `RouterError` / `NavigationFailure` / `UniApiError`，支持 `instanceof` 精准判断
-- **组合式 API** - `useRouter()` / `useRoute()` / `usePageChannel()`
+- **组合式 API** - `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()`
 
 ## 安装
 
@@ -87,6 +87,15 @@ router.beforeEach((to, from) => {
 		return { name: 'login' } // 重定向
 	}
 	// 不返回值或 return true 表示放行
+})
+
+// 组件内离开守卫（onBeforeRouteLeave）
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+onBeforeRouteLeave((to, from) => {
+	if (hasUnsavedChanges) {
+		return false // 中止导航
+	}
 })
 ```
 

@@ -32,8 +32,8 @@ router.beforeEach((to, from) => {
 
 	if (to.meta.requireAuth && !isLoggedIn) {
 		console.log('[beforeEach] 需要登录，重定向到登录页')
-		// 使用 replace 模式重定向，避免登录页之后残留受保护页面的历史
-		return { location: { path: '/pages/login/index', query: { redirect: to.fullPath } }, mode: 'replace' }
+		// 返回路由位置重定向，避免登录页之后残留受保护页面的历史
+		return { path: '/pages/login/index', query: { redirect: to.fullPath } }
 	}
 	// 不返回值 = 放行
 })

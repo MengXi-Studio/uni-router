@@ -105,7 +105,7 @@ eventChannel.emit('init', { source: 'replace' })
 ::: tip When to use replace instead of push
 - After successful login: avoid leaving the login page in the stack
 - After form submission: avoid users going back to the form and resubmitting
-- Redirect scenarios: `next(location, { mode: 'replace' })` in guards
+- Redirect scenarios: `{ location, mode: 'replace' }` in guards
 :::
 
 ### relaunch()
@@ -509,9 +509,9 @@ When `onLaunch` fires, the page stack is empty and `router.currentRoute` is stil
 
 | Guard Result | Behavior |
 | --- | --- |
-| Pass (`next()`) | No navigation, resolves with the target route |
-| Redirect (`next(location)`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
-| Abort (`next(false)`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
+| Pass (`return true` / `undefined`) | No navigation, resolves with the target route |
+| Redirect (`return location`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
+| Abort (`return false`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
 
 ::: warning Cold start cannot truly "block entry"
 In cold start scenarios the page is already loaded, so `guardRoute()` cannot truly prevent the page from displaying. When a guard aborts, using the `onAbort` callback to execute `router.relaunch()` to navigate to a safe page is the recommended approach.

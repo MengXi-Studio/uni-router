@@ -28,9 +28,9 @@ router.push({ name: 'about' })
 │    │                                                    │
 │    ├─ 2.1 runBeforeGuards()                             │
 │    │      └─ 依次执行 beforeEach 守卫                    │
-│    │           ├─ next() → 继续                          │
-│    │           ├─ next(false) → 中止 (ABORTED)           │
-│    │           ├─ next(location) → 重定向                │
+│    │           ├─ return true / undefined → 继续          │
+│    │           ├─ return false → 中止 (ABORTED)           │
+│    │           ├─ return location → 重定向                │
 │    │           └─ 超时/异常 → 取消 (CANCELLED)            │
 │    │                                                    │
 │    ├─ 2.2 runBeforeEnterGuards()                        │
@@ -185,7 +185,7 @@ type GuardResult =
 
 ### 2.4 重定向的处理
 
-当守卫调用 `next(location, { mode })` 时：
+当守卫 `return { location, mode }` 时：
 
 ```ts
 const redirectMode = result.mode ?? (mode === 'back' ? 'relaunch' : mode)
@@ -382,7 +382,7 @@ router.beforeEach((to, from) => {
 })
 ```
 
-如需在守卫中跳转，使用 `next(location)` 重定向。
+如需在守卫中跳转，使用 `return location` 重定向。
 :::
 
 ## 错误传播
@@ -392,7 +392,7 @@ router.beforeEach((to, from) => {
 | 阶段 | 错误码 | 触发条件 |
 | --- | --- | --- |
 | 重复检测 | `NAVIGATION_DUPLICATED` | push 到相同位置 |
-| 守卫中止 | `NAVIGATION_ABORTED` | `next(false)` |
+| 守卫中止 | `NAVIGATION_ABORTED` | `return false` |
 | 守卫超时 | `NAVIGATION_CANCELLED` | 守卫超时未 resolve |
 | 守卫异常 | `NAVIGATION_CANCELLED` | 守卫 throw / reject |
 | 重定向超限 | `NAVIGATION_CANCELLED` | depth > 10 |
@@ -463,7 +463,7 @@ back() 返回原页面:
 3. executeNavigation(to, from, 'push', depth=0):
    ├─ beforeEach:
    │   └─ 检测 requireAuth && !isLoggedIn
-   │   └─ next({ name: 'login' }, { mode: 'replace' })
+   │   └─ return { location: { name: 'login' }, mode: 'replace' }
    │   └─ 返回 { type: 'next', redirect: {name:'login'}, mode: 'replace' }
    │
    ├─ handleGuardResult:
@@ -473,7 +473,7 @@ back() 返回原页面:
 4. executeNavigation(login, from, 'replace', depth=1):
    ├─ beforeEach:
    │   └─ to.name === 'login' && !isLoggedIn → 放行
-   │   └─ next()
+  │   └─ return true
    ├─ beforeEnter: (login 路由无独享守卫)
    ├─ beforeResolve: 放行
    ├─ setCurrentRoute(login)  ← 提前更新，确保目标页 onLoad/onShow 时 route.value 已就绪

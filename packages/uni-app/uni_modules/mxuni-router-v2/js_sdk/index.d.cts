@@ -1,5 +1,5 @@
-import { R as RouterOptions, a as Router, b as RouteLocation, E as EventChannel, c as RouterErrorCode, U as UniApiError$1, d as UniApiCause } from './index-BNcOXcW2.cjs';
-export { A as AnimationPlugin, C as ChannelPlugin, D as DEFAULT_ANIMATION_DURATION, e as EventListeners, G as GuardRouteOptions, I as InterceptorPlugin, N as NavigationAnimation, f as NavigationCompleteContext, g as NavigationGuard, h as NavigationGuardNext, i as NavigationGuardNextOptions, j as NavigationPrepareContext, k as NavigationRedirectMode, l as NavigationResult, P as ParamObject, m as ParamValue, n as ParamsInput, o as ParamsPlugin, p as PluginContext, q as PostNavigationGuard, Q as QueryValue, r as RouteConfig, s as RouteLocationNamedRaw, t as RouteLocationPathRaw, u as RouteLocationRaw, v as RouteMeta, w as RouteName, x as RouteNameMap, y as RoutePath, z as RouterOnError, B as RouterPlugin, F as UniAnimationType, H as usePageChannel } from './index-BNcOXcW2.cjs';
+import { R as RouterOptions, a as Router, b as RouteLeaveGuard, c as RouteLocation, E as EventChannel, d as RouterErrorCode, U as UniApiError$1, e as UniApiCause } from './index-BFIS9K8x.cjs';
+export { A as AnimationPlugin, C as ChannelPlugin, D as DEFAULT_ANIMATION_DURATION, f as EventListeners, G as GuardRouteOptions, I as InterceptorPlugin, N as NavigationAnimation, g as NavigationCompleteContext, h as NavigationGuard, i as NavigationPrepareContext, j as NavigationRedirectMode, k as NavigationResult, P as ParamObject, l as ParamValue, m as ParamsInput, n as ParamsPlugin, o as PluginContext, p as PostNavigationGuard, Q as QueryValue, q as RouteConfig, r as RouteLocationNamedRaw, s as RouteLocationPathRaw, t as RouteLocationRaw, u as RouteMeta, v as RouteName, w as RouteNameMap, x as RoutePath, y as RouterOnError, z as RouterPlugin, B as UniAnimationType, F as usePageChannel } from './index-BFIS9K8x.cjs';
 import { Ref } from 'vue';
 
 /**
@@ -37,6 +37,46 @@ declare const ROUTER_SYMBOL: unique symbol;
  * ```
  */
 declare function createRouter(options: RouterOptions): Router;
+
+/**
+ * 组件内离开守卫，在当前组件即将离开时执行
+ *
+ * 通过返回值控制导航行为，与 Vue Router 4.x 的 onBeforeRouteLeave 一致：
+ * - `undefined` / `true` — 放行
+ * - `false` — 中止导航
+ * - `RouteLocationRaw` — 重定向
+ * - `Error` — 取消导航
+ * - 抛出异常 — 取消导航
+ *
+ * 内部通过 router.beforeEach 注册守卫，在组件卸载时自动移除。
+ *
+ * @param guard - 离开守卫函数，接收目标路由和来源路由，通过返回值控制导航
+ *
+ * @example
+ * ```ts
+ * import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+ *
+ * onBeforeRouteLeave((to, from) => {
+ *   if (hasUnsavedChanges) {
+ *     return false // 中止导航
+ *   }
+ * })
+ *
+ * // 异步离开确认
+ * onBeforeRouteLeave((to, from) => {
+ *   if (from.meta.dirty) {
+ *     return new Promise((resolve) => {
+ *       uni.showModal({
+ *         title: '提示',
+ *         content: '有未保存的修改，确认离开？',
+ *         success: (res) => resolve(res.confirm ? true : false)
+ *       })
+ *     })
+ *   }
+ * })
+ * ```
+ */
+declare function onBeforeRouteLeave(guard: RouteLeaveGuard): void;
 
 /**
  * 获取当前路由器实例
@@ -165,4 +205,4 @@ declare class UniApiError extends Error {
     constructor(api: string, cause: UniApiCause);
 }
 
-export { EventChannel, NavigationFailure, ROUTER_SYMBOL, RouteLocation, Router, RouterError, RouterErrorCode, RouterOptions, UniApiCause, UniApiError, UniEventChannel, createRouter, noopChannel, useRoute, useRouter };
+export { EventChannel, NavigationFailure, ROUTER_SYMBOL, RouteLeaveGuard, RouteLocation, Router, RouterError, RouterErrorCode, RouterOptions, UniApiCause, UniApiError, UniEventChannel, createRouter, noopChannel, onBeforeRouteLeave, useRoute, useRouter };

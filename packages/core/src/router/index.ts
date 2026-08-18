@@ -701,8 +701,8 @@ class UniRouter implements Router {
 	 *
 	 * 根据守卫返回的结果决定后续行为：
 	 * - abort: 中止导航并抛出 NavigationFailure
-	 * - next + redirect: 递归执行重定向导航
-	 * - next: 继续执行后续守卫
+	 * - allow + redirect: 递归执行重定向导航
+	 * - allow: 继续执行后续守卫
 	 */
 	private handleGuardResult(
 		result: GuardResult,

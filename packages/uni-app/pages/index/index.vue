@@ -262,7 +262,7 @@
 				<text class="btn-text-secondary">uni.navigateBack（被拦截转为 back）</text>
 			</view>
 			<view class="warn-tip">
-				⚠️ 关于 uni.switchTab：本项目未配置 TabBar，故未提供演示。switchTab 同样会被拦截并走完整守卫链（包括 H5 平台），守卫中可通过 next(false) 拒绝 TabBar 切换（如未登录时跳转个人中心）。详见官方文档。
+				⚠️ 关于 uni.switchTab：本项目未配置 TabBar，故未提供演示。switchTab 同样会被拦截并走完整守卫链（包括 H5 平台），守卫中可通过 return false 拒绝 TabBar 切换（如未登录时跳转个人中心）。详见官方文档。
 			</view>
 		</view>
 

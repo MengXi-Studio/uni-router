@@ -80,6 +80,21 @@
 			</view>
 		</view>
 
+		<!-- onBeforeRouteLeave -->
+		<view class="card">
+			<text class="card-title">onBeforeRouteLeave - 组件内离开守卫</text>
+			<text class="hint">通过返回值模式控制离开导航，组件卸载时自动移除守卫</text>
+			<view class="info-row">
+				<text class="info-label">表单状态</text>
+				<text :class="['info-value', hasUnsavedChanges ? 'inactive' : 'active']">
+					{{ hasUnsavedChanges ? '有未保存的修改' : '无未保存修改' }}
+				</text>
+			</view>
+			<view class="btn btn-warning" @click="toggleDirty">
+				<text class="btn-text">{{ hasUnsavedChanges ? '标记为已保存' : '模拟未保存修改' }}</text>
+			</view>
+		</view>
+
 		<!-- RouterLink + 组合式 API -->
 		<view class="card">
 			<text class="card-title">RouterLink 组件</text>
@@ -96,7 +111,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { useRouter, useRoute, usePageChannel, noopChannel } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
+import { useRouter, useRoute, usePageChannel, noopChannel, onBeforeRouteLeave } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
 import router from '../../router'
 
 // 使用组合式 API 获取路由器和路由位置
@@ -105,6 +120,23 @@ const route = useRoute()
 
 const lastError = ref('')
 const channelLog = ref('')
+const hasUnsavedChanges = ref(false)
+
+function toggleDirty() {
+	hasUnsavedChanges.value = !hasUnsavedChanges.value
+	uni.showToast({
+		title: hasUnsavedChanges.value ? '已标记为未保存' : '已标记为已保存',
+		icon: 'none'
+	})
+}
+
+// 组件内离开守卫：有未保存修改时阻止离开
+onBeforeRouteLeave(() => {
+	if (hasUnsavedChanges.value) {
+		uni.showToast({ title: '有未保存的修改，已阻止离开', icon: 'none' })
+		return false
+	}
+})
 
 // usePageChannel() 在目标页调用获取通信通道；本页作为发起页，调用时返回 noopChannel（无操作）
 // 目标页 about/index.vue 通过 usePageChannel() 获取真实通道实现双向通信
@@ -264,6 +296,14 @@ async function pushWithChannel() {
 	color: #ff4d4f;
 }
 
+.info-value.active {
+	color: #07c160;
+}
+
+.info-value.inactive {
+	color: #ff4d4f;
+}
+
 .btn {
 	background: #007aff;
 	border-radius: 12rpx;
@@ -275,6 +315,10 @@ async function pushWithChannel() {
 .btn-secondary {
 	background: #fff;
 	border: 2rpx solid #007aff;
+}
+
+.btn-warning {
+	background: #ff9500;
 }
 
 .btn-text {

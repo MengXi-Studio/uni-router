@@ -1,3 +1,43 @@
+## 2.2.0（2026-08-18）
+
+### 破坏性变更
+
+- **彻底移除 `next()` 回调模式** - 守卫系统全面采用返回值模式，与 Vue Router 4.x 完全一致
+  - 删除 `NavigationGuardNext` 类型，不再支持 `(to, from, next)` 三参数签名
+  - 删除 `NavigationGuardNextOptions` 类型，`next(location, { mode })` 不再可用
+  - 删除 `runGuardWithNext()` 函数，移除整个 `next` 回调执行路径
+  - 删除 `runGuard()` 模式检测分发器，由仅支持返回值模式的 `runGuard()` 替代
+  - `NavigationGuard` 类型签名从 `(to, from, next?)` 改为 `(to, from)`
+  - 守卫仅通过返回值控制导航行为：
+    - `return undefined` / `return true` — 放行
+    - `return false` — 中止导航（`NAVIGATION_ABORTED`）
+    - `return RouteLocationRaw` — 重定向
+    - `return Error` / `throw Error` — 取消导航（`NAVIGATION_CANCELLED`）
+
+### 新增
+
+- **`onBeforeRouteLeave` 组合式 API** - 组件内离开守卫，通过返回值控制离开导航，组件卸载时自动移除守卫
+  - 与 Vue Router 4.x 的 `onBeforeRouteLeave` 行为一致，支持同步和异步守卫
+  - 示例：
+    ```typescript
+    import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+    onBeforeRouteLeave((to, from) => {
+    	if (hasUnsavedChanges) {
+    		return false // 中止导航
+    	}
+    })
+    ```
+- **`RouteLeaveGuard` 类型** - 组件内离开守卫函数类型，与 `NavigationGuard` 返回值一致
+
+### 迁移指南
+
+1. 将所有 `(to, from, next) => { next() }` 守卫改写为 `(to, from) => { return }` 返回值模式
+2. `next(false)` → `return false`
+3. `next('/login')` → `return '/login'`
+4. `next({ name: 'login' })` → `return { name: 'login' }`
+5. `next(location, { mode: 'replace' })` → return 值不支持 `mode` 字段，重定向方式沿用原始导航方式
+
 ## 2.1.0（2026-08-17）
 
 ### 新增
@@ -7,19 +47,10 @@
   - `return false` — 中止导航（`NAVIGATION_ABORTED`）
   - `return RouteLocationRaw` — 重定向
   - `return Error` / `throw Error` — 取消导航（`NAVIGATION_CANCELLED`）
-  - `return { location, mode }` — 重定向 + 指定导航方式
 - **`NavigationGuardReturn` 类型** - 守卫返回值类型，支持 `void | undefined | boolean | RouteLocationRaw | Error | null`
+- **`onBeforeRouteLeave` 组合式 API** - 组件内离开守卫，通过返回值控制离开导航，组件卸载时自动移除守卫
+- **`RouteLeaveGuard` 类型** - 组件内离开守卫函数类型，与 `NavigationGuard` 返回值一致
 - **`afterEach` 接收 `failure` 参数** - 后置钩子第三个参数 `failure` 在导航失败时传入，可用于区分成功/失败导航
-
-### 优化
-
-- **守卫模式自动检测** - 通过函数参数个数自动识别模式：`(to, from, next)` 三个参数→回调模式（兼容旧版），`(to, from)` 两个参数→返回值模式（推荐）
-- **混用警告** - 同时使用 `next()` 回调和返回值时，控制台输出警告提示
-
-### 兼容性
-
-- `next()` 回调模式保持完全兼容，标记为已弃用
-- 旧版守卫代码无需修改即可继续使用
 
 ## 2.0.0（2026-07-13）
 

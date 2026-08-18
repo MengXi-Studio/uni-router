@@ -1,10 +1,6 @@
 # 路由守卫
 
-路由守卫是 Uni Router 的核心能力，允许在导航过程中插入自定义逻辑：鉴权、日志、数据预取、离开确认等。本章将深入讲解守卫的执行机制、返回值模式（推荐）和兼容的 `next()` 回调模式（已弃用）。
-
-::: tip v2.1.0 变更
-自 v2.1.0 起，守卫全面支持 **返回值模式**（与 Vue Router 4.x 一致），通过返回值控制导航行为。旧版 `next()` 回调模式保持兼容，但标记为已弃用，新代码建议使用返回值模式。
-:::
+路由守卫是 Uni Router 的核心能力，允许在导航过程中插入自定义逻辑：鉴权、日志、数据预取、离开确认等。本章将深入讲解守卫的执行机制和返回值模式（推荐）。
 
 ## 守卫全景
 
@@ -712,19 +708,7 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 type NavigationGuard = (
   to: RouteLocation,
   from: RouteLocation,
-  next?: NavigationGuardNext  // 已弃用，新代码使用返回值
 ) => NavigationGuardReturn | Promise<NavigationGuardReturn>
-
-// next 回调（已弃用）
-type NavigationGuardNext = (
-  to?: RouteLocationRaw | false,
-  options?: NavigationGuardNextOptions
-) => void
-
-// next 选项（已弃用）
-interface NavigationGuardNextOptions {
-  mode?: NavigationRedirectMode // 'push' | 'replace' | 'relaunch'
-}
 
 // 重定向方式
 type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
@@ -735,46 +719,87 @@ type PostNavigationGuard = (
   from: RouteLocation,
   failure?: NavigationFailure | null
 ) => void
+
+// 组件内离开守卫
+type RouteLeaveGuard = (
+  to: RouteLocation,
+  from: RouteLocation,
+) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 ```
 
-## 旧版 next() 回调模式（已弃用）
+## onBeforeRouteLeave 组件内离开守卫
 
-::: warning 兼容性说明
-`next()` 回调模式在 v2.1.0 中保持兼容，但标记为已弃用。新代码请使用返回值模式。
+`onBeforeRouteLeave` 是一个组合式 API，用于在组件内部注册离开守卫，适用于需要在离开当前页面时进行确认或清理的场景。
 
-- 守卫通过参数个数自动检测模式：`(to, from, next)` 三个参数 → 回调模式；`(to, from)` 两个参数 → 返回值模式
-- 两种模式混用时，工具会输出警告提示
-:::
+### 基本用法
+
+在组件的 `<script setup>` 中使用：
 
 ```ts
-// 回调式（已弃用）
-router.beforeEach((to, from, next) => {
-  if (condition) {
-    next({ name: 'login' })  // 重定向
-  } else {
-    next()  // 放行
-  }
-})
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
 
-// 带重定向选项
-router.beforeEach((to, from, next) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    next({ name: 'login' }, { mode: 'replace' })
-  } else {
-    next()
+onBeforeRouteLeave((to, from) => {
+  // 不返回值或 return true 表示放行
+  // return false 中止导航
+  // return { name: '...' } 重定向
+})
+```
+
+### 实现原理
+
+`onBeforeRouteLeave` 内部通过 `router.beforeEach` 注册守卫，并在组件卸载时自动移除，因此不会造成内存泄漏。
+
+### 示例：离开确认对话框
+
+```ts
+import { ref } from 'vue'
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+const isDirty = ref(false)
+
+onBeforeRouteLeave((to, from) => {
+  if (isDirty.value) {
+    return new Promise((resolve) => {
+      uni.showModal({
+        title: '提示',
+        content: '有未保存的修改，确认离开？',
+        success: (res) => {
+          if (res.confirm) {
+            isDirty.value = false
+            resolve(true)  // 放行
+          } else {
+            resolve(false)  // 中止
+          }
+        }
+      })
+    })
   }
 })
 ```
 
-### next() 的行为
+### 示例：离开时保存数据
 
-| 调用方式 | 行为 | 对应返回值模式 |
-| --- | --- | --- |
-| `next()` | 放行 | `return undefined` / `return true` |
-| `next(false)` | 中止（`NAVIGATION_ABORTED`） | `return false` |
-| `next(location)` | 重定向 | `return location` |
-| `next(error)` | 取消（`NAVIGATION_CANCELLED`） | `throw error` / `return error` |
-| `next(location, { mode })` | 重定向 + 指定方式 | `return { location, mode }` |
+```ts
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+onBeforeRouteLeave(async (to, from) => {
+  if (store.hasUnsavedChanges) {
+    try {
+      await store.save()
+      uni.showToast({ title: '已保存', icon: 'success' })
+    } catch (err) {
+      uni.showToast({ title: '保存失败', icon: 'none' })
+      return false  // 保存失败，阻止离开
+    }
+  }
+})
+```
+
+### 注意事项
+
+- `onBeforeRouteLeave` **仅对当前组件所在页面生效**，不会影响其他页面或全局导航
+- 守卫会通过 `router.beforeEach` 实现，因此遵循返回值模式（不支持 `next()` 回调）
+- 组件卸载时守卫自动移除，无需手动清理
 
 ## 最佳实践
 
@@ -799,12 +824,6 @@ router.beforeEach((to, from) => {
 router.beforeEach(async (to, from) => {
   const ok = await check()
   if (!ok) return { name: 'login' }
-})
-
-// ⚠️ 已弃用：next 回调模式
-router.beforeEach(async (to, from, next) => {
-  const ok = await check()
-  next(ok ? undefined : { name: 'login' })
 })
 ```
 

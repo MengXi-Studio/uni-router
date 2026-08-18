@@ -153,34 +153,23 @@ await router.replace({ name: 'user' }) // user is a TabBar page
 
 ## Guard Differences
 
-### next() Behavior
+### Guard Return Values
 
-The `next()` behavior is mostly the same between the two, but Uni Router has the following extensions:
+The behavior is consistent between the two, but Uni Router supports extended return values for redirect mode control:
 
 ```ts
 // vue-router
-next()                    // Proceed
-next(false)               // Abort
-next('/path')             // Redirect
-next({ name: 'route' })   // Redirect
+return true                         // Proceed
+return false                        // Abort
+return { name: 'route' }            // Redirect
+return '/path'                      // Redirect
 
-// Uni Router — Callback style (v1.7.0+)
-next()                                          // Proceed
-next(false)                                     // Abort
-next('/path')                                   // Redirect (default push)
-next({ name: 'route' })                         // Redirect (default push)
-next({ name: 'route' }, { mode: 'replace' })    // Redirect (specify mode)
-next({ name: 'route' }, { mode: 'relaunch' })   // Redirect (clear stack)
-```
-
-The callback style `next()` is deprecated. Return values are recommended:
-
-```ts
-// Uni Router — Return value style (recommended)
-return true                                     // Proceed
-return false                                    // Abort
-return { name: 'route' }                        // Redirect (default push)
-return { location: { name: 'route' }, mode: 'replace' }  // Redirect (specify mode)
+// Uni Router (consistent with Vue Router 4.x)
+return true                         // Proceed
+return false                        // Abort
+return { name: 'route' }            // Redirect (default push)
+return { location: { name: 'route' }, mode: 'replace' }   // Redirect (specify mode)
+return { location: { name: 'route' }, mode: 'relaunch' }  // Redirect (clear stack)
 return new Error('Insufficient permissions')    // Throw error
 ```
 

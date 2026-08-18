@@ -188,9 +188,9 @@ If the page stack is insufficient (`targetIndex < 0`), throws `NAVIGATION_CANCEL
 
 `back` executes the full guard chain (`beforeEach` → `beforeResolve`), guards can:
 
-- `next()` to allow the return
-- `next(false)` to block the return (like "unsaved form" prompt)
-- `next(location)` to redirect to another page
+- `return true` / `undefined` to allow the return
+- `return false` to block the return (like "unsaved form" prompt)
+- `return location` to redirect to another page
 
 ```ts
 router.beforeEach((to, from) => {
@@ -502,7 +502,7 @@ Concurrent navigation queueing ensures only one navigation is in progress at a t
 
 ## Redirect Depth Protection
 
-`next(location)` in guards triggers a redirect. Uni Router limits max redirect depth to **10**, throwing `NAVIGATION_CANCELLED` when exceeded:
+`return location` in guards triggers a redirect. Uni Router limits max redirect depth to **10**, throwing `NAVIGATION_CANCELLED` when exceeded:
 
 ```ts
 // Error example: A→B→A→B→... infinite redirect

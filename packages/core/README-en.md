@@ -19,7 +19,7 @@
 ## Features
 
 - **vue-router-style API** - `push` / `replace` / `relaunch` / `back`
-- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`, `guardRoute` for cold-start execution
+- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave`, `guardRoute` for cold-start execution
 - **Named Routes & Route Meta** - Navigate by `name`, carry custom data via `meta`
 - **Plugin Architecture** - ParamsPlugin / AnimationPlugin / ChannelPlugin / InterceptorPlugin registered on demand
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths
@@ -30,7 +30,7 @@
 - **Navigation Animation** - `push` / `replace` / `back` support animation params, App only
 - **Auto Route State Sync** - `app.use(router)` injects global mixin that auto-invokes `syncRoute()`
 - **Error Handling** - `RouterError` / `NavigationFailure` / `UniApiError`, supports `instanceof` discrimination
-- **Composables** - `useRouter()` / `useRoute()` / `usePageChannel()`
+- **Composables** - `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()`
 
 ## Installation
 
@@ -87,6 +87,15 @@ router.beforeEach((to, from) => {
 		return { name: 'login' } // redirect
 	}
 	// return undefined or true to proceed
+})
+
+// Component-level leave guard (onBeforeRouteLeave)
+import { onBeforeRouteLeave } from '@meng-xi/uni-router'
+
+onBeforeRouteLeave((to, from) => {
+	if (hasUnsavedChanges) {
+		return false // abort navigation
+	}
 })
 ```
 

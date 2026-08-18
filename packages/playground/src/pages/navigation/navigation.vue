@@ -25,7 +25,7 @@
 			<view class="info-text">对应 uni.navigateBack，执行完整的 beforeEach → beforeResolve 守卫链，守卫可中止或重定向返回操作。</view>
 			<view class="btn btn-gray" @click="goBack">返回上一页 (delta=1)</view>
 			<view class="btn btn-danger" @click="goBackWithError">测试：back() 被守卫中止</view>
-			<view class="code-block"> router.back() // 执行完整守卫链后返回\nrouter.back(2) // 返回2层\n\n// 守卫可中止返回\nrouter.beforeEach((to, from, next) => {\n next(false) // 中止返回\n}) </view>
+			<view class="code-block"> router.back() // 执行完整守卫链后返回\nrouter.back(2) // 返回2层\n\n// 守卫可中止返回\nrouter.beforeEach((to, from) => {\n return false // 中止返回\n}) </view>
 		</view>
 
 		<view class="section">
@@ -176,8 +176,8 @@
 			<view class="info-text" style="color: #34c759; margin-top: 16rpx"> ✅ 所有平台（H5/小程序/App）的 switchTab 都走完整守卫链，可在守卫中拦截 TabBar 切换（如未登录时跳转个人中心）。 </view>
 			<view class="code-block">
 				// 启用 interceptUniApi: true 后\nuni.navigateTo({ url: '/pages/detail/detail?id=1' })\n// => 自动转为 router.push({ path: '/pages/detail/detail', query: { id: '1' } })\n// 守卫链（beforeEach → beforeResolve →
-				afterEach）照常执行\n\nuni.switchTab({ url: '/pages/index/index' })\n// => 自动转为 router.push，守卫正常执行\n// 守卫可拦截：router.beforeEach((to, from, next) => {\n// if (to.meta.requireAuth && !isLoggedIn())
-				next({ name: 'login' })\n// })\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链
+				afterEach）照常执行\n\nuni.switchTab({ url: '/pages/index/index' })\n// => 自动转为 router.push，守卫正常执行\n// 守卫可拦截：router.beforeEach((to, from) => {\n// if (to.meta.requireAuth && !isLoggedIn())\n
+				return { name: 'login' }\n// })\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链
 			</view>
 		</view>
 	</view>
@@ -241,10 +241,10 @@ function goBack() {
 }
 
 function goBackWithError() {
-	const removeGuard = router.beforeEach((_to, _from, next) => {
+	const removeGuard = router.beforeEach(() => {
 		uni.showToast({ title: '返回被守卫中止', icon: 'none' })
-		next(false)
 		removeGuard()
+		return false
 	})
 	router.back().catch(() => {})
 }

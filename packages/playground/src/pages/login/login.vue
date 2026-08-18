@@ -9,8 +9,8 @@
 		<view class="section">
 			<view class="section-title">守卫重定向逻辑</view>
 			<view class="code-block">
-				router.beforeEach((to, from, next) => {\n if (to.meta.requireAuth && !isLoggedIn) {\n // 重定向到登录页，携带原始目标路径\n next({\n name: 'pagesLoginLogin',\n query: { redirect: to.fullPath }\n })\n } else {\n
-				next()\n }\n})
+				router.beforeEach((to, from) => {\n if (to.meta.requireAuth && !isLoggedIn) {\n // 重定向到登录页，携带原始目标路径\n return {\n name: 'pagesLoginLogin',\n query: { redirect: to.fullPath }\n }\n }\n // 不返回值或
+				return true 表示放行\n})
 			</view>
 		</view>
 
