@@ -9,10 +9,10 @@
   - 删除 `runGuard()` 模式检测分发器，由仅支持返回值模式的 `runGuard()` 替代
   - `NavigationGuard` 类型签名从 `(to, from, next?)` 改为 `(to, from)`
   - 守卫仅通过返回值控制导航行为：
-    - `return undefined` / `return true` — 放行
-    - `return false` — 中止导航（`NAVIGATION_ABORTED`）
-    - `return RouteLocationRaw` — 重定向
-    - `return Error` / `throw Error` — 取消导航（`NAVIGATION_CANCELLED`）
+    - `return undefined` / `return true` → 放行
+    - `return false` → 中止导航（`NAVIGATION_ABORTED`）
+    - `return '/login'` / `return { name: 'login' }` → 重定向
+    - `return new Error()` / `throw new Error()` → 取消导航（`NAVIGATION_CANCELLED`）
 
 ### 新增
 
@@ -22,35 +22,55 @@
     ```typescript
     import { onBeforeRouteLeave } from '@meng-xi/uni-router'
 
-    onBeforeRouteLeave((to, from) => {
+    // 同步离开确认
+    onBeforeRouteLeave(() => {
     	if (hasUnsavedChanges) {
-    		return false // 中止导航
+    		return false
+    	}
+    })
+
+    // 异步确认对话框
+    onBeforeRouteLeave(() => {
+    	if (hasUnsavedChanges) {
+    		return new Promise(resolve => {
+    			uni.showModal({
+    				title: '确认离开',
+    				content: '有未保存的修改，确定要离开吗？',
+    				success: res => resolve(res.confirm)
+    			})
+    		})
     	}
     })
     ```
 - **`RouteLeaveGuard` 类型** - 组件内离开守卫函数类型，与 `NavigationGuard` 返回值一致
 
+### 重要限制
+
+`onBeforeRouteLeave` 只能拦截经过路由器的导航（`push` / `replace` / `back` / `relaunch`），无法拦截物理返回键、侧滑返回手势、浏览器后退按钮、小程序左上角返回按钮等场景。
+
 ### 迁移指南
 
-1. 将所有 `(to, from, next) => { next() }` 守卫改写为 `(to, from) => { return }` 返回值模式
+1. 将 `(to, from, next) => { next() }` 改写为 `(to, from) => { return }`
 2. `next(false)` → `return false`
-3. `next('/login')` → `return '/login'`
-4. `next({ name: 'login' })` → `return { name: 'login' }`
-5. `next(location, { mode: 'replace' })` → return 值不支持 `mode` 字段，重定向方式沿用原始导航方式
+3. `next({ name: 'login' })` → `return { name: 'login' }`
+4. `next({ name: 'login' }, { mode: 'replace' })` → `return { name: 'login' }`（`mode` 不再支持，重定向方式沿用原始导航方式）
 
 ## 2.1.0（2026-08-17）
 
 ### 新增
 
-- **守卫返回值模式（Vue Router 4.x 兼容）** - 守卫全面支持通过返回值控制导航行为，无需调用 `next()` 回调
+- **守卫返回值模式** - 守卫支持通过返回值控制导航行为，无需调用 `next()` 回调
   - `return undefined` / `return true` — 放行
   - `return false` — 中止导航（`NAVIGATION_ABORTED`）
   - `return RouteLocationRaw` — 重定向
   - `return Error` / `throw Error` — 取消导航（`NAVIGATION_CANCELLED`）
 - **`NavigationGuardReturn` 类型** - 守卫返回值类型，支持 `void | undefined | boolean | RouteLocationRaw | Error | null`
-- **`onBeforeRouteLeave` 组合式 API** - 组件内离开守卫，通过返回值控制离开导航，组件卸载时自动移除守卫
-- **`RouteLeaveGuard` 类型** - 组件内离开守卫函数类型，与 `NavigationGuard` 返回值一致
 - **`afterEach` 接收 `failure` 参数** - 后置钩子第三个参数 `failure` 在导航失败时传入，可用于区分成功/失败导航
+
+### 兼容性
+
+- `next()` 回调模式保持完全兼容
+- 旧版守卫代码无需修改即可继续使用
 
 ## 2.0.0（2026-07-13）
 
