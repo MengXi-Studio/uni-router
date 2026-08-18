@@ -1,1 +1,1 @@
-export { AnimationPlugin, ChannelPlugin, InterceptorPlugin, ParamsPlugin, usePageChannel } from '../chunk-6D5DCTIL.js';
+export { AnimationPlugin, ChannelPlugin, InterceptorPlugin, ParamsPlugin, usePageChannel } from '../chunk-KMISK4GA.js';

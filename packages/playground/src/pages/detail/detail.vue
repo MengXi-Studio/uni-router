@@ -69,6 +69,21 @@
 			<view class="code-block"> // 1. 首次 push 带 params\nawait router.push({\n path: '/pages/detail/detail',\n params: { fromIndex: true }\n})\n// → URL: /pages/detail/detail?__params_key=xxx\n\n// 2. back() 返回原页面\nawait router.back()\n// → syncCurrentRoute 从 URL 读取 key，peek 重建 params\n// → route.params = { fromIndex: true }（不丢失）</view>
 		</view>
 
+		<view class="section">
+			<view class="section-title">onBeforeRouteLeave - 组件内离开守卫</view>
+			<view class="info-text"> 通过返回值模式控制离开导航，与 Vue Router 4.x 一致。组件卸载时自动移除守卫。 </view>
+			<view class="info-text" style="margin-top: 12rpx">
+				当前表单状态：
+				<text :style="{ color: hasUnsavedChanges ? '#ff9500' : '#34c759' }">{{ hasUnsavedChanges ? '有未保存的修改' : '无未保存修改' }}</text>
+			</view>
+			<view class="btn btn-warn" @click="toggleDirty">{{ hasUnsavedChanges ? '标记为已保存' : '模拟未保存修改' }}</view>
+			<view class="code-block">
+				import { onBeforeRouteLeave } from '@meng-xi/uni-router'\n\nonBeforeRouteLeave((to, from) => {\n if (hasUnsavedChanges) {\n // 返回 false 中止导航\n return false\n }\n // 不返回值或 return true 放行\n})\n\n//
+				异步确认对话框\nonBeforeRouteLeave((to, from) => {\n if (hasUnsavedChanges) {\n return new Promise((resolve) => {\n uni.showModal({\n title: '提示',\n content: '有未保存的修改，确认离开？',\n success: (res) =>
+				resolve(res.confirm)\n })\n })\n }\n})
+			</view>
+		</view>
+
 		<view class="btn btn-gray" @click="goBack">返回上一页</view>
 		<view class="btn btn-success" @click="replyToOpener" v-if="hasEventChannel">通过 EventChannel 回复发起页</view>
 		<view class="btn btn-warn" @click="replyOnceToOpener" v-if="hasEventChannel">通过 once 回复发起页（一次性）</view>
@@ -78,7 +93,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { useRouter, useRoute, usePageChannel } from '@meng-xi/uni-router'
+import { useRouter, useRoute, usePageChannel, onBeforeRouteLeave } from '@meng-xi/uni-router'
 
 const router = useRouter()
 const route = useRoute()
@@ -106,6 +121,25 @@ channel.on('fromOpener', (data: Record<string, unknown>) => {
 // 使用 once 监听一次性事件
 channel.once('fromOpener', (data: Record<string, unknown>) => {
 	eventChannelMessages.value.push(`[once] fromOpener: ${JSON.stringify(data)}`)
+})
+
+// ===== onBeforeRouteLeave 演示 =====
+const hasUnsavedChanges = ref(false)
+
+function toggleDirty() {
+	hasUnsavedChanges.value = !hasUnsavedChanges.value
+	uni.showToast({
+		title: hasUnsavedChanges.value ? '已标记为未保存' : '已标记为已保存',
+		icon: 'none'
+	})
+}
+
+// 组件内离开守卫：有未保存修改时阻止离开
+onBeforeRouteLeave(() => {
+	if (hasUnsavedChanges.value) {
+		uni.showToast({ title: '有未保存的修改，已阻止离开', icon: 'none' })
+		return false
+	}
 })
 
 function replyToOpener() {

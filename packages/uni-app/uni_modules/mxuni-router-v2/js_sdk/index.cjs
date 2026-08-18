@@ -106,66 +106,7 @@ function resolveGuardReturn(value) {
   }
   return { type: "next", redirect: value };
 }
-function runGuardWithNext(guard, to, from, timeout) {
-  return new Promise((resolve) => {
-    let resolved = false;
-    let timer;
-    const next = (location, options) => {
-      if (resolved) return;
-      resolved = true;
-      if (timer) clearTimeout(timer);
-      if (location === false) {
-        resolve({ type: "abort", code: "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */ });
-      } else if (location) {
-        resolve({ type: "next", redirect: location, mode: options?.mode });
-      } else {
-        resolve({ type: "next" });
-      }
-    };
-    if (timeout > 0) {
-      timer = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          warn(`Navigation guard "${guard.name || "anonymous"}" timed out after ${timeout / 1e3}s. Make sure to call next() in your guard function, or migrate to the return-value pattern.`);
-          resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
-        }
-      }, timeout);
-    }
-    try {
-      const returnValue = guard(to, from, next);
-      if (returnValue && typeof returnValue.then === "function") {
-        ;
-        returnValue.then((resolvedValue) => {
-          if (!resolved) {
-            if (resolvedValue !== void 0 && resolvedValue !== void 0) {
-              warn(`Navigation guard "${guard.name || "anonymous"}" used both next() callback and Promise return value. Use only one pattern.`);
-              resolved = true;
-              if (timer) clearTimeout(timer);
-              resolve(resolveGuardReturn(resolvedValue));
-            }
-          } else {
-            if (resolvedValue !== void 0 && resolvedValue !== void 0) {
-              warn(`Navigation guard "${guard.name || "anonymous"}" called next() and also returned a value. Use either next() callback or return value, not both.`);
-            }
-          }
-        }).catch(() => {
-          if (!resolved) {
-            resolved = true;
-            if (timer) clearTimeout(timer);
-            resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
-          }
-        });
-      }
-    } catch {
-      if (!resolved) {
-        resolved = true;
-        if (timer) clearTimeout(timer);
-        resolve({ type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ });
-      }
-    }
-  });
-}
-async function runGuardWithReturn(guard, to, from, timeout) {
+async function runGuard(guard, to, from, timeout) {
   let resolved = false;
   let timer;
   const timeoutPromise = new Promise((resolve) => {
@@ -198,13 +139,6 @@ async function runGuardWithReturn(guard, to, from, timeout) {
     }
     return { type: "abort", code: "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */ };
   }
-}
-function runGuard(guard, to, from, timeout) {
-  const useNextCallback = guard.length >= 3;
-  if (useNextCallback) {
-    return runGuardWithNext(guard, to, from, timeout);
-  }
-  return runGuardWithReturn(guard, to, from, timeout);
 }
 async function runGuardQueue(guards, to, from, timeout) {
   for (const guard of guards) {
@@ -1616,8 +1550,8 @@ var UniRouter = class {
    *
    * 根据守卫返回的结果决定后续行为：
    * - abort: 中止导航并抛出 NavigationFailure
-   * - next + redirect: 递归执行重定向导航
-   * - next: 继续执行后续守卫
+   * - allow + redirect: 递归执行重定向导航
+   * - allow: 继续执行后续守卫
    */
   handleGuardResult(result, to, from, mode, redirectDepth, pluginData) {
     if (result.type === "abort") {
@@ -1703,6 +1637,18 @@ var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
 function createRouter(options) {
   return new UniRouter(options);
 }
+function onBeforeRouteLeave(guard) {
+  const router = useRouter();
+  const route = useRoute();
+  const fromPath = route.value.path;
+  const remove = router.beforeEach((to, from) => {
+    if (from.path !== fromPath) return;
+    return guard(to, from);
+  });
+  vue.onBeforeUnmount(remove);
+}
+
+// src/composables/index.ts
 function useRouter() {
   let router;
   try {
@@ -2048,6 +1994,7 @@ exports.UniApiError = UniApiError;
 exports.UniEventChannel = UniEventChannel;
 exports.createRouter = createRouter;
 exports.noopChannel = noopChannel;
+exports.onBeforeRouteLeave = onBeforeRouteLeave;
 exports.usePageChannel = usePageChannel;
 exports.useRoute = useRoute;
 exports.useRouter = useRouter;

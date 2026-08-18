@@ -10,7 +10,7 @@
 			<text class="card-title">RouterErrorCode 错误码</text>
 			<view class="guard-item">
 				<text class="guard-name">NAVIGATION_ABORTED</text>
-				<text class="guard-desc">导航被守卫中止（守卫调用 next(false)）</text>
+				<text class="guard-desc">导航被守卫中止（守卫 return false）</text>
 			</view>
 			<view class="guard-item">
 				<text class="guard-name">NAVIGATION_CANCELLED</text>
@@ -55,16 +55,16 @@
 		<!-- NAVIGATION_ABORTED -->
 		<view class="card">
 			<text class="card-title">NAVIGATION_ABORTED - 守卫中止</text>
-			<text class="hint">守卫调用 next(false) 中止导航时抛出</text>
+			<text class="hint">守卫 return false 中止导航时抛出</text>
 			<view class="btn btn-warning" @click="testAborted">
-				<text class="btn-text">注册一次性 next(false) 守卫后导航</text>
+				<text class="btn-text">注册一次性 return false 守卫后导航</text>
 			</view>
 		</view>
 
 		<!-- NAVIGATION_CANCELLED -->
 		<view class="card">
 			<text class="card-title">NAVIGATION_CANCELLED - 导航被取消</text>
-			<text class="hint">守卫超时未调用 next()、守卫抛出异常、或 back() 页面栈不足时抛出</text>
+			<text class="hint">守卫超时未返回结果、守卫抛出异常、或 back() 页面栈不足时抛出</text>
 			<view class="btn btn-warning" @click="testCancelledTimeout">
 				<text class="btn-text">测试：守卫超时</text>
 			</view>
@@ -142,10 +142,10 @@ export default {
 		},
 		// ===== NAVIGATION_ABORTED =====
 		async testAborted() {
-			this.addLog('注册一次性 next(false) 守卫后导航...')
-			const removeGuard = router.beforeEach((_to, _from, next) => {
-				next(false)
+			this.addLog('注册一次性 return false 守卫后导航...')
+			const removeGuard = router.beforeEach(() => {
 				removeGuard()
+				return false
 			})
 			try {
 				await router.push('/pages/about/index')
@@ -155,9 +155,10 @@ export default {
 		},
 		// ===== NAVIGATION_CANCELLED - 守卫超时 =====
 		async testCancelledTimeout() {
-			this.addLog('注册不调用 next() 的守卫，等待 guardTimeout 超时...')
-			const removeGuard = router.beforeEach(() => {
-				// 不调用 next()，触发超时
+			this.addLog('注册不返回结果的守卫，等待 guardTimeout 超时...')
+			const removeGuard = router.beforeEach(async () => {
+				// 守卫不返回结果，触发 guardTimeout
+				await new Promise(() => {}) // 永不 resolve
 			})
 			try {
 				// 此处无法直接缩短 guardTimeout，依赖 router.js 中配置的 15s

@@ -21,7 +21,7 @@
 - **导航动画** - `push` / `replace` / `back` 支持动画参数，仅 App 端
 - **路由状态自动同步** - 全局 Mixin 自动 `syncRoute()`，无需手动同步
 - **错误处理** - `RouterError` / `NavigationFailure` / `UniApiError`，支持 `instanceof` 精准判断
-- **组合式 API** - `useRouter()` / `useRoute()` / `usePageChannel()`
+- **组合式 API** - `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()`
 
 ## 安装
 
@@ -72,8 +72,9 @@ await router.back()
 ```typescript
 router.beforeEach((to, from) => {
 	if (to.meta.requireAuth && !isLoggedIn()) {
-		return { location: { name: 'login' }, mode: 'replace' }
+		return { name: 'login' } // 重定向到登录页
 	}
+	// 不返回值（或 return true）表示放行
 })
 ```
 
