@@ -29,8 +29,8 @@
 - **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()`
 - **Navigation Animation** - `push` / `replace` / `back` support animation params, App only
 - **Auto Route State Sync** - `app.use(router)` injects global mixin that auto-invokes `syncRoute()`
-- **Error Handling** - `RouterError` / `NavigationFailure` / `UniApiError`, supports `instanceof` discrimination
-- **Composables** - `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()`
+- **Error Handling** - `RouterError` / `NavigationFailure` / `UniApiError`, `isNavigationFailure()` for precise discrimination
+- **Composables** - `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()` / `useLink()`
 
 ## Installation
 

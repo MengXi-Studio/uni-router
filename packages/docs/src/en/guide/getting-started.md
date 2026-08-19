@@ -114,14 +114,14 @@ function isLoggedIn(): boolean {
 
 // Global before guard
 router.beforeEach((to, from) => {
-  // Not logged in accessing protected page
+  // Unauthenticated access to protected page
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 
-  // Already logged in accessing login page
+  // Logged-in user visiting login page
   if (to.name === 'login' && isLoggedIn()) {
-    return { location: { name: 'home' }, mode: 'replace' }
+    return { name: 'home' }
   }
 })
 

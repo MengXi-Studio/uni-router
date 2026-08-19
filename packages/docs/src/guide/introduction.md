@@ -158,13 +158,13 @@ router.isReady().then(() => {
 
 - 🧭 **四种导航** — `push` / `replace` / `relaunch` / `back`，自动识别 TabBar 页面
 - 🛡️ **完整守卫链** — `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
-- 🧊 **冷启动守卫** — `guardRoute()` 补执行守卫链，处理 H5 URL / 小程序场景值 / App deeplink 直接进入的场景
-- 🔄 **可控重定向** — 守卫中 `return { location, mode }` 指定重定向方式
+- 🛡️ **冷启动守卫** — `guardRoute()` 补执行守卫链，处理 H5 URL / 小程序场景值 / App deeplink 直接进入的场景
+- 🔄 **守卫重定向** — 守卫中 return 路由位置即可重定向，沿用原始导航方式
 - 📦 **页面参数**（ParamsPlugin）— `params` 传递复杂数据，不暴露 URL，支持持久化
 - 🔢 **查询增强** — `queryInt()` / `queryNumber()` / `queryBool()` 类型解析
 - 📡 **页面通信**（ChannelPlugin）— `events` + `eventChannel` 双向通信，`useUniEventChannel` 支持所有导航方式
 - 🎬 **导航动画**（AnimationPlugin）— App 端自定义动画，路由级默认值
-- 🪝 **组合式 API** — `useRouter()` / `useRoute()` / `usePageChannel()` 响应式访问
+- 🪝 **组合式 API** — `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()` / `useLink()` 响应式访问
 - ⚡ **API 拦截**（InterceptorPlugin）— 可选拦截原生导航 API，统一守卫流程
 - 🛡️ **超时保护** — `guardTimeout` / `readyTimeout` 防止挂起
 - 💪 **TypeScript** — 完整类型定义 + 智能提示

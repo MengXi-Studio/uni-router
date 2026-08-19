@@ -116,12 +116,12 @@ function isLoggedIn(): boolean {
 router.beforeEach((to, from) => {
   // 未登录访问受保护页面
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   // 已登录访问登录页
   if (to.name === 'login' && isLoggedIn()) {
-    return { location: { name: 'home' }, mode: 'replace' }
+    return { name: 'home' }
   }
 })
 

@@ -43,7 +43,7 @@ features:
     details: install 时注入全局 Mixin 自动调用 syncRoute()，浏览器后退、物理返回键等场景自动同步，无需手动处理
   - icon: ⚠️
     title: 错误处理
-    details: RouterError / NavigationFailure / UniApiError 完整体系，onError 全局捕获，instanceof 精准判断
+    details: RouterError / NavigationFailure / UniApiError 完整体系，onError 全局捕获，isNavigationFailure() 精准判断
   - icon: 🎬
     title: 导航动画
     details: 导航动画参数与路由级 meta.animation 默认值，仅 App 端生效

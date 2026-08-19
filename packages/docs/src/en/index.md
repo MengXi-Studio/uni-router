@@ -43,7 +43,7 @@ features:
     details: Global mixin injected at install auto-invokes syncRoute(), handles browser back, physical back button, etc. No manual sync needed
   - icon: ⚠️
     title: Error Handling
-    details: RouterError / NavigationFailure / UniApiError complete system, onError global capture, instanceof discrimination
+    details: RouterError / NavigationFailure / UniApiError complete system, onError global capture, isNavigationFailure() discrimination
   - icon: 🎬
     title: Navigation Animation
     details: Inline animation params and route-level meta.animation defaults, App only
