@@ -20,8 +20,8 @@
 - **查询参数增强** - `queryInt()` / `queryNumber()` / `queryBool()`
 - **导航动画** - `push` / `replace` / `back` 支持动画参数，仅 App 端
 - **路由状态自动同步** - 全局 Mixin 自动 `syncRoute()`，无需手动同步
-- **错误处理** - `RouterError` / `NavigationFailure` / `UniApiError`，支持 `instanceof` 精准判断
-- **组合式 API** - `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()`
+- **错误处理** - `RouterError` / `NavigationFailure` / `UniApiError`，`isNavigationFailure()` 精准判断
+- **组合式 API** - `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()` / `useLink()`
 
 ## 安装
 

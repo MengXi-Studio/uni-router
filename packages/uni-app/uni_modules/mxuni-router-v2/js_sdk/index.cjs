@@ -78,6 +78,11 @@ function isUniApiError(error) {
   return error instanceof UniApiError;
 }
 
+// src/errors/is-navigation-failure.ts
+function isNavigationFailure(error, code) {
+  return error instanceof NavigationFailure && (code ? error.code === code : true);
+}
+
 // src/utils/general.ts
 function warn(message) {
   if (typeof console !== "undefined") {
@@ -1637,18 +1642,6 @@ var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
 function createRouter(options) {
   return new UniRouter(options);
 }
-function onBeforeRouteLeave(guard) {
-  const router = useRouter();
-  const route = useRoute();
-  const fromPath = route.value.path;
-  const remove = router.beforeEach((to, from) => {
-    if (from.path !== fromPath) return;
-    return guard(to, from);
-  });
-  vue.onBeforeUnmount(remove);
-}
-
-// src/composables/index.ts
 function useRouter() {
   let router;
   try {
@@ -1675,6 +1668,33 @@ function getReactiveRoute(router) {
 function useRoute() {
   const router = useRouter();
   return getReactiveRoute(router);
+}
+function onBeforeRouteLeave(guard) {
+  const router = useRouter();
+  const route = useRoute();
+  const fromPath = route.value.path;
+  const remove = router.beforeEach((to, from) => {
+    if (from.path !== fromPath) return;
+    return guard(to, from);
+  });
+  vue.onBeforeUnmount(remove);
+}
+function useLink(options) {
+  const router = useRouter();
+  const currentRoute = useRoute();
+  const route = vue.computed(() => router.resolve(options.to));
+  const href = vue.computed(() => route.value.fullPath);
+  const isActive = vue.computed(() => currentRoute.value.path === route.value.path);
+  const isExactActive = vue.computed(() => currentRoute.value.fullPath === route.value.fullPath);
+  async function navigate() {
+    if (options.relaunch) {
+      return router.relaunch(options.to);
+    } else if (options.replace) {
+      return router.replace(options.to);
+    }
+    return router.push(options.to);
+  }
+  return { route, href, isActive, isExactActive, navigate };
 }
 
 // src/plugins/params/index.ts
@@ -1993,8 +2013,10 @@ exports.RouterErrorCode = RouterErrorCode;
 exports.UniApiError = UniApiError;
 exports.UniEventChannel = UniEventChannel;
 exports.createRouter = createRouter;
+exports.isNavigationFailure = isNavigationFailure;
 exports.noopChannel = noopChannel;
 exports.onBeforeRouteLeave = onBeforeRouteLeave;
+exports.useLink = useLink;
 exports.usePageChannel = usePageChannel;
 exports.useRoute = useRoute;
 exports.useRouter = useRouter;

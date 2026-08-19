@@ -59,8 +59,8 @@
 			<view class="section-title">router.onError() - 统一错误处理</view>
 			<view class="info-text">所有导航错误都会触发 onError 回调，本应用在 main.ts 中已注册。</view>
 			<view class="code-block">
-				router.onError((error, to, from) => {\n if (error instanceof NavigationFailure) {\n switch (error.code) {\n case 'NAVIGATION_ABORTED': ...\n case 'NAVIGATION_CANCELLED': ...\n case 'NAVIGATION_DUPLICATED': ...\n
-				case 'NAVIGATION_API_ERROR':\n console.error(error.cause) // UniApiError\n break\n }\n }\n})
+				router.onError((error, to, from) => {\n if (isNavigationFailure(error)) {\n switch (error.code) {\n case 'NAVIGATION_ABORTED': ...\n case 'NAVIGATION_CANCELLED': ...\n case 'NAVIGATION_DUPLICATED': ...\n case
+				'NAVIGATION_API_ERROR':\n console.error(error.cause) // UniApiError\n break\n }\n }\n})
 			</view>
 		</view>
 
@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter, NavigationFailure, RouterError, RouterErrorCode } from '@meng-xi/uni-router'
+import { useRouter, isNavigationFailure, RouterError, RouterErrorCode } from '@meng-xi/uni-router'
 
 const router = useRouter()
 const apiErrorLog = ref('')
@@ -87,7 +87,7 @@ async function testDuplicate() {
 	try {
 		await router.push('/pages/error/error')
 	} catch (error) {
-		if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_DUPLICATED) {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
 			uni.showToast({ title: '捕获重复导航错误', icon: 'none' })
 		}
 	}
@@ -104,7 +104,7 @@ async function testAborted() {
 	try {
 		await router.push('/pages/about/about')
 	} catch (error) {
-		if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_ABORTED) {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_ABORTED)) {
 			uni.showToast({ title: '捕获导航中止错误', icon: 'none' })
 		}
 	}
@@ -120,7 +120,7 @@ async function testCancelledTimeout() {
 	try {
 		await router.push('/pages/about/about')
 	} catch (error) {
-		if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_CANCELLED) {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_CANCELLED)) {
 			uni.showToast({ title: '捕获导航取消（超时）', icon: 'none' })
 		}
 	} finally {
@@ -137,7 +137,7 @@ async function testCancelledException() {
 	try {
 		await router.push('/pages/about/about')
 	} catch (error) {
-		if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_CANCELLED) {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_CANCELLED)) {
 			uni.showToast({ title: '捕获导航取消（异常）', icon: 'none' })
 		}
 	} finally {
@@ -150,7 +150,7 @@ async function testCancelledBackStack() {
 		// 当前页面栈可能不足，back(10) 会触发 NAVIGATION_CANCELLED
 		await router.back(10)
 	} catch (error) {
-		if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_CANCELLED) {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_CANCELLED)) {
 			uni.showToast({ title: '捕获导航取消（栈不足）', icon: 'none' })
 		}
 	}
@@ -174,7 +174,7 @@ async function testApiError() {
 	try {
 		await router.push({ path: '/pages/detail/detail', query: { id: 'api-error-test' } })
 	} catch (error) {
-		if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_API_ERROR) {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_API_ERROR)) {
 			const cause = error.cause
 			apiErrorLog.value = `code: ${error.code}\napi: ${cause?.api}\nerrMsg: ${cause?.cause.errMsg}`
 			uni.showToast({ title: '捕获 API 错误', icon: 'none' })

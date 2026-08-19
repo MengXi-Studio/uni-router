@@ -1,2 +1,2 @@
-export { A as AnimationPlugin, C as ChannelPlugin, I as InterceptorPlugin, n as ParamsPlugin, F as usePageChannel } from '../index-BFIS9K8x.cjs';
+export { A as AnimationPlugin, C as ChannelPlugin, I as InterceptorPlugin, o as ParamsPlugin, F as usePageChannel } from '../index-BShM2xTY.cjs';
 import 'vue';

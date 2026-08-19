@@ -498,7 +498,7 @@ createStartLocation();
 // src/router/index.ts
 var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
 
-// src/composables/index.ts
+// src/composables/router.ts
 function useRouter() {
   let router;
   try {

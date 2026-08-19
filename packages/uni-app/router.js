@@ -1,4 +1,4 @@
-import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin, NavigationFailure, RouterError, RouterErrorCode } from './uni_modules/mxuni-router-v2/js_sdk/index.js'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin, RouterError, RouterErrorCode, isNavigationFailure } from './uni_modules/mxuni-router-v2/js_sdk/index.js'
 import routes from './router.config'
 
 const router = createRouter({
@@ -55,7 +55,7 @@ router.onRouteChange((to, from) => {
 
 // 全局错误处理
 router.onError((error, to, from) => {
-	if (error instanceof NavigationFailure) {
+	if (isNavigationFailure(error)) {
 		switch (error.code) {
 			case RouterErrorCode.NAVIGATION_ABORTED:
 				console.warn('[onError] 导航被守卫中止:', to.fullPath)

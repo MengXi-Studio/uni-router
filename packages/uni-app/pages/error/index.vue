@@ -107,7 +107,7 @@
 
 <script>
 import router from '../../router'
-import { NavigationFailure, RouterErrorCode } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
+import { isNavigationFailure, RouterErrorCode } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
 
 export default {
 	data() {
@@ -207,7 +207,7 @@ export default {
 			try {
 				await router.push('/pages/about/index')
 			} catch (e) {
-				if (e instanceof NavigationFailure && e.code === RouterErrorCode.NAVIGATION_API_ERROR) {
+				if (isNavigationFailure(e, RouterErrorCode.NAVIGATION_API_ERROR)) {
 					const cause = e.cause
 					this.apiErrorLog = `code: ${e.code}\napi: ${cause?.api}\nerrMsg: ${cause?.cause?.errMsg}`
 					this.addLog(`捕获 API 错误 - api: ${cause?.api}, errMsg: ${cause?.cause?.errMsg}`)
@@ -221,7 +221,7 @@ export default {
 		},
 		// ===== 错误类型判断 =====
 		checkError(error, expectedCode) {
-			if (error instanceof NavigationFailure) {
+			if (isNavigationFailure(error)) {
 				const msg = `NavigationFailure - code: ${error.code}, to: ${error.to?.fullPath}`
 				this.addLog(msg)
 				if (expectedCode && error.code === expectedCode) {

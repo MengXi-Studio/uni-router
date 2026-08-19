@@ -1,6 +1,6 @@
-import { R as RouterOptions, a as Router, b as RouteLeaveGuard, c as RouteLocation, E as EventChannel, d as RouterErrorCode, U as UniApiError$1, e as UniApiCause } from './index-BFIS9K8x.cjs';
-export { A as AnimationPlugin, C as ChannelPlugin, D as DEFAULT_ANIMATION_DURATION, f as EventListeners, G as GuardRouteOptions, I as InterceptorPlugin, N as NavigationAnimation, g as NavigationCompleteContext, h as NavigationGuard, i as NavigationPrepareContext, j as NavigationRedirectMode, k as NavigationResult, P as ParamObject, l as ParamValue, m as ParamsInput, n as ParamsPlugin, o as PluginContext, p as PostNavigationGuard, Q as QueryValue, q as RouteConfig, r as RouteLocationNamedRaw, s as RouteLocationPathRaw, t as RouteLocationRaw, u as RouteMeta, v as RouteName, w as RouteNameMap, x as RoutePath, y as RouterOnError, z as RouterPlugin, B as UniAnimationType, F as usePageChannel } from './index-BFIS9K8x.cjs';
-import { Ref } from 'vue';
+import { R as RouterOptions, a as Router, b as RouteLocation, c as RouteLeaveGuard, d as RouteLocationRaw, N as NavigationResult, E as EventChannel, e as RouterErrorCode, U as UniApiError$1, f as UniApiCause } from './index-BShM2xTY.cjs';
+export { A as AnimationPlugin, C as ChannelPlugin, D as DEFAULT_ANIMATION_DURATION, g as EventListeners, G as GuardRouteOptions, I as InterceptorPlugin, h as NavigationAnimation, i as NavigationCompleteContext, j as NavigationGuard, k as NavigationPrepareContext, l as NavigationRedirectMode, P as ParamObject, m as ParamValue, n as ParamsInput, o as ParamsPlugin, p as PluginContext, q as PostNavigationGuard, Q as QueryValue, r as RouteConfig, s as RouteLocationNamedRaw, t as RouteLocationPathRaw, u as RouteMeta, v as RouteName, w as RouteNameMap, x as RoutePath, y as RouterOnError, z as RouterPlugin, B as UniAnimationType, F as usePageChannel } from './index-BShM2xTY.cjs';
+import { Ref, ComputedRef } from 'vue';
 
 /**
  * 路由器注入键，用于 Vue 的 provide/inject 机制
@@ -37,6 +37,45 @@ declare const ROUTER_SYMBOL: unique symbol;
  * ```
  */
 declare function createRouter(options: RouterOptions): Router;
+
+/**
+ * 获取当前路由器实例
+ *
+ * 必须在 Vue 组件的 setup() 函数中调用，且需先通过 `app.use(router)` 安装路由器。
+ * 内部通过 Vue 的 inject 机制获取路由器实例。
+ *
+ * @returns 路由器实例
+ * @throws {RouterError} 在 setup 外调用或未安装路由器时抛出 SETUP_ERROR
+ *
+ * @example
+ * ```ts
+ * import { useRouter } from '@meng-xi/uni-router'
+ *
+ * const router = useRouter()
+ * await router.push({ name: 'home' })
+ * ```
+ */
+declare function useRouter(): Router;
+
+/**
+ * 获取当前路由位置的响应式引用
+ *
+ * 必须在 Vue 组件的 setup() 函数中调用，且需先通过 `app.use(router)` 安装路由器。
+ * 返回的是响应式的路由位置 ref，当路由变化时组件会自动重新渲染。
+ *
+ * @returns 响应式路由位置 ref
+ * @throws {RouterError} 在 setup 外调用或未安装路由器时抛出 SETUP_ERROR
+ *
+ * @example
+ * ```ts
+ * import { useRoute } from '@meng-xi/uni-router'
+ *
+ * const route = useRoute()
+ * // 在模板中直接使用 route.path、route.query 等
+ * // 路由变化时组件会自动更新
+ * ```
+ */
+declare function useRoute(): Ref<RouteLocation>;
 
 /**
  * 组件内离开守卫，在当前组件即将离开时执行
@@ -79,42 +118,71 @@ declare function createRouter(options: RouterOptions): Router;
 declare function onBeforeRouteLeave(guard: RouteLeaveGuard): void;
 
 /**
- * 获取当前路由器实例
+ * useLink 的选项，与 RouterLink 组件的 props 对应
  *
- * 必须在 Vue 组件的 setup() 函数中调用，且需先通过 `app.use(router)` 安装路由器。
- * 内部通过 Vue 的 inject 机制获取路由器实例。
- *
- * @returns 路由器实例
- * @throws {RouterError} 在 setup 外调用或未安装路由器时抛出 SETUP_ERROR
- *
- * @example
- * ```ts
- * import { useRouter } from '@meng-xi/uni-router'
- *
- * const router = useRouter()
- * await router.push({ name: 'home' })
- * ```
+ * 支持传入普通对象或 ref 包裹的值。
  */
-declare function useRouter(): Router;
+interface UseLinkOptions {
+    /** 目标路由位置，支持路径字符串、路径对象或命名路由对象 */
+    to: RouteLocationRaw;
+    /** 是否使用 replace 模式导航 */
+    replace?: boolean;
+    /** 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面） */
+    relaunch?: boolean;
+}
 /**
- * 获取当前路由位置的响应式引用
+ * useLink 的返回值
+ */
+interface UseLinkReturn {
+    /** 解析后的路由对象 */
+    route: ComputedRef<RouteLocation>;
+    /** 目标路径字符串（fullPath，包含 query 参数） */
+    href: ComputedRef<string>;
+    /** 当前路由是否匹配此链接（比较 path，忽略 query 和 hash） */
+    isActive: ComputedRef<boolean>;
+    /** 当前路由是否完全匹配此链接（比较 fullPath，包含 query） */
+    isExactActive: ComputedRef<boolean>;
+    /** 执行导航到目标页面 */
+    navigate: () => Promise<NavigationResult>;
+}
+/**
+ * 暴露 RouterLink 内部行为为组合式 API
+ *
+ * 用于构建自定义导航组件，与 Vue Router 4.x 的 `useLink` 行为一致。
+ * 返回响应式的路由信息、匹配状态和导航方法，方便在自定义组件中复用 RouterLink 的逻辑。
  *
  * 必须在 Vue 组件的 setup() 函数中调用，且需先通过 `app.use(router)` 安装路由器。
- * 返回的是响应式的路由位置 ref，当路由变化时组件会自动重新渲染。
  *
- * @returns 响应式路由位置 ref
- * @throws {RouterError} 在 setup 外调用或未安装路由器时抛出 SETUP_ERROR
+ * @param options - 选项对象，包含目标路由位置和导航模式
+ * @returns 包含路由信息、匹配状态和导航方法的对象
  *
  * @example
  * ```ts
- * import { useRoute } from '@meng-xi/uni-router'
+ * import { useLink } from '@meng-xi/uni-router'
  *
- * const route = useRoute()
- * // 在模板中直接使用 route.path、route.query 等
- * // 路由变化时组件会自动更新
+ * const { href, isActive, isExactActive, navigate } = useLink({
+ *   to: { name: 'pagesDetailDetail', query: { id: '1' } }
+ * })
+ *
+ * // 响应式绑定
+ * const classes = computed(() => ({
+ *   'nav-link': true,
+ *   'nav-link-active': isActive.value
+ * }))
+ * ```
+ *
+ * @example
+ * ```ts
+ * // 在自定义组件中使用
+ * const props = defineProps<{
+ *   to: RouteLocationRaw
+ *   replace?: boolean
+ * }>()
+ *
+ * const { href, isActive, navigate } = useLink(props)
  * ```
  */
-declare function useRoute(): Ref<RouteLocation>;
+declare function useLink(options: UseLinkOptions): UseLinkReturn;
 
 /**
  * 基于 uni.$emit/$on 全局事件的页面间通信通道
@@ -205,4 +273,34 @@ declare class UniApiError extends Error {
     constructor(api: string, cause: UniApiCause);
 }
 
-export { EventChannel, NavigationFailure, ROUTER_SYMBOL, RouteLeaveGuard, RouteLocation, Router, RouterError, RouterErrorCode, RouterOptions, UniApiCause, UniApiError, UniEventChannel, createRouter, noopChannel, onBeforeRouteLeave, useRoute, useRouter };
+/**
+ * 检查一个错误是否为特定类型的导航失败
+ *
+ * 与 Vue Router 4.x 的 `isNavigationFailure` 行为一致，用于在 catch 块中
+ * 精准判断导航失败的类型，无需手动检查 instanceof 和 error.code。
+ *
+ * 当不传 `code` 时，仅检查是否为 NavigationFailure 实例。
+ * 传入 `code` 时，同时检查错误码，将类型收窄为特定导航失败。
+ *
+ * @param error - 捕获的错误对象
+ * @param code - 可选的错误码，传入时同时检查错误类型和错误码
+ * @returns 匹配时返回 true，同时将 error 的类型收窄为 NavigationFailure
+ *
+ * @example
+ * ```ts
+ * import { isNavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+ *
+ * try {
+ *   await router.push('/somewhere')
+ * } catch (error) {
+ *   if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
+ *     // 忽略重复导航
+ *   } else if (isNavigationFailure(error)) {
+ *     // 其他导航失败
+ *   }
+ * }
+ * ```
+ */
+declare function isNavigationFailure(error: unknown, code?: RouterErrorCode): error is NavigationFailure;
+
+export { EventChannel, NavigationFailure, NavigationResult, ROUTER_SYMBOL, RouteLeaveGuard, RouteLocation, RouteLocationRaw, Router, RouterError, RouterErrorCode, RouterOptions, UniApiCause, UniApiError, UniEventChannel, type UseLinkOptions, type UseLinkReturn, createRouter, isNavigationFailure, noopChannel, onBeforeRouteLeave, useLink, useRoute, useRouter };

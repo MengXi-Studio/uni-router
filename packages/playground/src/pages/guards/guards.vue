@@ -70,14 +70,14 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter, NavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+import { useRouter, isNavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
 
 const router = useRouter()
 const guardRouteLog = ref('')
 
 function goProtected() {
 	router.push({ name: 'pagesProtectedProtected' }).catch(error => {
-		if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_DUPLICATED) {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
 			uni.showToast({ title: '已在当前页面，无需重复导航', icon: 'none' })
 		}
 	})
@@ -86,7 +86,7 @@ function goProtected() {
 function testRedirect() {
 	// beforeEach 守卫会将未登录用户重定向到登录页
 	router.push({ name: 'pagesProtectedProtected' }).catch(error => {
-		if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_DUPLICATED) {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
 			uni.showToast({ title: '已在受保护页面，守卫不会触发重定向', icon: 'none' })
 		}
 	})

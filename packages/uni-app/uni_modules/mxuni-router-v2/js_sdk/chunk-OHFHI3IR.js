@@ -1,4 +1,4 @@
-import { onBeforeUnmount, inject, onUnmounted, ref } from 'vue';
+import { inject, onBeforeUnmount, computed, onUnmounted, ref } from 'vue';
 
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -447,6 +447,11 @@ var UniApiError = class extends Error {
 };
 function isUniApiError(error) {
   return error instanceof UniApiError;
+}
+
+// src/errors/is-navigation-failure.ts
+function isNavigationFailure(error, code) {
+  return error instanceof NavigationFailure && (code ? error.code === code : true);
 }
 
 // src/guard/index.ts
@@ -1839,18 +1844,8 @@ var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
 function createRouter(options) {
   return new UniRouter(options);
 }
-function onBeforeRouteLeave(guard) {
-  const router = useRouter();
-  const route = useRoute();
-  const fromPath = route.value.path;
-  const remove = router.beforeEach((to, from) => {
-    if (from.path !== fromPath) return;
-    return guard(to, from);
-  });
-  onBeforeUnmount(remove);
-}
 
-// src/composables/index.ts
+// src/composables/router.ts
 function useRouter() {
   let router;
   try {
@@ -1877,6 +1872,33 @@ function getReactiveRoute(router) {
 function useRoute() {
   const router = useRouter();
   return getReactiveRoute(router);
+}
+function onBeforeRouteLeave(guard) {
+  const router = useRouter();
+  const route = useRoute();
+  const fromPath = route.value.path;
+  const remove = router.beforeEach((to, from) => {
+    if (from.path !== fromPath) return;
+    return guard(to, from);
+  });
+  onBeforeUnmount(remove);
+}
+function useLink(options) {
+  const router = useRouter();
+  const currentRoute = useRoute();
+  const route = computed(() => router.resolve(options.to));
+  const href = computed(() => route.value.fullPath);
+  const isActive = computed(() => currentRoute.value.path === route.value.path);
+  const isExactActive = computed(() => currentRoute.value.fullPath === route.value.fullPath);
+  async function navigate() {
+    if (options.relaunch) {
+      return router.relaunch(options.to);
+    } else if (options.replace) {
+      return router.replace(options.to);
+    }
+    return router.push(options.to);
+  }
+  return { route, href, isActive, isExactActive, navigate };
 }
 var PLUGIN_DATA_KEY3 = "channel";
 function extractEvents(location) {
@@ -1976,4 +1998,4 @@ var InterceptorPlugin = {
   }
 };
 
-export { AnimationPlugin, ChannelPlugin, InterceptorPlugin, NavigationFailure, ParamsPlugin, ROUTER_SYMBOL, RouterError, RouterErrorCode, UniApiError, UniEventChannel, createRouter, noopChannel, onBeforeRouteLeave, usePageChannel, useRoute, useRouter };
+export { AnimationPlugin, ChannelPlugin, InterceptorPlugin, NavigationFailure, ParamsPlugin, ROUTER_SYMBOL, RouterError, RouterErrorCode, UniApiError, UniEventChannel, createRouter, isNavigationFailure, noopChannel, onBeforeRouteLeave, useLink, usePageChannel, useRoute, useRouter };

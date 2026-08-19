@@ -266,8 +266,8 @@ function replaceByName() {
 }
 
 function goBack() {
-	router.back().catch((error: NavigationFailure) => {
-		if (error.code === RouterErrorCode.NAVIGATION_ABORTED || error.code === RouterErrorCode.NAVIGATION_CANCELLED) {
+	router.back().catch(error => {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_ABORTED) || isNavigationFailure(error, RouterErrorCode.NAVIGATION_CANCELLED)) {
 			uni.showToast({ title: '返回被守卫中止', icon: 'none' })
 		}
 	})
