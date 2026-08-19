@@ -149,6 +149,34 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">useLink - 组合式导航 API</view>
+			<view class="info-text">通过 useLink 获取响应式导航状态，适合构建自定义导航组件。</view>
+			<view class="info-row" style="display: flex; justify-content: space-between; padding: 8rpx 0">
+				<text class="info-label">目标路径</text>
+				<text class="info-value">{{ linkResult.href }}</text>
+			</view>
+			<view class="info-row" style="display: flex; justify-content: space-between; padding: 8rpx 0">
+				<text class="info-label">是否匹配</text>
+				<text :class="['info-value', linkResult.isActive ? 'active' : '']">{{ linkResult.isActive ? '是' : '否' }}</text>
+			</view>
+			<view class="btn" @click="linkResult.navigate">useLink 导航到详情页</view>
+			<view class="code-block">
+				import { useLink } from '@meng-xi/uni-router'\n\nconst { href, isActive, isExactActive, navigate } = useLink({\n to: { name: 'pagesDetailDetail', query: { id: 'use-link' } }\n})\n\n// 响应式绑定\nconst classes =
+				computed(() => ({\n 'nav-link': true,\n 'nav-link-active': isActive.value\n}))
+			</view>
+		</view>
+
+		<view class="section">
+			<view class="section-title">isNavigationFailure - 导航失败类型检查</view>
+			<view class="info-text">使用 isNavigationFailure 替代手动 instanceof + code 检查，代码更简洁。</view>
+			<view class="btn btn-danger" @click="testIsNavigationFailure">测试：isNavigationFailure 检查</view>
+			<view class="code-block">
+				import { isNavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'\n\ntry {\n await router.push('/pages/error/error')\n} catch (error) {\n if (isNavigationFailure(error,
+				RouterErrorCode.NAVIGATION_DUPLICATED)) {\n console.log('重复导航，忽略')\n }\n}
+			</view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">TabBar / TabBarItem 组件</view>
 			<view class="info-text">自定义底部导航栏组件，支持徽标、切换拦截、SCSS 主题定制。此处演示内嵌样式，实际使用通常 fixed 在页面底部。</view>
 			<TabBar :fixed="false" :border="true" selected-color="#007aff" @change="onTabBarChange">
@@ -185,7 +213,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter, NavigationFailure, RouterErrorCode, type EventChannel } from '@meng-xi/uni-router'
+import { useRouter, useLink, isNavigationFailure, NavigationFailure, RouterErrorCode, type EventChannel } from '@meng-xi/uni-router'
 import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.vue'
 import TabBar from '@meng-xi/uni-router/components/tab-bar/tab-bar.vue'
 import TabBarItem from '@meng-xi/uni-router/components/tab-bar-item/tab-bar-item.vue'
@@ -194,6 +222,11 @@ import type { TabBarItemProps } from '@meng-xi/uni-router/components/tab-bar/con
 const router = useRouter()
 const routerLinkLog = ref('')
 const tabBarLog = ref('')
+
+// useLink 演示
+const linkResult = useLink({
+	to: { name: 'pagesDetailDetail', query: { id: 'use-link' } }
+})
 
 // 代码示例：含 < > 的文本需通过插值输出，避免小程序 WXML 编译器误解析为标签
 const linkAnimationCode = `<RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }"> 底部滑入 </RouterLink>`
@@ -306,6 +339,19 @@ function pushWithBoolQuery() {
 
 function goEventChannel() {
 	router.push({ name: 'pagesEventChannelEventChannel' })
+}
+
+// ===== isNavigationFailure 演示 =====
+async function testIsNavigationFailure() {
+	try {
+		await router.push('/pages/error/error')
+	} catch (error) {
+		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
+			uni.showToast({ title: '重复导航，已使用 isNavigationFailure 捕获', icon: 'none' })
+		} else if (isNavigationFailure(error)) {
+			uni.showToast({ title: '其他导航失败', icon: 'none' })
+		}
+	}
 }
 
 // ===== interceptUniApi 拦截演示 =====

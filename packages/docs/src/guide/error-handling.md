@@ -246,6 +246,92 @@ async function handleLogin() {
 }
 ```
 
+## isNavigationFailure()
+
+`isNavigationFailure()` 是导航失败的类型检查工具函数，用于在 `catch` 块中精准判断导航失败的类型，替代手动 `instanceof` + `code` 检查。
+
+### 类型
+
+```ts
+function isNavigationFailure(error: unknown, code?: RouterErrorCode): error is NavigationFailure
+```
+
+### 参数
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `error` | `unknown` | 捕获的错误对象 |
+| `code` | `RouterErrorCode`（可选） | 错误码，传入时同时检查错误类型和错误码 |
+
+### 返回值
+
+返回 `boolean`，同时将 `error` 的类型收窄为 `NavigationFailure`（TypeScript 类型守卫）。
+
+### 使用方式
+
+#### 不传 code：仅检查是否为导航失败
+
+```ts
+import { isNavigationFailure } from '@meng-xi/uni-router'
+
+try {
+  await router.push({ name: 'about' })
+} catch (error) {
+  if (isNavigationFailure(error)) {
+    console.log('导航失败:', error.code)
+  }
+}
+```
+
+#### 传入 code：检查特定类型的导航失败
+
+```ts
+import { isNavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+
+try {
+  await router.push({ name: 'about' })
+} catch (error) {
+  if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
+    // 忽略重复导航
+    return
+  }
+  if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_ABORTED)) {
+    // 守卫中止，无需处理
+    return
+  }
+  // 其他错误
+  uni.showToast({ title: '导航失败', icon: 'none' })
+}
+```
+
+#### 与 try-catch 结合
+
+```ts
+async function safeNavigate() {
+  try {
+    await router.push({ name: 'detail', query: { id: '1' } })
+  } catch (error) {
+    // 重复导航 → 静默忽略
+    if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) return
+    // 守卫中止 → 已有 toast 提示
+    if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_ABORTED)) return
+    // 其他错误 → 显示提示
+    uni.showToast({ title: '导航失败', icon: 'none' })
+    console.error(error)
+  }
+}
+```
+
+### 与手动检查的对比
+
+```ts
+// 手动检查（繁琐）
+if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_DUPLICATED)
+
+// 使用 isNavigationFailure（简洁）
+if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED))
+```
+
 ## 常见错误处理场景
 
 ### 忽略重复导航

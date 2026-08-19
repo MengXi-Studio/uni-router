@@ -370,6 +370,47 @@ async function handleNavigate() {
 }
 ```
 
+## isNavigationFailure()
+
+用于在 `catch` 块中精准判断导航失败的类型，替代手动 `instanceof` + `code` 检查。
+
+### 类型
+
+```ts
+function isNavigationFailure(error: unknown, code?: RouterErrorCode): error is NavigationFailure
+```
+
+### 使用方式
+
+```ts
+import { isNavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+
+try {
+  await router.push({ name: 'about' })
+} catch (error) {
+  // 不传 code：仅检查是否为导航失败
+  if (isNavigationFailure(error)) {
+    console.log('导航失败:', error.code)
+  }
+
+  // 传入 code：检查特定类型
+  if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
+    // 忽略重复导航
+    return
+  }
+}
+```
+
+### 与手动检查的对比
+
+```ts
+// 手动检查（繁琐）
+if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_DUPLICATED)
+
+// 使用 isNavigationFailure（简洁）
+if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED))
+```
+
 ## 下一步
 
 - [错误处理指南](../guide/error-handling) — 错误处理的深入讲解
