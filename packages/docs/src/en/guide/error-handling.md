@@ -137,6 +137,74 @@ router.onError(async (error, to) => {
 })
 ```
 
+## isNavigationFailure()
+
+`isNavigationFailure()` is a type-checking utility for navigation failures. It allows you to precisely identify the type of navigation failure in `catch` blocks, replacing manual `instanceof` + `code` checks.
+
+### Type
+
+```ts
+function isNavigationFailure(error: unknown, code?: RouterErrorCode): error is NavigationFailure
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `error` | `unknown` | The caught error object |
+| `code` | `RouterErrorCode` (optional) | Error code to check against |
+
+### Return Value
+
+Returns `boolean` and narrows the type of `error` to `NavigationFailure` (TypeScript type guard).
+
+### Usage
+
+#### Without code: check if it's any navigation failure
+
+```ts
+import { isNavigationFailure } from '@meng-xi/uni-router'
+
+try {
+  await router.push({ name: 'about' })
+} catch (error) {
+  if (isNavigationFailure(error)) {
+    console.log('Navigation failed:', error.code)
+  }
+}
+```
+
+#### With code: check for a specific type
+
+```ts
+import { isNavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+
+try {
+  await router.push({ name: 'about' })
+} catch (error) {
+  if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
+    // Ignore duplicated navigation
+    return
+  }
+  if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_ABORTED)) {
+    // Guard aborted, no action needed
+    return
+  }
+  // Other errors
+  uni.showToast({ title: 'Navigation failed', icon: 'none' })
+}
+```
+
+### Comparison with Manual Checks
+
+```ts
+// Manual check (verbose)
+if (error instanceof NavigationFailure && error.code === RouterErrorCode.NAVIGATION_DUPLICATED)
+
+// Using isNavigationFailure (concise)
+if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED))
+```
+
 ## Next Steps
 
 - [FAQ](./faq) — Troubleshoot specific issues

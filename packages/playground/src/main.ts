@@ -1,6 +1,6 @@
 import { createSSRApp } from 'vue'
 import App from './App.vue'
-import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin, NavigationFailure, RouterError, RouterErrorCode } from '@meng-xi/uni-router'
+import { createRouter, ParamsPlugin, ChannelPlugin, InterceptorPlugin, AnimationPlugin, RouterError, RouterErrorCode, isNavigationFailure } from '@meng-xi/uni-router'
 import routes from './router.config'
 import { isLoggedIn } from './utils/auth'
 
@@ -65,7 +65,7 @@ router.onRouteChange((to, from) => {
 
 // ===== 错误处理 =====
 router.onError((error, to, _from) => {
-	if (error instanceof NavigationFailure) {
+	if (isNavigationFailure(error)) {
 		switch (error.code) {
 			case RouterErrorCode.NAVIGATION_ABORTED:
 				console.warn('[onError] 导航被守卫中止:', to.fullPath)

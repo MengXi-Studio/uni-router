@@ -1,3 +1,38 @@
+## 2.3.0（2026-08-19）
+
+### 新增
+
+- **`useLink` 组合式 API** - 暴露 RouterLink 内部行为为组合式函数，用于构建自定义导航组件
+  - 与 Vue Router 4.x 的 `useLink` 行为一致，返回响应式的路由信息、匹配状态和导航方法
+  - 返回值：`route`（解析后的路由）、`href`（目标路径）、`isActive`（是否匹配）、`isExactActive`（是否完全匹配）、`navigate`（执行导航）
+  - 示例：
+    ```typescript
+    import { useLink } from '@meng-xi/uni-router'
+
+    const { href, isActive, navigate } = useLink({
+    	to: { name: 'pagesDetailDetail', query: { id: '1' } }
+    })
+
+    // 响应式绑定
+    const classes = computed(() => ({
+    	'nav-link': true,
+    	'nav-link-active': isActive.value
+    }))
+    ```
+- **`isNavigationFailure` 工具函数** - 导航失败类型检查工具，替代手动 `instanceof` + `code` 检查
+  ```typescript
+  import { isNavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
+
+  try {
+  	await router.push('/somewhere')
+  } catch (error) {
+  	if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
+  		// 忽略重复导航
+  	}
+  }
+  ```
+- **`UseLinkOptions` / `UseLinkReturn` 类型** - `useLink` 的选项和返回值类型
+
 ## 2.2.0（2026-08-18）
 
 ### 破坏性变更

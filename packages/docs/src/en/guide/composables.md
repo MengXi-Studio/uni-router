@@ -1,6 +1,6 @@
 # Composables
 
-Uni Router provides four composable functions for accessing the router instance, current route, registering component-level guards, and inter-page communication in Vue 3's `<script setup>`. This chapter covers usage, reactivity principles, and practical tips in detail.
+Uni Router provides five composable functions for accessing the router instance, current route, registering component-level guards, obtaining navigation state, and inter-page communication in Vue 3's `<script setup>`. This chapter covers usage, reactivity principles, and practical tips in detail.
 
 ## useRouter()
 
@@ -337,6 +337,66 @@ onBeforeRouteLeave((to, from) => {
 | Async guards | Supports async/await and returning Promises |
 | Component unmount | Guard is automatically removed, no cleanup needed |
 | Global guards | `onBeforeRouteLeave` guards have lower priority than `router.beforeEach` global guards |
+
+## useLink()
+
+Exposes the internal behavior of [RouterLink](../../component/router-link) as a composable, for building custom navigation components. Consistent with Vue Router 4.x's `useLink`.
+
+### Basic Usage
+
+```ts
+import { useLink } from '@meng-xi/uni-router'
+
+const { href, isActive, isExactActive, navigate } = useLink({
+  to: { name: 'pagesDetailDetail', query: { id: '1' } }
+})
+
+console.log(href.value) // '/pages/detail/detail?id=1'
+console.log(isActive.value) // Whether current route matches
+```
+
+### Custom Navigation Component
+
+```vue
+<script setup lang="ts">
+import { useLink } from '@meng-xi/uni-router'
+import { computed } from 'vue'
+
+const props = defineProps<{
+  to: RouteLocationRaw
+  replace?: boolean
+  activeClass?: string
+}>()
+
+const { href, isActive, navigate } = useLink(props)
+const classes = computed(() => ({
+  'nav-link': true,
+  [props.activeClass || 'active']: isActive.value
+}))
+</script>
+
+<template>
+  <view :class="classes" @click="navigate">
+    <slot />
+  </view>
+</template>
+```
+
+### Return Value
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `route` | `ComputedRef<RouteLocation>` | Resolved route object |
+| `href` | `ComputedRef<string>` | Target path string (fullPath with query) |
+| `isActive` | `ComputedRef<boolean>` | Whether current route matches (by `path`) |
+| `isExactActive` | `ComputedRef<boolean>` | Whether current route exactly matches (by `fullPath`) |
+| `navigate` | `() => Promise<NavigationResult>` | Navigate to the target page |
+
+### Call Constraints
+
+::: warning Must be called inside setup
+`useLink()` internally depends on `useRouter()` and `useRoute()`, so it can only be called inside a component's `setup()` function (or `<script setup>`).
+:::
 
 ## Using Outside Components
 

@@ -193,6 +193,10 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: 'usePageChannel()',
 							link: '/api/use-page-channel'
+						},
+						{
+							text: 'useLink()',
+							link: '/api/use-link'
 						}
 					]
 				},

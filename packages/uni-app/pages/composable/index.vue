@@ -105,13 +105,30 @@
 				</view>
 			</RouterLink>
 		</view>
+
+		<!-- useLink 组合式 API -->
+		<view class="card">
+			<text class="card-title">useLink - 组合式导航 API</text>
+			<text class="hint">通过 useLink 获取响应式导航状态，适合构建自定义导航组件</text>
+			<view class="info-row">
+				<text class="info-label">目标路径</text>
+				<text class="info-value">{{ linkResult.href }}</text>
+			</view>
+			<view class="info-row">
+				<text class="info-label">是否匹配</text>
+				<text :class="['info-value', linkResult.isActive ? 'active' : '']">{{ linkResult.isActive ? '是' : '否' }}</text>
+			</view>
+			<view class="btn" @click="linkResult.navigate">
+				<text class="btn-text">useLink 导航到关于页</text>
+			</view>
+		</view>
 	</view>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { useRouter, useRoute, usePageChannel, noopChannel, onBeforeRouteLeave } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
+import { useRouter, useRoute, usePageChannel, noopChannel, onBeforeRouteLeave, useLink } from '../../uni_modules/mxuni-router-v2/js_sdk/index.js'
 import router from '../../router'
 
 // 使用组合式 API 获取路由器和路由位置
@@ -121,6 +138,11 @@ const route = useRoute()
 const lastError = ref('')
 const channelLog = ref('')
 const hasUnsavedChanges = ref(false)
+
+// useLink 演示
+const linkResult = useLink({
+	to: { path: '/pages/about/index', query: { from: 'use-link' } }
+})
 
 function toggleDirty() {
 	hasUnsavedChanges.value = !hasUnsavedChanges.value

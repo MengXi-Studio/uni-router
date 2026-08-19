@@ -1,6 +1,6 @@
 # 组合式 API
 
-Uni Router 提供四个组合式函数（Composables），用于在 Vue 3 的 `<script setup>` 中访问路由器实例、当前路由、注册组件内守卫以及页面间通信通道。本章详细讲解用法、响应式原理和实战技巧。
+Uni Router 提供五个组合式函数（Composables），用于在 Vue 3 的 `<script setup>` 中访问路由器实例、当前路由、注册组件内守卫、获取导航状态以及页面间通信通道。本章详细讲解用法、响应式原理和实战技巧。
 
 ## useRouter()
 
@@ -337,6 +337,66 @@ onBeforeRouteLeave((to, from) => {
 | 异步守卫 | 支持 async/await 和返回 Promise |
 | 组件卸载 | 自动移除守卫，无需手动清理 |
 | 全局守卫 | `onBeforeRouteLeave` 注册的守卫优先级低于 `router.beforeEach` 注册的全局守卫 |
+
+## useLink()
+
+暴露 [RouterLink](../component/router-link) 内部行为为组合式 API，用于构建自定义导航组件。与 Vue Router 4.x 的 `useLink` 行为一致。
+
+### 基本用法
+
+```ts
+import { useLink } from '@meng-xi/uni-router'
+
+const { href, isActive, isExactActive, navigate } = useLink({
+  to: { name: 'pagesDetailDetail', query: { id: '1' } }
+})
+
+console.log(href.value) // '/pages/detail/detail?id=1'
+console.log(isActive.value) // 当前路由是否匹配
+```
+
+### 自定义导航组件
+
+```vue
+<script setup lang="ts">
+import { useLink } from '@meng-xi/uni-router'
+import { computed } from 'vue'
+
+const props = defineProps<{
+  to: RouteLocationRaw
+  replace?: boolean
+  activeClass?: string
+}>()
+
+const { href, isActive, navigate } = useLink(props)
+const classes = computed(() => ({
+  'nav-link': true,
+  [props.activeClass || 'active']: isActive.value
+}))
+</script>
+
+<template>
+  <view :class="classes" @click="navigate">
+    <slot />
+  </view>
+</template>
+```
+
+### 返回值说明
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `route` | `ComputedRef<RouteLocation>` | 解析后的路由对象 |
+| `href` | `ComputedRef<string>` | 目标路径字符串（fullPath，含 query） |
+| `isActive` | `ComputedRef<boolean>` | 当前路由是否匹配此链接（比较 `path`） |
+| `isExactActive` | `ComputedRef<boolean>` | 当前路由是否完全匹配（比较 `fullPath`） |
+| `navigate` | `() => Promise<NavigationResult>` | 执行导航到目标页面 |
+
+### 调用约束
+
+::: warning 必须在 setup 中调用
+`useLink()` 内部依赖 `useRouter()` 和 `useRoute()`，只能在组件的 `setup()` 函数（或 `<script setup>`）中调用。
+:::
 
 ## 在非组件中使用
 

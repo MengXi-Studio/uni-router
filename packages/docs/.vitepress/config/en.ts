@@ -202,6 +202,10 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						{
 							text: 'usePageChannel()',
 							link: '/en/api/use-page-channel'
+						},
+						{
+							text: 'useLink()',
+							link: '/en/api/use-link'
 						}
 					]
 				},
