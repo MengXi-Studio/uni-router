@@ -31,40 +31,6 @@ router.beforeEach(async (to, from) => {
 })
 ```
 
-## 重定向 + 选项（v1.7.0+）
-
-通过 `{ location, mode }` 对象控制重定向方式：
-
-```ts
-interface RedirectOptions {
-  mode?: NavigationRedirectMode  // 'push' | 'replace' | 'relaunch'
-}
-
-type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
-```
-
-```ts
-// 替换模式：重定向后不保留当前页在栈中
-router.beforeEach(() => ({
-  location: { name: 'login' },
-  mode: 'replace'
-}))
-
-// 重启模式：清空页面栈
-router.beforeEach(() => ({
-  location: { name: 'home' },
-  mode: 'relaunch'
-}))
-```
-
-::: tip mode 的应用场景
-- **`push`（默认）**：常规重定向，保留当前页在栈中
-- **`replace`**：登录重定向（避免返回到受保护页）、表单提交后跳转
-- **`relaunch`**：退出登录、切换用户、回到首页
-
-详见 [守卫重定向方式](../guide/guards#重定向方式控制)。
-:::
-
 ### 抛出错误
 
 ```ts
@@ -84,7 +50,7 @@ return new Error('权限不足')
 const removeGuard = router.beforeEach((to, from) => {
   // 权限校验、登录检查、埋点等
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
   return true
 })
@@ -194,10 +160,7 @@ onBeforeRouteLeave((to, from) => {
 ## Promise 式返回值
 
 ```ts
-type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null | {
-  location: RouteLocationRaw
-  mode?: NavigationRedirectMode
-}
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
 ```
 
 | 返回值 | 说明 |
@@ -206,8 +169,7 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 | `null` | 放行 |
 | `true` | 放行 |
 | `false` | 中止 |
-| `RouteLocationRaw` | 重定向（push） |
-| `{ location, mode }` | 重定向 + 方式控制 |
+| `RouteLocationRaw` | 重定向 |
 | `Error` | 抛出错误，中止导航 |
 
 ```ts
@@ -221,10 +183,7 @@ router.beforeEach(() => false)
 router.beforeEach(() => ({ name: 'login' }))
 
 // 重定向（replace）
-router.beforeEach(() => ({
-  location: { name: 'login' },
-  mode: 'replace'
-}))
+router.beforeEach(() => ({ name: 'login' }))
 
 // 抛出错误
 router.beforeEach(() => {
@@ -242,10 +201,7 @@ router.beforeEach((to, from) => {
 
   if (to.meta.requireAuth && !isLoggedIn) {
     // 重定向到登录页，使用 replace 避免返回到受保护页
-    return {
-      location: { name: 'login', query: { redirect: to.fullPath } },
-      mode: 'replace'
-    }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   return true

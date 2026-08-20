@@ -77,7 +77,7 @@ const routes = [
 
 router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login' }, mode: 'replace' }
+    return { name: 'login' }
   }
   // else: pass (return undefined)
 })
@@ -276,13 +276,13 @@ router.beforeEach((to, from) => {
   // Role check
   if (to.meta.roles && !hasRole(to.meta.roles)) {
     uni.showToast({ title: 'No permission', icon: 'none' })
-    return { location: { name: 'home' }, mode: 'relaunch' }
+    return { name: 'home' }
   }
 
   // Permission check
   if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
     uni.showToast({ title: 'Insufficient permissions', icon: 'none' })
-    return { location: { name: 'home' }, mode: 'relaunch' }
+    return { name: 'home' }
   }
 
   // else: pass (return undefined)

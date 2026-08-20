@@ -185,7 +185,7 @@ type GuardResult =
 
 ### 2.4 Redirect Handling
 
-When a guard uses `return { location, mode }`:
+When a guard uses `return { name: 'login' }`:
 
 ```ts
 const redirectMode = result.mode ?? (mode === 'back' ? 'relaunch' : mode)
@@ -465,7 +465,7 @@ Taking "unauthenticated user accessing a protected page" as an example:
 3. executeNavigation(to, from, 'push', depth=0):
    ├─ beforeEach:
    │   └─ detect requireAuth && !isLoggedIn
-   │   └─ return { location: { name: 'login' }, mode: 'replace' }
+   │   └─ return { name: 'login' }
    │   └─ returns { type: 'next', redirect: {name:'login'}, mode: 'replace' }
    │
    ├─ handleGuardResult:

@@ -233,7 +233,7 @@ const routes: RouteConfig[] = [
 
 router.beforeEach((to, from) => {
   if (to.meta.roles && !hasRole(to.meta.roles)) {
-    return { location: { name: '403' }, mode: 'relaunch' }
+    return { name: '403' }
   }
   if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
     return { name: '403' }

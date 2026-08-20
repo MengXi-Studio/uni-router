@@ -77,7 +77,7 @@ const routes = [
 
 router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login' }, mode: 'replace' }
+    return { name: 'login' }
   }
 })
 ```
@@ -273,13 +273,13 @@ router.beforeEach((to, from) => {
   // 角色检查
   if (to.meta.roles && !hasRole(to.meta.roles)) {
     uni.showToast({ title: '无权访问', icon: 'none' })
-    return { location: { name: 'home' }, mode: 'relaunch' }
+    return { name: 'home' }
   }
 
   // 权限检查
   if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
     uni.showToast({ title: '权限不足', icon: 'none' })
-    return { location: { name: 'home' }, mode: 'relaunch' }
+    return { name: 'home' }
   }
 })
 ```

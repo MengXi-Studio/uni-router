@@ -105,7 +105,7 @@ eventChannel.emit('init', { source: 'replace' })
 ::: tip 何时用 replace 而非 push
 - 登录成功后：避免登录页留在栈中
 - 表单提交后：避免用户返回到表单页重复提交
-- 重定向场景：守卫中 `return { location, mode: 'replace' }`
+- 重定向场景：守卫中 `return { name: 'login' }`
 :::
 
 ### relaunch()

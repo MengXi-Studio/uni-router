@@ -448,7 +448,7 @@ const router = createRouter({
 router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login' }, mode: 'replace' }
+    return { name: 'login' }
   }
 })
 

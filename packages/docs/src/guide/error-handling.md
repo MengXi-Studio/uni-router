@@ -465,12 +465,11 @@ router.onError((error, to, from) => {
 ### 2. 区分错误类型
 
 ```ts
-import { isNavigationFailure, RouterErrorCodes } from '@meng-xi/uni-router'
+import { isNavigationFailure, RouterErrorCode } from '@meng-xi/uni-router'
 
 router.onError((error) => {
   if (isNavigationFailure(error)) {
-    // 导航失败错误
-    if (error.code === RouterErrorCodes.NAVIGATION_ABORTED) {
+    if (error.code === RouterErrorCode.NAVIGATION_ABORTED) {
       // 守卫中止
     }
   } else {
@@ -516,20 +515,20 @@ router.afterEach((to, from) => {
 
 ## 错误码常量
 
-使用 `RouterErrorCodes` 常量避免硬编码字符串：
+使用 `RouterErrorCode` 常量避免硬编码字符串：
 
 ```ts
-import { RouterErrorCodes } from '@meng-xi/uni-router'
+import { RouterErrorCode } from '@meng-xi/uni-router'
 
 router.onError((error) => {
   switch (error.code) {
-    case RouterErrorCodes.NAVIGATION_ABORTED:
+    case RouterErrorCode.NAVIGATION_ABORTED:
       // ...
       break
-    case RouterErrorCodes.NAVIGATION_DUPLICATED:
+    case RouterErrorCode.NAVIGATION_DUPLICATED:
       // ...
       break
-    case RouterErrorCodes.PLUGIN_REQUIRED:
+    case RouterErrorCode.PLUGIN_REQUIRED:
       // 插件未注册
       break
     // ...

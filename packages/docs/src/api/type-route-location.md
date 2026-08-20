@@ -547,7 +547,7 @@ await router.push({ name: 'login', mode: 'relaunch' })
 // 守卫中重定向时指定方式
 router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login' }, mode: 'replace' }  // 替换，避免返回到受保护页
+    return { name: 'login' }  // 替换，避免返回到受保护页
   } else {
     return
   }

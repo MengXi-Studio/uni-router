@@ -185,7 +185,7 @@ type GuardResult =
 
 ### 2.4 重定向的处理
 
-当守卫 `return { location, mode }` 时：
+当守卫 `return { name: 'login' }` 时：
 
 ```ts
 const redirectMode = result.mode ?? (mode === 'back' ? 'relaunch' : mode)
@@ -463,7 +463,7 @@ back() 返回原页面:
 3. executeNavigation(to, from, 'push', depth=0):
    ├─ beforeEach:
    │   └─ 检测 requireAuth && !isLoggedIn
-   │   └─ return { location: { name: 'login' }, mode: 'replace' }
+   │   └─ return { name: 'login' }
    │   └─ 返回 { type: 'next', redirect: {name:'login'}, mode: 'replace' }
    │
    ├─ handleGuardResult:

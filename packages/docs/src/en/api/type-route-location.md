@@ -595,7 +595,7 @@ await router.push({ name: 'login', mode: 'relaunch' })
 // Specify mode when redirecting in guards
 router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login' }, mode: 'replace' }  // Replace, avoid going back to protected page
+    return { name: 'login' }  // Replace, avoid going back to protected page
   } else {
     return
   }

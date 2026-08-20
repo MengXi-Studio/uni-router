@@ -49,5 +49,5 @@ features:
     details: Inline animation params and route-level meta.animation defaults, App only
   - icon: 💪
     title: TypeScript First
-    details: Complete type definitions and composables, useRouter / useRoute / usePageChannel, seamlessly integrate with Vue 3
+    details: Complete type definitions and composables, useRouter / useRoute / usePageChannel / onBeforeRouteLeave / useLink, seamlessly integrate with Vue 3
 ---

@@ -49,5 +49,5 @@ features:
     details: 导航动画参数与路由级 meta.animation 默认值，仅 App 端生效
   - icon: 💪
     title: TypeScript 优先
-    details: 完整类型定义与组合式 API，useRouter / useRoute / usePageChannel，与 Vue 3 无缝集成
+    details: 完整类型定义与组合式 API，useRouter / useRoute / usePageChannel / onBeforeRouteLeave / useLink，与 Vue 3 无缝集成
 ---
