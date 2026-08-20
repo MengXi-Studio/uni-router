@@ -19,7 +19,7 @@ export interface RouterLinkProps {
 }
 
 /** RouterLink 组件 Emits 类型 */
-export interface RouterLinkEmits {
+export type RouterLinkEmits = {
 	/** 导航成功后触发，返回 eventChannel 用于页面间通信；默认仅 push 时有值，启用 useUniEventChannel 后所有导航方式均可用 */
 	navigated: [eventChannel: EventChannel | undefined]
 	/** 导航失败时触发（如守卫中止、重复导航） */

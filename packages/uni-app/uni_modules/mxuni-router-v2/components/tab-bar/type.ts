@@ -26,7 +26,7 @@ export interface TabBarProps {
 }
 
 /** TabBar 组件 Emits 类型 */
-export interface TabBarEmits {
+export type TabBarEmits = {
 	/** 点击 tab 切换成功后触发 */
 	change: [item: TabBarItemProps, index: number]
 	/** 导航失败时触发（如守卫中止、重复导航） */
