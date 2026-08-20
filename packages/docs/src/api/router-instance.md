@@ -105,7 +105,7 @@ eventChannel.emit('init', { source: 'replace' })
 ::: tip 何时用 replace 而非 push
 - 登录成功后：避免登录页留在栈中
 - 表单提交后：避免用户返回到表单页重复提交
-- 重定向场景：守卫中 `return { name: 'login' }`
+- 重定向场景：守卫中 `return { location: { name: 'login' }, mode: 'replace' }`
 :::
 
 ### relaunch()
@@ -508,8 +508,26 @@ onLaunch((options) => {
 | 守卫结果 | 行为 |
 | --- | --- |
 | 放行（`return true` / `undefined`） | 不执行导航，resolve 目标路由 |
-| 重定向（`return location`） | 按守卫指定的方式（默认 `relaunch`）跳转到重定向目标 |
+| 重定向（`return location`） | 按守卫指定的方式跳转到重定向目标。普通重定向默认 `relaunch`；可控重定向（`return { location, mode }`）按 `mode` 跳转 |
 | 中止（`return false`） | 调用 `onAbort` 回调，并 reject `NavigationFailure` |
+
+::: tip guardRoute 支持可控重定向
+`guardRoute()` 与完整导航共享同一套守卫解析逻辑，因此 `return { location, mode }` 可控重定向在冷启动场景同样生效：
+
+```ts
+router.guardRoute(launchPath, {
+  onAbort: (failure) => { /* ... */ }
+})
+
+// 守卫中：
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    // 冷启动重定向到登录页，用 replace 避免登录页残留在页面栈中
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+  }
+})
+```
+:::
 
 ::: warning 冷启动无法真正"阻止进入"
 冷启动场景下页面已加载，`guardRoute()` 无法真正阻止页面显示。当守卫中止时，通过 `onAbort` 回调执行 `router.relaunch()` 跳转到安全页面是推荐的应对方式。

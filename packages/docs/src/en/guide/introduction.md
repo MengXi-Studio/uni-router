@@ -159,7 +159,7 @@ The router cannot intercept physical back buttons and browser back. `syncRoute()
 - 🧭 **Four navigation types** — `push` / `replace` / `relaunch` / `back`, auto-detect TabBar pages
 - 🛡️ **Complete guard chain** — `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
 - 🧊 **Cold-start guards** — `guardRoute()` retroactively executes guard chain for H5 URL / mini-program scene / App deeplink direct entry
-- 🔄 **Guard redirect** — Return a route location in guards to redirect, using the original navigation mode
+- 🔄 **Guard redirect** — Return a route location in guards to redirect; controllable redirect (`{ location, mode }`) can explicitly specify the navigation mode
 - 📦 **Page params** (ParamsPlugin) — `params` passes complex data, not exposed in URL, supports persistence
 - 🔢 **Query enhancement** — `queryInt()` / `queryNumber()` / `queryBool()` type parsing
 - 📡 **Page communication** (ChannelPlugin) — `events` + `eventChannel` bidirectional communication; `useUniEventChannel` supports all navigation methods

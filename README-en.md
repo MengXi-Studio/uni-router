@@ -19,7 +19,7 @@
 ## Features
 
 - **vue-router-style API** - `push` / `replace` / `relaunch` / `back`
-- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave`, `guardRoute` for cold-start execution
+- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave`, `guardRoute` for cold-start execution, controllable redirect supported
 - **Named Routes & Route Meta** - Navigate by `name`, carry custom data via `meta`
 - **Plugin Architecture** - ParamsPlugin / AnimationPlugin / ChannelPlugin / InterceptorPlugin registered on demand
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths

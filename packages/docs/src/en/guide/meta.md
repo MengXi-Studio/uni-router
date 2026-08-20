@@ -10,11 +10,11 @@ interface RouteMeta {
   isTab?: boolean                   // Whether it's a TabBar page
   requireAuth?: boolean             // Whether login is required
   animation?: NavigationAnimation   // Default navigation animation
-  [key: string]: unknown            // Custom extension fields
+  [key: string]: any                // Custom extension fields
 }
 ```
 
-The `[key: string]: unknown` index signature allows adding arbitrary custom fields without modifying the library's type definitions.
+The `[key: string]: any` index signature allows adding arbitrary custom fields without modifying the library's type definitions.
 
 ## Built-in Fields
 

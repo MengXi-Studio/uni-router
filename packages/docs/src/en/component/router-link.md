@@ -1,6 +1,6 @@
 # RouterLink
 
-Navigation component that triggers route navigation on click. Built on uni-app's `<navigator>` component with native touch feedback support.
+Navigation component that triggers route navigation on click. Built on uni-app's `<view>` element with `hover-class` providing pressed-state feedback.
 
 ## Import
 
@@ -114,7 +114,7 @@ See [Plugin System](../guide/plugins) for details.
 
 - **Type**: `string`
 - **Default**: `'navigator-hover'`
-- **Description**: Style class applied when pressed, corresponds to `<navigator>`'s `hover-class` attribute. Set to `'none'` to disable hover effect
+- **Description**: Style class applied when pressed, corresponds to `<view>`'s `hover-class` attribute. Set to `'none'` to disable hover effect
 
 ### hoverStopPropagation
 
@@ -290,7 +290,7 @@ import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.v
 
 | Feature              | vue-router         | Uni Router         |
 | -------------------- | ------------------ | ------------------ |
-| Host element         | `<a>`              | `<navigator>`      |
+| Host element         | `<a>`              | `<view>`           |
 | `to` type            | `string \| object` | `string \| object` |
 | `replace`            | ✅                 | ✅                 |
 | `relaunch`           | ❌                 | ✅                 |
@@ -323,7 +323,7 @@ const isActive = (name: string) => route.value.name === name
 
 ### Why custom is not supported
 
-vue-router's `custom` allows fully custom rendering logic, relying on `<a>` tags and browser navigation. uni-app's `<navigator>` is a native component and cannot be fully customized for rendering. To trigger custom navigation, use APIs like `router.push()`.
+vue-router's `custom` allows fully custom rendering logic, relying on `<a>` tags and browser navigation. In uni-app, navigation is driven by the router APIs rather than native components, so fully custom rendering is not supported. To trigger custom navigation, use APIs like `router.push()`.
 
 ## Next Steps
 

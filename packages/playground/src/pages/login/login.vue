@@ -7,10 +7,10 @@
 		</view>
 
 		<view class="section">
-			<view class="section-title">守卫重定向逻辑</view>
+			<view class="section-title">守卫重定向逻辑（可控重定向）</view>
 			<view class="code-block">
-				router.beforeEach((to, from) => {\n if (to.meta.requireAuth && !isLoggedIn) {\n // 重定向到登录页，携带原始目标路径\n return {\n name: 'pagesLoginLogin',\n query: { redirect: to.fullPath }\n }\n }\n // 不返回值或
-				return true 表示放行\n})
+				router.beforeEach((to, from) => {\n if (to.meta.requireAuth && !isLoggedIn) {\n // 可控重定向：显式指定 replace，避免登录页残留在页面栈中\n return {\n location: {\n name: 'pagesLoginLogin',\n query: { redirect:
+				to.fullPath }\n },\n mode: 'replace'\n }\n }\n // 不返回值或 return true 表示放行\n})
 			</view>
 		</view>
 

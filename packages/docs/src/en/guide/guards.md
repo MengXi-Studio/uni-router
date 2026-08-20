@@ -174,8 +174,81 @@ router.beforeEach((to, from) => {
 | `false` | Abort navigation (`NAVIGATION_ABORTED`) |
 | `string` (e.g. `'/login'`) | Redirect to path |
 | `RouteLocationRaw` (e.g. `{ name: 'login' }`) | Redirect to route location |
+| `NavigationRedirect` (e.g. `{ location, mode }`) | Redirect to route location and specify navigation mode |
 | `Error` object | Cancel navigation (`NAVIGATION_CANCELLED`) |
 | Thrown exception | Cancel navigation (`NAVIGATION_CANCELLED`) |
+
+## Controllable Redirect
+
+By default, guard redirects use the original navigation method that triggered the guard (a redirect from a `push`-triggered guard still uses `uni.navigateTo`). By returning a `{ location, mode }` object, you can explicitly specify the navigation method used for the redirect.
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    // Use replace to go to login page, avoiding the login page staying in the page stack
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+  }
+})
+```
+
+### Redirect Method Priority
+
+```
+Explicit mode (NavigationRedirect.mode) > original navigation method > back falls back to relaunch
+```
+
+| Triggering Navigation | Guard Return | Actual Redirect Method |
+| --- | --- | --- |
+| `push` | `{ location, mode: 'replace' }` | `replace` (explicit) |
+| `push` | `{ name: 'login' }` | `push` (original) |
+| `replace` | `{ location, mode: 'relaunch' }` | `relaunch` (explicit) |
+| `replace` | `{ name: 'login' }` | `replace` (original) |
+| `back` | `{ location, mode: 'push' }` | `push` (explicit) |
+| `back` | `{ name: 'login' }` | `relaunch` (back cannot navigate outside stack, falls back) |
+
+### mode Options
+
+```ts
+type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
+```
+
+| mode | uni API | Use Case |
+| --- | --- | --- |
+| `'push'` | `navigateTo` | Need to return to original page after login, keep target page in stack |
+| `'replace'` | `redirectTo` | Replace current page, no history (e.g. login page) |
+| `'relaunch'` | `reLaunch` | Clear stack (e.g. return home on insufficient permissions) |
+
+### Practice: Login Redirect
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    if (from.name === 'login') {
+      // Already on login page without permissions, use replace to avoid stack buildup
+      return false
+    }
+    // Use replace to go to login page, avoiding the login page staying in the page stack
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+  }
+})
+
+// After login success
+async function onLoginSuccess(redirect: string) {
+  // Use replace to return to original page, avoiding login page staying in stack
+  await router.replace(redirect)
+}
+```
+
+### Practice: Clear Stack on Insufficient Permissions
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.roles && !hasRole(to.meta.roles)) {
+    // Insufficient permissions, clear stack and return home
+    return { location: { name: 'home' }, mode: 'relaunch' }
+  }
+})
+```
 
 ## Async Guards
 
@@ -352,12 +425,12 @@ router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
 
   if (to.meta.requireAuth && !isLoggedIn) {
-    // Not logged in → go to login page
-    return { name: 'login', query: { redirect: to.fullPath } }
+    // Not logged in → go to login page, use replace to avoid login page staying in stack
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
   if (to.name === 'login' && isLoggedIn) {
     // Already logged in accessing login page → go to home
-    return { name: 'home' }
+    return { location: { name: 'home' }, mode: 'replace' }
   }
   // Pass
 })
@@ -378,7 +451,7 @@ router.beforeEach((to, from) => {
 
   if (to.meta.roles && !to.meta.roles.some(r => userRoles.includes(r))) {
     // Insufficient permissions → clear stack and return home
-    return { name: 'home' }
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
 })
 ```
@@ -619,7 +692,13 @@ See [Router Instance - guardRoute()](../api/router-instance#guardroute) for deta
 
 ```ts
 // Guard return value type
-type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | NavigationRedirect | Error | null
+
+// Controllable redirect result
+interface NavigationRedirect {
+  location: RouteLocationRaw
+  mode?: NavigationRedirectMode
+}
 
 // Pre guard (return-value pattern, recommended)
 type NavigationGuard = (

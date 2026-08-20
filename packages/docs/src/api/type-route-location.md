@@ -1,15 +1,16 @@
 # RouteLocation
 
-路由位置类型，描述导航的目标位置。是 `router.push()` / `router.replace()` / `router.back()` 等导航方法和 `RouterLink` 组件 `to` 属性的核心类型。
+路由位置类型，描述导航的目标位置。是 `router.push()` / `router.replace()` / `router.relaunch()` 等导航方法和 `RouterLink` 组件 `to` 属性的核心类型。
 
-## 类型定义
+## 输入类型：RouteLocationRaw
+
+导航方法接受的是 `RouteLocationRaw`，支持字符串路径、路径对象或命名对象：
 
 ```ts
-type RouteLocation =
+type RouteLocationRaw =
   | string
-  | RouteLocationPath
-  | RouteLocationName
-  | RouteLocationRaw
+  | RouteLocationPathRaw
+  | RouteLocationNamedRaw
 ```
 
 支持多种形式：
@@ -29,9 +30,7 @@ router.push({ path: 'pages/detail/detail', query: { id: '1' } })
 router.push({ name: 'detail', params: { info: { id: 1 } } })
 ```
 
-## 路径形式
-
-### 字符串路径
+## 字符串路径
 
 最简单的形式，直接传递路径字符串：
 
@@ -49,24 +48,22 @@ router.push('about')
 ::: warning 字符串路径的限制
 - 路径需以 `/` 开头（自动补全）
 - 无法传递 `params`（仅支持 query 字符串）
-- 无法指定 `animation` / `events` / `mode` 等高级选项
+- 无法指定 `animation` / `events` 等高级选项
 - 推荐使用对象形式获得完整能力
 :::
 
-### RouteLocationPath
+## RouteLocationPathRaw
 
 通过 `path` 指定目标路径：
 
 ```ts
-interface RouteLocationPath {
-  path: string
-  query?: Record<string, any>
-  params?: Record<string, any>          // （需 ParamsPlugin）
-  hash?: string
-  animation?: NavigationAnimation       // （需 AnimationPlugin）
-  events?: Record<string, Function>     // （需 ChannelPlugin）
-  mode?: NavigationMode
-  persistent?: boolean                  // （需 ParamsPlugin）
+interface RouteLocationPathRaw {
+  path: RoutePath
+  query?: Record<string, QueryValue>
+  params?: ParamsInput                        // （需 ParamsPlugin）
+  persistent?: boolean                        // （需 ParamsPlugin）
+  animation?: NavigationAnimation             // （需 AnimationPlugin）
+  events?: EventListeners                     // （需 ChannelPlugin，仅 push 生效）
 }
 ```
 
@@ -83,20 +80,18 @@ await router.push({
 })
 ```
 
-### RouteLocationName
+## RouteLocationNamedRaw
 
 通过 `name` 指定命名路由：
 
 ```ts
-interface RouteLocationName {
-  name: string
-  query?: Record<string, any>
-  params?: Record<string, any>          // （需 ParamsPlugin）
-  hash?: string
-  animation?: NavigationAnimation       // （需 AnimationPlugin）
-  events?: Record<string, Function>     // （需 ChannelPlugin）
-  mode?: NavigationMode
-  persistent?: boolean                  // （需 ParamsPlugin）
+interface RouteLocationNamedRaw {
+  name: RouteName
+  query?: Record<string, QueryValue>
+  params?: ParamsInput                        // （需 ParamsPlugin）
+  persistent?: boolean                        // （需 ParamsPlugin）
+  animation?: NavigationAnimation             // （需 AnimationPlugin）
+  events?: EventListeners                     // （需 ChannelPlugin，仅 push 生效）
 }
 ```
 
@@ -126,7 +121,7 @@ await router.push({
 
 ### query
 
-- **类型**: `Record<string, any>`
+- **类型**: `Record<string, QueryValue>`
 - **说明**: URL 查询参数，会被序列化为字符串拼接到 URL 后
 
 ::: warning query 的序列化限制
@@ -156,7 +151,7 @@ router.push({ name: 'detail', query: { ids: [1, 2, 3] } })
 
 ### params
 
-- **类型**: `Record<string, any>`
+- **类型**: `ParamsInput`
 - **说明**: 页面参数，支持任意可序列化数据（对象、数组、嵌套结构）
 - **存储方式**：
   - 默认存储在内存中（`persistent: false`）
@@ -189,20 +184,6 @@ const tags = route.value.params.tags  // ['a', 'b', 'c']
 | 适用场景 | 简单参数、可分享 | 复杂数据、页面间通信 |
 :::
 
-### hash
-
-- **类型**: `string`
-- **说明**: URL hash 片段（仅 H5 生效）
-
-```ts
-router.push({ path: '/pages/about/about', hash: '#section-1' })
-// URL: /pages/about/about#section-1
-```
-
-::: warning 平台限制
-`hash` 仅 H5 平台支持。小程序和 App 端会忽略此参数。
-:::
-
 ### animation
 
 - **类型**: `NavigationAnimation`
@@ -217,8 +198,8 @@ await router.push({
 
 ### events
 
-- **类型**: `Record<string, Function>`
-- **说明**: EventChannel 事件监听器，用于目标页面向源页面通信
+- **类型**: `EventListeners`
+- **说明**: EventChannel 事件监听器，用于目标页面向源页面通信（仅 push 生效）
 
 ```ts
 // 源页面
@@ -244,25 +225,6 @@ eventChannel?.emit('onAddressSelected', { city: '北京', detail: '朝阳区' })
 - 类型安全：可配合 TS 定义事件类型
 :::
 
-### mode
-
-- **类型**: `'push' | 'replace' | 'relaunch'`
-- **说明**: 导航方式（v1.7.0+），覆盖默认行为
-
-```ts
-// 强制替换（不保留当前页在栈中）
-await router.push({ name: 'login', mode: 'replace' })
-
-// 重启应用（清空页面栈）
-await router.push({ name: 'home', mode: 'relaunch' })
-```
-
-::: tip mode 的应用场景
-- `push`（默认）：常规导航，保留当前页
-- `replace`：登录后跳转、表单提交后跳转，避免返回到表单页
-- `relaunch`：退出登录、切换用户、回到首页，清空所有历史
-:::
-
 ### persistent
 
 - **类型**: `boolean`
@@ -284,22 +246,22 @@ await router.push({
 })
 ```
 
-## RouteLocationNormalized
+## 解析后的类型：RouteLocation
 
-导航完成后，`route` 对象中存储的是规范化后的路由位置：
+导航完成后，`useRoute()` 返回的是解析后的 `RouteLocation` 对象：
 
 ```ts
-interface RouteLocationNormalized {
+interface RouteLocation {
   path: string
   name?: string
-  query: Record<string, string>
-  params: Record<string, any>
-  hash: string
-  fullPath: string
   meta: RouteMeta
-  matched: RouteConfig[]
-  redirectedFrom?: RouteLocationNormalized
+  query: Record<string, string>
+  params: Readonly<ParamObject>
+  fullPath: string
   _synced?: boolean
+  queryInt(key: string, defaultValue?: number): number | undefined
+  queryNumber(key: string, defaultValue?: number): number | undefined
+  queryBool(key: string, defaultValue?: boolean): boolean | undefined
 }
 ```
 
@@ -307,43 +269,12 @@ interface RouteLocationNormalized {
 
 #### fullPath
 
-完整路径，包含 query 和 hash：
+完整路径，包含 query：
 
 ```ts
 const route = useRoute()
 console.log(route.value.fullPath)
-// /pages/detail/detail?id=1&tab=info#section-1
-```
-
-#### matched
-
-匹配的路由配置链（嵌套路由时会有多个）：
-
-```ts
-const route = useRoute()
-route.value.matched.forEach((config, index) => {
-  console.log(`匹配层级 ${index}:`, config.path)
-})
-```
-
-#### redirectedFrom
-
-如果本次导航是由守卫重定向触发的，记录原始目标：
-
-```ts
-router.beforeEach((to, from) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    return { name: 'login' }
-  } else {
-    return
-  }
-})
-
-router.afterEach((to) => {
-  if (to.redirectedFrom) {
-    console.log(`从 ${to.redirectedFrom.fullPath} 重定向到 ${to.fullPath}`)
-  }
-})
+// /pages/detail/detail?id=1&tab=info
 ```
 
 #### _synced
@@ -370,61 +301,42 @@ router.onRouteChange((to, from) => {
 
 ## 类型解析方法
 
-`RouteLocationNormalized` 提供了一系列类型解析方法，方便从 query / params 中获取指定类型的数据：
+`RouteLocation` 提供 `queryInt` / `queryNumber` / `queryBool` 三个类型解析方法，从 query 中获取指定类型的数据。
 
-### queryInt / paramInt
+### queryInt
 
-将参数解析为整数：
+将查询参数解析为整数：
 
 ```ts
 const route = useRoute()
 
-// query 解析
 const id = route.value.queryInt('id')        // 123
-const invalid = route.value.queryInt('name')  // NaN（无法解析时返回 NaN）
-
-// params 解析
-const count = route.value.paramInt('count')   // 10
+const invalid = route.value.queryInt('name')  // undefined（无法解析或未提供默认值时）
+const page = route.value.queryInt('page', 1)  // 带默认值，解析失败返回 1
 ```
 
-### queryNumber / paramNumber
+### queryNumber
 
-将参数解析为数值（支持浮点数）：
+将查询参数解析为数值（支持浮点数）：
 
 ```ts
 const route = useRoute()
 
-const price = route.value.queryNumber('price')    // 99.99
-const discount = route.value.paramNumber('discount')  // 0.85
+const price = route.value.queryNumber('price')  // 99.99
 ```
 
-### queryBool / paramBool
+### queryBool
 
-将参数解析为布尔值：
+将查询参数解析为布尔值：
 
 ```ts
 const route = useRoute()
 
-// 支持的 truthy 值：'true' / '1' / 1 / true
-// 支持的 falsy 值：'false' / '0' / 0 / false / undefined / null
-const enabled = route.value.queryBool('enabled')   // true
-const debug = route.value.paramBool('debug')       // false
-```
-
-### queryJSON / paramJSON
-
-将参数解析为 JSON 对象：
-
-```ts
-const route = useRoute()
-
-// query 中的 JSON 字符串
-const filter = route.value.queryJSON('filter')
-// query: ?filter={"category":"book","price":{"min":10,"max":100}}
-// 解析后：{ category: 'book', price: { min: 10, max: 100 } }
-
-// params 中的 JSON 字符串
-const config = route.value.paramJSON('config')
+// 仅识别字符串 'true' / '1' → true，'false' / '0' → false
+// 其他值（含数字 1 / 0、布尔 true / false）返回 defaultValue
+const enabled = route.value.queryBool('enabled')          // true
+const debug = route.value.queryBool('debug')              // false
+const unknown = route.value.queryBool('other', false)     // false（无法识别时返回默认值）
 ```
 
 ### 实战示例
@@ -439,15 +351,10 @@ const route = useRoute()
 const id = route.value.queryInt('id')              // 整数 ID
 const price = route.value.queryNumber('price')     // 浮点价格
 const enabled = route.value.queryBool('enabled')   // 布尔开关
-const filter = route.value.queryJSON('filter')     // 复杂对象
-
-// 从 params 解析
-const user = route.value.paramJSON('user')         // 用户对象
-const tags = route.value.paramJSON('tags')         // 标签数组
 
 // 安全访问（带默认值）
-const page = route.value.queryInt('page') || 1
-const size = route.value.queryInt('size') || 20
+const page = route.value.queryInt('page', 1)
+const size = route.value.queryInt('size', 20)
 </script>
 ```
 
@@ -529,30 +436,35 @@ await router.push({
   animation: { type: 'fade-in', duration: 200 }
 })
 
-// 返回时反向动画
-await router.back({
+// 返回时反向动画（动画作为 back 的第二参数传入）
+await router.back(1, {
   animation: { type: 'slide-out-bottom', duration: 300 }
 })
 ```
 
 ### 导航方式控制
 
+导航方式由调用方法决定：`router.replace()` 替换当前页，`router.relaunch()` 清空页面栈。如需在守卫重定向时指定导航方式，使用可控重定向：
+
 ```ts
 // 登录成功后替换登录页（避免返回到登录页）
-await router.push({ name: 'home', mode: 'replace' })
+await router.replace({ name: 'home' })
 
-// 退出登录后重启应用
-await router.push({ name: 'login', mode: 'relaunch' })
+// 退出登录后重启应用（清空页面栈）
+await router.relaunch({ name: 'login' })
 
-// 守卫中重定向时指定方式
+// 守卫中重定向时指定导航方式（可控重定向）
 router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { name: 'login' }  // 替换，避免返回到受保护页
-  } else {
-    return
+    // 用 replace 跳转登录页，避免登录页残留在页面栈中
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
 })
 ```
+
+::: warning 导航方式不在 RouteLocationRaw 中
+`RouteLocationRaw` 不包含 `mode` / `hash` 字段。强制替换或清栈请调用 `router.replace()` / `router.relaunch()`；守卫重定向时指定方式请使用可控重定向（`{ location, mode }`）。详见[路由守卫 - 可控重定向](../guide/guards#可控重定向)。
+:::
 
 ## 下一步
 

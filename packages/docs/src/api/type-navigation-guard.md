@@ -5,7 +5,12 @@
 ## 类型定义
 
 ```ts
-type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | NavigationRedirect | Error | null
+
+interface NavigationRedirect {
+  location: RouteLocationRaw
+  mode?: 'push' | 'replace' | 'relaunch'
+}
 
 type NavigationGuard = (
   to: RouteLocationNormalized,
@@ -157,10 +162,37 @@ onBeforeRouteLeave((to, from) => {
 - `afterEach` 不受影响：仅在导航确认后执行，无法中止
 :::
 
+## 可控重定向
+
+通过返回 `{ location, mode }` 对象，可同时指定重定向目标和重定向使用的导航方式：
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    // 用 replace 跳转登录页，避免登录页残留在页面栈中
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+  }
+})
+```
+
+### mode 取值
+
+| mode | 对应 uni API | 适用场景 |
+| --- | --- | --- |
+| `'push'` | `uni.navigateTo` | 登录后需返回原页面，保留目标页在栈中 |
+| `'replace'` | `uni.redirectTo` | 替换当前页，不留历史（如登录页） |
+| `'relaunch'` | `uni.reLaunch` | 清空栈（如权限不足回首页） |
+
+### 行为规则
+
+- 显式 `mode` 优先于原始导航方式
+- 未指定 `mode` 时沿用原始导航方式（`back` 触发时回退为 `relaunch`）
+- `location` 支持路径字符串、路径对象或命名对象
+
 ## Promise 式返回值
 
 ```ts
-type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | NavigationRedirect | Error | null
 ```
 
 | 返回值 | 说明 |
@@ -169,7 +201,8 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 | `null` | 放行 |
 | `true` | 放行 |
 | `false` | 中止 |
-| `RouteLocationRaw` | 重定向 |
+| `RouteLocationRaw` | 重定向（沿用原始导航方式） |
+| `NavigationRedirect` | 重定向并指定导航方式 |
 | `Error` | 抛出错误，中止导航 |
 
 ```ts
@@ -179,11 +212,11 @@ router.beforeEach(() => {})
 // 中止
 router.beforeEach(() => false)
 
-// 重定向（push）
+// 重定向（沿用原始导航方式）
 router.beforeEach(() => ({ name: 'login' }))
 
-// 重定向（replace）
-router.beforeEach(() => ({ name: 'login' }))
+// 重定向（replace 方式）
+router.beforeEach(() => ({ location: { name: 'login' }, mode: 'replace' }))
 
 // 抛出错误
 router.beforeEach(() => {
@@ -200,8 +233,8 @@ router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
 
   if (to.meta.requireAuth && !isLoggedIn) {
-    // 重定向到登录页，使用 replace 避免返回到受保护页
-    return { name: 'login', query: { redirect: to.fullPath } }
+    // 重定向到登录页，使用 replace 避免登录页残留在页面栈中
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
 
   return true

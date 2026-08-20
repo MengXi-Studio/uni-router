@@ -1,15 +1,16 @@
 # RouteLocation
 
-Route location type, describing the target of navigation. It is the core type of navigation methods like `router.push()` / `router.replace()` / `router.back()` and the `to` prop of the `RouterLink` component.
+Route location type, describing the target of navigation. It is the core type of navigation methods like `router.push()` / `router.replace()` / `router.relaunch()` and the `to` prop of the `RouterLink` component.
 
-## Type Definition
+## Input Type: RouteLocationRaw
+
+Navigation methods accept `RouteLocationRaw`, which supports string paths, path objects, or named objects:
 
 ```ts
-type RouteLocation =
+type RouteLocationRaw =
   | string
-  | RouteLocationPath
-  | RouteLocationName
-  | RouteLocationRaw
+  | RouteLocationPathRaw
+  | RouteLocationNamedRaw
 ```
 
 Supports multiple forms:
@@ -29,9 +30,7 @@ router.push({ path: 'pages/detail/detail', query: { id: '1' } })
 router.push({ name: 'detail', params: { info: { id: 1 } } })
 ```
 
-## Path Forms
-
-### String Path
+## String Path
 
 The simplest form, directly passing a path string:
 
@@ -49,24 +48,22 @@ router.push('about')
 ::: warning String path limitations
 - Path should start with `/` (auto-completed)
 - Cannot pass `params` (only query strings)
-- Cannot specify advanced options like `animation` / `events` / `mode`
+- Cannot specify advanced options like `animation` / `events`
 - Recommend using object form for full capabilities
 :::
 
-### RouteLocationPath
+## RouteLocationPathRaw
 
 Specify the target path via `path`:
 
 ```ts
-interface RouteLocationPath {
-  path: string
-  query?: Record<string, any>
-  params?: Record<string, any>          // (requires ParamsPlugin)
-  hash?: string
-  animation?: NavigationAnimation       // (requires AnimationPlugin)
-  events?: Record<string, Function>     // (requires ChannelPlugin)
-  mode?: NavigationMode
-  persistent?: boolean                  // (requires ParamsPlugin)
+interface RouteLocationPathRaw {
+  path: RoutePath
+  query?: Record<string, QueryValue>
+  params?: ParamsInput                        // (requires ParamsPlugin)
+  persistent?: boolean                        // (requires ParamsPlugin)
+  animation?: NavigationAnimation             // (requires AnimationPlugin)
+  events?: EventListeners                     // (requires ChannelPlugin, push only)
 }
 ```
 
@@ -83,20 +80,18 @@ await router.push({
 })
 ```
 
-### RouteLocationName
+## RouteLocationNamedRaw
 
 Specify a named route via `name`:
 
 ```ts
-interface RouteLocationName {
-  name: string
-  query?: Record<string, any>
-  params?: Record<string, any>          // (requires ParamsPlugin)
-  hash?: string
-  animation?: NavigationAnimation       // (requires AnimationPlugin)
-  events?: Record<string, Function>     // (requires ChannelPlugin)
-  mode?: NavigationMode
-  persistent?: boolean                  // (requires ParamsPlugin)
+interface RouteLocationNamedRaw {
+  name: RouteName
+  query?: Record<string, QueryValue>
+  params?: ParamsInput                        // (requires ParamsPlugin)
+  persistent?: boolean                        // (requires ParamsPlugin)
+  animation?: NavigationAnimation             // (requires AnimationPlugin)
+  events?: EventListeners                     // (requires ChannelPlugin, push only)
 }
 ```
 
@@ -126,7 +121,7 @@ Choose one to specify the target route. `name` takes priority over `path`.
 
 ### query
 
-- **Type**: `Record<string, any>`
+- **Type**: `Record<string, QueryValue>`
 - **Description**: URL query parameters, serialized to strings and appended to the URL
 
 ::: warning query serialization limitations
@@ -156,7 +151,7 @@ router.push({ name: 'detail', query: { ids: [1, 2, 3] } })
 
 ### params
 
-- **Type**: `Record<string, any>`
+- **Type**: `ParamsInput`
 - **Description**: Page parameters, supports any serializable data (objects, arrays, nested structures)
 - **Storage**:
   - Default in-memory (`persistent: false`)
@@ -189,20 +184,6 @@ const tags = route.value.params.tags  // ['a', 'b', 'c']
 | Use cases | Simple params, shareable | Complex data, page communication |
 :::
 
-### hash
-
-- **Type**: `string`
-- **Description**: URL hash fragment (H5 only)
-
-```ts
-router.push({ path: '/pages/about/about', hash: '#section-1' })
-// URL: /pages/about/about#section-1
-```
-
-::: warning Platform limitations
-`hash` is only supported on H5. Mini-programs and App will ignore this parameter.
-:::
-
 ### animation
 
 - **Type**: `NavigationAnimation`
@@ -217,8 +198,8 @@ await router.push({
 
 ### events
 
-- **Type**: `Record<string, Function>`
-- **Description**: EventChannel event listeners, for target page to source page communication
+- **Type**: `EventListeners`
+- **Description**: EventChannel event listeners, for target page to source page communication (push only)
 
 ```ts
 // Source page
@@ -244,25 +225,6 @@ eventChannel?.emit('onAddressSelected', { city: 'Beijing', detail: 'Chaoyang' })
 - Type safety: can define event types with TS
 :::
 
-### mode
-
-- **Type**: `'push' | 'replace' | 'relaunch'`
-- **Description**: Navigation mode (v1.7.0+), overrides default behavior
-
-```ts
-// Force replace (don't keep current page in stack)
-await router.push({ name: 'login', mode: 'replace' })
-
-// Restart app (clear page stack)
-await router.push({ name: 'home', mode: 'relaunch' })
-```
-
-::: tip mode use cases
-- `push` (default): Regular navigation, keep current page
-- `replace`: Post-login redirect, post-form-submit redirect, avoid going back to form page
-- `relaunch`: Logout, user switch, return to home, clear all history
-:::
-
 ### persistent
 
 - **Type**: `boolean`
@@ -284,22 +246,22 @@ await router.push({
 })
 ```
 
-## RouteLocationNormalized
+## Resolved Type: RouteLocation
 
-After navigation completes, the `route` object stores the normalized route location:
+After navigation completes, `useRoute()` returns the resolved `RouteLocation` object:
 
 ```ts
-interface RouteLocationNormalized {
+interface RouteLocation {
   path: string
   name?: string
-  query: Record<string, string>
-  params: Record<string, any>
-  hash: string
-  fullPath: string
   meta: RouteMeta
-  matched: RouteConfig[]
-  redirectedFrom?: RouteLocationNormalized
+  query: Record<string, string>
+  params: Readonly<ParamObject>
+  fullPath: string
   _synced?: boolean
+  queryInt(key: string, defaultValue?: number): number | undefined
+  queryNumber(key: string, defaultValue?: number): number | undefined
+  queryBool(key: string, defaultValue?: boolean): boolean | undefined
 }
 ```
 
@@ -307,43 +269,12 @@ interface RouteLocationNormalized {
 
 #### fullPath
 
-Full path, including query and hash:
+Full path, including query:
 
 ```ts
 const route = useRoute()
 console.log(route.value.fullPath)
-// /pages/detail/detail?id=1&tab=info#section-1
-```
-
-#### matched
-
-Matched route config chain (multiple for nested routes):
-
-```ts
-const route = useRoute()
-route.value.matched.forEach((config, index) => {
-  console.log(`Match level ${index}:`, config.path)
-})
-```
-
-#### redirectedFrom
-
-If this navigation was triggered by a guard redirect, records the original target:
-
-```ts
-router.beforeEach((to, from) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    return { name: 'login' }
-  } else {
-    return
-  }
-})
-
-router.afterEach((to) => {
-  if (to.redirectedFrom) {
-    console.log(`Redirected from ${to.redirectedFrom.fullPath} to ${to.fullPath}`)
-  }
-})
+// /pages/detail/detail?id=1&tab=info
 ```
 
 #### _synced
@@ -370,61 +301,42 @@ router.onRouteChange((to, from) => {
 
 ## Type Parsing Methods
 
-`RouteLocationNormalized` provides a series of type-parsing methods to conveniently get typed data from query / params:
+`RouteLocation` provides three type-parsing methods — `queryInt` / `queryNumber` / `queryBool` — to get typed data from query.
 
-### queryInt / paramInt
+### queryInt
 
-Parse a parameter as an integer:
+Parse a query parameter as an integer:
 
 ```ts
 const route = useRoute()
 
-// Parse from query
-const id = route.value.queryInt('id')        // 123
-const invalid = route.value.queryInt('name')  // NaN (returns NaN when parsing fails)
-
-// Parse from params
-const count = route.value.paramInt('count')   // 10
+const id = route.value.queryInt('id')          // 123
+const invalid = route.value.queryInt('name')    // undefined (when parse fails or no default)
+const page = route.value.queryInt('page', 1)    // With default, returns 1 when parse fails
 ```
 
-### queryNumber / paramNumber
+### queryNumber
 
-Parse a parameter as a number (supports floats):
+Parse a query parameter as a number (supports floats):
 
 ```ts
 const route = useRoute()
 
-const price = route.value.queryNumber('price')    // 99.99
-const discount = route.value.paramNumber('discount')  // 0.85
+const price = route.value.queryNumber('price')  // 99.99
 ```
 
-### queryBool / paramBool
+### queryBool
 
-Parse a parameter as a boolean:
-
-```ts
-const route = useRoute()
-
-// Supported truthy values: 'true' / '1' / 1 / true
-// Supported falsy values: 'false' / '0' / 0 / false / undefined / null
-const enabled = route.value.queryBool('enabled')   // true
-const debug = route.value.paramBool('debug')       // false
-```
-
-### queryJSON / paramJSON
-
-Parse a parameter as a JSON object:
+Parse a query parameter as a boolean:
 
 ```ts
 const route = useRoute()
 
-// JSON string in query
-const filter = route.value.queryJSON('filter')
-// query: ?filter={"category":"book","price":{"min":10,"max":100}}
-// After parsing: { category: 'book', price: { min: 10, max: 100 } }
-
-// JSON string in params
-const config = route.value.paramJSON('config')
+// Only recognizes strings 'true' / '1' → true, 'false' / '0' → false
+// Other values (including number 1 / 0, boolean true / false) return defaultValue
+const enabled = route.value.queryBool('enabled')          // true
+const debug = route.value.queryBool('debug')              // false
+const unknown = route.value.queryBool('other', false)     // false (returns default when unrecognized)
 ```
 
 ### Practical Example
@@ -439,27 +351,14 @@ const route = useRoute()
 const id = route.value.queryInt('id')              // Integer ID
 const price = route.value.queryNumber('price')     // Float price
 const enabled = route.value.queryBool('enabled')   // Boolean switch
-const filter = route.value.queryJSON('filter')     // Complex object
-
-// Parse from params
-const user = route.value.paramJSON('user')         // User object
-const tags = route.value.paramJSON('tags')         // Tag array
 
 // Safe access (with defaults)
-const page = route.value.queryInt('page') || 1
-const size = route.value.queryInt('size') || 20
+const page = route.value.queryInt('page', 1)
+const size = route.value.queryInt('size', 20)
 </script>
 ```
 
 ## Related Types
-
-### RouteLocationRaw
-
-Raw route location, the parameter type accepted by navigation methods:
-
-```ts
-type RouteLocationRaw = string | RouteLocationPathRaw | RouteLocationNamedRaw
-```
 
 ### NavigationResult
 
@@ -577,30 +476,35 @@ await router.push({
   animation: { type: 'fade-in', duration: 200 }
 })
 
-// Reverse animation on back
-await router.back({
+// Reverse animation on back (animation passed as the second argument)
+await router.back(1, {
   animation: { type: 'slide-out-bottom', duration: 300 }
 })
 ```
 
 ### Navigation Mode Control
 
+The navigation mode is determined by the called method: `router.replace()` replaces the current page, `router.relaunch()` clears the page stack. To specify the mode when redirecting in guards, use controllable redirect:
+
 ```ts
 // Replace login page after successful login (avoid going back to login)
-await router.push({ name: 'home', mode: 'replace' })
+await router.replace({ name: 'home' })
 
-// Restart app after logout
-await router.push({ name: 'login', mode: 'relaunch' })
+// Restart app after logout (clear page stack)
+await router.relaunch({ name: 'login' })
 
-// Specify mode when redirecting in guards
+// Specify mode when redirecting in guards (controllable redirect)
 router.beforeEach((to, from) => {
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { name: 'login' }  // Replace, avoid going back to protected page
-  } else {
-    return
+    // Use replace to go to login, avoiding leaving login in the page stack
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
 })
 ```
+
+::: warning Navigation mode is not part of RouteLocationRaw
+`RouteLocationRaw` does not include `mode` / `hash` fields. To force replace or clear the stack, call `router.replace()` / `router.relaunch()`; to specify the mode when redirecting in guards, use controllable redirect (`{ location, mode }`). See [Route Guards - Controllable Redirect](../guide/guards#controllable-redirect).
+:::
 
 ## Next Steps
 

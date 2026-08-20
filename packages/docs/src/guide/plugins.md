@@ -129,7 +129,7 @@ if (router.hasPlugin('params')) {
 
 **启用后的功能：**
 - `RouteLocationRaw.animation` — 导航时指定动画
-- `router.back(delta, animation)` — 返回时指定动画
+- `router.back(delta, { animation })` — 返回时指定动画
 
 **优先级：** 调用时传入 > `meta.animation` > uni 默认值
 

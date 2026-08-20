@@ -126,7 +126,7 @@ console.log(route.params.id) // 正确
 
 ### 解决方案
 
-使用 `useSafeNav` 封装，接近上限时改用 `relaunch`：
+使用 `safePush` 封装，接近上限时改用 `relaunch`：
 
 ```ts
 import { useRouter } from '@meng-xi/uni-router'
