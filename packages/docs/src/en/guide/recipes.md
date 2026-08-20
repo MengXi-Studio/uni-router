@@ -41,12 +41,12 @@ function isLoggedIn(): boolean {
 router.beforeEach((to, from) => {
   // 1. Not logged in accessing protected page → go to login
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   // 2. Already logged in accessing login page → go to home
   if (to.name === 'login' && isLoggedIn()) {
-    return { location: { name: 'home' }, mode: 'replace' }
+    return { name: 'home' }
   }
 
   // 3. Other cases pass
@@ -93,7 +93,7 @@ async function handleLogin() {
 
 ### Key Points
 
-1. **`mode: 'replace'`**: Login page uses replace to avoid users returning to "unauthenticated intermediate state"
+1. **Return `{ name: 'login' }`**: Login page uses replace to avoid users returning to "unauthenticated intermediate state"
 2. **Carry redirect**: After login can return to original target page
 3. **Block login page for logged-in users**: Prevent authenticated users from entering login page
 4. **`interceptUniApi`**: Ensure `uni.navigateTo` also goes through guards
@@ -196,7 +196,7 @@ export function setupPermissionGuard(router: Router) {
 
     // Not logged in
     if (!uni.getStorageSync('token')) {
-      return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+      return { name: 'login', query: { redirect: to.fullPath } }
     }
 
     // Get user info (with cache)
@@ -206,19 +206,19 @@ export function setupPermissionGuard(router: Router) {
       // Fetch failed, token might be expired
       uni.removeStorageSync('token')
       clearUser()
-      return { location: { name: 'login' }, mode: 'relaunch' }
+      return { name: 'login' }
     }
 
     // Role check
     if (to.meta.roles && !hasRole(to.meta.roles)) {
       uni.showToast({ title: 'Access denied', icon: 'none' })
-      return { location: { name: 'home' }, mode: 'relaunch' }
+      return { name: 'home' }
     }
 
     // Permission check
     if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
       uni.showToast({ title: 'Insufficient permissions', icon: 'none' })
-      return { location: { name: 'home' }, mode: 'relaunch' }
+      return { name: 'home' }
     }
   })
 }
@@ -701,7 +701,7 @@ export function setupMaintenanceGuard(router: Router) {
 
     // Maintenance mode, redirect to maintenance page
     if (appStore.maintenanceMode) {
-      return { location: { name: 'maintenance' }, mode: 'relaunch' }
+      return { name: 'maintenance' }
     }
 
     // else: pass (return undefined)

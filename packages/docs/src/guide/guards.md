@@ -177,91 +177,6 @@ router.beforeEach((to, from) => {
 | `Error` 对象 | 取消导航（`NAVIGATION_CANCELLED`） |
 | 抛出异常 | 取消导航（`NAVIGATION_CANCELLED`） |
 
-## 可控重定向（v1.7.0+）
-
-::: tip v1.7.0 新增
-此功能在 v1.7.0 引入。之前的版本重定向方式固定为触发守卫的原始导航方式。
-
-在返回值模式中，重定向方式通过返回对象中的 `mode` 字段控制。
-:::
-
-### 默认重定向方式
-
-不指定 `mode` 时，重定向沿用原始导航方式：
-
-```ts
-// 原始导航是 push
-await router.push({ name: 'protected' })
-// beforeEach 中 return { name: 'login' }
-// → 重定向用 push 方式（navigateTo）
-
-// 原始导航是 replace
-await router.replace({ name: 'protected' })
-// beforeEach 中 return { name: 'login' }
-// → 重定向用 replace 方式（redirectTo）
-```
-
-::: warning back 的特殊情况
-原始导航是 `back` 时，重定向无法用 `back`（目标不在页面栈中），自动回退为 `relaunch`。
-:::
-
-### 指定重定向方式
-
-通过返回对象中的 `mode` 字段显式指定：
-
-```ts
-router.beforeEach((to, from) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    // 登录页用 replace，避免用户返回到受保护页面的中间状态
-    return { location: { name: 'login' }, mode: 'replace' }
-  }
-})
-```
-
-### mode 选项
-
-```ts
-type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
-```
-
-| mode | 对应 uni API | 适用场景 |
-| --- | --- | --- |
-| `'push'` | `navigateTo` | 登录后需返回原页面 |
-| `'replace'` | `redirectTo` | 替换当前页，不留历史 |
-| `'relaunch'` | `reLaunch` | 清空栈（如权限不足时回到首页） |
-
-### 实战：登录重定向方式选择
-
-```ts
-router.beforeEach((to, from) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    if (from.name === 'login') {
-      // 已在登录页还无权限，用 replace 避免栈堆积
-      return false
-    }
-    // 用 replace 跳登录页，登录成功后 replace 回目标页
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
-  }
-})
-
-// 登录成功后
-async function onLoginSuccess(redirect: string) {
-  // 用 replace 回到原页面，避免登录页留在栈中
-  await router.replace(redirect)
-}
-```
-
-### 实战：权限不足清栈
-
-```ts
-router.beforeEach((to, from) => {
-  if (to.meta.roles && !hasRole(to.meta.roles)) {
-    // 权限不足，清空栈回到首页
-    return { location: { name: 'home' }, mode: 'relaunch' }
-  }
-})
-```
-
 ## 异步守卫
 
 守卫支持 `async` 函数和返回 Promise：
@@ -437,12 +352,12 @@ router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
 
   if (to.meta.requireAuth && !isLoggedIn) {
-    // 未登录 → 跳登录页，replace 避免返回到受保护页
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+    // 未登录 → 跳登录页
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.name === 'login' && isLoggedIn) {
     // 已登录访问登录页 → 跳首页
-    return { location: { name: 'home' }, mode: 'replace' }
+    return { name: 'home' }
   }
   // 放行
 })
@@ -463,7 +378,7 @@ router.beforeEach((to, from) => {
 
   if (to.meta.roles && !to.meta.roles.some(r => userRoles.includes(r))) {
     // 权限不足 → 清栈回首页
-    return { location: { name: 'home' }, mode: 'relaunch' }
+    return { name: 'home' }
   }
 })
 ```

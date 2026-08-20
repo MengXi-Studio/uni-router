@@ -41,12 +41,12 @@ function isLoggedIn(): boolean {
 router.beforeEach((to, from) => {
   // 1. 未登录访问受保护页面 → 跳登录页
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' } // replace 避免返回到受保护页的中间态
+    return { name: 'login', query: { redirect: to.fullPath } } // replace 避免返回到受保护页的中间态
   }
 
   // 2. 已登录访问登录页 → 跳首页
   if (to.name === 'login' && isLoggedIn()) {
-    return { location: { name: 'home' }, mode: 'replace' }
+    return { name: 'home' }
   }
 
   // 3. 其他情况放行
@@ -93,7 +93,7 @@ async function handleLogin() {
 
 ### 关键点
 
-1. **`mode: 'replace'`**：登录页用 replace 跳转，避免用户返回到"未登录的中间态"
+1. **返回 `{ name: 'login' }`**：登录页重定向使用 replace 方式，避免用户返回到"未登录的中间态"
 2. **携带 redirect**：登录后能返回原目标页面
 3. **已登录拦截登录页**：防止已登录用户误入登录页
 4. **`interceptUniApi`**：确保 `uni.navigateTo` 也经过守卫
@@ -196,7 +196,7 @@ export function setupPermissionGuard(router: Router) {
 
     // 未登录
     if (!uni.getStorageSync('token')) {
-      return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+      return { name: 'login', query: { redirect: to.fullPath } }
     }
 
     // 获取用户信息（带缓存）
@@ -206,19 +206,19 @@ export function setupPermissionGuard(router: Router) {
       // 获取失败，token 可能过期
       uni.removeStorageSync('token')
       clearUser()
-      return { location: { name: 'login' }, mode: 'relaunch' }
+      return { name: 'login' }
     }
 
     // 角色检查
     if (to.meta.roles && !hasRole(to.meta.roles)) {
       uni.showToast({ title: '无权访问', icon: 'none' })
-      return { location: { name: 'home' }, mode: 'relaunch' }
+      return { name: 'home' }
     }
 
     // 权限检查
     if (to.meta.permissions && !hasPermission(to.meta.permissions)) {
       uni.showToast({ title: '权限不足', icon: 'none' })
-      return { location: { name: 'home' }, mode: 'relaunch' }
+      return { name: 'home' }
     }
   })
 }
@@ -697,7 +697,7 @@ export function setupMaintenanceGuard(router: Router) {
 
     // 维护模式，重定向到维护页
     if (appStore.maintenanceMode) {
-      return { location: { name: 'maintenance' }, mode: 'relaunch' }
+      return { name: 'maintenance' }
     }
   })
 

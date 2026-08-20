@@ -105,7 +105,7 @@ eventChannel.emit('init', { source: 'replace' })
 ::: tip When to use replace instead of push
 - After successful login: avoid leaving the login page in the stack
 - After form submission: avoid users going back to the form and resubmitting
-- Redirect scenarios: `{ location, mode: 'replace' }` in guards
+- Redirect scenarios: `{ name: 'login' }` in guards
 :::
 
 ### relaunch()

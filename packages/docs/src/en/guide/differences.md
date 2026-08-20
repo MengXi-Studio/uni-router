@@ -168,8 +168,6 @@ return '/path'                      // Redirect
 return true                         // Proceed
 return false                        // Abort
 return { name: 'route' }            // Redirect (default push)
-return { location: { name: 'route' }, mode: 'replace' }   // Redirect (specify mode)
-return { location: { name: 'route' }, mode: 'relaunch' }  // Redirect (clear stack)
 return new Error('Insufficient permissions')    // Throw error
 ```
 

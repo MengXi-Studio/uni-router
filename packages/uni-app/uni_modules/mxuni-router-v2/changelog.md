@@ -1,3 +1,15 @@
+## 2.3.1（2026-08-20）
+
+### 修复
+
+- **RouterLink 组件 H5 端控制台错误** - 将根元素从 `<navigator>` 替换为 `<view>`，解决 H5 端每次点击时 uni-h5 输出 `[ERROR] <navigator/> should have url attribute` 控制台错误的问题
+  - `<view>` 同样支持 `hover-class` / `hover-stop-propagation` / `hover-start-time` / `hover-stay-time` 等点击态属性
+  - 实际导航完全由 `@click.stop="handleClick"` 调用路由器 API 完成，不影响导航功能
+
+### 优化
+
+- **组件 emits 类型重构** - 将 `RouterLinkEmits`、`TabBarEmits` 从 `interface` 改为 `type` 别名，与其他类型定义风格保持一致
+
 ## 2.3.0（2026-08-19）
 
 ### 新增

@@ -38,7 +38,7 @@ router.beforeEach(async (to, from) => {
 const removeGuard = router.beforeEach((to, from) => {
   // Permission validation, login check, analytics, etc.
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
   return true
 })
@@ -149,10 +149,7 @@ The guard execution order for a complete navigation:
 ## Promise Style Return Value
 
 ```ts
-type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null | {
-  location: RouteLocationRaw
-  mode?: NavigationRedirectMode
-}
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
 ```
 
 | Return Value | Description |
@@ -161,8 +158,7 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 | `null` | Allow |
 | `true` | Allow |
 | `false` | Abort |
-| `RouteLocationRaw` | Redirect (push) |
-| `{ location, mode }` | Redirect + mode control |
+| `RouteLocationRaw` | Redirect |
 | `Error` | Throw error, abort navigation |
 
 ```ts
@@ -176,10 +172,7 @@ router.beforeEach(() => false)
 router.beforeEach(() => ({ name: 'login' }))
 
 // Redirect (replace)
-router.beforeEach(() => ({
-  location: { name: 'login' },
-  mode: 'replace'
-}))
+router.beforeEach(() => ({ name: 'login' }))
 
 // Throw error
 router.beforeEach(() => {
@@ -197,10 +190,7 @@ router.beforeEach((to, from) => {
 
   if (to.meta.requireAuth && !isLoggedIn) {
     // Redirect to login page, use replace to avoid returning to protected page
-    return {
-      location: { name: 'login', query: { redirect: to.fullPath } },
-      mode: 'replace'
-    }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   return true

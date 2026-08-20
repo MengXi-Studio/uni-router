@@ -177,91 +177,6 @@ router.beforeEach((to, from) => {
 | `Error` object | Cancel navigation (`NAVIGATION_CANCELLED`) |
 | Thrown exception | Cancel navigation (`NAVIGATION_CANCELLED`) |
 
-## Controllable Redirect (v1.7.0+)
-
-::: tip v1.7.0 New
-This feature was introduced in v1.7.0. In previous versions, the redirect method was fixed to the original navigation method that triggered the guard.
-
-In the return-value pattern, the redirect method is controlled via the `mode` field in the returned object.
-:::
-
-### Default Redirect Method
-
-When `mode` is not specified, the redirect uses the original navigation method:
-
-```ts
-// Original navigation is push
-await router.push({ name: 'protected' })
-// In beforeEach: return { name: 'login' }
-// → Redirect uses push method (navigateTo)
-
-// Original navigation is replace
-await router.replace({ name: 'protected' })
-// In beforeEach: return { name: 'login' }
-// → Redirect uses replace method (redirectTo)
-```
-
-::: warning back's Special Case
-When the original navigation is `back`, the redirect cannot use `back` (target is not in the page stack), so it automatically falls back to `relaunch`.
-:::
-
-### Specifying Redirect Method
-
-Explicitly specify via the `mode` field in the returned object:
-
-```ts
-router.beforeEach((to, from) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    // Use replace for login page, avoiding users returning to the protected page's intermediate state
-    return { location: { name: 'login' }, mode: 'replace' }
-  }
-})
-```
-
-### mode Options
-
-```ts
-type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
-```
-
-| mode | uni API | Use Case |
-| --- | --- | --- |
-| `'push'` | `navigateTo` | Need to return to original page after login |
-| `'replace'` | `redirectTo` | Replace current page, no history |
-| `'relaunch'` | `reLaunch` | Clear stack (like returning home on insufficient permissions) |
-
-### Practice: Choosing Login Redirect Method
-
-```ts
-router.beforeEach((to, from) => {
-  if (to.meta.requireAuth && !isLoggedIn()) {
-    if (from.name === 'login') {
-      // Already on login page without permissions, use replace to avoid stack buildup
-      return false
-    }
-    // Use replace to go to login page, then replace back to target after login success
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
-  }
-})
-
-// After login success
-async function onLoginSuccess(redirect: string) {
-  // Use replace to return to original page, avoiding login page staying in stack
-  await router.replace(redirect)
-}
-```
-
-### Practice: Clear Stack on Insufficient Permissions
-
-```ts
-router.beforeEach((to, from) => {
-  if (to.meta.roles && !hasRole(to.meta.roles)) {
-    // Insufficient permissions, clear stack and return home
-    return { location: { name: 'home' }, mode: 'relaunch' }
-  }
-})
-```
-
 ## Async Guards
 
 Guards support `async` functions and returning Promises:
@@ -437,12 +352,12 @@ router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
 
   if (to.meta.requireAuth && !isLoggedIn) {
-    // Not logged in → go to login page, replace to avoid returning to protected page
-    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+    // Not logged in → go to login page
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.name === 'login' && isLoggedIn) {
     // Already logged in accessing login page → go to home
-    return { location: { name: 'home' }, mode: 'replace' }
+    return { name: 'home' }
   }
   // Pass
 })
@@ -463,7 +378,7 @@ router.beforeEach((to, from) => {
 
   if (to.meta.roles && !to.meta.roles.some(r => userRoles.includes(r))) {
     // Insufficient permissions → clear stack and return home
-    return { location: { name: 'home' }, mode: 'relaunch' }
+    return { name: 'home' }
   }
 })
 ```

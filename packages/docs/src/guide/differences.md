@@ -168,8 +168,6 @@ return '/path'                      // 重定向
 return true                         // 放行
 return false                        // 中止
 return { name: 'route' }            // 重定向（默认 push）
-return { location: { name: 'route' }, mode: 'replace' }   // 重定向（指定方式）
-return { location: { name: 'route' }, mode: 'relaunch' }  // 重定向（清空栈）
 return new Error('权限不足')         // 抛出错误
 ```
 

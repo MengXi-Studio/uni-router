@@ -1,7 +1,7 @@
 <template>
-	<navigator :hover-class="hoverClass" :hover-stop-propagation="hoverStopPropagation" :hover-start-time="hoverStartTime" :hover-stay-time="hoverStayTime" @click.stop.prevent="navigate">
+	<view :hover-class="hoverClass" :hover-stop-propagation="hoverStopPropagation" :hover-start-time="hoverStartTime" :hover-stay-time="hoverStayTime" @click.stop="handleClick">
 		<slot />
-	</navigator>
+	</view>
 </template>
 
 <script setup lang="ts">
@@ -21,7 +21,7 @@ const emit = defineEmits<RouterLinkEmits>()
 const router = useRouter()
 
 /** 导航到目标页面 */
-async function navigate() {
+async function handleClick() {
 	try {
 		let result: NavigationResult
 		if (props.relaunch) {
