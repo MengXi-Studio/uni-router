@@ -1,6 +1,6 @@
 # RouterLink
 
-导航组件，点击时触发路由跳转。基于 uni-app 的 `<navigator>` 组件封装，支持原生触摸反馈。
+导航组件，点击时触发路由跳转。基于 uni-app 的 `<view>` 元素封装，通过 `hover-class` 等属性提供点击态反馈。
 
 ## 引入
 
@@ -114,7 +114,7 @@ export function createApp() {
 
 - **类型**: `string`
 - **默认值**: `'navigator-hover'`
-- **说明**: 按下时的样式类，对应 `<navigator>` 的 `hover-class` 属性。设置为 `'none'` 可禁用点击态
+- **说明**: 按下时的样式类，对应 `<view>` 的 `hover-class` 属性。设置为 `'none'` 可禁用点击态
 
 ### hoverStopPropagation
 
@@ -290,7 +290,7 @@ import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.v
 
 | 特性                 | vue-router         | Uni Router         |
 | -------------------- | ------------------ | ------------------ |
-| 宿主元素             | `<a>`              | `<navigator>`      |
+| 宿主元素             | `<a>`              | `<view>`           |
 | `to` 类型            | `string \| object` | `string \| object` |
 | `replace`            | ✅                 | ✅                 |
 | `relaunch`           | ❌                 | ✅                 |
@@ -323,7 +323,7 @@ const isActive = (name: string) => route.value.name === name
 
 ### 不支持 custom 的原因
 
-vue-router 的 `custom` 允许完全自定义渲染逻辑，依赖 `<a>` 标签和浏览器导航。uni-app 的 `<navigator>` 是原生组件，无法完全自定义渲染行为。如需自定义导航触发，使用 `router.push()` 等 API。
+vue-router 的 `custom` 允许完全自定义渲染逻辑，依赖 `<a>` 标签和浏览器导航。uni-app 中导航由路由器 API 驱动而非原生组件，无法完全自定义渲染行为。如需自定义导航触发，使用 `router.push()` 等 API。
 
 ## 下一步
 

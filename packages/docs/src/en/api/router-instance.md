@@ -510,8 +510,26 @@ When `onLaunch` fires, the page stack is empty and `router.currentRoute` is stil
 | Guard Result | Behavior |
 | --- | --- |
 | Pass (`return true` / `undefined`) | No navigation, resolves with the target route |
-| Redirect (`return location`) | Navigates to the redirect target using the guard-specified mode (default `relaunch`) |
+| Redirect (`return location`) | Navigates to the redirect target using the guard-specified mode. Regular redirects default to `relaunch`; controllable redirects (`return { location, mode }`) use the specified `mode` |
 | Abort (`return false`) | Calls the `onAbort` callback and rejects with `NavigationFailure` |
+
+::: tip guardRoute supports controllable redirects
+`guardRoute()` shares the same guard resolution logic as full navigation, so `return { location, mode }` controllable redirects also work in cold start scenarios:
+
+```ts
+router.guardRoute(launchPath, {
+  onAbort: (failure) => { /* ... */ }
+})
+
+// In a guard:
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    // Cold start redirect to login page using replace to avoid leaving login in the page stack
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+  }
+})
+```
+:::
 
 ::: warning Cold start cannot truly "block entry"
 In cold start scenarios the page is already loaded, so `guardRoute()` cannot truly prevent the page from displaying. When a guard aborts, using the `onAbort` callback to execute `router.relaunch()` to navigate to a safe page is the recommended approach.

@@ -10,6 +10,29 @@ import type { NavigationFailure } from './error'
 export type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
 
 /**
+ * 可控重定向结果
+ *
+ * 在守卫返回值模式中，返回此对象可同时指定重定向目标和重定向使用的导航方式。
+ * 与 `RouteLocationRaw` 通过 `location` 字段区分（`RouteLocationPathRaw` / `RouteLocationNamedRaw`
+ * 均不包含 `location` 顶层字段）。
+ *
+ * @example
+ * ```typescript
+ * router.beforeEach((to, from) => {
+ *   if (to.meta.requireAuth && !isLoggedIn()) {
+ *     return { location: { name: 'login' }, mode: 'replace' }
+ *   }
+ * })
+ * ```
+ */
+export interface NavigationRedirect {
+	/** 重定向目标路由位置 */
+	location: RouteLocationRaw
+	/** 重定向使用的导航方式，不指定时沿用原始导航方式 */
+	mode?: NavigationRedirectMode
+}
+
+/**
  * 导航守卫的返回值类型
  *
  * 守卫函数可通过返回值控制导航行为：
@@ -17,10 +40,11 @@ export type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
  * - `false` — 中止导航（NAVIGATION_ABORTED）
  * - `string` — 重定向到路径（如 `'/login'`）
  * - `RouteLocationRaw` — 重定向到路由位置（如 `{ name: 'login' }`）
+ * - `NavigationRedirect` — 重定向到路由位置并指定导航方式（如 `{ location: { name: 'login' }, mode: 'replace' }`）
  * - `Error` — 取消导航（NAVIGATION_CANCELLED）
  * - `null` — 等同于 undefined，放行导航
  */
-export type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+export type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | NavigationRedirect | Error | null
 
 /**
  * 前置导航守卫函数类型

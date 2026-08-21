@@ -33,8 +33,8 @@ router.beforeEach((to, from) => {
 	// 需要登录认证的页面
 	if (to.meta.requireAuth && !isLoggedIn.value) {
 		console.log('[beforeEach] 需要登录，重定向到登录页')
-		// 返回路由位置重定向，避免登录页之后残留受保护页面的历史
-		return { name: 'pagesLoginLogin', query: { redirect: to.fullPath } }
+		// 可控重定向：显式指定 replace，避免登录页残留在页面栈中
+		return { location: { name: 'pagesLoginLogin', query: { redirect: to.fullPath } }, mode: 'replace' }
 	}
 
 	// 不返回值（或 return true）表示放行

@@ -65,6 +65,19 @@
 			</view>
 		</view>
 
+		<!-- 可控重定向 -->
+		<view class="card">
+			<text class="card-title">可控重定向（{ location, mode }）</text>
+			<text class="desc">默认重定向沿用触发导航的原始方式。通过返回 { location, mode } 对象可显式指定重定向使用的导航方式（push / replace / relaunch），如避免登录页残留在页面栈中。</text>
+			<view class="code-block">
+				router.beforeEach((to, from) => {\n if (to.meta.requireAuth && !isLoggedIn) {\n // 显式指定 replace，避免登录页残留在页面栈中\n return { location: { path: '/pages/login/index' }, mode: 'replace' }\n }\n})
+			</view>
+			<text class="hint">点击下方按钮会临时注册一次性守卫：导航到关于页时用 replace 方式可控重定向到组合式 API 页（实际调用 redirectTo 而非 navigateTo，不会残留在页面栈中）：</text>
+			<view class="btn btn-warning" @click="redirectWithMode">
+				<text class="btn-text">可控重定向（replace 到组合式 API 页）</text>
+			</view>
+		</view>
+
 		<!-- beforeEnter 路由独享守卫 -->
 		<view class="card">
 			<text class="card-title">beforeEnter - 路由独享守卫</text>
@@ -149,6 +162,20 @@ export default {
 				}
 			})
 			router.push('/pages/protected/index').catch(e => {
+				this.addLog(`导航结果: ${e.message || e}`)
+			})
+		},
+		// ===== 可控重定向演示 =====
+		redirectWithMode() {
+			this.addLog('注册一次性守卫，用 replace 方式可控重定向到组合式 API 页...')
+			const removeGuard = router.beforeEach((to, from) => {
+				removeGuard()
+				if (to.path === '/pages/about/index') {
+					this.addLog(`守卫拦截 ${to.path}，可控重定向（mode: replace）到组合式 API 页`)
+					return { location: { path: '/pages/composable/index' }, mode: 'replace' }
+				}
+			})
+			router.push('/pages/about/index').catch(e => {
 				this.addLog(`导航结果: ${e.message || e}`)
 			})
 		},

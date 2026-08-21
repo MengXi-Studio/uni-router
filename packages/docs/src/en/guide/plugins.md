@@ -129,7 +129,7 @@ Provides custom navigation animation capability for App.
 
 **Features when enabled:**
 - `RouteLocationRaw.animation` — Specify animation during navigation
-- `router.back(delta, animation)` — Specify animation when going back
+- `router.back(delta, { animation })` — Specify animation when going back
 
 **Priority:** Inline param > `meta.animation` > uni default
 

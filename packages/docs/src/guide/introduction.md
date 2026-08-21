@@ -159,7 +159,7 @@ router.isReady().then(() => {
 - 🧭 **四种导航** — `push` / `replace` / `relaunch` / `back`，自动识别 TabBar 页面
 - 🛡️ **完整守卫链** — `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`
 - 🛡️ **冷启动守卫** — `guardRoute()` 补执行守卫链，处理 H5 URL / 小程序场景值 / App deeplink 直接进入的场景
-- 🔄 **守卫重定向** — 守卫中 return 路由位置即可重定向，沿用原始导航方式
+- 🔄 **守卫重定向** — 守卫中 return 路由位置即可重定向，可控重定向（`{ location, mode }`）可显式指定导航方式
 - 📦 **页面参数**（ParamsPlugin）— `params` 传递复杂数据，不暴露 URL，支持持久化
 - 🔢 **查询增强** — `queryInt()` / `queryNumber()` / `queryBool()` 类型解析
 - 📡 **页面通信**（ChannelPlugin）— `events` + `eventChannel` 双向通信，`useUniEventChannel` 支持所有导航方式

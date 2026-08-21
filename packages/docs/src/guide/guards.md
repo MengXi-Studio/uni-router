@@ -174,8 +174,81 @@ router.beforeEach((to, from) => {
 | `false` | 中止导航（`NAVIGATION_ABORTED`） |
 | `string`（如 `'/login'`） | 重定向到路径 |
 | `RouteLocationRaw`（如 `{ name: 'login' }`） | 重定向到路由位置 |
+| `NavigationRedirect`（如 `{ location, mode }`） | 重定向到路由位置并指定导航方式 |
 | `Error` 对象 | 取消导航（`NAVIGATION_CANCELLED`） |
 | 抛出异常 | 取消导航（`NAVIGATION_CANCELLED`） |
+
+## 可控重定向
+
+默认情况下，守卫重定向沿用触发守卫的原始导航方式（`push` 触发的守卫重定向时仍用 `uni.navigateTo`）。通过返回 `{ location, mode }` 对象，可显式指定重定向使用的导航方式。
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    // 用 replace 跳转登录页，避免登录页残留在页面栈中
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+  }
+})
+```
+
+### 重定向方式优先级
+
+```
+显式 mode（NavigationRedirect.mode）> 原始导航方式 > back 回退 relaunch
+```
+
+| 触发导航 | 守卫返回 | 实际重定向方式 |
+| --- | --- | --- |
+| `push` | `{ location, mode: 'replace' }` | `replace`（显式指定） |
+| `push` | `{ name: 'login' }` | `push`（沿用原始） |
+| `replace` | `{ location, mode: 'relaunch' }` | `relaunch`（显式指定） |
+| `replace` | `{ name: 'login' }` | `replace`（沿用原始） |
+| `back` | `{ location, mode: 'push' }` | `push`（显式指定） |
+| `back` | `{ name: 'login' }` | `relaunch`（back 无法跳转栈外目标，回退） |
+
+### mode 取值
+
+```ts
+type NavigationRedirectMode = 'push' | 'replace' | 'relaunch'
+```
+
+| mode | 对应 uni API | 适用场景 |
+| --- | --- | --- |
+| `'push'` | `navigateTo` | 登录后需返回原页面，保留目标页在栈中 |
+| `'replace'` | `redirectTo` | 替换当前页，不留历史（如登录页） |
+| `'relaunch'` | `reLaunch` | 清空栈（如权限不足时回到首页） |
+
+### 实战：登录重定向
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    if (from.name === 'login') {
+      // 已在登录页还无权限，用 replace 避免栈堆积
+      return false
+    }
+    // 用 replace 跳登录页，避免登录页残留在页面栈中
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+  }
+})
+
+// 登录成功后
+async function onLoginSuccess(redirect: string) {
+  // 用 replace 回到原页面，避免登录页留在栈中
+  await router.replace(redirect)
+}
+```
+
+### 实战：权限不足清栈
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.roles && !hasRole(to.meta.roles)) {
+    // 权限不足，清空栈回到首页
+    return { location: { name: 'home' }, mode: 'relaunch' }
+  }
+})
+```
 
 ## 异步守卫
 
@@ -352,12 +425,12 @@ router.beforeEach((to, from) => {
   const isLoggedIn = !!uni.getStorageSync('token')
 
   if (to.meta.requireAuth && !isLoggedIn) {
-    // 未登录 → 跳登录页
-    return { name: 'login', query: { redirect: to.fullPath } }
+    // 未登录 → 跳登录页，用 replace 避免登录页残留在页面栈中
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
   }
   if (to.name === 'login' && isLoggedIn) {
     // 已登录访问登录页 → 跳首页
-    return { name: 'home' }
+    return { location: { name: 'home' }, mode: 'replace' }
   }
   // 放行
 })
@@ -378,7 +451,7 @@ router.beforeEach((to, from) => {
 
   if (to.meta.roles && !to.meta.roles.some(r => userRoles.includes(r))) {
     // 权限不足 → 清栈回首页
-    return { name: 'home' }
+    return { location: { name: 'home' }, mode: 'relaunch' }
   }
 })
 ```
@@ -617,7 +690,13 @@ onLaunch((options) => {
 
 ```ts
 // 守卫返回值类型
-type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | NavigationRedirect | Error | null
+
+// 可控重定向结果
+interface NavigationRedirect {
+  location: RouteLocationRaw
+  mode?: NavigationRedirectMode
+}
 
 // 前置守卫（返回值模式，推荐）
 type NavigationGuard = (

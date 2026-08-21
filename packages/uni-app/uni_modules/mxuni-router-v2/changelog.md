@@ -1,3 +1,29 @@
+## 2.4.0（2026-08-21）
+
+### 新增
+
+- **可控重定向（Controllable Redirect）** - 守卫返回值模式补全重定向方式控制能力，通过返回 `{ location, mode }` 对象可显式指定重定向使用的导航方式
+  - 新增 `NavigationRedirect` 接口，扩展 `NavigationGuardReturn` 类型（增加 `| NavigationRedirect` 分支）
+  - `mode` 支持 `'push'`（`uni.navigateTo`）/ `'replace'`（`uni.redirectTo`）/ `'relaunch'`（`uni.reLaunch`）
+  - 重定向方式优先级：显式 `mode` > 原始导航方式 > `back` 回退 `relaunch`
+  - `mode` 缺省时行为不变（沿用原始导航方式），完全向后兼容
+  - `guardRoute()` 冷启动场景同步支持可控重定向
+  - 示例：
+    ```typescript
+    router.beforeEach((to, from) => {
+    	if (to.meta.requireAuth && !isLoggedIn()) {
+    		// 用 replace 跳转登录页，避免登录页残留在页面栈中
+    		return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+    	}
+    })
+    ```
+
+### 修复
+
+- **字符串路径含 query 时注入内部 key 产生双 `?`** - `injectQueryKey` 对已含 query 的字符串路径（如 `'/detail?id=1'`）注入 `__nav_id` / `__params_key` 时未拆分已有 query，导致拼接出 `?id=1?__nav_id=...` 的畸形 URL
+  - 修复：字符串路径先按 `?` 拆分为 path + 已有 query，再合并注入，最终为 `?id=1&__nav_id=...`
+  - 同时惠及 ChannelPlugin（`__nav_id`）与 ParamsPlugin（`__params_key`）
+
 ## 2.3.1（2026-08-20）
 
 ### 修复

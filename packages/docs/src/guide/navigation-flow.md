@@ -185,14 +185,17 @@ type GuardResult =
 
 ### 2.4 重定向的处理
 
-当守卫 `return { name: 'login' }` 时：
+当守卫 `return { name: 'login' }`（普通重定向）或 `return { location: { name: 'login' }, mode: 'replace' }`（可控重定向）时：
 
 ```ts
+// 重定向方式：守卫通过 NavigationRedirect.mode 显式指定优先，否则沿用原始导航方式
 const redirectMode = result.mode ?? (mode === 'back' ? 'relaunch' : mode)
 return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, ...)
 ```
 
-- `mode` 优先级：守卫指定 > 原始导航方式
+- `mode` 优先级：守卫指定 > 原始导航方式 > `back` 回退 `relaunch`
+- 普通重定向（`return { name: 'login' }`）的 `result.mode` 为 `undefined`，沿用原始导航方式
+- 可控重定向（`return { location, mode }`）显式指定导航方式
 - `back` 无法重定向（目标不在栈中），回退为 `relaunch`
 - 重定向**重新触发完整守卫链**（从 `beforeEach` 开始）
 
@@ -463,7 +466,7 @@ back() 返回原页面:
 3. executeNavigation(to, from, 'push', depth=0):
    ├─ beforeEach:
    │   └─ 检测 requireAuth && !isLoggedIn
-   │   └─ return { name: 'login' }
+   │   └─ return { location: { name: 'login' }, mode: 'replace' }
    │   └─ 返回 { type: 'next', redirect: {name:'login'}, mode: 'replace' }
    │
    ├─ handleGuardResult:

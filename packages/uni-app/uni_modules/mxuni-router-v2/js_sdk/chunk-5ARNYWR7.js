@@ -456,6 +456,9 @@ function isNavigationFailure(error, code) {
 
 // src/guard/index.ts
 var DEFAULT_GUARD_TIMEOUT = 1e4;
+function isRedirect(value) {
+  return typeof value === "object" && value !== null && "location" in value;
+}
 function resolveGuardReturn(value) {
   if (value === false) {
     return { type: "abort", code: "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */ };
@@ -465,6 +468,9 @@ function resolveGuardReturn(value) {
   }
   if (value === true || value === void 0 || value === null || value === void 0) {
     return { type: "next" };
+  }
+  if (isRedirect(value)) {
+    return { type: "next", redirect: value.location, mode: value.mode };
   }
   return { type: "next", redirect: value };
 }

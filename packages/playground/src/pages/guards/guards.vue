@@ -39,6 +39,15 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">可控重定向（{ location, mode }）</view>
+			<view class="info-text">默认重定向沿用触发导航的原始方式。通过返回 { location, mode } 对象可显式指定重定向使用的导航方式（push / replace / relaunch），避免登录页等残留在页面栈中。</view>
+			<view class="btn btn-warn" @click="testControllableRedirect">测试：可控重定向（replace 到关于页）</view>
+			<view class="code-block">
+				router.beforeEach((to, from) => {\n if (to.meta.requireAuth && !isLoggedIn) {\n // 显式指定 replace，避免登录页残留在页面栈中\n return { location: { name: 'pagesLoginLogin' }, mode: 'replace' }\n }\n})
+			</view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">守卫中止导航</view>
 			<view class="info-text">在守卫中 return false 可中止当前导航。</view>
 			<view class="btn btn-gray" @click="testAbort">测试：中止导航</view>
@@ -89,6 +98,21 @@ function testRedirect() {
 		if (isNavigationFailure(error, RouterErrorCode.NAVIGATION_DUPLICATED)) {
 			uni.showToast({ title: '已在受保护页面，守卫不会触发重定向', icon: 'none' })
 		}
+	})
+}
+
+function testControllableRedirect() {
+	// 动态注册一次性守卫：导航到详情页时，用 replace 方式可控重定向到关于页
+	// 显式指定 mode: 'replace'，实际调用 uni.redirectTo 而非 navigateTo，详情页不会残留在页面栈中
+	const removeGuard = router.beforeEach((to, _from) => {
+		if (to.name === 'pagesDetailDetail') {
+			removeGuard()
+			uni.showToast({ title: '可控重定向：replace 到关于页', icon: 'none' })
+			return { location: { name: 'pagesAboutAbout' }, mode: 'replace' }
+		}
+	})
+	router.push({ name: 'pagesDetailDetail' }).catch(() => {
+		// 重定向产生的 NavigationFailure 已在 onError 中处理
 	})
 }
 

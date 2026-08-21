@@ -72,6 +72,28 @@ declare enum RouterErrorCode {
  */
 type NavigationRedirectMode = 'push' | 'replace' | 'relaunch';
 /**
+ * 可控重定向结果
+ *
+ * 在守卫返回值模式中，返回此对象可同时指定重定向目标和重定向使用的导航方式。
+ * 与 `RouteLocationRaw` 通过 `location` 字段区分（`RouteLocationPathRaw` / `RouteLocationNamedRaw`
+ * 均不包含 `location` 顶层字段）。
+ *
+ * @example
+ * ```typescript
+ * router.beforeEach((to, from) => {
+ *   if (to.meta.requireAuth && !isLoggedIn()) {
+ *     return { location: { name: 'login' }, mode: 'replace' }
+ *   }
+ * })
+ * ```
+ */
+interface NavigationRedirect {
+    /** 重定向目标路由位置 */
+    location: RouteLocationRaw;
+    /** 重定向使用的导航方式，不指定时沿用原始导航方式 */
+    mode?: NavigationRedirectMode;
+}
+/**
  * 导航守卫的返回值类型
  *
  * 守卫函数可通过返回值控制导航行为：
@@ -79,10 +101,11 @@ type NavigationRedirectMode = 'push' | 'replace' | 'relaunch';
  * - `false` — 中止导航（NAVIGATION_ABORTED）
  * - `string` — 重定向到路径（如 `'/login'`）
  * - `RouteLocationRaw` — 重定向到路由位置（如 `{ name: 'login' }`）
+ * - `NavigationRedirect` — 重定向到路由位置并指定导航方式（如 `{ location: { name: 'login' }, mode: 'replace' }`）
  * - `Error` — 取消导航（NAVIGATION_CANCELLED）
  * - `null` — 等同于 undefined，放行导航
  */
-type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null;
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | NavigationRedirect | Error | null;
 /**
  * 前置导航守卫函数类型
  *
@@ -906,4 +929,4 @@ declare function usePageChannel(): EventChannel;
  */
 declare const InterceptorPlugin: RouterPlugin;
 
-export { AnimationPlugin as A, type UniAnimationType as B, ChannelPlugin as C, DEFAULT_ANIMATION_DURATION as D, type EventChannel as E, usePageChannel as F, type GuardRouteOptions as G, InterceptorPlugin as I, type NavigationResult as N, type ParamObject as P, type QueryValue as Q, type RouterOptions as R, type UniApiError as U, type Router as a, type RouteLocation as b, type RouteLeaveGuard as c, type RouteLocationRaw as d, RouterErrorCode as e, type UniApiCause as f, type EventListeners as g, type NavigationAnimation as h, type NavigationCompleteContext as i, type NavigationGuard as j, type NavigationPrepareContext as k, type NavigationRedirectMode as l, type ParamValue as m, type ParamsInput as n, ParamsPlugin as o, type PluginContext as p, type PostNavigationGuard as q, type RouteConfig as r, type RouteLocationNamedRaw as s, type RouteLocationPathRaw as t, type RouteMeta as u, type RouteName as v, type RouteNameMap as w, type RoutePath as x, type RouterOnError as y, type RouterPlugin as z };
+export { AnimationPlugin as A, type RouterPlugin as B, ChannelPlugin as C, DEFAULT_ANIMATION_DURATION as D, type EventChannel as E, type UniAnimationType as F, type GuardRouteOptions as G, usePageChannel as H, InterceptorPlugin as I, type NavigationResult as N, type ParamObject as P, type QueryValue as Q, type RouterOptions as R, type UniApiError as U, type Router as a, type RouteLocation as b, type RouteLeaveGuard as c, type RouteLocationRaw as d, RouterErrorCode as e, type UniApiCause as f, type EventListeners as g, type NavigationAnimation as h, type NavigationCompleteContext as i, type NavigationGuard as j, type NavigationPrepareContext as k, type NavigationRedirect as l, type NavigationRedirectMode as m, type ParamValue as n, type ParamsInput as o, ParamsPlugin as p, type PluginContext as q, type PostNavigationGuard as r, type RouteConfig as s, type RouteLocationNamedRaw as t, type RouteLocationPathRaw as u, type RouteMeta as v, type RouteName as w, type RouteNameMap as x, type RoutePath as y, type RouterOnError as z };

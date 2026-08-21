@@ -41,7 +41,7 @@ function isLoggedIn(): boolean {
 router.beforeEach((to, from) => {
   // 1. 未登录访问受保护页面 → 跳登录页
   if (to.meta.requireAuth && !isLoggedIn()) {
-    return { name: 'login', query: { redirect: to.fullPath } } // replace 避免返回到受保护页的中间态
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' } // 用 replace 避免返回到受保护页的中间态
   }
 
   // 2. 已登录访问登录页 → 跳首页

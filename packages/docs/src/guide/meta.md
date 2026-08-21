@@ -10,11 +10,11 @@ interface RouteMeta {
   isTab?: boolean                   // 是否为 TabBar 页面
   requireAuth?: boolean             // 是否需要登录
   animation?: NavigationAnimation   // 默认导航动画
-  [key: string]: unknown            // 自定义扩展字段
+  [key: string]: any                // 自定义扩展字段
 }
 ```
 
-`[key: string]: unknown` 索引签名允许添加任意自定义字段，无需修改库的类型定义。
+`[key: string]: any` 索引签名允许添加任意自定义字段，无需修改库的类型定义。
 
 ## 内置字段
 

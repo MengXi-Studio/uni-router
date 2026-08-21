@@ -1,4 +1,4 @@
-import type { NavigationGuard, NavigationGuardReturn, NavigationRedirectMode, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw } from '@/types'
+import type { NavigationGuard, NavigationGuardReturn, NavigationRedirect, NavigationRedirectMode, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw } from '@/types'
 import { RouterErrorCode } from '@/types/error'
 import type { NavigationFailure } from '@/types/error'
 import { warn } from '@/utils/general'
@@ -80,6 +80,16 @@ export interface GuardManager {
 }
 
 /**
+ * 判断守卫返回值是否为可控重定向对象（NavigationRedirect）
+ *
+ * NavigationRedirect 通过顶层 `location` 字段与 RouteLocationRaw 区分：
+ * RouteLocationPathRaw（必须有 path）/ RouteLocationNamedRaw（必须有 name）均不含 `location` 顶层字段。
+ */
+function isRedirect(value: unknown): value is NavigationRedirect {
+	return typeof value === 'object' && value !== null && 'location' in value
+}
+
+/**
  * 将守卫返回值转换为 GuardResult
  *
  * @param value - 守卫返回值
@@ -95,6 +105,10 @@ function resolveGuardReturn(value: NavigationGuardReturn): GuardResult {
 	if (value === true || value === undefined || value === null || value === void 0) {
 		return { type: 'next' }
 	}
+	// NavigationRedirect：重定向并指定导航方式
+	if (isRedirect(value)) {
+		return { type: 'next', redirect: value.location, mode: value.mode }
+	}
 	// 其他值视为 RouteLocationRaw（string 或对象），重定向
 	return { type: 'next', redirect: value as RouteLocationRaw }
 }
@@ -107,6 +121,7 @@ function resolveGuardReturn(value: NavigationGuardReturn): GuardResult {
  * - `false` — 中止导航（NAVIGATION_ABORTED）
  * - `string` — 重定向到路径（如 `'/login'`）
  * - `RouteLocationRaw` — 重定向到路由位置（如 `{ name: 'login' }`）
+ * - `NavigationRedirect` — 重定向并指定导航方式（如 `{ location: { name: 'login' }, mode: 'replace' }`）
  * - `Error` — 取消导航（NAVIGATION_CANCELLED）
  * - `null` — 等同于 undefined，放行导航
  * - 抛出异常 — 取消导航

@@ -20,7 +20,7 @@ export type {
 } from './route'
 export { DEFAULT_ANIMATION_DURATION } from './route'
 
-export type { NavigationGuardReturn, NavigationRedirectMode, NavigationGuard, PostNavigationGuard, RouteLeaveGuard } from './guard'
+export type { NavigationGuardReturn, NavigationRedirectMode, NavigationRedirect, NavigationGuard, PostNavigationGuard, RouteLeaveGuard } from './guard'
 
 export type { RouterOnError, RouterOptions, Router, GuardRouteOptions } from './router'
 

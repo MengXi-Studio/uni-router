@@ -5,7 +5,12 @@ Navigation guard function type, used to perform validation, redirection, analyti
 ## Type Definition
 
 ```ts
-type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | NavigationRedirect | Error | null
+
+interface NavigationRedirect {
+  location: RouteLocationRaw
+  mode?: 'push' | 'replace' | 'relaunch'
+}
 
 type NavigationGuard = (
   to: RouteLocationNormalized,
@@ -146,10 +151,37 @@ The guard execution order for a complete navigation:
 - `afterEach` is unaffected: only executes after navigation is confirmed, cannot abort
 :::
 
+## Controllable Redirect
+
+By returning a `{ location, mode }` object, you can simultaneously specify the redirect target and the navigation method used for the redirect:
+
+```ts
+router.beforeEach((to, from) => {
+  if (to.meta.requireAuth && !isLoggedIn()) {
+    // Use replace to go to login page, avoiding the login page staying in the page stack
+    return { location: { name: 'login', query: { redirect: to.fullPath } }, mode: 'replace' }
+  }
+})
+```
+
+### mode Options
+
+| mode | uni API | Use Case |
+| --- | --- | --- |
+| `'push'` | `uni.navigateTo` | Need to return to original page after login, keep target page in stack |
+| `'replace'` | `uni.redirectTo` | Replace current page, no history (e.g. login page) |
+| `'relaunch'` | `uni.reLaunch` | Clear stack (e.g. return home on insufficient permissions) |
+
+### Behavior Rules
+
+- Explicit `mode` takes priority over the original navigation method
+- When `mode` is not specified, the original navigation method is used (`back` falls back to `relaunch`)
+- `location` supports path strings, path objects, or named objects
+
 ## Promise Style Return Value
 
 ```ts
-type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Error | null
+type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | NavigationRedirect | Error | null
 ```
 
 | Return Value | Description |
@@ -158,7 +190,8 @@ type NavigationGuardReturn = void | undefined | boolean | RouteLocationRaw | Err
 | `null` | Allow |
 | `true` | Allow |
 | `false` | Abort |
-| `RouteLocationRaw` | Redirect |
+| `RouteLocationRaw` | Redirect (uses original navigation method) |
+| `NavigationRedirect` | Redirect and specify navigation method |
 | `Error` | Throw error, abort navigation |
 
 ```ts
@@ -168,11 +201,11 @@ router.beforeEach(() => {})
 // Abort
 router.beforeEach(() => false)
 
-// Redirect (push)
+// Redirect (uses original navigation method)
 router.beforeEach(() => ({ name: 'login' }))
 
-// Redirect (replace)
-router.beforeEach(() => ({ name: 'login' }))
+// Redirect (replace method)
+router.beforeEach(() => ({ location: { name: 'login' }, mode: 'replace' }))
 
 // Throw error
 router.beforeEach(() => {

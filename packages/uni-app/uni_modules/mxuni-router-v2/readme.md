@@ -10,7 +10,7 @@
 ## 特性
 
 - **vue-router 风格 API** - `push` / `replace` / `relaunch` / `back`
-- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`，`guardRoute` 冷启动补执行
+- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`，`guardRoute` 冷启动补执行，支持可控重定向
 - **命名路由 & 路由元信息** - 通过 `name` 导航，`meta` 携带自定义数据
 - **TypeScript 类型提示** - 路由名称和路径自动补全与类型检查
 - **插件架构** - ParamsPlugin / ChannelPlugin / InterceptorPlugin / AnimationPlugin 按需注册
