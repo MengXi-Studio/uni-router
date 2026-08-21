@@ -16,10 +16,40 @@ function warn(message) {
 // src/plugins/params/params-manager.ts
 var PARAMS_KEY = "__params_key";
 
+// src/utils/path.ts
+function parseQuery(queryString) {
+  const query = {};
+  if (!queryString) return query;
+  const search = queryString.startsWith("?") ? queryString.slice(1) : queryString;
+  if (!search) return query;
+  for (const pair of search.split("&")) {
+    const separatorIndex = pair.indexOf("=");
+    if (separatorIndex === -1) {
+      if (pair) query[decodeURIComponent(pair)] = "";
+      continue;
+    }
+    const key = pair.slice(0, separatorIndex);
+    const value = pair.slice(separatorIndex + 1);
+    if (key) {
+      query[decodeURIComponent(key)] = value ? decodeURIComponent(value) : "";
+    }
+  }
+  return query;
+}
+function normalizePath(path) {
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
 // src/utils/route.ts
 function injectQueryKey(location, key, value) {
   if (typeof location === "string") {
-    return { path: location, query: { [key]: value } };
+    const queryIndex = location.indexOf("?");
+    if (queryIndex === -1) {
+      return { path: location, query: { [key]: value } };
+    }
+    const path = location.slice(0, queryIndex);
+    const existingQuery = parseQuery(location.slice(queryIndex + 1));
+    return { path, query: { ...existingQuery, [key]: value } };
   }
   if ("path" in location) {
     const pathLoc = location;
@@ -264,30 +294,6 @@ var RouterError = class extends Error {
     this.code = code;
   }
 };
-
-// src/utils/path.ts
-function parseQuery(queryString) {
-  const query = {};
-  if (!queryString) return query;
-  const search = queryString.startsWith("?") ? queryString.slice(1) : queryString;
-  if (!search) return query;
-  for (const pair of search.split("&")) {
-    const separatorIndex = pair.indexOf("=");
-    if (separatorIndex === -1) {
-      if (pair) query[decodeURIComponent(pair)] = "";
-      continue;
-    }
-    const key = pair.slice(0, separatorIndex);
-    const value = pair.slice(separatorIndex + 1);
-    if (key) {
-      query[decodeURIComponent(key)] = value ? decodeURIComponent(value) : "";
-    }
-  }
-  return query;
-}
-function normalizePath(path) {
-  return path.startsWith("/") ? path : `/${path}`;
-}
 
 // src/plugins/interceptor/install.ts
 function parseUniUrl(url) {

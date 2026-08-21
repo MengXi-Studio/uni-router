@@ -614,7 +614,13 @@ function createStartLocation() {
 // src/utils/route.ts
 function injectQueryKey(location, key, value) {
   if (typeof location === "string") {
-    return { path: location, query: { [key]: value } };
+    const queryIndex = location.indexOf("?");
+    if (queryIndex === -1) {
+      return { path: location, query: { [key]: value } };
+    }
+    const path = location.slice(0, queryIndex);
+    const existingQuery = parseQuery(location.slice(queryIndex + 1));
+    return { path, query: { ...existingQuery, [key]: value } };
   }
   if ("path" in location) {
     const pathLoc = location;
