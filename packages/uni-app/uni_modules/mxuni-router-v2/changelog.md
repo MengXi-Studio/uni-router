@@ -18,6 +18,12 @@
     })
     ```
 
+### 修复
+
+- **字符串路径含 query 时注入内部 key 产生双 `?`** - `injectQueryKey` 对已含 query 的字符串路径（如 `'/detail?id=1'`）注入 `__nav_id` / `__params_key` 时未拆分已有 query，导致拼接出 `?id=1?__nav_id=...` 的畸形 URL
+  - 修复：字符串路径先按 `?` 拆分为 path + 已有 query，再合并注入，最终为 `?id=1&__nav_id=...`
+  - 同时惠及 ChannelPlugin（`__nav_id`）与 ParamsPlugin（`__params_key`）
+
 ## 2.3.1（2026-08-20）
 
 ### 修复

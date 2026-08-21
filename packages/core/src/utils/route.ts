@@ -1,10 +1,14 @@
 import type { RouteLocationRaw, RouteLocationPathRaw, RouteLocationNamedRaw } from '@/types'
+import { parseQuery } from '@/utils/path'
 
 /**
  * 向路由位置的 query 中注入 key-value 对
  *
  * 自动处理字符串/路径对象/命名对象三种形式，返回新的路由位置对象。
  * 用于 ParamsPlugin 注入 __params_key、ChannelPlugin 注入 __nav_id 等场景。
+ *
+ * 字符串路径若已含 query（如 `/detail?id=1`），会先拆分出已有 query 再合并注入，
+ * 避免拼接时出现双 `?`（如 `/detail?id=1?__nav_id=...`）。
  *
  * @param location - 原始路由位置
  * @param key - query 中的键名
@@ -13,7 +17,14 @@ import type { RouteLocationRaw, RouteLocationPathRaw, RouteLocationNamedRaw } fr
  */
 export function injectQueryKey(location: RouteLocationRaw, key: string, value: string): RouteLocationRaw {
 	if (typeof location === 'string') {
-		return { path: location, query: { [key]: value } }
+		const queryIndex = location.indexOf('?')
+		if (queryIndex === -1) {
+			return { path: location, query: { [key]: value } }
+		}
+		// 字符串路径已含 query：拆分为 path + 已有 query，合并注入
+		const path = location.slice(0, queryIndex)
+		const existingQuery = parseQuery(location.slice(queryIndex + 1))
+		return { path, query: { ...existingQuery, [key]: value } }
 	}
 
 	if ('path' in location) {
