@@ -52,6 +52,14 @@ export const sharedConfig = defineConfig({
 		/** 网站主题配置 logo（VitePress 自动拼 base，无需处理） */
 		logo: '/logo.png',
 
+		/** 网站主题配置 搜索框 */
+		search: {
+			provider: 'local',
+			options: {
+				translations: { button: { buttonText: '搜索文档', buttonAriaLabel: '搜索文档' } }
+			}
+		},
+
 		/** 网站主题配置 社交链接 */
 		socialLinks: [
 			{ icon: 'github', link: 'https://github.com/MengXi-Studio/uni-router' },
