@@ -167,6 +167,24 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">NativeLink - 原生链接组件（useLink 封装）</view>
+			<view class="info-text">H5 端渲染为真实 <text style="color: #007aff">&lt;a&gt;</text> 标签（带 href），恢复链接原生能力：语义化、右键新标签页、无障碍识别、href 原生行为；点击仍经路由器导航，守卫链生效。非 H5 平台（App / 小程序）回退为 view 渲染。在 H5 端可右键下方链接体验"在新标签页打开"。</view>
+			<NativeLink to="/pages/detail/detail" @navigated="onNativeNavigated" @error="onNativeLinkError">
+				<view class="btn">NativeLink - 路径跳转</view>
+			</NativeLink>
+			<NativeLink :to="{ name: 'pagesDetailDetail', query: { id: 'native-link' } }">
+				<view class="btn btn-warn">NativeLink - 命名路由</view>
+			</NativeLink>
+			<NativeLink to="/pages/about/about" replace>
+				<view class="btn btn-danger">NativeLink - replace 模式</view>
+			</NativeLink>
+			<view v-if="nativeLinkLog" class="info-text" style="color: #34c759; margin-top: 8rpx">{{ nativeLinkLog }}</view>
+			<view class="code-block">
+				{{ nativeLinkCode }}
+			</view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">isNavigationFailure - 导航失败类型检查</view>
 			<view class="info-text">使用 isNavigationFailure 替代手动 instanceof + code 检查，代码更简洁。</view>
 			<view class="btn btn-danger" @click="testIsNavigationFailure">测试：isNavigationFailure 检查</view>
@@ -218,10 +236,12 @@ import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.v
 import TabBar from '@meng-xi/uni-router/components/tab-bar/tab-bar.vue'
 import TabBarItem from '@meng-xi/uni-router/components/tab-bar-item/tab-bar-item.vue'
 import type { TabBarItemProps } from '@meng-xi/uni-router/components/tab-bar/context.ts'
+import NativeLink from '@/components/native-link/native-link.vue'
 
 const router = useRouter()
 const routerLinkLog = ref('')
 const tabBarLog = ref('')
+const nativeLinkLog = ref('')
 
 // useLink 演示
 const linkResult = useLink({
@@ -232,6 +252,37 @@ const linkResult = useLink({
 const linkAnimationCode = `<RouterLink to="/pages/detail/detail" :animation="{ type: 'slide-in-bottom' }"> 底部滑入 </RouterLink>`
 const linkParamsCode = `<RouterLink\\n :to="{ path: '/pages/detail/detail' }"\\n :params="{ orderInfo: { orderId: 'A001' } }"\\n persistent\\n>\\n 持久化参数跳转\\n</RouterLink>`
 const linkEventsCode = `<RouterLink\\n :to="{ path: '/pages/detail/detail', query: { id: '1' } }"\\n :events="{ receiveData: (data) => console.log(data) }"\\n @navigated="onNavigated"\\n>\\n 查看详情\\n</RouterLink>`
+
+// NativeLink 组件源码示意（含 < > 的文本需通过插值输出）
+const nativeLinkCode = `// NativeLink.vue - 基于 useLink 的原生链接组件（H5 渲染为 <a>）
+<script setup>
+import { useLink } from '@meng-xi/uni-router'
+
+const props = defineProps({
+  to: { type: [String, Object], required: true }
+})
+
+// useLink 返回 href / navigate / isActive 等核心状态和方法
+const { href, navigate, isActive } = useLink(props)
+<\/script>
+
+<template>
+  <!-- H5 端渲染为真实 <a>，恢复 href、右键新标签页、无障碍识别等原生能力 -->
+  <a :href="href" @click.prevent="navigate" :class="{ active: isActive }">
+    <slot />
+  </a>
+</template>
+
+// 使用（导航仍走路由器，守卫链生效）
+<NativeLink to="/pages/detail/detail">查看详情</NativeLink>`
+
+function onNativeNavigated() {
+	nativeLinkLog.value = 'NativeLink 导航成功（经路由器，守卫链生效）'
+}
+
+function onNativeLinkError(error: unknown) {
+	nativeLinkLog.value = `NativeLink 导航失败: ${(error as { code?: string })?.code ?? error}`
+}
 
 function onReceiveData(data: Record<string, unknown>) {
 	routerLinkLog.value = `收到详情页数据: ${JSON.stringify(data)}`
