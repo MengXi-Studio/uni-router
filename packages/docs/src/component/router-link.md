@@ -1,6 +1,6 @@
 # RouterLink
 
-导航组件，点击时触发路由跳转。基于 uni-app 的 `<view>` 元素封装，通过 `hover-class` 等属性提供点击态反馈。
+导航组件，点击时触发路由跳转。H5 端渲染为原生 `<a>` 标签（带 `href`），恢复链接的语义化、右键新标签页、无障碍识别等原生能力；其他平台渲染为 `<navigator>`，通过 `hover-class` 等属性提供点击态反馈。
 
 ## 引入
 
@@ -114,7 +114,7 @@ export function createApp() {
 
 - **类型**: `string`
 - **默认值**: `'navigator-hover'`
-- **说明**: 按下时的样式类，对应 `<view>` 的 `hover-class` 属性。设置为 `'none'` 可禁用点击态
+- **说明**: 按下时的样式类（仅非 H5 平台生效），对应 `<navigator>` 的 `hover-class` 属性；H5 端渲染为 `<a>`，使用原生 CSS `:hover` 提供反馈。设置为 `'none'` 可禁用点击态
 
 ### hoverStopPropagation
 
@@ -286,11 +286,46 @@ import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.v
 </template>
 ```
 
+## H5 原生链接能力
+
+H5 端 `RouterLink` 通过 `#ifdef H5` 条件编译渲染为原生 `<a>` 标签（带真实 `href`），恢复浏览器链接的原生能力：
+
+| 能力 | 说明 |
+| --- | --- |
+| 链接语义 | 页面中存在真实 `<a>` 标签，语义化结构完整 |
+| 右键新标签页打开 | 右键菜单可正常弹出，"在新标签页打开"直接打开目标路由 |
+| 浏览器地址识别 | 悬停时状态栏显示目标地址，浏览器识别为超链接 |
+| 无障碍支持 | 屏幕阅读器等无障碍工具可正确识别为链接 |
+| href 原生行为 | 修饰键（Ctrl/Cmd/Shift/Alt）或中键点击保留浏览器默认行为 |
+
+普通左键点击仍会阻止默认跳转并交由路由器导航，因此**守卫链（beforeEach 等）照常生效**：
+
+```ts
+// 组件内部（H5 分支）
+async function handleClick(event: unknown) {
+	// #ifdef H5
+	const e = event as MouseEvent
+	// 修饰键或中键点击 → 保留浏览器原生行为（新标签页打开等）
+	if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) {
+		return
+	}
+	e.preventDefault()
+	// #endif
+	// 走路由器导航（守卫链生效）
+	await navigate()
+}
+```
+
+::: info 平台差异（条件编译）
+- **H5**：渲染为 `<a>`（带 `href`），href 自动适配 hash 路由（`#` 前缀），确保右键"在新标签页打开"能正确路由
+- **App / 小程序**：渲染为 `<navigator>`（uni-app 原生导航组件）
+:::
+
 ## 与 vue-router RouterLink 的差异
 
 | 特性                 | vue-router         | Uni Router         |
 | -------------------- | ------------------ | ------------------ |
-| 宿主元素             | `<a>`              | `<view>`           |
+| 宿主元素             | `<a>`              | H5：`<a>`；其他平台：`<navigator>` |
 | `to` 类型            | `string \| object` | `string \| object` |
 | `replace`            | ✅                 | ✅                 |
 | `relaunch`           | ❌                 | ✅                 |
@@ -323,7 +358,7 @@ const isActive = (name: string) => route.value.name === name
 
 ### 不支持 custom 的原因
 
-vue-router 的 `custom` 允许完全自定义渲染逻辑，依赖 `<a>` 标签和浏览器导航。uni-app 中导航由路由器 API 驱动而非原生组件，无法完全自定义渲染行为。如需自定义导航触发，使用 `router.push()` 等 API。
+vue-router 的 `custom` 允许完全自定义渲染逻辑，依赖 `<a>` 标签和浏览器导航。uni-app 中导航由路由器 API 驱动而非原生组件，无法完全自定义渲染行为。如需自定义导航触发，使用 [`useLink()`](../api/use-link) 组合式 API 封装自定义导航组件（可自行渲染任意元素，H5 端可渲染原生 `<a>` 恢复链接能力）：
 
 ## 下一步
 

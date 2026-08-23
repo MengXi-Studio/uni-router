@@ -1,6 +1,6 @@
 # RouterLink
 
-Navigation component that triggers route navigation on click. Built on uni-app's `<view>` element with `hover-class` providing pressed-state feedback.
+Navigation component that triggers route navigation on click. On H5 it renders a native `<a>` element (with `href`), restoring native link capabilities like semantics, right-click open in new tab, and accessibility recognition; on other platforms it renders a `<navigator>` with `hover-class` providing pressed-state feedback.
 
 ## Import
 
@@ -114,7 +114,7 @@ See [Plugin System](../guide/plugins) for details.
 
 - **Type**: `string`
 - **Default**: `'navigator-hover'`
-- **Description**: Style class applied when pressed, corresponds to `<view>`'s `hover-class` attribute. Set to `'none'` to disable hover effect
+- **Description**: Style class applied when pressed (non-H5 only), corresponds to `<navigator>`'s `hover-class` attribute. On H5 the component renders an `<a>` and uses native CSS `:hover` for feedback. Set to `'none'` to disable hover effect
 
 ### hoverStopPropagation
 
@@ -286,11 +286,46 @@ import RouterLink from '@meng-xi/uni-router/components/router-link/router-link.v
 </template>
 ```
 
+## H5 Native Link Capabilities
+
+On H5, `RouterLink` renders a native `<a>` element (with a real `href`) via `#ifdef H5` conditional compilation, restoring the browser's native link capabilities:
+
+| Capability | Description |
+| --- | --- |
+| Link semantics | A real `<a>` element exists in the page, preserving semantic structure |
+| Right-click open in new tab | The context menu works normally; "Open link in new tab" opens the target route |
+| Browser address recognition | The status bar shows the target address on hover; recognized as a hyperlink |
+| Accessibility support | Screen readers and other assistive tools correctly identify the link |
+| Native href behavior | Modified clicks (Ctrl/Cmd/Shift/Alt) or middle clicks keep browser default behavior |
+
+A normal left click still prevents the default jump and delegates to the router, so **the guard chain (beforeEach, etc.) still runs**:
+
+```ts
+// Component internals (H5 branch)
+async function handleClick(event: unknown) {
+	// #ifdef H5
+	const e = event as MouseEvent
+	// Modified or middle click → keep native browser behavior (open in new tab, etc.)
+	if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) {
+		return
+	}
+	e.preventDefault()
+	// #endif
+	// Router navigation (guard chain runs)
+	await navigate()
+}
+```
+
+::: info Platform differences (conditional compilation)
+- **H5**: renders `<a>` (with `href`); the href automatically adapts to hash routing (`#` prefix), so right-click "open in new tab" routes correctly
+- **App / Mini-program**: renders `<navigator>` (uni-app native navigation component)
+:::
+
 ## Differences from vue-router RouterLink
 
 | Feature              | vue-router         | Uni Router         |
 | -------------------- | ------------------ | ------------------ |
-| Host element         | `<a>`              | `<view>`           |
+| Host element         | `<a>`              | H5: `<a>`; other platforms: `<navigator>` |
 | `to` type            | `string \| object` | `string \| object` |
 | `replace`            | ✅                 | ✅                 |
 | `relaunch`           | ❌                 | ✅                 |
@@ -323,7 +358,7 @@ const isActive = (name: string) => route.value.name === name
 
 ### Why custom is not supported
 
-vue-router's `custom` allows fully custom rendering logic, relying on `<a>` tags and browser navigation. In uni-app, navigation is driven by the router APIs rather than native components, so fully custom rendering is not supported. To trigger custom navigation, use APIs like `router.push()`.
+vue-router's `custom` allows fully custom rendering logic, relying on `<a>` tags and browser navigation. In uni-app, navigation is driven by the router APIs rather than native components, so fully custom rendering is not supported. To trigger custom navigation, use the [`useLink()`](../api/use-link) composable to build a custom navigation component (rendering any element you like — on H5 you can render a native `<a>` to restore link capabilities):
 
 ## Next Steps
 
