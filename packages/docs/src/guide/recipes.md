@@ -434,20 +434,19 @@ onShow(() => {
 
 防止用户误操作离开未保存的表单。
 
-### 方案：守卫 + onBackPress
+### 方案：返回守卫 onBeforeBack
 
 ```ts
 // composables/use-dirty-guard.ts
-import { onBackPress, onShow } from '@dcloudio/uni-app'
 import { useRouter } from '@meng-xi/uni-router'
 import { ref, type Ref } from 'vue'
 
 export function useDirtyGuard(dirty: Ref<boolean>, onLeave?: () => void) {
   const router = useRouter()
 
-  // 编程式导航的守卫（router.push / router.back 等）
-  const guard = router.beforeEach((to, from) => {
-    if (from.meta._dirty && dirty.value) {
+  // 返回守卫：拦截物理返回键 / 浏览器后退 / router.back()
+  const removeBack = router.onBeforeBack(() => {
+    if (dirty.value) {
       return new Promise((resolve) => {
         uni.showModal({
           title: '提示',
@@ -456,9 +455,9 @@ export function useDirtyGuard(dirty: Ref<boolean>, onLeave?: () => void) {
             if (res.confirm) {
               dirty.value = false
               onLeave?.()
-              resolve() // 放行
+              resolve(true) // 放行
             } else {
-              resolve(false) // 中止
+              resolve(false) // 阻止返回
             }
           }
         })
@@ -466,34 +465,8 @@ export function useDirtyGuard(dirty: Ref<boolean>, onLeave?: () => void) {
     }
   })
 
-  // App 端：物理返回键
-  // #ifdef APP-PLUS
-  onBackPress(() => {
-    if (dirty.value) {
-      uni.showModal({
-        title: '提示',
-        content: '有未保存的修改，确认离开？',
-        success: (res) => {
-          if (res.confirm) {
-            dirty.value = false
-            onLeave?.()
-            router.back()
-          }
-        }
-      })
-      return true // 阻止默认返回
-    }
-    return false
-  })
-  // #endif
-
-  // 全平台：onShow 同步状态（物理返回后同步）
-  onShow(() => {
-    router.syncRoute()
-  })
-
   // 返回卸载函数，离开页面时移除守卫
-  return guard
+  return removeBack
 }
 ```
 
@@ -526,8 +499,8 @@ async function handleSave() {
 </script>
 ```
 
-::: warning 物理返回键的限制
-`onBackPress` 仅 App 端生效。H5 和小程序的物理返回无法拦截，只能通过 `onShow` + `syncRoute` 做事后处理。详见[平台兼容性](./compatibility)。
+::: tip 平台支持
+`onBeforeBack` 在 App（物理返回键 / 导航栏返回 / `uni.navigateBack`）与 H5（浏览器后退 / 后退手势）均生效；小程序原生返回无法拦截，只能通过 `onShow` + `syncRoute` 事后处理。iOS 侧滑需配置 `app.setSideSlipGesture('none')`。详见[平台兼容性](./compatibility)。
 :::
 
 ## 数据预取

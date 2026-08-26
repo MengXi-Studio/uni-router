@@ -165,13 +165,8 @@ await router.back(2)
 await router.back(1, { type: 'slide-out-right', duration: 500 })
 ```
 
-::: warning 物理返回键无法拦截
-`back()` 仅拦截**编程式**调用。物理返回键（Android）、浏览器后退（H5）、小程序左上角返回**直接触发原生 `navigateBack`**，不经过路由器，守卫无法拦截。
-
-应对方案：
-1. 在页面 `onShow` 中调用 `router.syncRoute()` 同步状态
-2. 在 `onRouteChange` 中做事后处理
-3. App 端可监听 `onBackPress` 拦截物理返回键
+::: tip 返回守卫
+`back()` 会执行完整返回守卫链：`onBeforeBack` → `beforeEach` → `beforeResolve`。App 物理返回键 / 导航栏返回、H5 浏览器后退也已通过全局 mixin 的 `onBackPress` / `popstate` 接入同一守卫链，可用 [`onBeforeBack()`](#onbeforeback) 统一拦截。小程序原生返回无法拦截。
 :::
 
 ## 守卫注册方法
@@ -253,10 +248,46 @@ router.afterEach((to, from, failure) => {
 `afterEach` 仅在**完整导航**（经过前置守卫）完成后触发。以下场景**不触发** `afterEach`：
 
 1. `syncRoute()` / `syncCurrentRoute()` 的状态同步
-2. 物理返回键、浏览器后退（不经过路由器）
 
-如需监听所有路由变化（包括状态同步），使用 [`onRouteChange()`](#onroutechange)。
+物理返回键、浏览器后退经返回守卫链执行，守卫放行后 `afterEach` 正常触发。如需监听所有路由变化（包括状态同步），使用 [`onRouteChange()`](#onroutechange)。
 :::
+
+### onBeforeBack()
+
+注册全局返回守卫，在**返回操作**触发时执行（App 物理返回键 / 导航栏返回 / `uni.navigateBack`，H5 浏览器后退 / 后退手势，`router.back()`）。
+
+```ts
+onBeforeBack(guard: BackGuard): () => void
+```
+
+- **guard**: `(to: RouteLocation, from: RouteLocation) => boolean | void | Promise<boolean | void>`
+- **返回值**: 用于移除此守卫的函数
+- 返回 `false` 阻止返回；`true` / `undefined` 放行；支持异步
+
+```ts
+const remove = router.onBeforeBack((to, from) => {
+  if (hasUnsavedChanges()) {
+    uni.showToast({ title: '有未保存的修改', icon: 'none' })
+    return false // 阻止返回
+  }
+  // 不返回值或 return true 放行
+})
+
+// 需要时移除
+remove()
+```
+
+返回守卫放行后复用 `beforeEach → beforeResolve` 链路（支持中止 / 重定向）。
+
+::: tip 平台支持
+- App：通过全局 mixin 的 `onBackPress` 接入，覆盖物理返回键、导航栏返回按钮、`uni.navigateBack`
+- H5：通过 `popstate` 事件接入，覆盖浏览器后退按钮、后退手势
+- 小程序：仅 `router.back()` / 程序化 `uni.navigateBack`（需 `InterceptorPlugin`），原生返回无法拦截
+
+iOS 侧滑返回默认绕过守卫，需配置 `app.setSideSlipGesture`（见 [RouterOptions.app](./type-router-options#app)）。
+:::
+
+详见[路由守卫 - 返回守卫](../guide/guards#返回守卫-onbeforeback)。
 
 ## 路由查询方法
 

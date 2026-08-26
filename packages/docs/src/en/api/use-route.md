@@ -151,7 +151,7 @@ watch(
 
 ### Sync State with onShow
 
-Physical back button and browser back bypass the router, so `route` is not automatically updated. Call `syncRoute()` in `onShow`:
+App physical back and H5 browser back go through the back guard chain. After the page switches, the global mixin already calls `syncRoute()` in `onShow`, so `route` auto-updates, **manual call usually not needed**. If you need to read route info immediately in `onLoad` (earlier than `onShow`), call it manually once:
 
 ```vue
 <script setup lang="ts">
@@ -204,7 +204,7 @@ In non-component scenarios, `router.currentRoute` is **not reactive**; you get t
 | Reactive | ✅ | ✅ |
 | `params` | URL path params (e.g., `/user/:id`) | In-memory params (not exposed in URL) |
 | Type parsing methods | ❌ | `queryInt()` / `queryNumber()` / `queryBool()` |
-| Physical back sync | Automatic | Requires manual `syncRoute()` |
+| Physical back sync | Automatic | Automatic (global mixin calls `syncRoute()` in `onShow`) |
 
 ## Next Steps
 

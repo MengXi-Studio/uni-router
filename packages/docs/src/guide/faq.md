@@ -145,49 +145,51 @@ async function safePush(location) {
 
 详见[实战指南 - 页面栈深度管理](./recipes#页面栈深度管理)。
 
-## 物理返回无法拦截
+## 返回无法拦截
 
 ### 现象
 
-用户按物理返回键（Android 返回键、小程序顶部返回箭头），守卫未触发。
+用户按物理返回键（Android 返回键、H5 浏览器后退），`onBeforeBack` 守卫未触发。
 
 ### 原因
 
-这是 uni-app 的平台限制：
+不同平台对返回的拦截能力不同：
 
-- **App 端**：可通过 `onBackPress` 拦截
-- **H5 端**：浏览器返回键无法拦截，只能监听 `popstate` 事后处理
-- **小程序端**：顶部返回箭头无法拦截
+- **App 端**：物理返回键 / 导航栏返回 / `uni.navigateBack` 已通过全局 mixin 的 `onBackPress` 接入返回守卫链，`onBeforeBack` 生效
+- **H5 端**：浏览器后退按钮 / 后退手势已通过 `popstate` 事件接入返回守卫链，`onBeforeBack` 生效
+- **小程序端**：顶部返回箭头、物理返回、滑动返回由宿主控制，无法拦截（仅 `router.back()` / 程序化 `uni.navigateBack` 可拦截）
+- **iOS 侧滑**：默认绕过守卫，需配置 `app.setSideSlipGesture('none')` 禁用
 
 ### 解决方案
 
 ```ts
-// App 端：onBackPress
-import { onBackPress } from '@dcloudio/uni-app'
-
-onBackPress(() => {
+// 全局注册返回守卫（全平台，覆盖 App/H5 原生返回 + router.back）
+router.onBeforeBack((to, from) => {
   if (hasUnsavedData) {
-    showConfirmDialog()
-    return true // 阻止默认返回
+    uni.showModal({ title: '提示', content: '有未保存的修改，确认离开？' })
+    return false // 阻止返回
   }
-  return false
 })
 
-// 全平台：onRouteChange 事后处理
-// currentRoute 已通过 install() 中的全局 mixin 自动 syncRoute，无需手动调用
-import { useRouter } from '@meng-xi/uni-router'
+// iOS 侧滑返回默认绕过守卫，按页面禁用侧滑手势
+const router = createRouter({
+  routes,
+  app: {
+    setSideSlipGesture(to) {
+      return to.meta.requireLeaveConfirm ? 'none' : 'close'
+    }
+  }
+})
 
-const router = useRouter()
-
+// 小程序原生返回无法拦截，用 onRouteChange 事后处理
 router.onRouteChange((to, from) => {
   if (to._synced) {
-    // 状态同步（可能是物理返回触发）
     handleBackNavigation(to, from)
   }
 })
 ```
 
-详见[平台兼容性](./compatibility#物理返回键无法拦截)。
+详见[平台兼容性](./compatibility#返回拦截的平台差异)。
 
 ## switchTab 的 query 丢失
 
@@ -229,11 +231,11 @@ onShow(() => {
 
 ### 现象
 
-物理返回后，`afterEach` 钩子未执行。
+`syncRoute()` 状态同步后，`afterEach` 钩子未执行。
 
 ### 原因
 
-物理返回是 uni-app 原生行为，不经过路由器的导航流程，因此 `afterEach` 不触发。
+`afterEach` 仅在**完整导航**（经过守卫链）完成后触发。`syncRoute()` 仅同步路由状态，不走守卫链，因此不触发 `afterEach`。物理返回键 / 浏览器后退经返回守卫链执行，守卫放行后 `afterEach` 正常触发。
 
 ### 解决方案
 

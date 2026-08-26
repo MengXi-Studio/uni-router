@@ -4,7 +4,7 @@
 
 ## 守卫全景
 
-Uni Router 提供四种守卫，按执行顺序：
+Uni Router 提供五类守卫。前进导航的执行顺序：
 
 ```
 导航触发
@@ -24,6 +24,8 @@ Uni Router 提供四种守卫，按执行顺序：
         └─ 仅观察，无法改变导航结果
 ```
 
+返回操作（物理返回键 / 浏览器后退 / `router.back()`）先执行 `onBeforeBack` 返回守卫，放行后复用 `beforeEach → beforeResolve → afterEach` 链路，详见[返回守卫](#返回守卫-onbeforeback)。
+
 ### 各守卫的定位
 
 | 守卫 | 注册方式 | 典型场景 |
@@ -32,6 +34,7 @@ Uni Router 提供四种守卫，按执行顺序：
 | `beforeEnter` | `RouteConfig.beforeEnter` | 某路由的专属校验（如需读取特定数据） |
 | `beforeResolve` | `router.beforeResolve(fn)` | 数据预取完成后的最终确认 |
 | `afterEach` | `router.afterEach(fn)` | 设置标题、埋点、清理状态，接收失败信息 |
+| `onBeforeBack` | `router.onBeforeBack(fn)` | 返回拦截、离开确认（物理返回键 / 浏览器后退 / `router.back()`） |
 
 ::: tip beforeResolve 的定位
 `beforeResolve` 在 `beforeEnter` 之后执行，此时所有前置校验已通过。适合放"所有守卫都同意后"的最终逻辑，如确认数据已加载完毕。它与 `beforeEach` 的区别仅在于执行时机。
@@ -401,8 +404,8 @@ router.afterEach((to, from, failure) => {
 `afterEach` 仅在**完整导航**（经过前置守卫）完成后触发。以下场景**不触发** `afterEach`：
 
 1. `syncRoute()` / `syncCurrentRoute()` 的状态同步
-2. 物理返回键、浏览器后退（不经过路由器）
 
+物理返回键、浏览器后退会经返回守卫链执行，守卫放行后 `afterEach` 正常触发（见[返回守卫](#返回守卫-onbeforeback)）。
 如需监听所有路由变化（包括状态同步），使用 `onRouteChange`。
 :::
 
@@ -550,38 +553,83 @@ const routes = [
 ]
 ```
 
-## 守卫与物理返回键
+## 返回守卫 onBeforeBack
 
-::: warning 核心限制
-物理返回键、浏览器后退、小程序左上角返回**不经过路由器**，守卫无法拦截。
-
-这是 uni-app 框架的固有限制，非本库不足。
-:::
-
-### 应对方案
-
-**方案 1：App 端监听 onBackPress**
+`onBeforeBack` 是全局返回守卫，在**返回操作**触发时执行，可用于离开确认、返回拦截等场景。
 
 ```ts
-// 仅 App 端生效
-onBackPress((options) => {
-  if (pageState.dirty) {
-    showConfirmDialog()
-    return true // 阻止默认返回
+// 注册返回守卫（返回 false 阻止返回，true / undefined 放行）
+router.onBeforeBack((to, from) => {
+  if (hasUnsavedChanges) {
+    uni.showToast({ title: '有未保存的修改', icon: 'none' })
+    return false // 阻止返回
   }
-  return false // 允许返回
+  // 不返回值或 return true 放行
+})
+
+// 移除守卫
+const remove = router.onBeforeBack(guard)
+remove()
+```
+
+### 返回守卫链
+
+返回操作与前进导航共用守卫链：
+
+```
+返回触发
+  → 1. onBeforeBack   返回守卫（可多个）
+  → 2. beforeEach     全局前置守卫
+  → 3. beforeResolve  全局解析守卫
+  → 4. uni.navigateBack（守卫放行后执行）
+  → 5. afterEach      后置钩子（放行成功 / 被阻止均触发）
+```
+
+`onBeforeBack` 返回 `false` 阻止返回；`true` / `undefined` 放行；支持异步（Promise）。
+
+### 各平台支持情况
+
+| 返回场景 | App | H5 | 小程序 |
+| --- | --- | --- | --- |
+| 物理返回键 / 导航栏返回 / `uni.navigateBack` | ✅ `onBackPress` 接入 | — | ❌ |
+| 浏览器后退按钮 / 后退手势 | — | ✅ `popstate` 接入 | — |
+| iOS 边缘滑动返回 | ⚠️ 需配合 `setSideSlipGesture('none')` | — | — |
+| `router.back()` / 程序化 `uni.navigateBack` | ✅ | ✅ | ✅（需注册 `InterceptorPlugin`） |
+
+::: warning 小程序原生返回无法拦截
+小程序右上角/左上角返回、物理返回键、滑动返回由宿主控制，无 `onBackPress` 生命周期、无 `popstate` 事件，`onBeforeBack` 无法拦截。这是平台能力边界。
+:::
+
+### 配合 iOS 侧滑手势
+
+iOS 边缘滑动返回**默认绕过守卫链**。通过 `app.setSideSlipGesture` 可按页面动态控制手势：
+
+```ts
+const router = createRouter({
+  routes,
+  app: {
+    setSideSlipGesture(to) {
+      // 需要拦截的页面禁用侧滑，使返回走守卫链
+      return to.meta.requireLeaveConfirm ? 'none' : 'close'
+    }
+  }
 })
 ```
 
-**方案 2：onShow 自动同步状态**
+- `'none'`：禁用 iOS 侧滑返回（返回操作走守卫链，`onBeforeBack` 生效）
+- `'close'`：开启原生侧滑返回（保留原生手势，侧滑绕过守卫）
 
-路由器在 `install()` 时已注册全局 mixin，会在每个页面 `onShow` 自动调用 `router.syncRoute()` 同步 `currentRoute` 为真实页面，**无需手动调用**：
+仅 iOS 生效；Android 使用物理返回键，由 `onBackPress` 接入守卫链。
+
+### 与 onBeforeRouteLeave 的关系
+
+`onBeforeRouteLeave` 通过 `beforeEach` 实现，而返回守卫链包含 `beforeEach`，因此在返回操作中同样会执行 `onBeforeRouteLeave`，返回 `false` 同样可阻止返回。
+
+### 状态同步仍自动处理
+
+返回守卫放行后由路由器完成返回，页面 `onShow` 时全局 mixin 仍会自动 `syncRoute()` 同步路由状态，**无需手动调用**：
 
 ```ts
-// 路由器内部已注册：
-// app.mixin({ onShow() { router.syncRoute() } })
-
-// 因此你的页面中通常无需手动同步，直接在 onShow / onRouteChange 中读取即可
 import { onShow } from '@dcloudio/uni-app'
 import { useRoute } from '@meng-xi/uni-router'
 
@@ -593,14 +641,12 @@ onShow(() => {
 })
 ```
 
-如需在 `onLoad`（早于 `onShow`）中读取路由信息，可手动调用一次 `router.syncRoute()`。
-
-**方案 3：onRouteChange 事后处理**
+如需监听所有路由变化（包括状态同步），使用 `onRouteChange`：
 
 ```ts
 router.onRouteChange((to, from) => {
   if (to._synced) {
-    // 状态同步（可能是物理返回触发）
+    // 状态同步（未经过守卫链，如小程序原生返回）
     handleBackNavigation(to, from)
   }
 })
@@ -719,6 +765,12 @@ type RouteLeaveGuard = (
   to: RouteLocation,
   from: RouteLocation,
 ) => NavigationGuardReturn | Promise<NavigationGuardReturn>
+
+// 返回守卫的返回值类型（false 阻止返回，true / undefined 放行）
+type BackGuardReturn = boolean | void | Promise<boolean | void>
+
+// 返回守卫函数类型
+type BackGuard = (to: RouteLocation, from: RouteLocation) => BackGuardReturn
 ```
 
 ## onBeforeRouteLeave 组件内离开守卫

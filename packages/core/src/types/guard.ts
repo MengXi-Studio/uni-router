@@ -95,3 +95,27 @@ export type PostNavigationGuard = (to: RouteLocation, from: RouteLocation, failu
  * @returns 返回值控制导航行为：undefined/true=放行，false=中止，RouteLocationRaw=重定向，Error=取消
  */
 export type RouteLeaveGuard = (to: RouteLocation, from: RouteLocation) => NavigationGuardReturn | Promise<NavigationGuardReturn>
+
+/**
+ * 返回守卫的返回值类型
+ *
+ * 通过返回值控制"返回"行为（物理返回键 / 顶部导航栏返回 / navigateBack）：
+ * - `false` — 阻止返回
+ * - `true` / `undefined` — 放行返回
+ *
+ * 与导航守卫保持一致：`false` 表示拦截。
+ */
+export type BackGuardReturn = boolean | void | Promise<boolean | void>
+
+/**
+ * 返回守卫函数类型
+ *
+ * 用于 `router.onBeforeBack`，在返回操作触发时执行（App 端物理返回键、顶部导航栏返回按钮、
+ * `uni.navigateBack`，H5 端浏览器后退按钮 / 后退手势）。支持异步（Promise），
+ * 不受 uni-app `onBackPress` 同步返回限制。
+ *
+ * @param to - 返回目标页面（上一页）
+ * @param from - 当前正要离开的页面
+ * @returns `false` 阻止返回；`true` / `undefined` 放行
+ */
+export type BackGuard = (to: RouteLocation, from: RouteLocation) => BackGuardReturn

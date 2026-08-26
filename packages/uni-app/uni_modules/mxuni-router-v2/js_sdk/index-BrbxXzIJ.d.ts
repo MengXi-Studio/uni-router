@@ -153,6 +153,28 @@ type PostNavigationGuard = (to: RouteLocation, from: RouteLocation, failure?: Na
  * @returns 返回值控制导航行为：undefined/true=放行，false=中止，RouteLocationRaw=重定向，Error=取消
  */
 type RouteLeaveGuard = (to: RouteLocation, from: RouteLocation) => NavigationGuardReturn | Promise<NavigationGuardReturn>;
+/**
+ * 返回守卫的返回值类型
+ *
+ * 通过返回值控制"返回"行为（物理返回键 / 顶部导航栏返回 / navigateBack）：
+ * - `false` — 阻止返回
+ * - `true` / `undefined` — 放行返回
+ *
+ * 与导航守卫保持一致：`false` 表示拦截。
+ */
+type BackGuardReturn = boolean | void | Promise<boolean | void>;
+/**
+ * 返回守卫函数类型
+ *
+ * 用于 `router.onBeforeBack`，在返回操作触发时执行（App 端物理返回键、顶部导航栏返回按钮、
+ * `uni.navigateBack`，H5 端浏览器后退按钮 / 后退手势）。支持异步（Promise），
+ * 不受 uni-app `onBackPress` 同步返回限制。
+ *
+ * @param to - 返回目标页面（上一页）
+ * @param from - 当前正要离开的页面
+ * @returns `false` 阻止返回；`true` / `undefined` 放行
+ */
+type BackGuard = (to: RouteLocation, from: RouteLocation) => BackGuardReturn;
 
 /**
  * 导航动画类型
@@ -616,6 +638,26 @@ interface GuardRouteOptions {
     onAbort?: (failure: NavigationFailure) => void;
 }
 /**
+ * App 平台侧滑返回手势配置值
+ *
+ * 对应 plus.webview 的 popGesture 取值：
+ * - `'none'`：禁用侧滑返回（返回操作走守卫链，onBackPress 可拦截）
+ * - `'close'`：开启原生侧滑返回（保留原生手势体验，但侧滑不经过守卫）
+ */
+type SideSlipGesture = 'none' | 'close';
+/**
+ * App 平台专属路由配置
+ */
+interface AppRouterOptions {
+    /**
+     * 动态设置 iOS 侧滑返回手势
+     *
+     * 在页面 onShow 时调用，返回 'none' 禁用手势（使侧滑返回走守卫链），
+     * 返回 'close' 开启原生手势。可按目标路由（to）决定是否拦截。
+     */
+    setSideSlipGesture?: (to: RouteLocation) => SideSlipGesture;
+}
+/**
  * 路由器初始化选项
  *
  * 核心选项包含 routes、strict、guardTimeout、readyTimeout 和 plugins。
@@ -685,6 +727,10 @@ interface RouterOptions {
      * @default false
      */
     interceptUniApi?: boolean;
+    /**
+     * App 平台专属配置（侧滑返回手势等）
+     */
+    app?: AppRouterOptions;
 }
 /**
  * 路由器实例接口，提供路由导航、守卫注册和状态查询能力
@@ -764,6 +810,17 @@ interface Router {
      * @returns 用于移除此钩子的函数
      */
     afterEach(guard: PostNavigationGuard): () => void;
+    /**
+     * 注册全局返回守卫，在返回操作触发时执行
+     *
+     * 覆盖 App 端物理返回键、顶部导航栏返回按钮、`uni.navigateBack`，
+     * 以及 H5 端浏览器后退按钮 / 后退手势（通过 popstate 事件接入）。
+     * 支持异步（Promise），返回 `false` 阻止返回，`true` / `undefined` 放行。
+     *
+     * @param guard - 返回守卫函数
+     * @returns 用于移除此守卫的函数
+     */
+    onBeforeBack(guard: BackGuard): () => void;
     /**
      * 获取所有已注册的路由配置列表
      * @returns 路由配置数组的浅拷贝
@@ -929,4 +986,4 @@ declare function usePageChannel(): EventChannel;
  */
 declare const InterceptorPlugin: RouterPlugin;
 
-export { AnimationPlugin as A, type RouterPlugin as B, ChannelPlugin as C, DEFAULT_ANIMATION_DURATION as D, type EventChannel as E, type UniAnimationType as F, type GuardRouteOptions as G, usePageChannel as H, InterceptorPlugin as I, type NavigationResult as N, type ParamObject as P, type QueryValue as Q, type RouterOptions as R, type UniApiError as U, type Router as a, type RouteLocation as b, type RouteLeaveGuard as c, type RouteLocationRaw as d, RouterErrorCode as e, type UniApiCause as f, type EventListeners as g, type NavigationAnimation as h, type NavigationCompleteContext as i, type NavigationGuard as j, type NavigationPrepareContext as k, type NavigationRedirect as l, type NavigationRedirectMode as m, type ParamValue as n, type ParamsInput as o, ParamsPlugin as p, type PluginContext as q, type PostNavigationGuard as r, type RouteConfig as s, type RouteLocationNamedRaw as t, type RouteLocationPathRaw as u, type RouteMeta as v, type RouteName as w, type RouteNameMap as x, type RoutePath as y, type RouterOnError as z };
+export { AnimationPlugin as A, type BackGuard as B, ChannelPlugin as C, DEFAULT_ANIMATION_DURATION as D, type EventChannel as E, type RoutePath as F, type GuardRouteOptions as G, type RouterOnError as H, InterceptorPlugin as I, type RouterPlugin as J, type UniAnimationType as K, usePageChannel as L, type NavigationResult as N, type ParamObject as P, type QueryValue as Q, type RouterOptions as R, type SideSlipGesture as S, type UniApiError as U, type Router as a, type RouteLocation as b, type RouteLeaveGuard as c, type RouteLocationRaw as d, RouterErrorCode as e, type UniApiCause as f, type AppRouterOptions as g, type BackGuardReturn as h, type EventListeners as i, type NavigationAnimation as j, type NavigationCompleteContext as k, type NavigationGuard as l, type NavigationPrepareContext as m, type NavigationRedirect as n, type NavigationRedirectMode as o, type ParamValue as p, type ParamsInput as q, ParamsPlugin as r, type PluginContext as s, type PostNavigationGuard as t, type RouteConfig as u, type RouteLocationNamedRaw as v, type RouteLocationPathRaw as w, type RouteMeta as x, type RouteName as y, type RouteNameMap as z };

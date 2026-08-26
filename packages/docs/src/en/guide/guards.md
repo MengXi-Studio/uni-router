@@ -4,7 +4,7 @@ Route guards are Uni Router's core capability, allowing you to insert custom log
 
 ## Guard Overview
 
-Uni Router provides four guards, in execution order:
+Uni Router provides five types of guards. Forward navigation execution order:
 
 ```
 Navigation triggered
@@ -24,6 +24,8 @@ Navigation triggered
         └─ Observation only, cannot change navigation result
 ```
 
+Back operations (physical back button / browser back / `router.back()`) first run the `onBeforeBack` back guard, then reuse the `beforeEach → beforeResolve → afterEach` chain. See [Back Guard](#back-guard-onbeforeback).
+
 ### Guard Purposes
 
 | Guard | Registration | Typical Scenarios |
@@ -32,6 +34,7 @@ Navigation triggered
 | `beforeEnter` | `RouteConfig.beforeEnter` | Route-specific validation (like reading specific data) |
 | `beforeResolve` | `router.beforeResolve(fn)` | Final confirmation after data preload completes |
 | `afterEach` | `router.afterEach(fn)` | Set title, analytics, cleanup state, receive failure info |
+| `onBeforeBack` | `router.onBeforeBack(fn)` | Back interception, leave confirmation (physical back / browser back / `router.back()`) |
 
 ::: tip beforeResolve's Purpose
 `beforeResolve` executes after `beforeEnter`, when all pre-validation has passed. Suitable for "after all guards agree" final logic, like confirming data is fully loaded. Its difference from `beforeEach` is only in execution timing.
@@ -401,8 +404,8 @@ router.afterEach((to, from, failure) => {
 `afterEach` only triggers after **complete navigation** (through pre guards) completes. The following scenarios **don't trigger** `afterEach`:
 
 1. State sync from `syncRoute()` / `syncCurrentRoute()`
-2. Physical back button, browser back (bypass router)
 
+Physical back button and browser back go through the back guard chain, and `afterEach` triggers normally after the guards pass (see [Back Guard](#back-guard-onbeforeback)).
 To listen for all route changes (including state sync), use `onRouteChange`.
 :::
 
@@ -550,38 +553,83 @@ const routes = [
 ]
 ```
 
-## Guards and Physical Back Button
+## Back Guard onBeforeBack
 
-::: warning Core Limitation
-Physical back button, browser back, mini-program top-left return **bypass the router**, guards cannot intercept them.
-
-This is an inherent uni-app framework limitation, not a library shortcoming.
-:::
-
-### Solutions
-
-**Solution 1: App listens to onBackPress**
+`onBeforeBack` is a global back guard that runs when a **back operation** is triggered, used for leave confirmation, back interception, etc.
 
 ```ts
-// App only
-onBackPress((options) => {
-  if (pageState.dirty) {
-    showConfirmDialog()
-    return true // Block default back
+// Register a back guard (return false to block back, true / undefined to allow)
+router.onBeforeBack((to, from) => {
+  if (hasUnsavedChanges) {
+    uni.showToast({ title: 'Unsaved changes', icon: 'none' })
+    return false // Block back
   }
-  return false // Allow back
+  // return undefined or true to proceed
+})
+
+// Remove the guard
+const remove = router.onBeforeBack(guard)
+remove()
+```
+
+### Back Guard Chain
+
+Back operations share the guard chain with forward navigation:
+
+```
+Back triggered
+  → 1. onBeforeBack   Back guard (multiple allowed)
+  → 2. beforeEach     Global pre guard
+  → 3. beforeResolve  Global resolve guard
+  → 4. uni.navigateBack (executed after guards pass)
+  → 5. afterEach      Post hook (triggers on both success and block)
+```
+
+`onBeforeBack` returns `false` to block back; `true` / `undefined` to allow; supports async (Promise).
+
+### Platform Support
+
+| Back scenario | App | H5 | Mini-program |
+| --- | --- | --- | --- |
+| Physical back / navigation-bar back / `uni.navigateBack` | ✅ via `onBackPress` | — | ❌ |
+| Browser back button / back gesture | — | ✅ via `popstate` | — |
+| iOS edge swipe back | ⚠️ requires `setSideSlipGesture('none')` | — | — |
+| `router.back()` / programmatic `uni.navigateBack` | ✅ | ✅ | ✅ (requires `InterceptorPlugin`) |
+
+::: warning Mini-program native back cannot be intercepted
+Mini-program top-left/top-right back, physical back, and swipe back are controlled by the host. There is no `onBackPress` lifecycle or `popstate` event, so `onBeforeBack` cannot intercept them. This is a platform capability boundary.
+:::
+
+### Controlling the iOS Swipe-Back Gesture
+
+iOS edge swipe back **bypasses the guard chain by default**. Use `app.setSideSlipGesture` to dynamically control the gesture per page:
+
+```ts
+const router = createRouter({
+  routes,
+  app: {
+    setSideSlipGesture(to) {
+      // Disable swipe on pages that need interception so back goes through guards
+      return to.meta.requireLeaveConfirm ? 'none' : 'close'
+    }
+  }
 })
 ```
 
-**Solution 2: Auto Sync State in onShow**
+- `'none'`: disables iOS swipe-back (back goes through the guard chain, `onBeforeBack` works)
+- `'close'`: enables native swipe-back (keeps the native gesture, swipe bypasses guards)
 
-The router registers a global mixin in `install()` that automatically calls `router.syncRoute()` in each page's `onShow` to sync `currentRoute` to the real page, **no manual call needed**:
+iOS only; Android uses the physical back button, wired into the guard chain via `onBackPress`.
+
+### Relation to onBeforeRouteLeave
+
+`onBeforeRouteLeave` is implemented via `beforeEach`, and the back guard chain includes `beforeEach`, so `onBeforeRouteLeave` also runs during back operations — returning `false` blocks the back too.
+
+### State Sync Still Handled Automatically
+
+After the back guard passes, the router completes the back. The global mixin still calls `syncRoute()` in each page's `onShow`, **no manual call needed**:
 
 ```ts
-// The router internally registers:
-// app.mixin({ onShow() { router.syncRoute() } })
-
-// So your pages usually don't need to manually sync; just read in onShow / onRouteChange
 import { onShow } from '@dcloudio/uni-app'
 import { useRoute } from '@meng-xi/uni-router'
 
@@ -593,14 +641,12 @@ onShow(() => {
 })
 ```
 
-If you need route info in `onLoad` (earlier than `onShow`), you can manually call `router.syncRoute()` once.
-
-**Solution 3: After-the-fact Handling in onRouteChange**
+To listen for all route changes (including state sync), use `onRouteChange`:
 
 ```ts
 router.onRouteChange((to, from) => {
   if (to._synced) {
-    // State sync (may be triggered by physical back)
+    // State sync (not through the guard chain, e.g. mini-program native back)
     handleBackNavigation(to, from)
   }
 })
@@ -721,6 +767,12 @@ type RouteLeaveGuard = (
   to: RouteLocation,
   from: RouteLocation
 ) => NavigationGuardReturn | Promise<NavigationGuardReturn>
+
+// Back guard return value type (false blocks back, true / undefined allows)
+type BackGuardReturn = boolean | void | Promise<boolean | void>
+
+// Back guard function type
+type BackGuard = (to: RouteLocation, from: RouteLocation) => BackGuardReturn
 ```
 
 ## onBeforeRouteLeave Component Leave Guard

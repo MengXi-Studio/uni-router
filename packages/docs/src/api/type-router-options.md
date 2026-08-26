@@ -14,6 +14,7 @@ interface RouterOptions {
   readyTimeout?: number
   paramsPersistent?: boolean
   useUniEventChannel?: boolean
+  app?: AppRouterOptions
 }
 ```
 
@@ -233,6 +234,42 @@ eventChannel.emit('init', { source: 'replace' })
 :::
 
 详见[页面间通信](../guide/navigation#特殊用法-页面间通信)与[`usePageChannel()`](./use-page-channel)。
+
+### app
+
+- **类型**: `AppRouterOptions`
+- **默认值**: `undefined`
+- **说明**: App 平台专属配置，目前用于控制 iOS 侧滑返回手势
+
+```ts
+interface AppRouterOptions {
+  setSideSlipGesture?: (to: RouteLocation) => SideSlipGesture
+}
+```
+
+#### setSideSlipGesture
+
+- **类型**: `(to: RouteLocation) => 'none' | 'close'`
+- **说明**: 按当前页面动态设置 iOS 侧滑返回手势，在页面 `onShow` 时调用
+
+iOS 边缘滑动返回**默认绕过守卫链**（`onBeforeBack` 等守卫不执行）。通过此回调可按目标路由决定是否禁用侧滑：
+
+- `'none'`：禁用 iOS 侧滑返回（返回操作走守卫链，`onBeforeBack` 生效）
+- `'close'`：开启原生侧滑返回（保留原生手势，侧滑绕过守卫）
+
+```ts
+const router = createRouter({
+  routes,
+  app: {
+    setSideSlipGesture(to) {
+      // 需要拦截的页面禁用侧滑，使返回走守卫链
+      return to.meta.requireLeaveConfirm ? 'none' : 'close'
+    }
+  }
+})
+```
+
+仅 iOS 生效；Android 使用物理返回键，由 `onBackPress` 接入守卫链。详见[守卫 - 返回守卫](../guide/guards#返回守卫-onbeforeback)。
 
 ## 完整示例
 

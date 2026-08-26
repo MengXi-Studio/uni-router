@@ -77,15 +77,17 @@ async function handleLogout() {
 
 ### 配合 onShow 同步状态
 
+全局 mixin 已在每个页面 `onShow` 自动调用 `syncRoute()`，通常无需手动调用。如需在 `onLoad`（早于 `onShow`）中读取路由信息，可手动调用一次：
+
 ```vue
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad } from '@dcloudio/uni-app'
 import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-// 物理返回键后同步状态
-onShow(() => {
+onLoad(() => {
+  // 早于 onShow，手动同步一次
   router.syncRoute()
 })
 </script>

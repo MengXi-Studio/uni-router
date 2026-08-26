@@ -1,4 +1,4 @@
-import type { NavigationGuard, NavigationGuardReturn, NavigationRedirect, NavigationRedirectMode, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw } from '@/types'
+import type { NavigationGuard, NavigationGuardReturn, NavigationRedirect, NavigationRedirectMode, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw, BackGuard } from '@/types'
 import { RouterErrorCode } from '@/types/error'
 import type { NavigationFailure } from '@/types/error'
 import { warn } from '@/utils/general'
@@ -77,6 +77,25 @@ export interface GuardManager {
 	 * @param failure - 导航失败时的错误信息，成功时为空
 	 */
 	runAfterGuards(to: RouteLocation, from: RouteLocation, failure?: NavigationFailure | null): void
+
+	/**
+	 * 注册全局返回守卫
+	 *
+	 * 在返回操作触发时执行（物理返回键 / 顶部导航栏返回 / navigateBack）。
+	 * 返回 `false` 阻止返回，`true` / `undefined` 放行。
+	 *
+	 * @param guard - 返回守卫函数
+	 * @returns 用于移除此守卫的函数
+	 */
+	onBeforeBack(guard: BackGuard): () => void
+
+	/**
+	 * 依次执行全局返回守卫队列
+	 * @param to - 返回目标路由（上一页）
+	 * @param from - 当前正要离开的路由
+	 * @returns 任一守卫返回 false 时返回 false（拦截），全部放行时返回 true
+	 */
+	runBeforeBackGuards(to: RouteLocation, from: RouteLocation): Promise<boolean>
 }
 
 /**
@@ -199,6 +218,7 @@ export function createGuardManager(guardTimeout: number = DEFAULT_GUARD_TIMEOUT)
 	const beforeGuards: NavigationGuard[] = []
 	const beforeResolveGuards: NavigationGuard[] = []
 	const afterGuards: PostNavigationGuard[] = []
+	const beforeBackGuards: BackGuard[] = []
 
 	/**
 	 * 注册全局前置守卫，在每次导航前执行
@@ -287,6 +307,33 @@ export function createGuardManager(guardTimeout: number = DEFAULT_GUARD_TIMEOUT)
 		}
 	}
 
+	/**
+	 * 注册全局返回守卫
+	 * @param guard - 返回守卫函数
+	 * @returns 用于移除此守卫的函数
+	 */
+	function onBeforeBack(guard: BackGuard): () => void {
+		beforeBackGuards.push(guard)
+		return () => {
+			const index = beforeBackGuards.indexOf(guard)
+			if (index > -1) beforeBackGuards.splice(index, 1)
+		}
+	}
+
+	/**
+	 * 依次执行全局返回守卫队列，任一守卫返回 false 时拦截
+	 * @param to - 返回目标路由（上一页）
+	 * @param from - 当前正要离开的路由
+	 * @returns 全部放行时返回 true，被拦截时返回 false
+	 */
+	async function runBeforeBackGuards(to: RouteLocation, from: RouteLocation): Promise<boolean> {
+		for (const guard of beforeBackGuards) {
+			const result = await Promise.resolve(guard(to, from))
+			if (result === false) return false
+		}
+		return true
+	}
+
 	return {
 		beforeEach,
 		beforeResolve,
@@ -294,6 +341,8 @@ export function createGuardManager(guardTimeout: number = DEFAULT_GUARD_TIMEOUT)
 		runBeforeGuards,
 		runBeforeResolveGuards,
 		runBeforeEnterGuards,
-		runAfterGuards
+		runAfterGuards,
+		onBeforeBack,
+		runBeforeBackGuards
 	}
 }

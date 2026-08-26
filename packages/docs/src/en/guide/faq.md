@@ -147,49 +147,51 @@ async function safePush(location) {
 
 See [Recipes - Page Stack Depth Management](./recipes#page-stack-depth-management).
 
-## Physical Back Cannot Be Intercepted
+## Back Cannot Be Intercepted
 
 ### Symptom
 
-User presses physical back button (Android back, mini-program top arrow), guard doesn't trigger.
+User presses physical back button (Android back, H5 browser back), `onBeforeBack` guard doesn't trigger.
 
 ### Cause
 
-This is a uni-app platform limitation:
+Different platforms have different back interception capabilities:
 
-- **App**: Can be intercepted via `onBackPress`
-- **H5**: Browser back button cannot be intercepted; can only listen to `popstate` for after-the-fact handling
-- **Mini-program**: Top back arrow cannot be intercepted
+- **App**: Physical back / navigation-bar back / `uni.navigateBack` are wired into the back guard chain via the global mixin's `onBackPress`; `onBeforeBack` works
+- **H5**: Browser back button / back gesture are wired into the back guard chain via the `popstate` event; `onBeforeBack` works
+- **Mini-program**: Top back arrow, physical back, and swipe back are controlled by the host and cannot be intercepted (only `router.back()` / programmatic `uni.navigateBack` can be intercepted)
+- **iOS swipe**: Bypasses guards by default; configure `app.setSideSlipGesture('none')` to disable
 
 ### Solution
 
 ```ts
-// App: onBackPress
-import { onBackPress } from '@dcloudio/uni-app'
-
-onBackPress(() => {
+// Register a global back guard (all platforms, covers App/H5 native back + router.back)
+router.onBeforeBack((to, from) => {
   if (hasUnsavedData) {
-    showConfirmDialog()
-    return true // Block default back
+    uni.showModal({ title: 'Notice', content: 'You have unsaved changes. Leave anyway?' })
+    return false // Block back
   }
-  return false
 })
 
-// All platforms: onRouteChange for after-the-fact handling
-// currentRoute is auto-synced by the global mixin in install(), no manual syncRoute needed
-import { useRouter } from '@meng-xi/uni-router'
+// iOS swipe-back bypasses guards by default; disable the gesture per page
+const router = createRouter({
+  routes,
+  app: {
+    setSideSlipGesture(to) {
+      return to.meta.requireLeaveConfirm ? 'none' : 'close'
+    }
+  }
+})
 
-const router = useRouter()
-
+// Mini-program native back cannot be intercepted; use onRouteChange for after-the-fact handling
 router.onRouteChange((to, from) => {
   if (to._synced) {
-    // State sync (may be triggered by physical back)
     handleBackNavigation(to, from)
   }
 })
 ```
 
-See [Platform Compatibility](./compatibility#physical-back-cannot-be-intercepted).
+See [Platform Compatibility](./compatibility#limitation-4-back-interception-platform-differences).
 
 ## switchTab Query Lost
 
@@ -231,11 +233,11 @@ See [Recipes - TabBar Page Data Passing](./recipes#tabbar-page-data-passing).
 
 ### Symptom
 
-After physical back, `afterEach` hook doesn't execute.
+After `syncRoute()` state sync, `afterEach` hook doesn't execute.
 
 ### Cause
 
-Physical back is uni-app native behavior; it doesn't go through the router's navigation flow, so `afterEach` doesn't trigger.
+`afterEach` only triggers after a **complete navigation** (through the guard chain). `syncRoute()` only syncs route state and doesn't go through the guard chain, so `afterEach` doesn't trigger. Physical back / browser back go through the back guard chain, and `afterEach` triggers normally after the guards pass.
 
 ### Solution
 

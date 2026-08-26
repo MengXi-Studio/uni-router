@@ -40,7 +40,7 @@ features:
     details: RouterLink 导航组件 + TabBar / TabBarItem 自定义底部导航，SCSS 变量与 CSS 自定义属性主题定制
   - icon: 🔄
     title: 路由状态自动同步
-    details: install 时注入全局 Mixin 自动调用 syncRoute()，浏览器后退、物理返回键等场景自动同步，无需手动处理
+    details: install 时注入全局 Mixin 自动调用 syncRoute()；App 物理返回键 / H5 浏览器后退由 onBeforeBack 拦截，其余场景自动同步，无需手动处理
   - icon: ⚠️
     title: 错误处理
     details: RouterError / NavigationFailure / UniApiError 完整体系，onError 全局捕获，isNavigationFailure() 精准判断

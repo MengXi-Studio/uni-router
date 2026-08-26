@@ -10,12 +10,13 @@
 ## 特性
 
 - **vue-router 风格 API** - `push` / `replace` / `relaunch` / `back`
-- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter`，`guardRoute` 冷启动补执行，支持可控重定向
+- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave` / `onBeforeBack`，`guardRoute` 冷启动补执行，支持可控重定向
+- **返回拦截** - App 物理返回键 / 导航栏返回 / `navigateBack`、H5 浏览器后退 / 后退手势均可被守卫拦截；`setSideSlipGesture` 控制 iOS 侧滑手势
 - **命名路由 & 路由元信息** - 通过 `name` 导航，`meta` 携带自定义数据
 - **TypeScript 类型提示** - 路由名称和路径自动补全与类型检查
 - **插件架构** - ParamsPlugin / ChannelPlugin / InterceptorPlugin / AnimationPlugin 按需注册
 - **页面间通信** - `useUniEventChannel` 内置通信管理器，所有导航方式支持 `eventChannel`
-- **声明式组件** - `RouterLink` / `TabBar` / `TabBarItem`，easycom 自动注册
+- **声明式导航** - `RouterLink`（H5 端渲染原生 `<a>` 标签）+ `TabBar` / `TabBarItem` 组件，easycom 自动注册，支持 SCSS 主题定制
 - **页面参数传递** - `params` 传递复杂数据不暴露 URL，`back()` 后自动保留
 - **查询参数增强** - `queryInt()` / `queryNumber()` / `queryBool()`
 - **导航动画** - `push` / `replace` / `back` 支持动画参数，仅 App 端
@@ -75,6 +76,13 @@ router.beforeEach((to, from) => {
 		return { name: 'login' } // 重定向到登录页
 	}
 	// 不返回值（或 return true）表示放行
+})
+
+// 全局返回守卫：false 阻止返回，true / undefined 放行，支持异步（Promise）
+router.onBeforeBack((to, from) => {
+	if (hasUnsavedChanges) {
+		return false // 阻止返回
+	}
 })
 ```
 

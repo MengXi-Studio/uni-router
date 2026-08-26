@@ -140,6 +140,35 @@ onBeforeRouteLeave((to, from) => {
 })
 ```
 
+### 返回守卫
+
+通过 `router.onBeforeBack` 注册，在**返回操作**触发时执行（App 物理返回键 / 导航栏返回 / `uni.navigateBack`，H5 浏览器后退 / 后退手势，`router.back()`）：
+
+```ts
+type BackGuardReturn = boolean | void | Promise<boolean | void>
+
+type BackGuard = (to: RouteLocation, from: RouteLocation) => BackGuardReturn
+```
+
+- 返回 `false` 阻止返回；`true` / `undefined` 放行
+- 支持异步（Promise）
+- 返回守卫放行后复用 `beforeEach → beforeResolve` 链路
+
+```ts
+router.onBeforeBack((to, from) => {
+  if (hasUnsavedChanges()) return false // 阻止返回
+  // 不返回值或 return true 放行
+})
+
+// 移除守卫
+const remove = router.onBeforeBack(guard)
+remove()
+```
+
+::: tip 平台支持
+App 通过 `onBackPress`、H5 通过 `popstate` 事件接入返回守卫；小程序原生返回（胶囊/物理键/滑动）无法拦截。iOS 侧滑需配合 `app.setSideSlipGesture('none')` 禁用手势。详见[守卫 - 返回守卫](../guide/guards#返回守卫-onbeforeback)。
+:::
+
 ## 执行顺序
 
 完整导航的守卫执行顺序：
@@ -155,6 +184,8 @@ onBeforeRouteLeave((to, from) => {
    ↓
 5. afterEach（全局后置钩子，按注册顺序）
 ```
+
+返回操作（物理返回键 / 浏览器后退 / `router.back()`）的执行顺序为 `onBeforeBack → beforeEach → beforeResolve → uni.navigateBack → afterEach`，即返回守卫先于全局前置守卫执行。
 
 ::: warning 守卫中止后的行为
 - 任一守卫返回 `false` 或抛出错误：导航中止，后续守卫不执行

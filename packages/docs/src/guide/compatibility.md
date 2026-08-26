@@ -4,15 +4,15 @@ uni-app 是跨平台框架，支持 App、H5、各小程序平台。每个平台
 
 ## 平台概览
 
-| 平台 | 路由模式 | 页面栈上限 | 动画 | 物理返回拦截 |
+| 平台 | 路由模式 | 页面栈上限 | 动画 | 返回拦截 |
 | --- | --- | --- | --- | --- |
-| App（iOS/Android） | 原生页面栈 | 无硬限制（建议 ≤10） | ✅ 自定义 | ✅ `onBackPress` |
-| H5 | History API | 无限制 | ❌ 系统控制 | ❌ `popstate` 只读 |
-| 微信小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ❌ 左上角返回 |
-| 支付宝小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ❌ 左上角返回 |
-| 字节小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ❌ 左上角返回 |
-| 百度小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ❌ 左上角返回 |
-| QQ 小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ❌ 左上角返回 |
+| App（iOS/Android） | 原生页面栈 | 无硬限制（建议 ≤10） | ✅ 自定义 | ✅ `onBeforeBack` |
+| H5 | History API | 无限制 | ❌ 系统控制 | ✅ `onBeforeBack`（popstate） |
+| 微信小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ⚠️ 仅程序化返回 |
+| 支付宝小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ⚠️ 仅程序化返回 |
+| 字节小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ⚠️ 仅程序化返回 |
+| 百度小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ⚠️ 仅程序化返回 |
+| QQ 小程序 | 原生页面栈 | **10 层** | ❌ 系统控制 | ⚠️ 仅程序化返回 |
 
 ::: warning 小程序页面栈上限
 所有小程序平台页面栈上限为 **10 层**。超过后 `navigateTo` 会失败并报错。这是平台硬限制，Uni Router 无法突破。
@@ -155,49 +155,63 @@ await router.relaunch({ name: 'home', animation: { type: 'fade-in' } })
 
 无需特殊处理，了解即可。如需动画效果，改用 `replace`（仅替换栈顶，支持动画）。
 
-## 限制四：物理返回键无法拦截
+## 限制四：返回拦截的平台差异
 
-### 问题
+### 已支持：onBeforeBack 返回守卫
 
-以下返回操作**不经过路由器**，守卫无法拦截：
-
-| 平台 | 返回方式 |
-| --- | --- |
-| App（Android） | 物理返回键 |
-| App（iOS） | 边缘滑动返回 |
-| H5 | 浏览器后退按钮 |
-| 小程序 | 左上角返回箭头、滑动返回 |
-
-```
-用户按返回键
-  → uni-app 原生 navigateBack（不经过路由器）
-  → router.currentRoute 仍是旧值（不同步）
-  → afterEach 不触发
-  → 守卫不执行
-```
-
-### 应对方案
-
-**方案 1：App 端 `onBackPress`（仅 App）**
+路由器内置返回守卫 `onBeforeBack`，可拦截返回操作（用法详见[守卫 - 返回守卫](./guards#返回守卫-onbeforeback)）：
 
 ```ts
-import { onBackPress } from '@dcloudio/uni-app'
-
-onBackPress((options) => {
-  // options.from: 'backbutton' | 'navigateBack'
+router.onBeforeBack((to, from) => {
   if (formDirty.value) {
-    showConfirmDialog()
-    return true // 阻止返回
+    uni.showModal({ title: '提示', content: '有未保存的修改，确认离开？' })
+    return false // 阻止返回
   }
-  return false // 允许返回
+  // 不返回值或 return true 放行
 })
 ```
 
-::: warning onBackPress 仅 App 端
-`onBackPress` 只在 App 端生效。H5 和小程序无此生命周期。
-:::
+各平台返回拦截能力：
 
-**方案 2：`onShow` + `syncRoute`（全平台）**
+| 返回方式 | App | H5 | 小程序 |
+| --- | --- | --- | --- |
+| 物理返回键 / 导航栏返回 / `uni.navigateBack` | ✅ `onBackPress` 接入 | — | ❌ |
+| 浏览器后退按钮 / 后退手势 | — | ✅ `popstate` 接入 | — |
+| iOS 边缘滑动返回 | ⚠️ 需 `setSideSlipGesture('none')` | — | — |
+| `router.back()` / 程序化 `uni.navigateBack` | ✅ | ✅ | ✅（需注册 `InterceptorPlugin`） |
+
+### 未支持：小程序原生返回
+
+小程序右上角/左上角返回、物理返回键、滑动返回由宿主控制，无 `onBackPress` 生命周期、无 `popstate` 事件，`onBeforeBack` 无法拦截。这是平台能力边界。
+
+### iOS 侧滑手势控制
+
+iOS 边缘滑动返回**默认绕过守卫链**。通过 `app.setSideSlipGesture` 按页面动态控制：
+
+```ts
+const router = createRouter({
+  routes,
+  app: {
+    setSideSlipGesture(to) {
+      // 需要拦截的页面禁用侧滑，使返回走守卫链
+      return to.meta.requireLeaveConfirm ? 'none' : 'close'
+    }
+  }
+})
+```
+
+- `'none'`：禁用 iOS 侧滑返回（返回操作走守卫链，`onBeforeBack` 生效）
+- `'close'`：开启原生侧滑返回（保留原生手势，侧滑绕过守卫）
+
+仅 iOS 生效；Android 使用物理返回键，由 `onBackPress` 接入守卫链。
+
+### 无法拦截时的处理
+
+小程序原生返回等无法拦截的场景，仍可依赖以下机制：
+
+**1. onShow 自动同步状态**
+
+全局 mixin 在每个页面 `onShow` 自动调用 `router.syncRoute()`，`currentRoute` 自动更新为真实页面，**无需手动调用**：
 
 ```ts
 import { onShow } from '@dcloudio/uni-app'
@@ -206,25 +220,17 @@ import { useRouter } from '@meng-xi/uni-router'
 const router = useRouter()
 
 onShow(() => {
-  // 同步 currentRoute 为真实页面
-  router.syncRoute()
+  // currentRoute 已被 mixin 自动同步
 })
 ```
 
-调用 `syncRoute()` 后：
-- `currentRoute` 更新为真实页面
-- `onRouteChange` 监听器触发（`to._synced === true`）
-- `afterEach` **不触发**（非完整导航）
-
-**方案 3：`onRouteChange` 事后处理（全平台）**
+**2. onRouteChange 事后处理**
 
 ```ts
 router.onRouteChange((to, from) => {
   if (to._synced) {
-    // 状态同步（可能是物理返回触发）
-    console.log('用户可能通过物理返回回到了:', to.path)
-
-    // 事后处理：更新标题、埋点等
+    // 状态同步（可能是小程序原生返回触发）
+    console.log('用户可能通过返回回到了:', to.path)
     if (to.meta.title) {
       uni.setNavigationBarTitle({ title: to.meta.title as string })
     }
@@ -232,56 +238,9 @@ router.onRouteChange((to, from) => {
 })
 ```
 
-### 封装通用返回处理
+**3. 小程序自定义导航栏**
 
-```ts
-// composables/use-back-guard.ts
-import { onShow } from '@dcloudio/uni-app'
-import { onBackPress } from '@dcloudio/uni-app'
-import { useRouter } from '@meng-xi/uni-router'
-
-export function useBackGuard(options: {
-  dirty: () => boolean
-  onConfirm?: () => void
-}) {
-  const router = useRouter()
-
-  // App 端：拦截物理返回键
-  // #ifdef APP-PLUS
-  onBackPress(() => {
-    if (options.dirty()) {
-      uni.showModal({
-        title: '提示',
-        content: '有未保存的修改，确认离开？',
-        success: (res) => {
-          if (res.confirm) {
-            options.onConfirm?.()
-            router.back()
-          }
-        }
-      })
-      return true // 阻止本次返回
-    }
-    return false
-  })
-  // #endif
-
-  // 全平台：onShow 同步状态
-  onShow(() => {
-    router.syncRoute()
-  })
-}
-```
-
-```ts
-// 页面中使用
-const dirty = ref(false)
-
-useBackGuard({
-  dirty: () => dirty.value,
-  onConfirm: () => { /* 保存或清理 */ }
-})
-```
+`navigationStyle: 'custom'` 接管返回入口，页面内自定义返回按钮走 `router.back()`，使返回守卫生效。
 
 ## 限制五：H5 路由模式
 
@@ -610,7 +569,7 @@ if (supports.animation) {
 | --- | --- | --- | --- | --- | --- |
 | 页面栈上限 | 无硬限制 | 无限制 | 10 | 10 | 10 |
 | 导航动画 | ✅ | ❌ | ❌ | ❌ | ❌ |
-| 物理返回拦截 | ✅ `onBackPress` | ❌ | ❌ | ❌ | ❌ |
+| 返回拦截 | ✅ `onBeforeBack` | ✅ `onBeforeBack` | ⚠️ 仅程序化 | ⚠️ 仅程序化 | ⚠️ 仅程序化 |
 | `switchTab` query | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `reLaunch` 动画 | ❌ | ❌ | ❌ | ❌ | ❌ |
 | EventChannel | ✅ | ✅ | ✅ | ⚠️ 部分 | ✅ |
@@ -618,8 +577,8 @@ if (supports.animation) {
 | `onRouteChange` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 守卫拦截 | ✅ 编程式 | ✅ 编程式 | ✅ 编程式 | ✅ 编程式 | ✅ 编程式 |
 
-::: tip 编程式导航
-"编程式"指通过 `router.push()` / `router.back()` 等方法触发的导航。物理返回键、浏览器后退等非编程方式不经过路由器，守卫无法拦截。
+::: tip 返回拦截
+"编程式"指通过 `router.push()` / `router.back()` 等方法触发的导航，守卫全部生效。App 物理返回键 / 导航栏返回、H5 浏览器后退通过 `onBeforeBack` 拦截；小程序原生返回（胶囊/物理键/滑动）无法拦截，详见[限制四](#限制四返回拦截的平台差异)。
 :::
 
 ## 下一步

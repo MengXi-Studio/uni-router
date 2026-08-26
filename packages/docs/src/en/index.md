@@ -40,7 +40,7 @@ features:
     details: RouterLink navigation + TabBar / TabBarItem custom bottom navigation, SCSS variables and CSS custom properties for theming
   - icon: 🔄
     title: Auto Route State Sync
-    details: Global mixin injected at install auto-invokes syncRoute(), handles browser back, physical back button, etc. No manual sync needed
+    details: Global mixin injected at install auto-invokes syncRoute(); App physical back / H5 browser back are intercepted by onBeforeBack, other scenarios auto-sync. No manual sync needed
   - icon: ⚠️
     title: Error Handling
     details: RouterError / NavigationFailure / UniApiError complete system, onError global capture, isNavigationFailure() discrimination

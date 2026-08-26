@@ -142,7 +142,7 @@
 		<!-- 路由守卫 -->
 		<view class="card">
 			<text class="card-title">路由守卫</text>
-			<text class="hint">beforeEach 守卫拦截未登录访问受保护页面</text>
+			<text class="hint">beforeEach 前置守卫 + onBeforeBack 返回守卫，未登录访问受保护页面将被拦截重定向到登录页</text>
 			<view class="btn" @click="goToProtected">
 				<text class="btn-text">访问受保护页面</text>
 			</view>

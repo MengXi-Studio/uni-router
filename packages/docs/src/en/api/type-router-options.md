@@ -14,6 +14,7 @@ interface RouterOptions {
   readyTimeout?: number
   paramsPersistent?: boolean
   useUniEventChannel?: boolean
+  app?: AppRouterOptions
 }
 ```
 
@@ -233,6 +234,42 @@ eventChannel.emit('init', { source: 'replace' })
 :::
 
 See [Page Communication](../guide/navigation#special-usage-page-communication) and [`usePageChannel()`](./use-page-channel) for details.
+
+### app
+
+- **Type**: `AppRouterOptions`
+- **Default**: `undefined`
+- **Description**: App-only configuration, currently used to control the iOS swipe-back gesture
+
+```ts
+interface AppRouterOptions {
+  setSideSlipGesture?: (to: RouteLocation) => SideSlipGesture
+}
+```
+
+#### setSideSlipGesture
+
+- **Type**: `(to: RouteLocation) => 'none' | 'close'`
+- **Description**: Dynamically sets the iOS swipe-back gesture per page, invoked in each page's `onShow`
+
+iOS edge swipe back **bypasses the guard chain by default** (`onBeforeBack` and other guards don't run). Use this callback to decide whether to disable swipe per target route:
+
+- `'none'`: disables iOS swipe-back (back goes through the guard chain, `onBeforeBack` works)
+- `'close'`: enables native swipe-back (keeps the native gesture, swipe bypasses guards)
+
+```ts
+const router = createRouter({
+  routes,
+  app: {
+    setSideSlipGesture(to) {
+      // Disable swipe on pages that need interception so back goes through guards
+      return to.meta.requireLeaveConfirm ? 'none' : 'close'
+    }
+  }
+})
+```
+
+iOS only; Android uses the physical back button, wired into the guard chain via `onBackPress`. See [Guards - Back Guard](../guide/guards#back-guard-onbeforeback).
 
 ## Full Example
 

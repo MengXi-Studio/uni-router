@@ -434,20 +434,19 @@ onShow(() => {
 
 Prevent users from accidentally leaving unsaved forms.
 
-### Approach: Guard + onBackPress
+### Approach: Back Guard onBeforeBack
 
 ```ts
 // composables/use-dirty-guard.ts
-import { onBackPress, onShow } from '@dcloudio/uni-app'
 import { useRouter } from '@meng-xi/uni-router'
 import { ref, type Ref } from 'vue'
 
 export function useDirtyGuard(dirty: Ref<boolean>, onLeave?: () => void) {
   const router = useRouter()
 
-  // Guard for programmatic navigation (router.push / router.back etc.)
-  const guard = router.beforeEach((to, from) => {
-    if (from.meta._dirty && dirty.value) {
+  // Back guard: intercept physical back / browser back / router.back()
+  const removeBack = router.onBeforeBack(() => {
+    if (dirty.value) {
       return new Promise((resolve) => {
         uni.showModal({
           title: 'Notice',
@@ -456,45 +455,18 @@ export function useDirtyGuard(dirty: Ref<boolean>, onLeave?: () => void) {
             if (res.confirm) {
               dirty.value = false
               onLeave?.()
-              resolve(undefined) // pass
+              resolve(true) // pass
             } else {
-              resolve(false) // abort
+              resolve(false) // block back
             }
           }
         })
       })
     }
-    // else: pass (return undefined)
-  })
-
-  // App: physical back button
-  // #ifdef APP-PLUS
-  onBackPress(() => {
-    if (dirty.value) {
-      uni.showModal({
-        title: 'Notice',
-        content: 'You have unsaved changes. Leave anyway?',
-        success: (res) => {
-          if (res.confirm) {
-            dirty.value = false
-            onLeave?.()
-            router.back()
-          }
-        }
-      })
-      return true // Block default back
-    }
-    return false
-  })
-  // #endif
-
-  // All platforms: sync state in onShow (after physical back)
-  onShow(() => {
-    router.syncRoute()
   })
 
   // Return uninstall function, remove guard when leaving page
-  return guard
+  return removeBack
 }
 ```
 
@@ -527,8 +499,8 @@ async function handleSave() {
 </script>
 ```
 
-::: warning Physical Back Button Limitations
-`onBackPress` only works on App. H5 and mini-program physical back cannot be intercepted; can only handle after the fact via `onShow` + `syncRoute`. See [Platform Compatibility](./compatibility).
+::: tip Platform Support
+`onBeforeBack` works on App (physical back / navigation-bar back / `uni.navigateBack`) and H5 (browser back / back gesture); mini-program native back cannot be intercepted and can only be handled after the fact via `onShow` + `syncRoute`. For iOS swipe, configure `app.setSideSlipGesture('none')`. See [Platform Compatibility](./compatibility).
 :::
 
 ## Data Preloading

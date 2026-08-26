@@ -12,6 +12,7 @@
 			<view class="info-text" style="margin-top: 16rpx">
 				<text class="tag tag-blue">push / replace</text>
 				<text class="tag tag-green">路由守卫</text>
+				<text class="tag tag-green">返回守卫</text>
 				<text class="tag tag-orange">命名路由</text>
 				<text class="tag tag-red">错误处理</text>
 				<text class="tag tag-purple">EventChannel</text>

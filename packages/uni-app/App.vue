@@ -3,7 +3,7 @@ import router from './router'
 import { RouterErrorCode } from './uni_modules/mxuni-router-v2/js_sdk/index.js'
 
 export default {
-	onLaunch: function () {
+	onLaunch: function (options) {
 		console.log('App Launch')
 
 		// ===== 冷启动守卫检查 =====
@@ -11,8 +11,11 @@ export default {
 		// 页面由 uni-app 框架直接加载，不经过路由器导航，守卫未执行。
 		// guardRoute() 对当前已加载页面补执行守卫链。
 		router.isReady().then(() => {
+			// onLaunch 时页面栈可能为空（Page.onLoad 尚未触发），currentRoute 仍是 START_LOCATION。
+			// 优先从 launch options.path 获取真实入口路径传给 guardRoute，确保守卫校验的是实际页面。
+			const launchPath = options?.path ? `/${options.path}` : undefined
 			router
-				.guardRoute(undefined, {
+				.guardRoute(launchPath, {
 					onAbort: failure => {
 						console.warn('[guardRoute] 冷启动守卫中止:', failure.code)
 						if (failure.code === RouterErrorCode.NAVIGATION_ABORTED) {

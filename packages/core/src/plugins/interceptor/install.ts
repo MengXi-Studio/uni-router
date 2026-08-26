@@ -1,4 +1,5 @@
 import type { Router, EventListeners, NavigationAnimation, RouteLocationRaw } from '@/types'
+import { getPlatform } from '@/utils'
 import { normalizePath, parseQuery } from '@/utils/path'
 
 /**
@@ -86,7 +87,7 @@ const INTERCEPTED_APIS = ['navigateTo', 'redirectTo', 'switchTab', 'reLaunch', '
  * @returns 当前为 H5 平台时返回 true
  */
 function isWebPlatform(): boolean {
-	return typeof window !== 'undefined' && typeof document !== 'undefined'
+	return getPlatform().isH5
 }
 
 /**
