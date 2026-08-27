@@ -20,9 +20,9 @@ export type {
 } from './route'
 export { DEFAULT_ANIMATION_DURATION } from './route'
 
-export type { NavigationGuardReturn, NavigationRedirectMode, NavigationRedirect, NavigationGuard, PostNavigationGuard, RouteLeaveGuard } from './guard'
+export type { NavigationGuardReturn, NavigationRedirectMode, NavigationRedirect, NavigationGuard, PostNavigationGuard, RouteLeaveGuard, BackGuardReturn, BackGuard } from './guard'
 
-export type { RouterOnError, RouterOptions, Router, GuardRouteOptions } from './router'
+export type { RouterOnError, RouterOptions, Router, GuardRouteOptions, AppRouterOptions, SideSlipGesture } from './router'
 
 export type { RouterError, UniApiCause, UniApiError, NavigationFailure } from './error'
 

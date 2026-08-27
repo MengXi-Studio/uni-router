@@ -77,6 +77,27 @@ declare global {
 	function getCurrentPages(): UniPage[]
 
 	/**
+	 * HTML5+ 全局对象（仅 App 平台存在）
+	 *
+	 * 用于访问 plus.webview 等原生能力。业务代码在非 App 平台运行时不存在此对象，
+	 * 访问前需通过 `typeof plus === 'undefined'` 判断。
+	 */
+	const plus: {
+		webview: {
+			/**
+			 * 获取当前页面所在的 Webview 对象
+			 */
+			currentWebview(): {
+				/**
+				 * 动态修改 Webview 样式
+				 * @param style - Webview 样式，如 { popGesture: 'none' }
+				 */
+				setStyle(style: Record<string, unknown>): void
+			} | null
+		}
+	}
+
+	/**
 	 * uni 拦截器回调对象
 	 */
 	interface UniInterceptorInvokeResult {
@@ -115,6 +136,15 @@ declare global {
 		addInterceptor(api: string, callbacks: UniInterceptorCallbacks): void
 		/** 移除 API 拦截器 */
 		removeInterceptor(api: string): void
+		/** 同步获取系统信息 */
+		getSystemInfoSync(): {
+			/** uni-app 平台类型（HBuilderX 3.5.3+）：'app' | 'web' | 'mp-weixin' 等 */
+			uniPlatform?: string
+			/** 操作系统名称（HBuilderX 3.6+）：'ios' | 'android' 等 */
+			osName?: string
+			/** 操作系统平台：'ios' | 'android' | 'windows' 等 */
+			platform?: string
+		}
 		/** 同步存储数据 */
 		setStorageSync(key: string, data: any): void
 		/** 同步读取存储数据 */

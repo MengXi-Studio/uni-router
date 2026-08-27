@@ -61,6 +61,23 @@
 		</view>
 
 		<view class="section">
+			<view class="section-title">onBeforeBack - 全局返回守卫</view>
+			<view class="info-text">
+				返回操作（App 物理返回键 / 导航栏返回 / uni.navigateBack，H5 浏览器后退 / 后退手势，router.back()）会先执行 onBeforeBack。返回
+				<text style="color: #ff3b30">false</text>
+				阻止返回，
+				<text style="color: #34c759">true / undefined</text>
+				放行，支持异步（Promise）。守卫放行后复用 beforeEach → beforeResolve 链路。
+			</view>
+			<view class="btn btn-warn" @click="testBackGuardBlock">测试：阻止本次返回</view>
+			<view class="btn" @click="testBackGuardAllow">测试：放行返回</view>
+			<view class="info-text" style="color: #888; margin-top: 12rpx">
+				提示：App 物理返回键 / 导航栏返回、H5 浏览器后退 / 后退手势也可被 onBeforeBack 拦截；iOS 侧滑返回默认绕过守卫，需配置 app.setSideSlipGesture('none') 禁用手势（本应用已在 main.ts 演示）。小程序原生返回无法拦截。
+			</view>
+			<view class="code-block"> router.onBeforeBack((to, from) => {\n if (hasUnsavedChanges) {\n return false // 阻止返回\n }\n // true / undefined 放行\n}) </view>
+		</view>
+
+		<view class="section">
 			<view class="section-title">guardRoute() - 冷启动守卫检查</view>
 			<view class="info-text">
 				当用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入某个页面时，页面由 uni-app 框架直接加载，不经过路由器导航，守卫（beforeEach 等）未执行。guardRoute() 对当前已加载页面补执行守卫链。
@@ -139,6 +156,34 @@ function testTimeout() {
 	})
 	router.push({ name: 'pagesDetailDetail' }).catch(() => {
 		removeGuard()
+	})
+}
+
+function testBackGuardBlock() {
+	// 动态注册一次性返回守卫：阻止返回
+	const removeGuard = router.onBeforeBack(() => {
+		removeGuard()
+		uni.showToast({ title: '返回已被 onBeforeBack 阻止，再返回一次即可退出', icon: 'none' })
+		return false
+	})
+	// 先跳转到详情页，再调用 router.back() 触发返回守卫（被阻止后停留在详情页）
+	router.push({ name: 'pagesDetailDetail' }).then(() => {
+		router.back().catch(() => {
+			// 返回被守卫阻止（已提示）
+		})
+	})
+}
+
+function testBackGuardAllow() {
+	// 动态注册一次性返回守卫：放行返回
+	const removeGuard = router.onBeforeBack((to, from) => {
+		removeGuard()
+		console.log('[onBeforeBack] 放行返回:', from.fullPath, '->', to.fullPath)
+		uni.showToast({ title: 'onBeforeBack 放行返回', icon: 'none' })
+	})
+	// 先跳转到详情页，再返回，返回守卫放行后回到本页
+	router.push({ name: 'pagesDetailDetail' }).then(() => {
+		router.back().catch(() => {})
 	})
 }
 

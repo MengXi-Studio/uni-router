@@ -18,11 +18,15 @@
 			</view>
 			<view class="guard-item">
 				<text class="guard-name">afterEach</text>
-				<text class="guard-desc">全局后置钩子，导航完成后执行</text>
+				<text class="guard-desc">全局后置钩子，导航完成后执行（第三参数 failure 在导航失败时传入）</text>
 			</view>
 			<view class="guard-item">
 				<text class="guard-name">beforeEnter</text>
 				<text class="guard-desc">路由独享守卫，进入特定路由时触发</text>
+			</view>
+			<view class="guard-item">
+				<text class="guard-name">onBeforeBack</text>
+				<text class="guard-desc">全局返回守卫，返回操作时执行，false 阻止返回</text>
 			</view>
 		</view>
 
@@ -87,6 +91,26 @@
 			<view class="btn" @click="reenterGuards">
 				<text class="btn-text">replace 重新进入本页（查看控制台）</text>
 			</view>
+		</view>
+
+		<!-- onBeforeBack 全局返回守卫 -->
+		<view class="card">
+			<text class="card-title">onBeforeBack - 全局返回守卫</text>
+			<text class="desc"
+				>返回操作（App 物理返回键 / 导航栏返回 / uni.navigateBack，H5 浏览器后退 / 后退手势，router.back()）会先执行 onBeforeBack。返回 false 阻止返回，true / undefined 放行，支持异步（Promise）。守卫放行后复用
+				beforeEach → beforeResolve 链路。</text
+			>
+			<view class="btn btn-warning" @click="testBackGuardBlock">
+				<text class="btn-text">测试：阻止本次返回</text>
+			</view>
+			<view class="btn btn-secondary" @click="testBackGuardAllow">
+				<text class="btn-text-secondary">测试：放行返回</text>
+			</view>
+			<text class="hint"
+				>提示：App 物理返回键 / 导航栏返回、H5 浏览器后退 / 后退手势也可被 onBeforeBack 拦截；iOS 侧滑返回默认绕过守卫，需配置 app.setSideSlipGesture('none') 禁用手势（本应用已在 router.js
+				演示）。小程序原生返回无法拦截。</text
+			>
+			<view class="code-block"> router.onBeforeBack((to, from) => {\n if (hasUnsavedChanges) {\n return false // 阻止返回\n }\n // true / undefined 放行\n}) </view>
 		</view>
 
 		<!-- guardRoute() 冷启动守卫检查 -->
@@ -184,6 +208,36 @@ export default {
 			this.addLog('replace 重新进入本页，触发 beforeEnter')
 			router.replace('/pages/guards/index').catch(e => {
 				this.addLog(`导航结果: ${e.message || e}`)
+			})
+		},
+		// ===== onBeforeBack 全局返回守卫演示 =====
+		testBackGuardBlock() {
+			this.addLog('注册一次性返回守卫：阻止返回')
+			// 动态注册一次性返回守卫：阻止返回
+			const removeGuard = router.onBeforeBack(() => {
+				removeGuard()
+				this.addLog('返回已被 onBeforeBack 阻止，再返回一次即可退出')
+				uni.showToast({ title: '返回已被 onBeforeBack 阻止，再返回一次即可退出', icon: 'none' })
+				return false
+			})
+			// 先跳转到关于页，再调用 router.back() 触发返回守卫（被阻止后停留在关于页）
+			router.push('/pages/about/index').then(() => {
+				router.back().catch(() => {
+					// 返回被守卫阻止（已提示）
+				})
+			})
+		},
+		testBackGuardAllow() {
+			this.addLog('注册一次性返回守卫：放行返回')
+			// 动态注册一次性返回守卫：放行返回
+			const removeGuard = router.onBeforeBack((to, from) => {
+				removeGuard()
+				this.addLog(`onBeforeBack 放行返回: ${from.path} -> ${to.path}`)
+				uni.showToast({ title: 'onBeforeBack 放行返回', icon: 'none' })
+			})
+			// 先跳转到关于页，再返回，返回守卫放行后回到本页
+			router.push('/pages/about/index').then(() => {
+				router.back().catch(() => {})
 			})
 		},
 		// ===== guardRoute() 冷启动守卫检查演示 =====

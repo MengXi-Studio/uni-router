@@ -118,12 +118,11 @@ Guards can pass via `return true` / `undefined`, abort via `return false`, or re
 
 ### State Synchronization
 
-Since physical back buttons and browser back **don't go through the router**, the router's `currentRoute` may be out of sync with the actual page. Uni Router injects a global mixin during `app.use(router)` installation that automatically calls `syncRoute()` on each page's `onShow` lifecycle, so no manual handling is needed.
+App physical back and H5 browser back go through the back guard chain (`onBeforeBack`); mini-program native back bypasses the router. After the page switches, Uni Router injects a global mixin during `app.use(router)` installation that automatically calls `syncRoute()` on each page's `onShow` lifecycle, so no manual handling is needed.
 
 ```
 User presses physical back
-  → uni-app native navigateBack (bypasses router)
-  → router currentRoute is still old value
+  → Back guard chain (onBeforeBack) runs
   → Page onShow auto-triggers syncRoute() (global mixin)
   → currentRoute updates to real page
 ```
@@ -140,8 +139,8 @@ router.isReady().then(() => {
 })
 ```
 
-::: warning This is an inherent uni-app limitation
-The router cannot intercept physical back buttons and browser back. `syncRoute()` is automatically handled via global mixin. `guardRoute()` must be called manually, typically in the `router.isReady()` callback. See [Platform Compatibility](./compatibility).
+::: tip Back Interception & State Sync
+App physical back and H5 browser back can be intercepted by the `onBeforeBack` back guard (for iOS swipe, pair with `app.setSideSlipGesture('none')`); mini-program native back cannot be intercepted. `syncRoute()` is automatically handled via global mixin. `guardRoute()` must be called manually, typically in the `router.isReady()` callback. See [Platform Compatibility](./compatibility).
 :::
 
 ## Design Philosophy

@@ -9,7 +9,15 @@ const router = createRouter({
 	guardTimeout: 15000, // 守卫超时 15 秒，适用于异步请求较慢的场景
 	readyTimeout: 5000, // 路由器就绪超时 5 秒，防止初始化异常时 isReady() 永久挂起
 	paramsPersistent: false, // 需要 ParamsPlugin，params 持久化默认值
-	useUniEventChannel: true // 需要 ChannelPlugin，启用内置通信管理器
+	useUniEventChannel: true, // 需要 ChannelPlugin，启用内置通信管理器
+	app: {
+		// 控制 iOS 侧滑返回手势（仅 iOS 生效，见 pages/guards/index.vue 说明）：
+		// 'none' 禁用侧滑返回（返回操作走守卫链，onBeforeBack 生效）
+		// 'close' 开启原生侧滑返回（保留原生手势，侧滑绕过守卫）
+		setSideSlipGesture(to) {
+			return to.meta.requireAuth ? 'none' : 'close'
+		}
+	}
 })
 
 // ===== 等待路由器初始化完成 =====
@@ -43,9 +51,23 @@ router.beforeResolve((to, from) => {
 	console.log(`[beforeResolve] ${from.path} → ${to.path}`)
 })
 
-// 全局后置钩子
-router.afterEach((to, from) => {
+// 全局后置钩子（支持 failure 参数）
+router.afterEach((to, from, failure) => {
+	if (failure) {
+		console.error(`[afterEach] 导航失败: ${failure.message}`)
+		return
+	}
 	console.log(`[afterEach] 导航完成: ${from.path} → ${to.path}`)
+})
+
+// 全局返回守卫（onBeforeBack）
+// 返回操作（App 物理返回键 / 导航栏返回 / uni.navigateBack，H5 浏览器后退 / 后退手势，router.back()）
+// 会先执行 onBeforeBack：返回 false 阻止返回，true / undefined 放行，支持异步（Promise）。
+// 守卫放行后复用 beforeEach → beforeResolve 链路。
+router.onBeforeBack((to, from) => {
+	console.log(`[onBeforeBack] 从 ${from.path} 返回到 ${to.path}`)
+	// 返回 false 可阻止返回（如未保存的修改）
+	// 本示例仅记录日志，默认放行
 })
 
 // 路由变化监听

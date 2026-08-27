@@ -1,5 +1,5 @@
 import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationResult } from './route'
-import type { NavigationGuard, PostNavigationGuard } from './guard'
+import type { NavigationGuard, PostNavigationGuard, BackGuard } from './guard'
 import type { RouterError, NavigationFailure } from './error'
 import type { RouterPlugin } from '@/plugin'
 import type { App } from 'vue'
@@ -26,6 +26,28 @@ export interface GuardRouteOptions {
 	 * @param failure - 导航失败对象
 	 */
 	onAbort?: (failure: NavigationFailure) => void
+}
+
+/**
+ * App 平台侧滑返回手势配置值
+ *
+ * 对应 plus.webview 的 popGesture 取值：
+ * - `'none'`：禁用侧滑返回（返回操作走守卫链，onBackPress 可拦截）
+ * - `'close'`：开启原生侧滑返回（保留原生手势体验，但侧滑不经过守卫）
+ */
+export type SideSlipGesture = 'none' | 'close'
+
+/**
+ * App 平台专属路由配置
+ */
+export interface AppRouterOptions {
+	/**
+	 * 动态设置 iOS 侧滑返回手势
+	 *
+	 * 在页面 onShow 时调用，返回 'none' 禁用手势（使侧滑返回走守卫链），
+	 * 返回 'close' 开启原生手势。可按目标路由（to）决定是否拦截。
+	 */
+	setSideSlipGesture?: (to: RouteLocation) => SideSlipGesture
 }
 
 /**
@@ -105,6 +127,11 @@ export interface RouterOptions {
 	 * @default false
 	 */
 	interceptUniApi?: boolean
+
+	/**
+	 * App 平台专属配置（侧滑返回手势等）
+	 */
+	app?: AppRouterOptions
 }
 
 /**
@@ -192,6 +219,18 @@ export interface Router {
 	 * @returns 用于移除此钩子的函数
 	 */
 	afterEach(guard: PostNavigationGuard): () => void
+
+	/**
+	 * 注册全局返回守卫，在返回操作触发时执行
+	 *
+	 * 覆盖 App 端物理返回键、顶部导航栏返回按钮、`uni.navigateBack`，
+	 * 以及 H5 端浏览器后退按钮 / 后退手势（通过 popstate 事件接入）。
+	 * 支持异步（Promise），返回 `false` 阻止返回，`true` / `undefined` 放行。
+	 *
+	 * @param guard - 返回守卫函数
+	 * @returns 用于移除此守卫的函数
+	 */
+	onBeforeBack(guard: BackGuard): () => void
 
 	/**
 	 * 获取所有已注册的路由配置列表

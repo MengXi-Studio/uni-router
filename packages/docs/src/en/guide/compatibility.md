@@ -4,15 +4,15 @@ uni-app is a cross-platform framework supporting App, H5, and various mini-progr
 
 ## Platform Overview
 
-| Platform | Routing Mode | Page Stack Limit | Animation | Physical Back Interception |
+| Platform | Routing Mode | Page Stack Limit | Animation | Back Interception |
 | --- | --- | --- | --- | --- |
-| App (iOS/Android) | Native page stack | No hard limit (recommend ≤10) | ✅ Custom | ✅ `onBackPress` |
-| H5 | History API | Unlimited | ❌ System controlled | ❌ `popstate` read-only |
-| WeChat Mini-Program | Native page stack | **10** | ❌ System controlled | ❌ Top-left return |
-| Alipay Mini-Program | Native page stack | **10** | ❌ System controlled | ❌ Top-left return |
-| ByteDance Mini-Program | Native page stack | **10** | ❌ System controlled | ❌ Top-left return |
-| Baidu Mini-Program | Native page stack | **10** | ❌ System controlled | ❌ Top-left return |
-| QQ Mini-Program | Native page stack | **10** | ❌ System controlled | ❌ Top-left return |
+| App (iOS/Android) | Native page stack | No hard limit (recommend ≤10) | ✅ Custom | ✅ `onBeforeBack` |
+| H5 | History API | Unlimited | ❌ System controlled | ✅ `onBeforeBack` (popstate) |
+| WeChat Mini-Program | Native page stack | **10** | ❌ System controlled | ⚠️ Programmatic only |
+| Alipay Mini-Program | Native page stack | **10** | ❌ System controlled | ⚠️ Programmatic only |
+| ByteDance Mini-Program | Native page stack | **10** | ❌ System controlled | ⚠️ Programmatic only |
+| Baidu Mini-Program | Native page stack | **10** | ❌ System controlled | ⚠️ Programmatic only |
+| QQ Mini-Program | Native page stack | **10** | ❌ System controlled | ⚠️ Programmatic only |
 
 ::: warning Mini-Program Page Stack Limit
 All mini-program platforms have a page stack limit of **10**. `navigateTo` fails and errors when exceeded. This is a hard platform limitation that Uni Router cannot break.
@@ -155,49 +155,63 @@ await router.relaunch({ name: 'home', animation: { type: 'fade-in' } })
 
 No special handling needed, just be aware. If you need animation, use `replace` instead (only replaces stack top, supports animation).
 
-## Limitation 4: Physical Back Button Cannot Be Intercepted
+## Limitation 4: Back Interception Platform Differences
 
-### Problem
+### Supported: onBeforeBack Back Guard
 
-The following back operations **bypass the router**, guards cannot intercept:
-
-| Platform | Back Method |
-| --- | --- |
-| App (Android) | Physical back button |
-| App (iOS) | Edge swipe back |
-| H5 | Browser back button |
-| Mini-Program | Top-left return arrow, swipe back |
-
-```
-User presses back
-  → uni-app native navigateBack (bypasses router)
-  → router.currentRoute is still old value (out of sync)
-  → afterEach doesn't trigger
-  → guards don't execute
-```
-
-### Solutions
-
-**Solution 1: App `onBackPress` (App only)**
+The router has a built-in back guard `onBeforeBack` that intercepts back operations (see [Guards - Back Guard](./guards#back-guard-onbeforeback)):
 
 ```ts
-import { onBackPress } from '@dcloudio/uni-app'
-
-onBackPress((options) => {
-  // options.from: 'backbutton' | 'navigateBack'
+router.onBeforeBack((to, from) => {
   if (formDirty.value) {
-    showConfirmDialog()
-    return true // Block back
+    uni.showModal({ title: 'Notice', content: 'You have unsaved changes. Leave anyway?' })
+    return false // Block back
   }
-  return false // Allow back
+  // return undefined or true to allow
 })
 ```
 
-::: warning onBackPress App Only
-`onBackPress` only works on App. H5 and mini-programs don't have this lifecycle.
-:::
+Back interception capability per platform:
 
-**Solution 2: `onShow` + `syncRoute` (all platforms)**
+| Back method | App | H5 | Mini-Program |
+| --- | --- | --- | --- |
+| Physical back / navigation-bar back / `uni.navigateBack` | ✅ via `onBackPress` | — | ❌ |
+| Browser back button / back gesture | — | ✅ via `popstate` | — |
+| iOS edge swipe back | ⚠️ requires `setSideSlipGesture('none')` | — | — |
+| `router.back()` / programmatic `uni.navigateBack` | ✅ | ✅ | ✅ (requires `InterceptorPlugin`) |
+
+### Not Supported: Mini-Program Native Back
+
+Mini-program top-left/top-right back, physical back, and swipe back are controlled by the host. There is no `onBackPress` lifecycle or `popstate` event, so `onBeforeBack` cannot intercept them. This is a platform capability boundary.
+
+### Controlling the iOS Swipe-Back Gesture
+
+iOS edge swipe back **bypasses the guard chain by default**. Use `app.setSideSlipGesture` to dynamically control the gesture per page:
+
+```ts
+const router = createRouter({
+  routes,
+  app: {
+    setSideSlipGesture(to) {
+      // Disable swipe on pages that need interception so back goes through guards
+      return to.meta.requireLeaveConfirm ? 'none' : 'close'
+    }
+  }
+})
+```
+
+- `'none'`: disables iOS swipe-back (back goes through the guard chain, `onBeforeBack` works)
+- `'close'`: enables native swipe-back (keeps the native gesture, swipe bypasses guards)
+
+iOS only; Android uses the physical back button, wired into the guard chain via `onBackPress`.
+
+### Handling When Back Cannot Be Intercepted
+
+For scenarios that cannot be intercepted (such as mini-program native back), rely on the following mechanisms:
+
+**1. Auto state sync in onShow**
+
+The global mixin calls `router.syncRoute()` in each page's `onShow`, so `currentRoute` auto-updates to the real page, **no manual call needed**:
 
 ```ts
 import { onShow } from '@dcloudio/uni-app'
@@ -206,25 +220,17 @@ import { useRouter } from '@meng-xi/uni-router'
 const router = useRouter()
 
 onShow(() => {
-  // Sync currentRoute to real page
-  router.syncRoute()
+  // currentRoute has been auto-synced by the mixin
 })
 ```
 
-After calling `syncRoute()`:
-- `currentRoute` updates to real page
-- `onRouteChange` listeners trigger (`to._synced === true`)
-- `afterEach` **doesn't trigger** (not a complete navigation)
-
-**Solution 3: `onRouteChange` after-the-fact handling (all platforms)**
+**2. onRouteChange after-the-fact handling**
 
 ```ts
 router.onRouteChange((to, from) => {
   if (to._synced) {
-    // State sync (may be triggered by physical back)
-    console.log('User may have returned via physical back to:', to.path)
-
-    // After-the-fact handling: update title, analytics, etc.
+    // State sync (may be triggered by mini-program native back)
+    console.log('User may have returned to:', to.path)
     if (to.meta.title) {
       uni.setNavigationBarTitle({ title: to.meta.title as string })
     }
@@ -232,56 +238,9 @@ router.onRouteChange((to, from) => {
 })
 ```
 
-### Wrap Common Back Handler
+**3. Mini-program custom navigation bar**
 
-```ts
-// composables/use-back-guard.ts
-import { onShow } from '@dcloudio/uni-app'
-import { onBackPress } from '@dcloudio/uni-app'
-import { useRouter } from '@meng-xi/uni-router'
-
-export function useBackGuard(options: {
-  dirty: () => boolean
-  onConfirm?: () => void
-}) {
-  const router = useRouter()
-
-  // App: intercept physical back button
-  // #ifdef APP-PLUS
-  onBackPress(() => {
-    if (options.dirty()) {
-      uni.showModal({
-        title: 'Notice',
-        content: 'You have unsaved changes. Leave anyway?',
-        success: (res) => {
-          if (res.confirm) {
-            options.onConfirm?.()
-            router.back()
-          }
-        }
-      })
-      return true // Block this back
-    }
-    return false
-  })
-  // #endif
-
-  // All platforms: sync state in onShow
-  onShow(() => {
-    router.syncRoute()
-  })
-}
-```
-
-```ts
-// Use in page
-const dirty = ref(false)
-
-useBackGuard({
-  dirty: () => dirty.value,
-  onConfirm: () => { /* save or cleanup */ }
-})
-```
+`navigationStyle: 'custom'` takes over the back entry; the in-page custom back button calls `router.back()`, so the back guard takes effect.
 
 ## Limitation 5: H5 Routing Mode
 
@@ -610,7 +569,7 @@ if (supports.animation) {
 | --- | --- | --- | --- | --- | --- |
 | Page stack limit | No hard limit | Unlimited | 10 | 10 | 10 |
 | Navigation animation | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Physical back interception | ✅ `onBackPress` | ❌ | ❌ | ❌ | ❌ |
+| Back interception | ✅ `onBeforeBack` | ✅ `onBeforeBack` | ⚠️ Programmatic | ⚠️ Programmatic | ⚠️ Programmatic |
 | `switchTab` query | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `reLaunch` animation | ❌ | ❌ | ❌ | ❌ | ❌ |
 | EventChannel | ✅ | ✅ | ✅ | ⚠️ Partial | ✅ |
@@ -618,8 +577,8 @@ if (supports.animation) {
 | `onRouteChange` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Guard interception | ✅ Programmatic | ✅ Programmatic | ✅ Programmatic | ✅ Programmatic | ✅ Programmatic |
 
-::: tip Programmatic Navigation
-"Programmatic" means navigation triggered via `router.push()` / `router.back()` etc. Non-programmatic methods like physical back button, browser back bypass the router, guards cannot intercept.
+::: tip Back Interception
+"Programmatic" means navigation triggered via `router.push()` / `router.back()` etc., where all guards take effect. App physical back / navigation-bar back and H5 browser back are intercepted via `onBeforeBack`; mini-program native back (capsule/physical key/swipe) cannot be intercepted. See [Limitation 4](#limitation-4-back-interception-platform-differences).
 :::
 
 ## Next Steps

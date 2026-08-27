@@ -41,36 +41,36 @@ function normalizePath(path) {
 }
 
 // src/utils/route.ts
-function injectQueryKey(location, key, value) {
-  if (typeof location === "string") {
-    const queryIndex = location.indexOf("?");
+function injectQueryKey(location2, key, value) {
+  if (typeof location2 === "string") {
+    const queryIndex = location2.indexOf("?");
     if (queryIndex === -1) {
-      return { path: location, query: { [key]: value } };
+      return { path: location2, query: { [key]: value } };
     }
-    const path = location.slice(0, queryIndex);
-    const existingQuery = parseQuery(location.slice(queryIndex + 1));
+    const path = location2.slice(0, queryIndex);
+    const existingQuery = parseQuery(location2.slice(queryIndex + 1));
     return { path, query: { ...existingQuery, [key]: value } };
   }
-  if ("path" in location) {
-    const pathLoc = location;
+  if ("path" in location2) {
+    const pathLoc = location2;
     return {
       ...pathLoc,
       query: { ...pathLoc.query, [key]: value }
     };
   }
-  if ("name" in location) {
-    const namedLoc = location;
+  if ("name" in location2) {
+    const namedLoc = location2;
     return {
       ...namedLoc,
       query: { ...namedLoc.query, [key]: value }
     };
   }
-  return location;
+  return location2;
 }
-function extractQueryKey(location, key) {
-  if (typeof location === "string") return void 0;
-  if (typeof location === "object" && "query" in location) {
-    const query = location.query;
+function extractQueryKey(location2, key) {
+  if (typeof location2 === "string") return void 0;
+  if (typeof location2 === "object" && "query" in location2) {
+    const query = location2.query;
     return query?.[key];
   }
   return void 0;
@@ -78,18 +78,18 @@ function extractQueryKey(location, key) {
 
 // src/plugins/params/index.ts
 var PLUGIN_DATA_KEY = "params";
-function enrichLocationWithParams(location, paramsManager) {
-  if (typeof location === "string") return location;
-  const loc = location;
+function enrichLocationWithParams(location2, paramsManager) {
+  if (typeof location2 === "string") return location2;
+  const loc = location2;
   const hasParams = "params" in loc && loc.params;
-  if (!hasParams || Object.keys(loc.params).length === 0) return location;
+  if (!hasParams || Object.keys(loc.params).length === 0) return location2;
   const params = loc.params;
   const persistent = "persistent" in loc ? loc.persistent : void 0;
   const key = paramsManager.set(params, persistent);
-  return injectQueryKey(location, PARAMS_KEY, key);
+  return injectQueryKey(location2, PARAMS_KEY, key);
 }
-function extractParamsKey(location) {
-  return extractQueryKey(location, PARAMS_KEY);
+function extractParamsKey(location2) {
+  return extractQueryKey(location2, PARAMS_KEY);
 }
 var ParamsPlugin = {
   name: "params",
@@ -99,8 +99,8 @@ var ParamsPlugin = {
     if (persistent) {
       paramsManager.setDefaultPersistent(persistent);
     }
-    context.onEnrichLocation((location) => {
-      return enrichLocationWithParams(location, paramsManager);
+    context.onEnrichLocation((location2) => {
+      return enrichLocationWithParams(location2, paramsManager);
     });
     context.onAfterResolve((enrichedLocation, pluginData) => {
       const paramsKey = extractParamsKey(enrichedLocation);
@@ -129,9 +129,9 @@ var ParamsPlugin = {
 
 // src/plugins/animation/index.ts
 var PLUGIN_DATA_KEY2 = "animation";
-function extractAnimation(location) {
-  if (typeof location === "string") return void 0;
-  if (typeof location === "object" && "animation" in location) return location.animation;
+function extractAnimation(location2) {
+  if (typeof location2 === "string") return void 0;
+  if (typeof location2 === "object" && "animation" in location2) return location2.animation;
   return void 0;
 }
 var AnimationPlugin = {
@@ -295,6 +295,74 @@ var RouterError = class extends Error {
   }
 };
 
+// src/utils/platform.ts
+var cached = null;
+function getPlatform() {
+  if (cached) return cached;
+  let uniPlatform = "";
+  let osName = "";
+  try {
+    const info = uni.getSystemInfoSync();
+    uniPlatform = info.uniPlatform ?? "";
+    osName = info.osName ?? info.platform ?? "";
+  } catch {
+  }
+  const isApp = uniPlatform === "app" || uniPlatform === "app-harmony" || uniPlatform === "" && typeof plus !== "undefined";
+  const isH5 = uniPlatform === "web" || uniPlatform === "" && typeof window !== "undefined" && typeof document !== "undefined";
+  cached = {
+    isApp,
+    isH5,
+    isMp: uniPlatform.startsWith("mp-"),
+    isIOS: osName === "ios",
+    isAndroid: osName === "android",
+    uniPlatform,
+    osName
+  };
+  return cached;
+}
+
+// src/utils/query.ts
+function createRouteLocation(base) {
+  const query = Object.freeze(base.query);
+  const params = base.params ? Object.freeze({ ...base.params }) : Object.freeze({});
+  return {
+    path: base.path,
+    name: base.name,
+    meta: Object.freeze({ ...base.meta }),
+    query,
+    params,
+    fullPath: base.fullPath,
+    ...base._synced !== void 0 && { _synced: base._synced },
+    queryInt(key, defaultValue) {
+      const val = query[key];
+      if (val === void 0 || val === "") return defaultValue;
+      const parsed = parseInt(val, 10);
+      return isNaN(parsed) ? defaultValue : parsed;
+    },
+    queryNumber(key, defaultValue) {
+      const val = query[key];
+      if (val === void 0 || val === "") return defaultValue;
+      const parsed = Number(val);
+      return isNaN(parsed) ? defaultValue : parsed;
+    },
+    queryBool(key, defaultValue) {
+      const val = query[key];
+      if (val === void 0) return defaultValue;
+      if (val === "true" || val === "1") return true;
+      if (val === "false" || val === "0") return false;
+      return defaultValue;
+    }
+  };
+}
+function createStartLocation() {
+  return createRouteLocation({
+    path: "/",
+    meta: {},
+    query: {},
+    fullPath: "/"
+  });
+}
+
 // src/plugins/interceptor/install.ts
 function parseUniUrl(url) {
   if (!url) return { path: "", query: {} };
@@ -316,7 +384,7 @@ function buildLocation(path, query, animation, events) {
 }
 var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
 function isWebPlatform() {
-  return typeof window !== "undefined" && typeof document !== "undefined";
+  return getPlatform().isH5;
 }
 var InterceptorManager = class {
   constructor() {
@@ -456,48 +524,6 @@ function removeInterceptors() {
   }
 }
 
-// src/utils/query.ts
-function createRouteLocation(base) {
-  const query = Object.freeze(base.query);
-  const params = base.params ? Object.freeze({ ...base.params }) : Object.freeze({});
-  return {
-    path: base.path,
-    name: base.name,
-    meta: Object.freeze({ ...base.meta }),
-    query,
-    params,
-    fullPath: base.fullPath,
-    ...base._synced !== void 0 && { _synced: base._synced },
-    queryInt(key, defaultValue) {
-      const val = query[key];
-      if (val === void 0 || val === "") return defaultValue;
-      const parsed = parseInt(val, 10);
-      return isNaN(parsed) ? defaultValue : parsed;
-    },
-    queryNumber(key, defaultValue) {
-      const val = query[key];
-      if (val === void 0 || val === "") return defaultValue;
-      const parsed = Number(val);
-      return isNaN(parsed) ? defaultValue : parsed;
-    },
-    queryBool(key, defaultValue) {
-      const val = query[key];
-      if (val === void 0) return defaultValue;
-      if (val === "true" || val === "1") return true;
-      if (val === "false" || val === "0") return false;
-      return defaultValue;
-    }
-  };
-}
-function createStartLocation() {
-  return createRouteLocation({
-    path: "/",
-    meta: {},
-    query: {},
-    fullPath: "/"
-  });
-}
-
 // src/state/index.ts
 createStartLocation();
 
@@ -529,25 +555,25 @@ function getReactiveRoute(router) {
   return routeRef;
 }
 var PLUGIN_DATA_KEY3 = "channel";
-function extractEvents(location) {
-  if (typeof location === "string") return void 0;
-  if (typeof location === "object" && "events" in location) return location.events;
+function extractEvents(location2) {
+  if (typeof location2 === "string") return void 0;
+  if (typeof location2 === "object" && "events" in location2) return location2.events;
   return void 0;
 }
-function enrichLocationWithNavId(location, navId) {
-  return injectQueryKey(location, NAV_ID_KEY, navId);
+function enrichLocationWithNavId(location2, navId) {
+  return injectQueryKey(location2, NAV_ID_KEY, navId);
 }
-function extractNavId(location) {
-  return extractQueryKey(location, NAV_ID_KEY);
+function extractNavId(location2) {
+  return extractQueryKey(location2, NAV_ID_KEY);
 }
 var ChannelPlugin = {
   name: "channel",
   install(context, options) {
     const useUniEventChannel = options.useUniEventChannel ?? false;
     if (useUniEventChannel) {
-      context.onEnrichLocation((location) => {
+      context.onEnrichLocation((location2) => {
         const navId = generateNavId();
-        return enrichLocationWithNavId(location, navId);
+        return enrichLocationWithNavId(location2, navId);
       });
     }
     context.onAfterResolve((enrichedLocation, pluginData) => {

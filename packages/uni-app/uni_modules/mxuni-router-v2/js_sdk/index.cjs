@@ -163,6 +163,7 @@ function createGuardManager(guardTimeout = DEFAULT_GUARD_TIMEOUT) {
   const beforeGuards = [];
   const beforeResolveGuards = [];
   const afterGuards = [];
+  const beforeBackGuards = [];
   function beforeEach(guard) {
     beforeGuards.push(guard);
     return () => {
@@ -203,6 +204,20 @@ function createGuardManager(guardTimeout = DEFAULT_GUARD_TIMEOUT) {
       }
     }
   }
+  function onBeforeBack(guard) {
+    beforeBackGuards.push(guard);
+    return () => {
+      const index = beforeBackGuards.indexOf(guard);
+      if (index > -1) beforeBackGuards.splice(index, 1);
+    };
+  }
+  async function runBeforeBackGuards(to, from) {
+    for (const guard of beforeBackGuards) {
+      const result = await Promise.resolve(guard(to, from));
+      if (result === false) return false;
+    }
+    return true;
+  }
   return {
     beforeEach,
     beforeResolve,
@@ -210,7 +225,9 @@ function createGuardManager(guardTimeout = DEFAULT_GUARD_TIMEOUT) {
     runBeforeGuards,
     runBeforeResolveGuards,
     runBeforeEnterGuards,
-    runAfterGuards
+    runAfterGuards,
+    onBeforeBack,
+    runBeforeBackGuards
   };
 }
 
@@ -245,6 +262,135 @@ function normalizePath(path) {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
+// src/utils/platform.ts
+var cached = null;
+function getPlatform() {
+  if (cached) return cached;
+  let uniPlatform = "";
+  let osName = "";
+  try {
+    const info = uni.getSystemInfoSync();
+    uniPlatform = info.uniPlatform ?? "";
+    osName = info.osName ?? info.platform ?? "";
+  } catch {
+  }
+  const isApp = uniPlatform === "app" || uniPlatform === "app-harmony" || uniPlatform === "" && typeof plus !== "undefined";
+  const isH5 = uniPlatform === "web" || uniPlatform === "" && typeof window !== "undefined" && typeof document !== "undefined";
+  cached = {
+    isApp,
+    isH5,
+    isMp: uniPlatform.startsWith("mp-"),
+    isIOS: osName === "ios",
+    isAndroid: osName === "android",
+    uniPlatform,
+    osName
+  };
+  return cached;
+}
+
+// src/utils/query.ts
+function serializeQueryValue(value) {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return String(value);
+}
+function serializeQuery(query) {
+  if (!query) return {};
+  const result = {};
+  for (const key of Object.keys(query)) {
+    const value = query[key];
+    if (value !== void 0 && value !== null) {
+      result[key] = serializeQueryValue(value);
+    }
+  }
+  return result;
+}
+function isSameQuery(a, b) {
+  if (a === b) return true;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  if (keysA.length === 0) return true;
+  return keysA.every((key) => a[key] === b[key]);
+}
+function createRouteLocation(base) {
+  const query = Object.freeze(base.query);
+  const params = base.params ? Object.freeze({ ...base.params }) : Object.freeze({});
+  return {
+    path: base.path,
+    name: base.name,
+    meta: Object.freeze({ ...base.meta }),
+    query,
+    params,
+    fullPath: base.fullPath,
+    ...base._synced !== void 0 && { _synced: base._synced },
+    queryInt(key, defaultValue) {
+      const val = query[key];
+      if (val === void 0 || val === "") return defaultValue;
+      const parsed = parseInt(val, 10);
+      return isNaN(parsed) ? defaultValue : parsed;
+    },
+    queryNumber(key, defaultValue) {
+      const val = query[key];
+      if (val === void 0 || val === "") return defaultValue;
+      const parsed = Number(val);
+      return isNaN(parsed) ? defaultValue : parsed;
+    },
+    queryBool(key, defaultValue) {
+      const val = query[key];
+      if (val === void 0) return defaultValue;
+      if (val === "true" || val === "1") return true;
+      if (val === "false" || val === "0") return false;
+      return defaultValue;
+    }
+  };
+}
+function createStartLocation() {
+  return createRouteLocation({
+    path: "/",
+    meta: {},
+    query: {},
+    fullPath: "/"
+  });
+}
+
+// src/utils/route.ts
+function injectQueryKey(location2, key, value) {
+  if (typeof location2 === "string") {
+    const queryIndex = location2.indexOf("?");
+    if (queryIndex === -1) {
+      return { path: location2, query: { [key]: value } };
+    }
+    const path = location2.slice(0, queryIndex);
+    const existingQuery = parseQuery(location2.slice(queryIndex + 1));
+    return { path, query: { ...existingQuery, [key]: value } };
+  }
+  if ("path" in location2) {
+    const pathLoc = location2;
+    return {
+      ...pathLoc,
+      query: { ...pathLoc.query, [key]: value }
+    };
+  }
+  if ("name" in location2) {
+    const namedLoc = location2;
+    return {
+      ...namedLoc,
+      query: { ...namedLoc.query, [key]: value }
+    };
+  }
+  return location2;
+}
+function extractQueryKey(location2, key) {
+  if (typeof location2 === "string") return void 0;
+  if (typeof location2 === "object" && "query" in location2) {
+    const query = location2.query;
+    return query?.[key];
+  }
+  return void 0;
+}
+
 // src/plugins/interceptor/install.ts
 function parseUniUrl(url) {
   if (!url) return { path: "", query: {} };
@@ -266,7 +412,7 @@ function buildLocation(path, query, animation, events) {
 }
 var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
 function isWebPlatform() {
-  return typeof window !== "undefined" && typeof document !== "undefined";
+  return getPlatform().isH5;
 }
 var InterceptorManager = class {
   constructor() {
@@ -544,109 +690,6 @@ function getCurrentPageQuery() {
   return query;
 }
 
-// src/utils/query.ts
-function serializeQueryValue(value) {
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
-  if (typeof value === "boolean") return value ? "true" : "false";
-  return String(value);
-}
-function serializeQuery(query) {
-  if (!query) return {};
-  const result = {};
-  for (const key of Object.keys(query)) {
-    const value = query[key];
-    if (value !== void 0 && value !== null) {
-      result[key] = serializeQueryValue(value);
-    }
-  }
-  return result;
-}
-function isSameQuery(a, b) {
-  if (a === b) return true;
-  const keysA = Object.keys(a);
-  const keysB = Object.keys(b);
-  if (keysA.length !== keysB.length) return false;
-  if (keysA.length === 0) return true;
-  return keysA.every((key) => a[key] === b[key]);
-}
-function createRouteLocation(base) {
-  const query = Object.freeze(base.query);
-  const params = base.params ? Object.freeze({ ...base.params }) : Object.freeze({});
-  return {
-    path: base.path,
-    name: base.name,
-    meta: Object.freeze({ ...base.meta }),
-    query,
-    params,
-    fullPath: base.fullPath,
-    ...base._synced !== void 0 && { _synced: base._synced },
-    queryInt(key, defaultValue) {
-      const val = query[key];
-      if (val === void 0 || val === "") return defaultValue;
-      const parsed = parseInt(val, 10);
-      return isNaN(parsed) ? defaultValue : parsed;
-    },
-    queryNumber(key, defaultValue) {
-      const val = query[key];
-      if (val === void 0 || val === "") return defaultValue;
-      const parsed = Number(val);
-      return isNaN(parsed) ? defaultValue : parsed;
-    },
-    queryBool(key, defaultValue) {
-      const val = query[key];
-      if (val === void 0) return defaultValue;
-      if (val === "true" || val === "1") return true;
-      if (val === "false" || val === "0") return false;
-      return defaultValue;
-    }
-  };
-}
-function createStartLocation() {
-  return createRouteLocation({
-    path: "/",
-    meta: {},
-    query: {},
-    fullPath: "/"
-  });
-}
-
-// src/utils/route.ts
-function injectQueryKey(location, key, value) {
-  if (typeof location === "string") {
-    const queryIndex = location.indexOf("?");
-    if (queryIndex === -1) {
-      return { path: location, query: { [key]: value } };
-    }
-    const path = location.slice(0, queryIndex);
-    const existingQuery = parseQuery(location.slice(queryIndex + 1));
-    return { path, query: { ...existingQuery, [key]: value } };
-  }
-  if ("path" in location) {
-    const pathLoc = location;
-    return {
-      ...pathLoc,
-      query: { ...pathLoc.query, [key]: value }
-    };
-  }
-  if ("name" in location) {
-    const namedLoc = location;
-    return {
-      ...namedLoc,
-      query: { ...namedLoc.query, [key]: value }
-    };
-  }
-  return location;
-}
-function extractQueryKey(location, key) {
-  if (typeof location === "string") return void 0;
-  if (typeof location === "object" && "query" in location) {
-    const query = location.query;
-    return query?.[key];
-  }
-  return void 0;
-}
-
 // src/state/index.ts
 var START_LOCATION = createStartLocation();
 var DEFAULT_READY_TIMEOUT = 0;
@@ -885,19 +928,19 @@ function createRouteMatcher(routes, strict, paramsManager) {
   function getRouteConfig(path) {
     return pathMap.get(normalizePath(path));
   }
-  function resolve(location) {
-    if (typeof location === "string") {
-      return resolveFromPath(location);
+  function resolve(location2) {
+    if (typeof location2 === "string") {
+      return resolveFromPath(location2);
     }
-    if (isObject(location)) {
-      if ("name" in location) {
-        return resolveFromName(location);
+    if (isObject(location2)) {
+      if ("name" in location2) {
+        return resolveFromName(location2);
       }
-      if ("path" in location) {
-        return resolveFromPathRaw(location);
+      if ("path" in location2) {
+        return resolveFromPathRaw(location2);
       }
     }
-    throw new RouterError("ROUTE_NOT_FOUND" /* ROUTE_NOT_FOUND */, `Invalid route location: ${JSON.stringify(location)}`);
+    throw new RouterError("ROUTE_NOT_FOUND" /* ROUTE_NOT_FOUND */, `Invalid route location: ${JSON.stringify(location2)}`);
   }
   function resolveFromPath(path) {
     const queryIndex = path.indexOf("?");
@@ -917,10 +960,10 @@ function createRouteMatcher(routes, strict, paramsManager) {
       params
     });
   }
-  function resolveFromPathRaw(location) {
-    const normalizedPath = normalizePath(location.path);
+  function resolveFromPathRaw(location2) {
+    const normalizedPath = normalizePath(location2.path);
     const config = pathMap.get(normalizedPath);
-    const query = serializeQuery(location.query);
+    const query = serializeQuery(location2.query);
     const meta = config?.meta ?? {};
     const params = extractParams(query);
     return createRouteLocation({
@@ -932,15 +975,15 @@ function createRouteMatcher(routes, strict, paramsManager) {
       params
     });
   }
-  function resolveFromName(location) {
-    const config = nameMap.get(location.name);
+  function resolveFromName(location2) {
+    const config = nameMap.get(location2.name);
     if (!config) {
       if (strict) {
-        throw new RouterError("ROUTE_NOT_FOUND" /* ROUTE_NOT_FOUND */, `Route name "${location.name}" not found`);
+        throw new RouterError("ROUTE_NOT_FOUND" /* ROUTE_NOT_FOUND */, `Route name "${location2.name}" not found`);
       }
-      warn(`Route name "${location.name}" not found`);
-      const query2 = serializeQuery(location.query);
-      const path = `/${location.name}`;
+      warn(`Route name "${location2.name}" not found`);
+      const query2 = serializeQuery(location2.query);
+      const path = `/${location2.name}`;
       const params2 = extractParams(query2);
       return createRouteLocation({
         path,
@@ -950,7 +993,7 @@ function createRouteMatcher(routes, strict, paramsManager) {
         params: params2
       });
     }
-    const query = serializeQuery(location.query);
+    const query = serializeQuery(location2.query);
     const resolvedPath = normalizePath(config.path);
     const params = extractParams(query);
     return createRouteLocation({
@@ -1020,6 +1063,7 @@ var UniRouter = class {
    * @param options - 路由器初始化选项
    */
   constructor(options) {
+    __publicField(this, "options");
     __publicField(this, "routeState", createRouteState());
     __publicField(this, "guardManager", createGuardManager());
     __publicField(this, "paramsManager", createParamsManager(false));
@@ -1028,6 +1072,10 @@ var UniRouter = class {
     __publicField(this, "errorHandlers", []);
     __publicField(this, "pendingNavigation", null);
     __publicField(this, "installedPlugins", /* @__PURE__ */ new Set());
+    /** 返回守卫执行中标记：onBackPress 手动返回时置位，避免递归 */
+    __publicField(this, "backGuardRunning", false);
+    /** H5 平台返回守卫：当前页面 URL，用于判断 popstate 是否为后退 */
+    __publicField(this, "h5BackUrl", "");
     // 插件 hook 数组
     __publicField(this, "enrichLocationHooks", []);
     __publicField(this, "afterResolveHooks", []);
@@ -1036,6 +1084,7 @@ var UniRouter = class {
     __publicField(this, "navigationAbortHooks", []);
     __publicField(this, "routeSyncHooks", []);
     __publicField(this, "appInstallHooks", []);
+    this.options = options;
     this.guardManager = createGuardManager(options.guardTimeout);
     this.paramsManager = createParamsManager(false);
     this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager);
@@ -1084,7 +1133,7 @@ var UniRouter = class {
       get currentRoute() {
         return self.routeState.getCurrentRoute();
       },
-      resolve: (location) => self.matcher.resolve(location),
+      resolve: (location2) => self.matcher.resolve(location2),
       get router() {
         return self;
       },
@@ -1129,8 +1178,8 @@ var UniRouter = class {
    * @returns 导航结果，包含目标路由位置和可选的 eventChannel
    * @throws {NavigationFailure} 导航被守卫中止、重复或 API 调用失败时抛出
    */
-  push(location) {
-    return this.performNavigation(location, "push");
+  push(location2) {
+    return this.performNavigation(location2, "push");
   }
   /**
    * 替换当前页面
@@ -1142,8 +1191,8 @@ var UniRouter = class {
    * @returns 导航结果，包含目标路由位置和可选的 eventChannel
    * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
    */
-  replace(location) {
-    return this.performNavigation(location, "replace");
+  replace(location2) {
+    return this.performNavigation(location2, "replace");
   }
   /**
    * 关闭所有页面并打开目标页面
@@ -1156,8 +1205,8 @@ var UniRouter = class {
    * @returns 导航结果，包含目标路由位置和可选的 eventChannel
    * @throws {NavigationFailure} 导航被守卫中止或 API 调用失败时抛出
    */
-  relaunch(location) {
-    return this.performNavigation(location, "relaunch");
+  relaunch(location2) {
+    return this.performNavigation(location2, "relaunch");
   }
   /**
    * 返回上一页或多级页面
@@ -1192,6 +1241,13 @@ var UniRouter = class {
     const targetPath = `/${targetPage.route}`;
     const to = this.matcher.resolve(targetPath);
     const pluginData = {};
+    const backPass = await this.guardManager.runBeforeBackGuards(to, from);
+    if (!backPass) {
+      const failure = new NavigationFailure(to, from, "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */);
+      this.guardManager.runAfterGuards(to, from, failure);
+      this.triggerErrorHandlers(failure, to, from);
+      return Promise.reject(failure);
+    }
     const beforeResult = await this.guardManager.runBeforeGuards(to, from);
     const handled = this.handleGuardResult(beforeResult, to, from, "back", 0, pluginData);
     if (handled) return handled;
@@ -1219,6 +1275,7 @@ var UniRouter = class {
       hook(prepareCtx);
     }
     const animation = navOptions.animation;
+    this.backGuardRunning = true;
     try {
       await goBack(delta, animation);
       this.routeSync.syncCurrentRoute();
@@ -1232,6 +1289,8 @@ var UniRouter = class {
       this.guardManager.runAfterGuards(to, from, failure);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
+    } finally {
+      this.backGuardRunning = false;
     }
   }
   /**
@@ -1257,6 +1316,20 @@ var UniRouter = class {
    */
   afterEach(guard) {
     return this.guardManager.afterEach(guard);
+  }
+  /**
+   * 注册全局返回守卫，在返回操作触发时执行
+   *
+   * 覆盖 App 端物理返回键、顶部导航栏返回按钮、`uni.navigateBack`
+   * （通过全局 mixin 的 onBackPress 接入，见 {@link handleBackPress}），
+   * 以及 H5 端浏览器后退按钮 / 后退手势（通过 popstate 事件接入，见 {@link handleH5PopState}）。
+   * 支持异步（Promise），返回 `false` 阻止返回，`true` / `undefined` 放行。
+   *
+   * @param guard - 返回守卫函数
+   * @returns 用于移除此守卫的函数
+   */
+  onBeforeBack(guard) {
+    return this.guardManager.onBeforeBack(guard);
   }
   /**
    * 获取所有已注册的路由配置列表
@@ -1290,8 +1363,8 @@ var UniRouter = class {
    * @returns 解析后的路由位置
    * @throws {RouterError} 严格模式下未找到路由时抛出
    */
-  resolve(location) {
-    return this.matcher.resolve(location);
+  resolve(location2) {
+    return this.matcher.resolve(location2);
   }
   /**
    * 等待路由器初始化完成
@@ -1338,6 +1411,133 @@ var UniRouter = class {
     this.routeSync.syncRoute();
   }
   /**
+   * 处理页面 onBackPress 生命周期（由全局 mixin 注入到每个页面）
+   *
+   * 覆盖 App 端物理返回键、顶部导航栏返回按钮、外部 `uni.navigateBack` 调用。
+   * 返回 `true` 阻止默认返回并异步执行返回守卫链；返回 `false` / `undefined` 放行默认返回。
+   *
+   * **递归保护**：路由器发起的返回（`router.back()` 或本方法守卫放行后的手动返回）会再次触发
+   * `onBackPress`，通过 `backGuardRunning` 标记放行，避免守卫重复执行与死循环。
+   *
+   * **平台限制**：仅 App 平台接入。iOS 侧滑返回不触发 `onBackPress`，
+   * 需配合 `app.setSideSlipGesture` 禁用手势后由本方法接管；
+   * H5 浏览器后退由 popstate 事件接入（见 {@link handleH5PopState}），
+   * 小程序返回不支持拦截。
+   *
+   * @returns 返回 true 阻止默认返回，返回 false / undefined 放行
+   */
+  handleBackPress() {
+    if (!getPlatform().isApp) return void 0;
+    if (this.backGuardRunning) return false;
+    const pages = getCurrentPages();
+    if (pages.length < 2) return false;
+    this.runBackGuardFromBackPress().catch(() => {
+    });
+    return true;
+  }
+  /**
+   * 由 onBackPress 触发的返回守卫流程（异步执行，App 端）
+   *
+   * 执行顺序：onBeforeBack → beforeEach → beforeResolve，全部放行后执行 `uni.navigateBack`。
+   * 由于 `onBackPress` 必须同步返回，本方法以 fire-and-forget 方式运行；
+   * 守卫放行后手动返回时会再次触发 `onBackPress`，由 `backGuardRunning` 放行。
+   */
+  async runBackGuardFromBackPress() {
+    const from = this.routeState.getCurrentRoute();
+    const pages = getCurrentPages();
+    const targetPage = pages[pages.length - 2];
+    if (!targetPage) return;
+    const to = this.matcher.resolve(`/${targetPage.route}`);
+    await this.runBackGuardChain(to, from, () => this.executeBack());
+  }
+  /**
+   * H5 平台返回守卫入口（由浏览器 popstate 事件触发，注册见 {@link install}）
+   *
+   * 覆盖浏览器后退按钮 / 后退手势。popstate 触发时浏览器已完成后退，
+   * 采用「撤销后退 → 执行返回守卫 → 守卫放行后重新后退」策略：
+   * 1. 记录当前页 URL（`h5BackUrl`），popstate 后 URL 已变化说明发生了后退；
+   * 2. `history.go(1)` 恢复当前页（触发二次 popstate，命中「回到当前页」分支放行）；
+   * 3. 同步捕获 to/from 执行返回守卫链（避免依赖 uni-app 处理 popstate 后的页面栈时序）；
+   * 4. 守卫放行后经 {@link executeBack} 重新后退（再次触发 popstate，由 `backGuardRunning` 放行）。
+   *
+   * 根页面（无上级页面）不拦截，保留浏览器默认行为（离开站点 / 回上一站点）。
+   */
+  handleH5PopState() {
+    if (this.backGuardRunning) {
+      this.h5BackUrl = location.href;
+      return;
+    }
+    if (location.href === this.h5BackUrl) return;
+    const pages = getCurrentPages();
+    if (pages.length < 2) return;
+    history.go(1);
+    const from = this.routeState.getCurrentRoute();
+    const targetPage = pages[pages.length - 2];
+    if (!targetPage) return;
+    const to = this.matcher.resolve(`/${targetPage.route}`);
+    this.runBackGuardChain(to, from, () => this.executeBack()).catch(() => {
+    });
+  }
+  /**
+   * 执行返回守卫链（onBeforeBack → beforeEach → beforeResolve）
+   *
+   * 全部放行后调用 onPass 执行真正的返回，随后同步路由状态并触发后置钩子。
+   * 任一守卫返回 false 时中止（NAVIGATION_ABORTED）；重定向 / 异常行为与完整导航一致。
+   *
+   * @param to - 返回目标路由（上一页）
+   * @param from - 当前正要离开的路由
+   * @param onPass - 守卫全部放行后执行返回的回调
+   */
+  async runBackGuardChain(to, from, onPass) {
+    const backPass = await this.guardManager.runBeforeBackGuards(to, from);
+    if (!backPass) {
+      const failure = new NavigationFailure(to, from, "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */);
+      this.guardManager.runAfterGuards(to, from, failure);
+      this.triggerErrorHandlers(failure, to, from);
+      return;
+    }
+    const beforeResult = await this.guardManager.runBeforeGuards(to, from);
+    const handled = this.handleGuardResult(beforeResult, to, from, "back", 0, {});
+    if (handled) return;
+    const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from);
+    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, "back", 0, {});
+    if (handledResolve) return;
+    await onPass();
+    this.routeSync.syncCurrentRoute();
+    this.guardManager.runAfterGuards(to, from);
+  }
+  /**
+   * 守卫放行后执行真正的返回（uni.navigateBack）
+   *
+   * 置位 `backGuardRunning`：App 端再次触发 onBackPress、H5 端再次触发 popstate 时据此放行，
+   * 避免守卫重复执行与死循环。
+   */
+  async executeBack() {
+    this.backGuardRunning = true;
+    try {
+      await goBack(1);
+    } finally {
+      this.backGuardRunning = false;
+    }
+  }
+  /**
+   * 按当前路由动态设置 iOS 侧滑返回手势（由全局 mixin 在页面 onShow 时调用）
+   *
+   * 通过 `app.setSideSlipGesture` 回调决定当前页面的 popGesture：
+   * - `'none'`：禁用侧滑返回，使侧滑返回无法绕过守卫（配合 onBackPress 拦截）
+   * - `'close'`：开启原生侧滑返回，保留原生手势体验（侧滑不经过守卫）
+   *
+   * 仅 iOS 平台生效；未配置 `app.setSideSlipGesture` 时不干预手势。
+   */
+  applySideSlipGesture() {
+    const config = this.options?.app?.setSideSlipGesture;
+    if (typeof config !== "function" || !getPlatform().isIOS) return;
+    const value = config(this.routeState.getCurrentRoute());
+    if (value === "none" || value === "close") {
+      plus.webview.currentWebview()?.setStyle({ popGesture: value });
+    }
+  }
+  /**
    * 对指定路由执行守卫链检查（不执行实际导航）
    *
    * 用于冷启动场景：用户通过 H5 URL / 小程序场景值 / App deeplink 直接进入页面时，
@@ -1348,8 +1548,8 @@ var UniRouter = class {
    * @param options - 选项，可传入 onAbort 回调处理守卫中止
    * @returns 守卫放行时 resolve 目标路由；重定向时跳转后 resolve；中止时 reject
    */
-  async guardRoute(location, options) {
-    const target = location ? this.matcher.resolve(location) : this.routeState.getCurrentRoute();
+  async guardRoute(location2, options) {
+    const target = location2 ? this.matcher.resolve(location2) : this.routeState.getCurrentRoute();
     const from = this.routeState.getCurrentRoute();
     const beforeResult = await this.guardManager.runBeforeGuards(target, from);
     const handled = this.handleGuardRouteResult(beforeResult, target, from, options);
@@ -1414,8 +1614,16 @@ var UniRouter = class {
     app.mixin({
       onShow() {
         router.syncRoute();
+        router.applySideSlipGesture();
+      },
+      onBackPress() {
+        return router.handleBackPress();
       }
     });
+    if (getPlatform().isH5) {
+      this.h5BackUrl = location.href;
+      window.addEventListener("popstate", () => this.handleH5PopState());
+    }
     this.routeState.markReady();
   }
   /**
@@ -1442,13 +1650,13 @@ var UniRouter = class {
    * @returns 导航结果（push 模式包含 eventChannel）
    * @throws {NavigationFailure} 导航失败时抛出
    */
-  async performNavigation(location, mode) {
+  async performNavigation(location2, mode) {
     if (this.pendingNavigation) {
       await this.pendingNavigation.catch(() => {
       });
     }
-    this.requirePluginForLocation(location);
-    let enrichedLocation = location;
+    this.requirePluginForLocation(location2);
+    let enrichedLocation = location2;
     for (const hook of this.enrichLocationHooks) {
       enrichedLocation = hook(enrichedLocation);
     }
@@ -1625,9 +1833,9 @@ var UniRouter = class {
    * 当用户传入 params / events / animation 但对应插件未注册时，
    * 抛出 PLUGIN_REQUIRED 错误，帮助用户快速定位问题。
    */
-  requirePluginForLocation(location) {
-    if (typeof location === "string") return;
-    const loc = location;
+  requirePluginForLocation(location2) {
+    if (typeof location2 === "string") return;
+    const loc = location2;
     if ("params" in loc && loc.params && !this.installedPlugins.has("params")) {
       throw new RouterError("PLUGIN_REQUIRED" /* PLUGIN_REQUIRED */, "ParamsPlugin is required to use params. Add ParamsPlugin to createRouter({ plugins: [ParamsPlugin] }).");
     }
@@ -1711,18 +1919,18 @@ function useLink(options) {
 
 // src/plugins/params/index.ts
 var PLUGIN_DATA_KEY = "params";
-function enrichLocationWithParams(location, paramsManager) {
-  if (typeof location === "string") return location;
-  const loc = location;
+function enrichLocationWithParams(location2, paramsManager) {
+  if (typeof location2 === "string") return location2;
+  const loc = location2;
   const hasParams = "params" in loc && loc.params;
-  if (!hasParams || Object.keys(loc.params).length === 0) return location;
+  if (!hasParams || Object.keys(loc.params).length === 0) return location2;
   const params = loc.params;
   const persistent = "persistent" in loc ? loc.persistent : void 0;
   const key = paramsManager.set(params, persistent);
-  return injectQueryKey(location, PARAMS_KEY, key);
+  return injectQueryKey(location2, PARAMS_KEY, key);
 }
-function extractParamsKey(location) {
-  return extractQueryKey(location, PARAMS_KEY);
+function extractParamsKey(location2) {
+  return extractQueryKey(location2, PARAMS_KEY);
 }
 var ParamsPlugin = {
   name: "params",
@@ -1732,8 +1940,8 @@ var ParamsPlugin = {
     if (persistent) {
       paramsManager.setDefaultPersistent(persistent);
     }
-    context.onEnrichLocation((location) => {
-      return enrichLocationWithParams(location, paramsManager);
+    context.onEnrichLocation((location2) => {
+      return enrichLocationWithParams(location2, paramsManager);
     });
     context.onAfterResolve((enrichedLocation, pluginData) => {
       const paramsKey = extractParamsKey(enrichedLocation);
@@ -1762,9 +1970,9 @@ var ParamsPlugin = {
 
 // src/plugins/animation/index.ts
 var PLUGIN_DATA_KEY2 = "animation";
-function extractAnimation(location) {
-  if (typeof location === "string") return void 0;
-  if (typeof location === "object" && "animation" in location) return location.animation;
+function extractAnimation(location2) {
+  if (typeof location2 === "string") return void 0;
+  if (typeof location2 === "object" && "animation" in location2) return location2.animation;
   return void 0;
 }
 var AnimationPlugin = {
@@ -1913,25 +2121,25 @@ function getOrCreateChannel(navId) {
   return channel;
 }
 var PLUGIN_DATA_KEY3 = "channel";
-function extractEvents(location) {
-  if (typeof location === "string") return void 0;
-  if (typeof location === "object" && "events" in location) return location.events;
+function extractEvents(location2) {
+  if (typeof location2 === "string") return void 0;
+  if (typeof location2 === "object" && "events" in location2) return location2.events;
   return void 0;
 }
-function enrichLocationWithNavId(location, navId) {
-  return injectQueryKey(location, NAV_ID_KEY, navId);
+function enrichLocationWithNavId(location2, navId) {
+  return injectQueryKey(location2, NAV_ID_KEY, navId);
 }
-function extractNavId(location) {
-  return extractQueryKey(location, NAV_ID_KEY);
+function extractNavId(location2) {
+  return extractQueryKey(location2, NAV_ID_KEY);
 }
 var ChannelPlugin = {
   name: "channel",
   install(context, options) {
     const useUniEventChannel = options.useUniEventChannel ?? false;
     if (useUniEventChannel) {
-      context.onEnrichLocation((location) => {
+      context.onEnrichLocation((location2) => {
         const navId = generateNavId();
-        return enrichLocationWithNavId(location, navId);
+        return enrichLocationWithNavId(location2, navId);
       });
     }
     context.onAfterResolve((enrichedLocation, pluginData) => {

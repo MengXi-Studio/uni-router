@@ -151,7 +151,7 @@ watch(
 
 ### 配合 onShow 同步状态
 
-物理返回键、浏览器后退不经过路由器，`route` 不会自动更新。需在 `onShow` 中调用 `syncRoute()`：
+App 物理返回键、H5 浏览器后退经返回守卫链处理，页面切换后全局 mixin 已在 `onShow` 自动调用 `syncRoute()`，`route` 自动更新，**通常无需手动调用**。如需在 `onLoad`（早于 `onShow`）中立即读取路由信息，可手动调用一次：
 
 ```vue
 <script setup lang="ts">
@@ -204,7 +204,7 @@ export const useUserStore = defineStore('user', () => {
 | 响应式 | ✅ | ✅ |
 | `params` | URL 路径参数（如 `/user/:id`） | 内存参数（不暴露 URL） |
 | 类型解析方法 | ❌ | `queryInt()` / `queryNumber()` / `queryBool()` |
-| 物理返回同步 | 自动 | 需手动 `syncRoute()` |
+| 物理返回同步 | 自动 | 自动（全局 mixin 在 `onShow` 自动 `syncRoute()`） |
 
 ## 下一步
 

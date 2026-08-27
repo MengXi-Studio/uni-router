@@ -1,3 +1,28 @@
+## 2.6.0（2026-08-27）
+
+### 新增
+
+- **全局返回守卫 `onBeforeBack`** - 新增 `router.onBeforeBack()` 方法，拦截返回操作（App 物理返回键 / 顶部导航栏返回 / `uni.navigateBack`，H5 浏览器后退按钮 / 后退手势）
+  - 返回 `false` 阻止返回，`true` / `undefined` 放行，支持异步（Promise），不受 uni-app `onBackPress` 同步返回限制
+  - App 端通过全局 mixin 的 `onBackPress` 接入物理返回键 / 导航栏返回 / `navigateBack`；守卫放行后手动返回，通过内部标记避免递归
+  - H5 端通过浏览器 `popstate` 事件接入后退，采用「撤销后退 → 执行守卫链 → 守卫放行后重新后退」策略
+  - 守卫放行后复用 `beforeEach` → `beforeResolve` 守卫链，中止 / 重定向行为与完整导航一致
+  - 新增 `BackGuard` / `BackGuardReturn` 类型
+  - 平台限制：App / H5 可拦截；iOS 侧滑返回需配合 `app.setSideSlipGesture` 禁用手势；小程序原生返回无法拦截
+- **iOS 侧滑返回手势控制（`app.setSideSlipGesture`）** - 新增 `RouterOptions.app` App 平台专属配置，按当前路由动态设置 iOS 侧滑返回手势（对应 `plus.webview.setStyle({ popGesture })`）
+  - `'none'` 禁用侧滑返回，使侧滑返回走守卫链（`onBeforeBack` 生效）
+  - `'close'` 开启原生侧滑返回，保留原生手势体验（侧滑绕过守卫）
+  - 由全局 mixin 在页面 `onShow` 时自动调用，仅 iOS 平台生效
+  - 新增 `AppRouterOptions` / `SideSlipGesture` 类型
+- **`getPlatform()` 平台判断工具** - 统一平台判断入口，基于 `uni.getSystemInfoSync()` 并带缓存
+  - 返回 `PlatformInfo`：`isApp` / `isH5` / `isMp` / `isIOS` / `isAndroid` / `uniPlatform` / `osName`
+  - 兼容旧版本：`uniPlatform` 缺失时回退到 `typeof plus` / `typeof window` 推断 App / H5
+  - 新增 `plus` 全局对象与 `uni.getSystemInfoSync()` 类型声明
+
+### 优化
+
+- **平台判断统一** - InterceptorPlugin 的 `isWebPlatform()` 改用 `getPlatform().isH5`，消除散落的 `typeof window` / `typeof document` 特殊判断
+
 ## 2.5.0（2026-08-23）
 
 ### 新增

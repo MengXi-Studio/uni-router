@@ -77,15 +77,17 @@ async function handleLogout() {
 
 ### Sync State with onShow
 
+The global mixin already calls `syncRoute()` in each page's `onShow`, so a manual call is usually not needed. If you need to read route info in `onLoad` (earlier than `onShow`), call it manually once:
+
 ```vue
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad } from '@dcloudio/uni-app'
 import { useRouter } from '@meng-xi/uni-router'
 
 const router = useRouter()
 
-// Sync state after physical back button
-onShow(() => {
+onLoad(() => {
+  // Earlier than onShow, sync once manually
   router.syncRoute()
 })
 </script>

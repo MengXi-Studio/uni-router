@@ -118,12 +118,11 @@ uni-app 的页面路径在编译时由 `pages.json` 确定，**不支持动态�
 
 ### 状态同步
 
-由于物理返回键和浏览器后退**不经过路由器**，路由器的 `currentRoute` 可能与实际页面不同步。Uni Router 在 `app.use(router)` 安装时注入全局 mixin，在每个页面 `onShow` 时自动调用 `syncRoute()` 同步路由状态，无需手动处理。
+App 物理返回键、H5 浏览器后退会经返回守卫链（`onBeforeBack`）处理；小程序原生返回不经过路由器。页面切换后，Uni Router 在 `app.use(router)` 安装时注入的全局 mixin 会在每个页面 `onShow` 时自动调用 `syncRoute()` 同步 `currentRoute`，无需手动处理。
 
 ```
 用户按物理返回键
-  → uni-app 原生 navigateBack（不经过路由器）
-  → 路由器 currentRoute 仍是旧值
+  → 返回守卫链（onBeforeBack）执行
   → 页面 onShow 自动触发 syncRoute()（全局 mixin）
   → currentRoute 更新为真实页面
 ```
@@ -140,8 +139,8 @@ router.isReady().then(() => {
 })
 ```
 
-::: warning 这是 uni-app 的固有限制
-路由器无法拦截物理返回键和浏览器后退。`syncRoute()` 通过全局 mixin 自动处理同步。`guardRoute()` 需手动调用，通常在 `router.isReady()` 回调中执行。详见[平台兼容性](./compatibility)。
+::: tip 返回拦截与状态同步
+App 物理返回键、H5 浏览器后退可由 `onBeforeBack` 返回守卫拦截（iOS 侧滑需配合 `app.setSideSlipGesture('none')`）；小程序原生返回无法拦截。`syncRoute()` 通过全局 mixin 自动处理同步，`guardRoute()` 需手动调用（通常在 `router.isReady()` 回调中执行）。详见[平台兼容性](./compatibility)。
 :::
 
 ## 设计哲学

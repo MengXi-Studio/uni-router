@@ -19,12 +19,13 @@
 ## Features
 
 - **vue-router-style API** - `push` / `replace` / `relaunch` / `back`
-- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave`, `guardRoute` for cold-start execution, controllable redirect supported
+- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave` / `onBeforeBack`, `guardRoute` for cold-start execution, controllable redirect supported
+- **Back Interception** - Back operations can be intercepted by guards: App hardware back / navigation-bar back / `navigateBack`, H5 browser back / back gesture; `setSideSlipGesture` controls the iOS side-slip gesture
 - **Named Routes & Route Meta** - Navigate by `name`, carry custom data via `meta`
 - **Plugin Architecture** - ParamsPlugin / AnimationPlugin / ChannelPlugin / InterceptorPlugin registered on demand
 - **TypeScript Type Hints** - Autocompletion and type checking for route names and paths
 - **Page Communication** - `useUniEventChannel` built-in manager, all navigation methods support `eventChannel`
-- **Declarative Navigation** - `RouterLink` + `TabBar` / `TabBarItem` components with SCSS theming
+- **Declarative Navigation** - `RouterLink` (renders a native `<a>` tag on H5) + `TabBar` / `TabBarItem` components with SCSS theming
 - **Page Params** - `params` passes complex data without URL exposure, auto-preserved after `back()`
 - **Query Enhancement** - `queryInt()` / `queryNumber()` / `queryBool()`
 - **Navigation Animation** - `push` / `replace` / `back` support animation params, App only

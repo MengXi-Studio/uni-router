@@ -201,13 +201,8 @@ router.beforeEach((to, from) => {
 })
 ```
 
-::: warning Physical Back Button Cannot Be Intercepted
-`back()` only intercepts **programmatic** calls. Physical back button (Android), browser back (H5), mini-program top-left return **directly trigger native `navigateBack`**, bypassing the router, so guards cannot intercept them.
-
-Solutions:
-1. The router registers a global mixin in `install()` that automatically calls `router.syncRoute()` in each page's `onShow` to sync state (no manual call needed)
-2. Do after-the-fact handling in `onRouteChange`
-3. App can listen to `onBackPress` to intercept physical back
+::: tip Back Guard
+`back()` runs the full back guard chain (`onBeforeBack` → `beforeEach` → `beforeResolve`). App physical back / navigation-bar back and H5 browser back are also wired into the same chain, so you can intercept them uniformly with `router.onBeforeBack()`. Mini-program native back cannot be intercepted; pair with `onRouteChange` for after-the-fact handling. See [Guards - Back Guard](./guards#back-guard-onbeforeback).
 :::
 
 ## RouteLocationRaw

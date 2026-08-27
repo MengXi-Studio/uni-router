@@ -200,13 +200,8 @@ router.beforeEach((to, from) => {
 })
 ```
 
-::: warning 物理返回键无法拦截
-`back()` 仅拦截**编程式**调用。物理返回键（Android）、浏览器后退（H5）、小程序左上角返回**直接触发原生 `navigateBack`**，不经过路由器，守卫无法拦截。
-
-应对方案：
-1. 路由器在 `install()` 时已注册全局 mixin，会在每个页面 `onShow` 自动调用 `router.syncRoute()` 同步状态（无需手动调用）
-2. 在 `onRouteChange` 中做事后处理
-3. App 端可监听 `onBackPress` 拦截物理返回键
+::: tip 返回守卫
+`back()` 会执行完整返回守卫链（`onBeforeBack` → `beforeEach` → `beforeResolve`）。App 物理返回键 / 导航栏返回、H5 浏览器后退也已接入同一守卫链，可用 `router.onBeforeBack()` 统一拦截。小程序原生返回无法拦截，可配合 `onRouteChange` 事后处理。详见[守卫 - 返回守卫](./guards#返回守卫-onbeforeback)。
 :::
 
 ## 路由位置 RouteLocationRaw

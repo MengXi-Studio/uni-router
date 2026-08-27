@@ -165,13 +165,8 @@ await router.back(2)
 await router.back(1, { type: 'slide-out-right', duration: 500 })
 ```
 
-::: warning Physical back button cannot be intercepted
-`back()` only intercepts **programmatic** calls. Physical back button (Android), browser back (H5), and mini-program top-left back **directly trigger native `navigateBack`**, bypassing the router, so guards cannot intercept them.
-
-Mitigation:
-1. The router registers a global mixin in `install()` that automatically calls `router.syncRoute()` in each page's `onShow` to sync state (no manual call needed)
-2. Do post-processing in `onRouteChange`
-3. On App, listen to `onBackPress` to intercept the physical back button
+::: tip Back Guard
+`back()` runs the full back guard chain: `onBeforeBack` → `beforeEach` → `beforeResolve`. App physical back / navigation-bar back and H5 browser back are also wired into the same chain via the global mixin's `onBackPress` / `popstate`, so you can intercept them uniformly with [`onBeforeBack()`](#onbeforeback). Mini-program native back cannot be intercepted.
 :::
 
 ## Guard Registration Methods
@@ -253,10 +248,46 @@ router.afterEach((to, from, failure) => {
 `afterEach` is only triggered after a **complete navigation** (through before guards). The following scenarios **do not trigger** `afterEach`:
 
 1. State sync via `syncRoute()` / `syncCurrentRoute()`
-2. Physical back button, browser back (bypass the router)
 
-To listen to all route changes (including state sync), use [`onRouteChange()`](#onroutechange).
+Physical back button and browser back go through the back guard chain, and `afterEach` triggers normally after the guards pass. To listen to all route changes (including state sync), use [`onRouteChange()`](#onroutechange).
 :::
+
+### onBeforeBack()
+
+Register a global back guard, executed when a **back operation** is triggered (App physical back / navigation-bar back / `uni.navigateBack`, H5 browser back / back gesture, `router.back()`).
+
+```ts
+onBeforeBack(guard: BackGuard): () => void
+```
+
+- **guard**: `(to: RouteLocation, from: RouteLocation) => boolean | void | Promise<boolean | void>`
+- **Returns**: A function to remove this guard
+- Return `false` to block back; `true` / `undefined` to allow; supports async
+
+```ts
+const remove = router.onBeforeBack((to, from) => {
+  if (hasUnsavedChanges()) {
+    uni.showToast({ title: 'Unsaved changes', icon: 'none' })
+    return false // Block back
+  }
+  // return undefined or true to allow
+})
+
+// Remove when no longer needed
+remove()
+```
+
+After the back guard passes, the `beforeEach → beforeResolve` chain is reused (supports abort / redirect).
+
+::: tip Platform Support
+- App: wired via the global mixin's `onBackPress`, covering the physical back button, navigation-bar back button, and `uni.navigateBack`
+- H5: wired via the `popstate` event, covering the browser back button and back gesture
+- Mini-program: only `router.back()` / programmatic `uni.navigateBack` (requires `InterceptorPlugin`); native back cannot be intercepted
+
+iOS swipe-back bypasses guards by default; configure `app.setSideSlipGesture` (see [RouterOptions.app](./type-router-options#app)).
+:::
+
+See [Route Guards - Back Guard](../guide/guards#back-guard-onbeforeback).
 
 ## Route Query Methods
 

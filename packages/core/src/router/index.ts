@@ -12,7 +12,7 @@ import { createRouteMatcher } from '@/matcher'
 import { createParamsManager } from '@/plugins/params/params-manager'
 import type { ParamsManager } from '@/plugins/params/params-manager'
 import { warn } from '@/utils/general'
-import { buildFullPath, createRouteLocation } from '@/utils'
+import { buildFullPath, createRouteLocation, getPlatform } from '@/utils'
 import { isSameRouteLocation } from './location'
 import { createRouteSync, type RouteSync } from './sync'
 
@@ -42,6 +42,7 @@ type AppInstallHook = (app: App) => void
  * 核心仅提供基础导航能力，所有扩展功能通过插件注册的 hook 实现。
  */
 class UniRouter implements Router {
+	private options: RouterOptions
 	private routeState = createRouteState()
 	private guardManager = createGuardManager()
 	private paramsManager: ParamsManager = createParamsManager(false)
@@ -50,6 +51,12 @@ class UniRouter implements Router {
 	private errorHandlers: RouterOnError[] = []
 	private pendingNavigation: Promise<NavigationResult | RouteLocation | void> | null = null
 	private installedPlugins: Set<string> = new Set()
+
+	/** 返回守卫执行中标记：onBackPress 手动返回时置位，避免递归 */
+	private backGuardRunning = false
+
+	/** H5 平台返回守卫：当前页面 URL，用于判断 popstate 是否为后退 */
+	private h5BackUrl = ''
 
 	// 插件 hook 数组
 	private enrichLocationHooks: EnrichLocationHook[] = []
@@ -64,6 +71,7 @@ class UniRouter implements Router {
 	 * @param options - 路由器初始化选项
 	 */
 	constructor(options: RouterOptions) {
+		this.options = options
 		this.guardManager = createGuardManager(options.guardTimeout)
 		this.paramsManager = createParamsManager(false)
 		this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager)
@@ -245,6 +253,15 @@ class UniRouter implements Router {
 		// 插件数据（back 模式不经过 enrichLocation/afterResolve，pluginData 为空）
 		const pluginData: Record<string, any> = {}
 
+		// 执行返回守卫（onBeforeBack），任一返回 false 则阻止返回
+		const backPass = await this.guardManager.runBeforeBackGuards(to, from)
+		if (!backPass) {
+			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_ABORTED)
+			this.guardManager.runAfterGuards(to, from, failure)
+			this.triggerErrorHandlers(failure, to, from)
+			return Promise.reject(failure)
+		}
+
 		// 执行守卫链
 		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
 		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0, pluginData)
@@ -282,6 +299,8 @@ class UniRouter implements Router {
 		const animation = navOptions.animation
 
 		// 守卫通过，执行返回
+		// 置位 backGuardRunning：执行 goBack 时会再次触发 onBackPress，据此放行避免递归
+		this.backGuardRunning = true
 		try {
 			await goBack(delta, animation)
 			this.routeSync.syncCurrentRoute()
@@ -295,6 +314,8 @@ class UniRouter implements Router {
 			this.guardManager.runAfterGuards(to, from, failure)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
+		} finally {
+			this.backGuardRunning = false
 		}
 	}
 
@@ -323,6 +344,21 @@ class UniRouter implements Router {
 	 */
 	afterEach(guard: Parameters<Router['afterEach']>[0]): () => void {
 		return this.guardManager.afterEach(guard)
+	}
+
+	/**
+	 * 注册全局返回守卫，在返回操作触发时执行
+	 *
+	 * 覆盖 App 端物理返回键、顶部导航栏返回按钮、`uni.navigateBack`
+	 * （通过全局 mixin 的 onBackPress 接入，见 {@link handleBackPress}），
+	 * 以及 H5 端浏览器后退按钮 / 后退手势（通过 popstate 事件接入，见 {@link handleH5PopState}）。
+	 * 支持异步（Promise），返回 `false` 阻止返回，`true` / `undefined` 放行。
+	 *
+	 * @param guard - 返回守卫函数
+	 * @returns 用于移除此守卫的函数
+	 */
+	onBeforeBack(guard: Parameters<Router['onBeforeBack']>[0]): () => void {
+		return this.guardManager.onBeforeBack(guard)
 	}
 
 	/**
@@ -410,6 +446,164 @@ class UniRouter implements Router {
 	 */
 	syncRoute(): void {
 		this.routeSync.syncRoute()
+	}
+
+	/**
+	 * 处理页面 onBackPress 生命周期（由全局 mixin 注入到每个页面）
+	 *
+	 * 覆盖 App 端物理返回键、顶部导航栏返回按钮、外部 `uni.navigateBack` 调用。
+	 * 返回 `true` 阻止默认返回并异步执行返回守卫链；返回 `false` / `undefined` 放行默认返回。
+	 *
+	 * **递归保护**：路由器发起的返回（`router.back()` 或本方法守卫放行后的手动返回）会再次触发
+	 * `onBackPress`，通过 `backGuardRunning` 标记放行，避免守卫重复执行与死循环。
+	 *
+	 * **平台限制**：仅 App 平台接入。iOS 侧滑返回不触发 `onBackPress`，
+	 * 需配合 `app.setSideSlipGesture` 禁用手势后由本方法接管；
+	 * H5 浏览器后退由 popstate 事件接入（见 {@link handleH5PopState}），
+	 * 小程序返回不支持拦截。
+	 *
+	 * @returns 返回 true 阻止默认返回，返回 false / undefined 放行
+	 */
+	handleBackPress(): boolean | undefined {
+		// 仅 App 平台拦截；H5 / 小程序保持默认返回行为
+		if (!getPlatform().isApp) return undefined
+
+		// 路由器发起的返回（守卫已通过）→ 放行，避免递归
+		if (this.backGuardRunning) return false
+
+		// 根页面（无上级页面）→ 放行默认行为（如 Android 物理键退出应用）
+		const pages = getCurrentPages()
+		if (pages.length < 2) return false
+
+		// 阻止默认返回，异步执行返回守卫链，放行后手动返回
+		this.runBackGuardFromBackPress().catch(() => {
+			// 守卫异常已由 onError 处理
+		})
+		return true
+	}
+
+	/**
+	 * 由 onBackPress 触发的返回守卫流程（异步执行，App 端）
+	 *
+	 * 执行顺序：onBeforeBack → beforeEach → beforeResolve，全部放行后执行 `uni.navigateBack`。
+	 * 由于 `onBackPress` 必须同步返回，本方法以 fire-and-forget 方式运行；
+	 * 守卫放行后手动返回时会再次触发 `onBackPress`，由 `backGuardRunning` 放行。
+	 */
+	private async runBackGuardFromBackPress(): Promise<void> {
+		const from = this.routeState.getCurrentRoute()
+		const pages = getCurrentPages()
+		const targetPage = pages[pages.length - 2]
+		if (!targetPage) return
+		const to = this.matcher.resolve(`/${targetPage.route}`)
+		await this.runBackGuardChain(to, from, () => this.executeBack())
+	}
+
+	/**
+	 * H5 平台返回守卫入口（由浏览器 popstate 事件触发，注册见 {@link install}）
+	 *
+	 * 覆盖浏览器后退按钮 / 后退手势。popstate 触发时浏览器已完成后退，
+	 * 采用「撤销后退 → 执行返回守卫 → 守卫放行后重新后退」策略：
+	 * 1. 记录当前页 URL（`h5BackUrl`），popstate 后 URL 已变化说明发生了后退；
+	 * 2. `history.go(1)` 恢复当前页（触发二次 popstate，命中「回到当前页」分支放行）；
+	 * 3. 同步捕获 to/from 执行返回守卫链（避免依赖 uni-app 处理 popstate 后的页面栈时序）；
+	 * 4. 守卫放行后经 {@link executeBack} 重新后退（再次触发 popstate，由 `backGuardRunning` 放行）。
+	 *
+	 * 根页面（无上级页面）不拦截，保留浏览器默认行为（离开站点 / 回上一站点）。
+	 */
+	private handleH5PopState(): void {
+		// 路由器发起的返回（守卫已通过）→ 放行，并更新当前页 URL
+		if (this.backGuardRunning) {
+			this.h5BackUrl = location.href
+			return
+		}
+
+		// 恢复当前页的二次 popstate / 前进回当前页 → 放行
+		if (location.href === this.h5BackUrl) return
+
+		// 根页面（无上级页面）→ 放行浏览器默认行为
+		const pages = getCurrentPages()
+		if (pages.length < 2) return
+
+		// 撤销浏览器后退，恢复当前页
+		history.go(1)
+
+		// 同步捕获 to/from 后执行返回守卫链
+		const from = this.routeState.getCurrentRoute()
+		const targetPage = pages[pages.length - 2]
+		if (!targetPage) return
+		const to = this.matcher.resolve(`/${targetPage.route}`)
+		this.runBackGuardChain(to, from, () => this.executeBack()).catch(() => {
+			// 守卫异常已由 onError 处理
+		})
+	}
+
+	/**
+	 * 执行返回守卫链（onBeforeBack → beforeEach → beforeResolve）
+	 *
+	 * 全部放行后调用 onPass 执行真正的返回，随后同步路由状态并触发后置钩子。
+	 * 任一守卫返回 false 时中止（NAVIGATION_ABORTED）；重定向 / 异常行为与完整导航一致。
+	 *
+	 * @param to - 返回目标路由（上一页）
+	 * @param from - 当前正要离开的路由
+	 * @param onPass - 守卫全部放行后执行返回的回调
+	 */
+	private async runBackGuardChain(to: RouteLocation, from: RouteLocation, onPass: () => Promise<void>): Promise<void> {
+		// 返回守卫（onBeforeBack）
+		const backPass = await this.guardManager.runBeforeBackGuards(to, from)
+		if (!backPass) {
+			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_ABORTED)
+			this.guardManager.runAfterGuards(to, from, failure)
+			this.triggerErrorHandlers(failure, to, from)
+			return
+		}
+
+		// 前置守卫与解析守卫（复用完整导航的守卫结果处理，支持中止/重定向）
+		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
+		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0, {})
+		if (handled) return
+
+		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
+		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'back', 0, {})
+		if (handledResolve) return
+
+		// 守卫通过，执行返回
+		await onPass()
+		this.routeSync.syncCurrentRoute()
+		this.guardManager.runAfterGuards(to, from)
+	}
+
+	/**
+	 * 守卫放行后执行真正的返回（uni.navigateBack）
+	 *
+	 * 置位 `backGuardRunning`：App 端再次触发 onBackPress、H5 端再次触发 popstate 时据此放行，
+	 * 避免守卫重复执行与死循环。
+	 */
+	private async executeBack(): Promise<void> {
+		this.backGuardRunning = true
+		try {
+			await goBack(1)
+		} finally {
+			this.backGuardRunning = false
+		}
+	}
+
+	/**
+	 * 按当前路由动态设置 iOS 侧滑返回手势（由全局 mixin 在页面 onShow 时调用）
+	 *
+	 * 通过 `app.setSideSlipGesture` 回调决定当前页面的 popGesture：
+	 * - `'none'`：禁用侧滑返回，使侧滑返回无法绕过守卫（配合 onBackPress 拦截）
+	 * - `'close'`：开启原生侧滑返回，保留原生手势体验（侧滑不经过守卫）
+	 *
+	 * 仅 iOS 平台生效；未配置 `app.setSideSlipGesture` 时不干预手势。
+	 */
+	private applySideSlipGesture(): void {
+		const config = this.options?.app?.setSideSlipGesture
+		// 仅 iOS 平台存在侧滑返回手势；Android 使用物理返回键，由 onBackPress 拦截
+		if (typeof config !== 'function' || !getPlatform().isIOS) return
+		const value = config(this.routeState.getCurrentRoute())
+		if (value === 'none' || value === 'close') {
+			plus.webview.currentWebview()?.setStyle({ popGesture: value })
+		}
 	}
 
 	/**
@@ -503,13 +697,26 @@ class UniRouter implements Router {
 			hook(app)
 		}
 
-		// 通过全局 mixin 在页面 onShow 时自动同步路由状态
+		// 通过全局 mixin 在页面 onShow 时自动同步路由状态，
+		// 并通过 onBackPress 接入返回守卫（App 端物理返回键 / 导航栏返回 / navigateBack）
+		// 注意：不使用 #ifdef 条件编译——npm 发布产物由 tsup 构建，不会处理该注释；
+		// 平台判断在 handleBackPress / applySideSlipGesture 内部通过 getPlatform() 运行时完成。
 		const router = this
 		app.mixin({
 			onShow() {
 				router.syncRoute()
+				router.applySideSlipGesture()
+			},
+			onBackPress() {
+				return router.handleBackPress()
 			}
 		})
+
+		// H5 平台通过浏览器 popstate 事件接入返回守卫（后退按钮 / 后退手势）
+		if (getPlatform().isH5) {
+			this.h5BackUrl = location.href
+			window.addEventListener('popstate', () => this.handleH5PopState())
+		}
 
 		// 在 install 时标记路由器就绪
 		this.routeState.markReady()

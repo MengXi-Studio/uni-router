@@ -129,6 +129,35 @@ onBeforeRouteLeave((to, from) => {
 })
 ```
 
+### Back Guard
+
+Registered via `router.onBeforeBack`, executed when a **back operation** is triggered (App physical back / navigation-bar back / `uni.navigateBack`, H5 browser back / back gesture, `router.back()`):
+
+```ts
+type BackGuardReturn = boolean | void | Promise<boolean | void>
+
+type BackGuard = (to: RouteLocation, from: RouteLocation) => BackGuardReturn
+```
+
+- Return `false` to block back; `true` / `undefined` to allow
+- Supports async (Promise)
+- After the back guard passes, the `beforeEach → beforeResolve` chain is reused
+
+```ts
+router.onBeforeBack((to, from) => {
+  if (hasUnsavedChanges()) return false // Block back
+  // return undefined or true to allow
+})
+
+// Remove the guard
+const remove = router.onBeforeBack(guard)
+remove()
+```
+
+::: tip Platform Support
+App wires the back guard via `onBackPress`, H5 via the `popstate` event; mini-program native back (capsule/physical key/swipe) cannot be intercepted. For iOS swipe, pair with `app.setSideSlipGesture('none')` to disable the gesture. See [Guards - Back Guard](../guide/guards#back-guard-onbeforeback).
+:::
+
 ## Execution Order
 
 The guard execution order for a complete navigation:
@@ -144,6 +173,8 @@ The guard execution order for a complete navigation:
    ↓
 5. afterEach (global after hook, in registration order)
 ```
+
+For back operations (physical back / browser back / `router.back()`), the order is `onBeforeBack → beforeEach → beforeResolve → uni.navigateBack → afterEach`, i.e. the back guard runs before the global before guards.
 
 ::: warning Behavior after guard abort
 - Any guard returns `false` or throws an error: navigation aborts, subsequent guards don't execute
