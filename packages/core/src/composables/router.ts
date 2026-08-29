@@ -1,6 +1,6 @@
 import { inject } from 'vue'
 import type { Router } from '@/types'
-import { RouterErrorCode } from '@/types/error'
+import { RouterErrorCode } from '@/enums'
 import { RouterError } from '@/errors'
 import { ROUTER_SYMBOL } from '@/router'
 

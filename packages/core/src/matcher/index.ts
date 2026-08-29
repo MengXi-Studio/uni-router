@@ -1,5 +1,5 @@
 import type { RouteConfig, RouteLocation, RouteLocationNamedRaw, RouteLocationPathRaw, RouteLocationRaw, RouteMeta, ParamObject } from '@/types/route'
-import { RouterErrorCode } from '@/types/error'
+import { RouterErrorCode } from '@/enums'
 import { RouterError } from '@/errors'
 import { buildFullPath, parseQuery, normalizePath, createRouteLocation, serializeQuery } from '@/utils'
 import { warn, isObject } from '@/utils/general'

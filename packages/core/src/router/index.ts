@@ -1,7 +1,7 @@
 import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, NavigationResult, EventChannel, Router, RouterOnError, RouterOptions, GuardRouteOptions } from '@/types'
 import type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from '@/types/plugin'
 import type { App } from 'vue'
-import { RouterErrorCode } from '@/types/error'
+import { RouterErrorCode } from '@/enums'
 import { NavigationFailure, RouterError, isUniApiError } from '@/errors'
 import { createGuardManager, type GuardResult } from '@/guard'
 import { navigateTo, replaceTo, relaunchTo, goBack } from '@/navigation'

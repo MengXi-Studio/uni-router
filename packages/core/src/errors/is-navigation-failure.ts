@@ -1,5 +1,5 @@
 import { NavigationFailure } from './navigation-failure'
-import type { RouterErrorCode } from '@/types/error'
+import type { RouterErrorCode } from '@/enums'
 
 /**
  * 检查一个错误是否为特定类型的导航失败

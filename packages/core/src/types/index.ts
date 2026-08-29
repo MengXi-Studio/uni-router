@@ -26,6 +26,6 @@ export type { RouterOnError, RouterOptions, Router, GuardRouteOptions, AppRouter
 
 export type { RouterError, UniApiCause, UniApiError, NavigationFailure } from './error'
 
-export { RouterErrorCode } from './error'
+export { RouterErrorCode } from '@/enums'
 
 export type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from './plugin'

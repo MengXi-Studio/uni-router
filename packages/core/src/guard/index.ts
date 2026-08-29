@@ -1,5 +1,5 @@
 import type { NavigationGuard, NavigationGuardReturn, NavigationRedirect, NavigationRedirectMode, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw, BackGuard } from '@/types'
-import { RouterErrorCode } from '@/types/error'
+import { RouterErrorCode } from '@/enums'
 import type { NavigationFailure } from '@/types/error'
 import { warn } from '@/utils/general'
 

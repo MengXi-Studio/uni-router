@@ -51,4 +51,5 @@ export type { UseLinkOptions, UseLinkReturn } from '@/composables/link'
 export type { NavigationAnimation, UniAnimationType } from '@/types'
 
 export { RouterError, NavigationFailure, UniApiError, isNavigationFailure } from '@/errors'
-export { RouterErrorCode, DEFAULT_ANIMATION_DURATION } from '@/types'
+export { RouterErrorCode } from '@/enums'
+export { DEFAULT_ANIMATION_DURATION } from '@/types'

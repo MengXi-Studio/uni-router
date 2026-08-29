@@ -1,5 +1,6 @@
 import type { RouteLocation } from '@/types/route'
-import type { RouterErrorCode, UniApiError } from '@/types/error'
+import type { RouterErrorCode } from '@/enums'
+import type { UniApiError } from '@/types/error'
 import { RouterError } from './router-error'
 
 /**
