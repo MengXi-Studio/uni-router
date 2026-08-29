@@ -1,5 +1,6 @@
 export { getPlatform } from './platform'
 export type { PlatformInfo } from './type'
+export { generateRandomId, generateUniqueId } from './id'
 export { buildFullPath, parseQuery, normalizePath } from './path'
 export { warn, isObject, safeGetCurrentPages } from './general'
 export { serializeQueryValue, serializeQuery, isSameQuery, createRouteLocation, createStartLocation } from './query'

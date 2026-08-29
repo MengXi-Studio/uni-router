@@ -1,6 +1,7 @@
 import type { RouterPlugin, PluginContext } from '@/types/plugin'
 import type { RouteLocationRaw, EventChannel, EventListeners, RouterOptions } from '@/types'
-import { UniEventChannel, generateNavId, noopChannel } from './uni-event-channel'
+import { UniEventChannel, noopChannel } from './uni-event-channel'
+import { generateUniqueId } from '@/utils/id'
 import { NAV_ID_KEY } from '@/constants'
 import { registerChannel, destroyChannel, getOrCreateChannel } from './registry'
 import { injectQueryKey, extractQueryKey } from '@/utils/route'
@@ -9,7 +10,7 @@ import { warn } from '@/utils/general'
 import { onUnmounted } from 'vue'
 
 // Re-export implementation code for external use
-export { UniEventChannel, generateNavId, wrapEventName, noopChannel } from './uni-event-channel'
+export { UniEventChannel, wrapEventName, noopChannel } from './uni-event-channel'
 export { NAV_ID_KEY } from '@/constants'
 export { registerChannel, getRegisteredChannel, destroyChannel, hasChannel, getOrCreateChannel } from './registry'
 
@@ -59,7 +60,7 @@ export const ChannelPlugin: RouterPlugin = {
 		// onEnrichLocation: useUniEventChannel 模式下生成 navId 并注入 query
 		if (useUniEventChannel) {
 			context.onEnrichLocation(location => {
-				const navId = generateNavId()
+				const navId = generateUniqueId('nav-')
 				return enrichLocationWithNavId(location, navId)
 			})
 		}

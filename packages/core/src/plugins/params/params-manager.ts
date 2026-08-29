@@ -1,20 +1,8 @@
 import type { ParamObject } from '@/types/route'
 import { warn, safeGetCurrentPages } from '@/utils/general'
+import { generateRandomId } from '@/utils/id'
 import { PARAMS_KEY, PARAMS_STORAGE_PREFIX } from '@/constants'
 import type { ParamsManager } from './type'
-
-/**
- * 生成短随机 ID
- *
- * 格式：pk_ + 6位十六进制随机数（如 pk_a3f8d2）
- * 碰撞概率：16^6 ≈ 1677万分之一，足够用于单次导航
- */
-function generateKey(): string {
-	const hex = Math.floor(Math.random() * 0xffffff)
-		.toString(16)
-		.padStart(6, '0')
-	return `pk_${hex}`
-}
 
 /**
  * 检查指定 params key 对应的页面是否仍在页面栈中
@@ -51,7 +39,7 @@ export function createParamsManager(defaultPersistent: boolean): ParamsManager {
 
 	function set(params: ParamObject, persistent?: boolean): string {
 		const useStorage = persistent ?? currentDefaultPersistent
-		const key = generateKey()
+		const key = generateRandomId('pk_')
 
 		// 校验可序列化性
 		try {

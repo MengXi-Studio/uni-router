@@ -2,16 +2,6 @@ import type { EventChannel } from '@/types'
 import { NAV_EVENT_PREFIX } from '@/constants'
 
 /**
- * 生成唯一导航 ID
- *
- * 格式：nav-<时间戳>-<自增序号>，用于隔离每次导航的事件通道
- */
-let navIdSeq = 0
-export function generateNavId(): string {
-	return `nav-${Date.now()}-${++navIdSeq}`
-}
-
-/**
  * 包装事件名，加入 navId 前缀以隔离不同导航的事件
  *
  * 格式：uni-router:<navId>:<eventName>
