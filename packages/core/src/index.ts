@@ -46,7 +46,7 @@ export type {
 } from '@/types'
 
 // 组合式 API 类型
-export type { UseLinkOptions, UseLinkReturn } from '@/composables/link'
+export type { UseLinkOptions, UseLinkReturn } from '@/types'
 
 // 插件增强的类型（通过模块增强添加到核心类型）
 export type { NavigationAnimation, UniAnimationType } from '@/types'

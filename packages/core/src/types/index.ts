@@ -29,3 +29,5 @@ export type { RouterError, UniApiCause, UniApiError, NavigationFailure } from '.
 export { RouterErrorCode } from '@/enums'
 
 export type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from './plugin'
+
+export type { UseLinkOptions, UseLinkReturn } from './composables'
