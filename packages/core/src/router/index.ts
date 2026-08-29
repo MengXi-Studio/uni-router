@@ -11,22 +11,12 @@ import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/n
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
 import { createParamsManager } from '@/plugins/params/params-manager'
-import type { ParamsManager } from '@/plugins/params/params-manager'
+import type { ParamsManager } from '@/plugins/params/type'
 import { warn } from '@/utils/general'
 import { buildFullPath, createRouteLocation, getPlatform } from '@/utils'
 import { isSameRouteLocation } from './location'
-import { createRouteSync, type RouteSync } from './sync'
-
-/**
- * Hook 类型定义
- */
-type EnrichLocationHook = (location: RouteLocationRaw) => RouteLocationRaw
-type AfterResolveHook = (enrichedLocation: RouteLocationRaw, pluginData: Record<string, any>) => void
-type PrepareNavigationHook = (ctx: NavigationPrepareContext) => void
-type CompleteNavigationHook = (ctx: NavigationCompleteContext) => void
-type NavigationAbortHook = (pluginData: Record<string, any>) => void
-type RouteSyncHook = (query: Record<string, string>, params: Record<string, any>) => void
-type AppInstallHook = (app: App) => void
+import { createRouteSync } from './sync'
+import type { RouteSync, EnrichLocationHook, AfterResolveHook, PrepareNavigationHook, CompleteNavigationHook, NavigationAbortHook, RouteSyncHook, AppInstallHook } from './type'
 
 /**
  * uni-app 路由器实现类

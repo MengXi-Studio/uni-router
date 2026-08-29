@@ -1,4 +1,4 @@
-import type { RouteMeta, NavigationAnimation, EventChannel, EventListeners } from '@/types/route'
+import type { NavigationAnimation, EventChannel, EventListeners } from '@/types/route'
 import type { UniApiCause } from '@/types/error'
 import { buildFullPath } from '@/utils/path'
 import { warn } from '@/utils/general'
@@ -6,27 +6,7 @@ import { getPlatform } from '@/utils'
 import { markRouterCall } from '@/plugins/interceptor/install'
 import { animatePageEnter, animatePageExit } from '@/plugins/animation/h5'
 import { UniApiError } from '@/errors/uni-api-error'
-
-/**
- * uni 导航 API 的统一选项
- */
-export interface UniNavigationOptions {
-	/** 目标页面路径 */
-	path: string
-	/** 路由元信息 */
-	meta: RouteMeta
-	/** 查询参数 */
-	query?: Record<string, string>
-	/** 导航动画（仅 App 端生效），覆盖 meta.animation */
-	animation?: NavigationAnimation
-	/**
-	 * 页面间通信事件监听器（仅 push 时生效）
-	 *
-	 * 对应 uni.navigateTo 的 events 参数，用于监听目标页面通过 eventChannel.emit 发送的事件。
-	 * 其他导航方式不支持 events，传入时将被忽略。
-	 */
-	events?: EventListeners
-}
+import type { UniNavigationOptions } from './type'
 
 /**
  * 将回调风格的 uni API 转换为 Promise

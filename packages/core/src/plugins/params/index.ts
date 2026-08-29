@@ -1,13 +1,13 @@
 import type { RouterPlugin, PluginContext } from '@/types/plugin'
 import type { RouteLocationRaw, RouterOptions, ParamObject } from '@/types'
 import { PARAMS_KEY } from '@/constants'
-import type { ParamsManager } from './params-manager'
+import type { ParamsManager } from './type'
 import { injectQueryKey, extractQueryKey } from '@/utils/route'
 
 // Re-export implementation code for external use
 export { createParamsManager } from './params-manager'
 export { PARAMS_KEY } from '@/constants'
-export type { ParamsManager } from './params-manager'
+export type { ParamsManager } from './type'
 
 /**
  * ParamsPlugin 插件数据键

@@ -1,20 +1,9 @@
 import type { RouteMeta, ParamObject } from '@/types'
-import type { createRouteState } from '@/state'
 import type { RouteMatcher } from '@/matcher'
+import type { RouteState, RouteSync } from './type'
 import { getCurrentPagePath, getCurrentPageQuery } from '@/navigation/context'
 import { buildFullPath, createRouteLocation } from '@/utils'
 import { isSameQuery } from '@/utils/query'
-
-/** 路由状态管理器的类型（从 createRouteState 工厂函数推导） */
-type RouteState = ReturnType<typeof createRouteState>
-
-/** 路由同步模块接口 */
-export interface RouteSync {
-	/** 同步路由状态与实际页面栈（去重：path + query 相同则跳过） */
-	syncRoute(): void
-	/** 根据 uni-app 实际页面栈同步 currentRoute 状态（强制同步，不做去重） */
-	syncCurrentRoute(): void
-}
 
 /**
  * 创建路由同步模块

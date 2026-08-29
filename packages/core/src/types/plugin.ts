@@ -1,7 +1,7 @@
 import type { RouteLocation, RouteLocationRaw, EventChannel } from './route'
 import type { RouterOptions, Router } from './router'
 import type { UniNavigationOptions } from '@/navigation'
-import type { ParamsManager } from '@/plugins/params/params-manager'
+import type { ParamsManager } from '@/plugins/params/type'
 import type { App } from 'vue'
 
 /**
