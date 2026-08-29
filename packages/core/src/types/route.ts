@@ -32,11 +32,6 @@ export type UniAnimationType =
 	| 'pop-out'
 
 /**
- * 动画持续时间默认值（ms），与 uni-app 官方默认值一致
- */
-export const DEFAULT_ANIMATION_DURATION = 300
-
-/**
  * 导航动画配置
  *
  * App 端为原生窗口动画，H5 端为 CSS 过渡（仅 push / back 生效），其他平台自动忽略。

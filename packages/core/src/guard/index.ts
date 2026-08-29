@@ -1,5 +1,6 @@
 import type { NavigationGuard, NavigationGuardReturn, NavigationRedirect, NavigationRedirectMode, PostNavigationGuard, RouteConfig, RouteLocation, RouteLocationRaw, BackGuard } from '@/types'
 import { RouterErrorCode } from '@/enums'
+import { DEFAULT_GUARD_TIMEOUT } from '@/constants'
 import type { NavigationFailure } from '@/types/error'
 import { warn } from '@/utils/general'
 
@@ -10,15 +11,6 @@ import { warn } from '@/utils/general'
  * 未指定时为 undefined，由路由器沿用原始导航方式。
  */
 export type GuardResult = { type: 'next'; redirect?: RouteLocationRaw; mode?: NavigationRedirectMode } | { type: 'abort'; code: RouterErrorCode }
-
-/**
- * 守卫默认超时时间（毫秒）
- *
- * 当守卫函数在此时间内未返回结果或抛出异常时，
- * 将输出警告提示开发者检查守卫逻辑，并自动中止导航以防止永久挂起。
- * 可通过 RouterOptions.guardTimeout 覆盖此默认值。
- */
-const DEFAULT_GUARD_TIMEOUT = 10000
 
 /**
  * 守卫管理器接口，提供全局守卫的注册与执行能力

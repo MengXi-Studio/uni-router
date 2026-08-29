@@ -1,11 +1,6 @@
 import type { ParamObject } from '@/types/route'
 import { warn, safeGetCurrentPages } from '@/utils/general'
-
-/** storage key 前缀 */
-const PARAMS_STORAGE_PREFIX = '__uni_router_params__'
-
-/** URL query 中传递 params key 的字段名 */
-export const PARAMS_KEY = '__params_key'
+import { PARAMS_KEY, PARAMS_STORAGE_PREFIX } from '@/constants'
 
 /**
  * 生成短随机 ID

@@ -1,11 +1,5 @@
 import type { EventChannel } from '@/types'
-
-/**
- * URL query 中传递 navigationId 的字段名
- *
- * 类似 __params_key，syncCurrentRoute 会从 query 中读取并移除，不暴露给用户。
- */
-export const NAV_ID_KEY = '__nav_id'
+import { NAV_EVENT_PREFIX } from '@/constants'
 
 /**
  * 生成唯一导航 ID
@@ -22,7 +16,6 @@ export function generateNavId(): string {
  *
  * 格式：uni-router:<navId>:<eventName>
  */
-const NAV_EVENT_PREFIX = 'uni-router'
 export function wrapEventName(navId: string, event: string): string {
 	return `${NAV_EVENT_PREFIX}:${navId}:${event}`
 }

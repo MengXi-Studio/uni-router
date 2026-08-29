@@ -18,7 +18,7 @@ export type {
 	ParamObject,
 	ParamsInput
 } from './route'
-export { DEFAULT_ANIMATION_DURATION } from './route'
+export { DEFAULT_ANIMATION_DURATION } from '@/constants'
 
 export type { NavigationGuardReturn, NavigationRedirectMode, NavigationRedirect, NavigationGuard, PostNavigationGuard, RouteLeaveGuard, BackGuardReturn, BackGuard } from './guard'
 

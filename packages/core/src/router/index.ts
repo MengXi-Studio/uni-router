@@ -2,6 +2,7 @@ import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, Navigatio
 import type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from '@/types/plugin'
 import type { App } from 'vue'
 import { RouterErrorCode } from '@/enums'
+import { MAX_REDIRECT_DEPTH, ROUTER_SYMBOL } from '@/constants'
 import { NavigationFailure, RouterError, isUniApiError } from '@/errors'
 import { createGuardManager, type GuardResult } from '@/guard'
 import { navigateTo, replaceTo, relaunchTo, goBack } from '@/navigation'
@@ -15,11 +16,6 @@ import { warn } from '@/utils/general'
 import { buildFullPath, createRouteLocation, getPlatform } from '@/utils'
 import { isSameRouteLocation } from './location'
 import { createRouteSync, type RouteSync } from './sync'
-
-/**
- * 最大重定向深度，超过此值将取消导航以防止无限循环
- */
-const MAX_REDIRECT_DEPTH = 10
 
 /**
  * Hook 类型定义
@@ -1019,13 +1015,6 @@ class UniRouter implements Router {
 		}
 	}
 }
-
-/**
- * 路由器注入键，用于 Vue 的 provide/inject 机制
- *
- * @internal 内部使用，不应在应用代码中直接引用
- */
-export const ROUTER_SYMBOL = Symbol('uni-router')
 
 /**
  * 创建 uni-app 路由器实例

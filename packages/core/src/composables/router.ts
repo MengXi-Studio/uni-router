@@ -1,8 +1,8 @@
 import { inject } from 'vue'
 import type { Router } from '@/types'
 import { RouterErrorCode } from '@/enums'
+import { ROUTER_SYMBOL } from '@/constants'
 import { RouterError } from '@/errors'
-import { ROUTER_SYMBOL } from '@/router'
 
 /**
  * 获取当前路由器实例

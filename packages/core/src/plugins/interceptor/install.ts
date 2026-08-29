@@ -1,5 +1,6 @@
 import type { Router, EventListeners, NavigationAnimation, RouteLocationRaw } from '@/types'
 import { getPlatform } from '@/utils'
+import { INTERCEPTED_APIS } from '@/constants'
 import { normalizePath, parseQuery } from '@/utils/path'
 
 /**
@@ -71,9 +72,6 @@ function buildLocation(path: string, query: Record<string, string>, animation?: 
  * 业务代码运行在 jscore/v8 逻辑层（非 webview），不存在 window/document 对象，
  * 行为与小程序一致，走完整的「阻止 + 转发」流程，守卫正常生效。
  */
-
-/** 需要拦截的 uni 导航 API 列表 */
-const INTERCEPTED_APIS = ['navigateTo', 'redirectTo', 'switchTab', 'reLaunch', 'navigateBack'] as const
 
 /**
  * 检测当前是否为 H5 平台

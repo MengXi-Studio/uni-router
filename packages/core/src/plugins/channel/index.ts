@@ -1,6 +1,7 @@
 import type { RouterPlugin, PluginContext } from '@/types/plugin'
 import type { RouteLocationRaw, EventChannel, EventListeners, RouterOptions } from '@/types'
-import { UniEventChannel, generateNavId, noopChannel, NAV_ID_KEY } from './uni-event-channel'
+import { UniEventChannel, generateNavId, noopChannel } from './uni-event-channel'
+import { NAV_ID_KEY } from '@/constants'
 import { registerChannel, destroyChannel, getOrCreateChannel } from './registry'
 import { injectQueryKey, extractQueryKey } from '@/utils/route'
 import { useRouter, getReactiveRoute } from '@/composables'
@@ -8,7 +9,8 @@ import { warn } from '@/utils/general'
 import { onUnmounted } from 'vue'
 
 // Re-export implementation code for external use
-export { UniEventChannel, generateNavId, wrapEventName, noopChannel, NAV_ID_KEY } from './uni-event-channel'
+export { UniEventChannel, generateNavId, wrapEventName, noopChannel } from './uni-event-channel'
+export { NAV_ID_KEY } from '@/constants'
 export { registerChannel, getRegisteredChannel, destroyChannel, hasChannel, getOrCreateChannel } from './registry'
 
 /**

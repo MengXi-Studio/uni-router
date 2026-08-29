@@ -1,4 +1,5 @@
-export { createRouter, ROUTER_SYMBOL } from '@/router'
+export { createRouter } from '@/router'
+export { ROUTER_SYMBOL } from '@/constants'
 export { useRouter, useRoute, onBeforeRouteLeave, useLink } from '@/composables'
 
 // 插件导出（用户需要引入并注册）
@@ -52,4 +53,4 @@ export type { NavigationAnimation, UniAnimationType } from '@/types'
 
 export { RouterError, NavigationFailure, UniApiError, isNavigationFailure } from '@/errors'
 export { RouterErrorCode } from '@/enums'
-export { DEFAULT_ANIMATION_DURATION } from '@/types'
+export { DEFAULT_ANIMATION_DURATION } from '@/constants'

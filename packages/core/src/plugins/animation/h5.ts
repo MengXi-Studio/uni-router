@@ -1,5 +1,5 @@
 import type { NavigationAnimation } from '@/types'
-import { DEFAULT_ANIMATION_DURATION } from '@/types'
+import { DEFAULT_ANIMATION_DURATION } from '@/constants'
 import { getPlatform } from '@/utils'
 
 /**

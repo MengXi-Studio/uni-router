@@ -4,7 +4,7 @@ import { RouterError } from '@/errors'
 import { buildFullPath, parseQuery, normalizePath, createRouteLocation, serializeQuery } from '@/utils'
 import { warn, isObject } from '@/utils/general'
 import type { ParamsManager } from '@/plugins/params/params-manager'
-import { PARAMS_KEY } from '@/plugins/params/params-manager'
+import { PARAMS_KEY } from '@/constants'
 
 /**
  * 路由匹配器接口，负责路由的查找和解析
