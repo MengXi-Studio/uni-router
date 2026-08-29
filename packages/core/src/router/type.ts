@@ -1,6 +1,10 @@
-import type { RouteLocationRaw } from '@/types/route'
+import type { RouteLocation, RouteLocationRaw } from '@/types/route'
+import type { Router, RouterOptions } from '@/types/router'
 import type { NavigationPrepareContext, NavigationCompleteContext } from '@/types/plugin'
+import type { NavigationFailure } from '@/errors'
 import type { createRouteState } from '@/state'
+import type { GuardManager, GuardResult } from '@/guard'
+import type { ParamsManager } from '@/plugins/params/type'
 import type { App } from 'vue'
 
 /**
@@ -52,3 +56,41 @@ export type RouteSyncHook = (query: Record<string, string>, params: Record<strin
  * router.install() 被调用时触发
  */
 export type AppInstallHook = (app: App) => void
+
+/**
+ * 插件 hook 管理器的依赖
+ */
+export interface PluginHookDeps {
+	/** 获取当前路由位置 */
+	getCurrentRoute(): RouteLocation
+	/** 解析路由位置 */
+	resolve(location: RouteLocationRaw): RouteLocation
+	/** 路由器实例 */
+	router: Router
+	/** Params 存储管理器 */
+	paramsManager: ParamsManager
+}
+
+/**
+ * 返回守卫管理器的依赖
+ */
+export interface BackGuardDeps {
+	/** 守卫管理器 */
+	guardManager: GuardManager
+	/** 路由器选项（读取 app.setSideSlipGesture） */
+	options: RouterOptions
+	/** 获取当前路由位置 */
+	getCurrentRoute(): RouteLocation
+	/** 解析页面路径为路由位置 */
+	resolve(location: string): RouteLocation
+	/** 返回后同步当前路由 */
+	syncCurrentRoute(): void
+	/**
+	 * 处理守卫执行结果（abort 时 reject、redirect 时执行导航）
+	 *
+	 * 返回非 null 表示守卫已中止或重定向，本次返回被接管。
+	 */
+	handleGuardResult(result: GuardResult, to: RouteLocation, from: RouteLocation): Promise<unknown> | null
+	/** 触发导航失败错误回调 */
+	onNavigationFailure(failure: NavigationFailure, to: RouteLocation, from: RouteLocation): void
+}
