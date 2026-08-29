@@ -1,22 +1,9 @@
 import type { ParamObject } from '@/types/route'
-import { warn, safeGetCurrentPages } from '@/utils/general'
+import { warn } from '@/utils/general'
 import { generateRandomId } from '@/utils/id'
-import { PARAMS_KEY, PARAMS_STORAGE_PREFIX } from '@/constants'
+import { PARAMS_STORAGE_PREFIX } from '@/constants'
 import type { ParamsManager } from './type'
-
-/**
- * 检查指定 params key 对应的页面是否仍在页面栈中
- *
- * 通过遍历页面栈，检查每个页面的 URL 中是否包含 __params_key=<key>
- */
-function isPageInStack(key: string): boolean {
-	const pages = safeGetCurrentPages()
-	const encodedKey = encodeURIComponent(key)
-	return pages.some(page => {
-		const fullPath: string = page.$page?.fullPath ?? ''
-		return fullPath.includes(`${PARAMS_KEY}=${encodedKey}`)
-	})
-}
+import { isPageInStack } from './helpers'
 
 /**
  * 创建 Params 存储管理器

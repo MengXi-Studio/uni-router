@@ -1,6 +1,7 @@
 import type { NavigationAnimation } from '@/types'
 import { DEFAULT_ANIMATION_DURATION } from '@/constants'
 import { getPlatform } from '@/utils'
+import { getTopPageElement } from './helpers'
 
 /**
  * H5 页面过渡动画的 CSS 关键帧
@@ -73,18 +74,6 @@ const EXIT_KEYFRAMES: Record<string, string> = {
 	'zoom-out': 'mxuni-zoom-out',
 	'zoom-fade-out': 'mxuni-zoom-fade-out',
 	'pop-out': 'mxuni-pop-out'
-}
-
-/**
- * 获取页面栈顶部的 uni-page 元素
- *
- * uni-app H5 将每个页面渲染为 `<uni-page>`，栈顶元素即为当前页面。
- */
-function getTopPageElement(): HTMLElement | null {
-	if (typeof document === 'undefined') return null
-	const pages = document.querySelectorAll('uni-page')
-	if (!pages.length) return null
-	return pages[pages.length - 1] as HTMLElement
 }
 
 /**
