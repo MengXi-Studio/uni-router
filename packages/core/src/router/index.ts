@@ -1,5 +1,5 @@
 import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, NavigationResult, EventChannel, Router, RouterOnError, RouterOptions, GuardRouteOptions } from '@/types'
-import type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from '@/plugin'
+import type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from '@/types/plugin'
 import type { App } from 'vue'
 import { RouterErrorCode } from '@/types/error'
 import { NavigationFailure, RouterError, isUniApiError } from '@/errors'
@@ -276,7 +276,8 @@ class UniRouter implements Router {
 			path: to.path,
 			meta: to.meta,
 			query: { ...to.query },
-			animation: to.meta.animation
+			// meta.animation 需要 AnimationPlugin（未注册时不生效，与 location.animation 门控一致）
+			animation: this.installedPlugins.has('animation') ? to.meta.animation : undefined
 		}
 
 		// 将 back() 的 options 中的 animation 注入 pluginData，供 AnimationPlugin 读取
@@ -844,7 +845,8 @@ class UniRouter implements Router {
 				path: to.path,
 				meta: to.meta,
 				query: queryWithKeys,
-				animation: to.meta.animation
+				// meta.animation 需要 AnimationPlugin（与 location.animation 的 PLUGIN_REQUIRED 门控保持一致），未注册时不生效
+				animation: this.installedPlugins.has('animation') ? to.meta.animation : undefined
 			}
 
 			// 调用 prepareNavigation hooks（插件修改 query 和 navOptions）

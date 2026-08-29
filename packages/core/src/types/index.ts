@@ -28,4 +28,4 @@ export type { RouterError, UniApiCause, UniApiError, NavigationFailure } from '.
 
 export { RouterErrorCode } from './error'
 
-export type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from '@/plugin'
+export type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from './plugin'

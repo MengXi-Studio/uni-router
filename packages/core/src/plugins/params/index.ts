@@ -1,4 +1,4 @@
-import type { RouterPlugin, PluginContext } from '@/plugin'
+import type { RouterPlugin, PluginContext } from '@/types/plugin'
 import type { RouteLocationRaw, RouterOptions, ParamObject } from '@/types'
 import { PARAMS_KEY } from './params-manager'
 import type { ParamsManager } from './params-manager'

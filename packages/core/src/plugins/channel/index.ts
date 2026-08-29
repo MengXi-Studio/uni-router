@@ -1,4 +1,4 @@
-import type { RouterPlugin, PluginContext } from '@/plugin'
+import type { RouterPlugin, PluginContext } from '@/types/plugin'
 import type { RouteLocationRaw, EventChannel, EventListeners, RouterOptions } from '@/types'
 import { UniEventChannel, generateNavId, noopChannel, NAV_ID_KEY } from './uni-event-channel'
 import { registerChannel, destroyChannel, getOrCreateChannel } from './registry'

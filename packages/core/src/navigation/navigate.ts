@@ -2,7 +2,9 @@ import type { RouteMeta, NavigationAnimation, EventChannel, EventListeners } fro
 import type { UniApiCause } from '@/types/error'
 import { buildFullPath } from '@/utils/path'
 import { warn } from '@/utils/general'
+import { getPlatform } from '@/utils'
 import { markRouterCall } from '@/plugins/interceptor/install'
+import { animatePageEnter, animatePageExit } from '@/plugins/animation/h5'
 import { UniApiError } from '@/errors/uni-api-error'
 
 /**
@@ -42,7 +44,7 @@ function promisifyUniApi(api: string, executor: (resolve: () => void, reject: (e
  * 调用 uni.navigateTo 进行页面跳转
  * @param path - 目标页面路径
  * @param query - 查询参数
- * @param animation - 导航动画（仅 App 端生效）
+ * @param animation - 导航动画（App 端由 animationType 原生处理，H5 端通过 CSS 过渡实现）
  * @param events - 页面间通信事件监听器
  * @returns EventChannel 实例，用于向目标页面发送事件
  */
@@ -55,7 +57,11 @@ function uniNavigateTo(path: string, query?: Record<string, string>, animation?:
 			events,
 			...(animation?.type && { animationType: animation.type }),
 			...(animation?.duration != null && { animationDuration: animation.duration }),
-			success: res => resolve(res.eventChannel),
+			success: res => {
+				// H5 端导航 API 不处理 animationType，改为对进入页播放 CSS 过渡动画
+				if (getPlatform().isH5 && animation) animatePageEnter(animation)
+				resolve(res.eventChannel)
+			},
 			fail: (err: UniApiCause) => reject(new UniApiError('navigateTo', err))
 		})
 	})
@@ -133,12 +139,12 @@ function hasQueryParams(query?: Record<string, string>): boolean {
  */
 export function navigateTo(options: UniNavigationOptions): Promise<EventChannel | undefined> {
 	const { path, meta, query, animation, events } = options
-	const effectiveAnimation = animation ?? meta.animation
+	// 生效动画已由 router 层计算（meta.animation 需 AnimationPlugin，未注册时不注入），此处直接用动画参数
 	if (meta.isTab) {
 		if (hasQueryParams(query)) {
 			warn('uni.switchTab does not support query parameters. They will be ignored.')
 		}
-		if (effectiveAnimation) {
+		if (animation) {
 			warn('uni.switchTab does not support animation parameters. The animation option will be ignored.')
 		}
 		if (events) {
@@ -146,7 +152,7 @@ export function navigateTo(options: UniNavigationOptions): Promise<EventChannel 
 		}
 		return uniSwitchTab(path).then(() => undefined)
 	}
-	return uniNavigateTo(path, query, effectiveAnimation, events)
+	return uniNavigateTo(path, query, animation, events)
 }
 
 /**
@@ -156,18 +162,17 @@ export function navigateTo(options: UniNavigationOptions): Promise<EventChannel 
  */
 export function replaceTo(options: UniNavigationOptions): Promise<void> {
 	const { path, meta, query, animation } = options
-	const effectiveAnimation = animation ?? meta.animation
 	if (meta.isTab) {
 		warn('router.replace() to a tab page will close all non-tab pages instead of replacing the current page only')
 		if (hasQueryParams(query)) {
 			warn('uni.switchTab does not support query parameters. They will be ignored.')
 		}
-		if (effectiveAnimation) {
+		if (animation) {
 			warn('uni.switchTab does not support animation parameters. The animation option will be ignored.')
 		}
 		return uniSwitchTab(path)
 	}
-	if (effectiveAnimation) {
+	if (animation) {
 		warn('uni.redirectTo does not support animation parameters. The animation option will be ignored.')
 	}
 	return uniRedirectTo(path, query)
@@ -176,9 +181,13 @@ export function replaceTo(options: UniNavigationOptions): Promise<void> {
 /**
  * 返回上一页或多级页面
  * @param delta - 返回的页面数，默认为 1
- * @param animation - 导航动画（仅 App 端生效）
+ * @param animation - 导航动画（App 端由 animationType 原生处理，H5 端通过 CSS 过渡实现）
  */
-export function goBack(delta: number = 1, animation?: NavigationAnimation): Promise<void> {
+export async function goBack(delta: number = 1, animation?: NavigationAnimation): Promise<void> {
+	// H5 端先播放页面退出动画，再执行 uni.navigateBack（App 端由 animationType 原生处理）
+	if (getPlatform().isH5 && animation) {
+		await animatePageExit(animation)
+	}
 	return uniNavigateBack(delta, animation)
 }
 
@@ -189,17 +198,16 @@ export function goBack(delta: number = 1, animation?: NavigationAnimation): Prom
  */
 export function relaunchTo(options: UniNavigationOptions): Promise<void> {
 	const { path, meta, query, animation } = options
-	const effectiveAnimation = animation ?? meta.animation
 	if (meta.isTab) {
 		if (hasQueryParams(query)) {
 			warn('uni.switchTab does not support query parameters. They will be ignored.')
 		}
-		if (effectiveAnimation) {
+		if (animation) {
 			warn('uni.switchTab does not support animation parameters. The animation option will be ignored.')
 		}
 		return uniSwitchTab(path)
 	}
-	if (effectiveAnimation) {
+	if (animation) {
 		warn('uni.reLaunch does not support animation parameters. The animation option will be ignored.')
 	}
 	return uniReLaunch(path, query)

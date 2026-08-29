@@ -1,4 +1,4 @@
-import type { RouterPlugin, PluginContext } from '@/plugin'
+import type { RouterPlugin, PluginContext } from '@/types/plugin'
 import type { RouterOptions } from '@/types'
 import { installInterceptors, removeInterceptors } from './install'
 import type { App } from 'vue'

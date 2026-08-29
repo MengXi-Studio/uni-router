@@ -1,7 +1,7 @@
 import type { RouteConfig, RouteLocation, RouteLocationRaw, NavigationResult } from './route'
 import type { NavigationGuard, PostNavigationGuard, BackGuard } from './guard'
 import type { RouterError, NavigationFailure } from './error'
-import type { RouterPlugin } from '@/plugin'
+import type { RouterPlugin } from './plugin'
 import type { App } from 'vue'
 
 /**
