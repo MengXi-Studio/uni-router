@@ -154,7 +154,7 @@ const router = createRouter({
 | `strict` | `boolean` | `true` | 严格模式，未匹配的命名路由抛出错误 |
 | `interceptUniApi` | `boolean` | `false` | 拦截 `uni.navigateTo` 等原生 API |
 | `guardTimeout` | `number` | `10000` | 守卫超时时间（毫秒） |
-| `readyTimeout` | `number` | `5000` | 路由器就绪超时（毫秒） |
+| `readyTimeout` | `number` | `0` | 路由器就绪超时（毫秒），`0` 表示永不超时 |
 
 ### strict 选项
 

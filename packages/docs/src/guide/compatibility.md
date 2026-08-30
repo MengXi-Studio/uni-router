@@ -290,20 +290,20 @@ const router = createRouter({
 
 ### 问题
 
-`animation` 参数和 `meta.animation` **仅 App 端生效**。小程序和 H5 的导航动画由系统控制：
+`animation` 参数和 `meta.animation` 在 **App 端**为原生窗口动画，**H5 端**通过 CSS 过渡实现（仅 `push` / `back` 生效，`replace` / `relaunch` 无动画），**小程序端**由宿主控制、无法自定义：
 
-| 平台 | 动画 |
+| 平台 | 导航动画 |
 | --- | --- |
 | App | ✅ 可自定义 `animationType` |
-| H5 | ❌ 浏览器默认过渡（通常无动画） |
+| H5 | ✅ `push` / `back` 有 CSS 过渡（`replace` / `relaunch` 无动画） |
 | 小程序 | ❌ 系统默认滑入动画 |
 
 ### 应对
 
-无需特殊处理。传入 `animation` 在非 App 端会被静默忽略（不警告），不影响功能。
+无需特殊处理。App 端原生播放动画，H5 端 `push` / `back` 播放 CSS 过渡，小程序端由宿主控制。
 
 ```ts
-// 跨平台安全，App 端有动画，其他端无动画
+// 跨平台安全：App 原生动画，H5 push/back CSS 过渡，小程序默认动画
 await router.push({ name: 'about', animation: { type: 'slide-in-bottom' } })
 ```
 
@@ -568,7 +568,7 @@ if (supports.animation) {
 | 特性 | App | H5 | 微信小程序 | 支付宝小程序 | 字节小程序 |
 | --- | --- | --- | --- | --- | --- |
 | 页面栈上限 | 无硬限制 | 无限制 | 10 | 10 | 10 |
-| 导航动画 | ✅ | ❌ | ❌ | ❌ | ❌ |
+| 导航动画 | ✅ | ✅ push/back | ❌ | ❌ | ❌ |
 | 返回拦截 | ✅ `onBeforeBack` | ✅ `onBeforeBack` | ⚠️ 仅程序化 | ⚠️ 仅程序化 | ⚠️ 仅程序化 |
 | `switchTab` query | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `reLaunch` 动画 | ❌ | ❌ | ❌ | ❌ | ❌ |

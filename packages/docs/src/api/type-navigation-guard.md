@@ -13,8 +13,8 @@ interface NavigationRedirect {
 }
 
 type NavigationGuard = (
-  to: RouteLocationNormalized,
-  from: RouteLocationNormalized,
+  to: RouteLocation,
+  from: RouteLocation,
 ) => NavigationGuardReturn | Promise<NavigationGuardReturn>
 ```
 
@@ -22,8 +22,8 @@ type NavigationGuard = (
 
 | 参数 | 类型 | 说明 |
 | --- | --- | --- |
-| `to` | `RouteLocationNormalized` | 即将进入的目标路由 |
-| `from` | `RouteLocationNormalized` | 当前离开的路由 |
+| `to` | `RouteLocation` | 即将进入的目标路由 |
+| `from` | `RouteLocation` | 当前离开的路由 |
 
 ### 返回值
 

@@ -154,7 +154,7 @@ const router = createRouter({
 | `strict` | `boolean` | `true` | Strict mode, unmatched named routes throw error |
 | `interceptUniApi` | `boolean` | `false` | Intercept `uni.navigateTo` and other native APIs |
 | `guardTimeout` | `number` | `10000` | Guard timeout (ms) |
-| `readyTimeout` | `number` | `5000` | Router ready timeout (ms) |
+| `readyTimeout` | `number` | `0` | Router ready timeout (ms), `0` means never timeout |
 
 ### strict Option
 

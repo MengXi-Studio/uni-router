@@ -196,7 +196,7 @@ const router = createRouter({
 
 **vue-router**：params 通过 URL 或内存传递，刷新后可能丢失（取决于模式）。
 
-**Uni Router**：params 通过内存 + URL key 传递，H5 刷新后丢失。
+**Uni Router**：params 通过内存 + URL key 传递，且 URL 中 `__params_key` 会保留。默认存于内存（H5 刷新丢失），设置 `persistent: true` 或 `paramsPersistent: true` 后经 storage 持久化，刷新不丢失。
 
 ```ts
 // vue-router

@@ -84,7 +84,7 @@ const router = createRouter({
 // → router.push({ path: 'pages/about/about', query: { id: '1' }, animation: { type: 'fade-in' } })
 
 // uni.navigateBack({ delta: 2, animationType: 'slide-out-right' })
-// → router.back(2, { type: 'slide-out-right' })
+// → router.back(2, { animation: { type: 'slide-out-right' } })
 
 // uni.navigateTo({ url: '/pages/detail/detail', events: { update: fn } })
 // → router.push({ path: 'pages/detail/detail', events: { update: fn } })

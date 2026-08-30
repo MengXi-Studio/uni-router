@@ -46,7 +46,7 @@ features:
     details: RouterError / NavigationFailure / UniApiError 完整体系，onError 全局捕获，isNavigationFailure() 精准判断
   - icon: 🎬
     title: 导航动画
-    details: 导航动画参数与路由级 meta.animation 默认值，仅 App 端生效
+    details: 导航动画参数与路由级 meta.animation 默认值；App 原生窗口动画，H5 端 push/back 有 CSS 过渡
   - icon: 💪
     title: TypeScript 优先
     details: 完整类型定义与组合式 API，useRouter / useRoute / usePageChannel / onBeforeRouteLeave / useLink，与 Vue 3 无缝集成

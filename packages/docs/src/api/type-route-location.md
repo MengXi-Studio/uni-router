@@ -187,7 +187,7 @@ const tags = route.value.params.tags  // ['a', 'b', 'c']
 ### animation
 
 - **类型**: `NavigationAnimation`
-- **说明**: 本次导航的动画配置（仅 App 端生效），覆盖 `meta.animation`
+- **说明**: 本次导航的动画配置，覆盖 `meta.animation`。App 端为原生窗口动画，H5 端通过 CSS 过渡实现（仅 `push` / `back` 生效）
 
 ```ts
 await router.push({

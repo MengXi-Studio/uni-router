@@ -84,7 +84,7 @@ router.beforeEach((to, from) => {
 
 ### animation
 
-默认导航动画（仅 App 端生效）：
+默认导航动画（App 端为原生窗口动画，H5 端通过 CSS 过渡实现、仅 `push` / `back` 生效）：
 
 ```ts
 interface NavigationAnimation {
@@ -116,7 +116,7 @@ await router.push({ name: 'about', animation: { type: 'slide-in-right' } })
 ```
 
 ::: info 平台限制
-动画仅 App 端支持，H5 和小程序无效。详见[平台兼容性](./compatibility#导航动画仅-app-支持)。
+动画在 App 端为原生窗口动画，H5 端 `push` / `back` 有 CSS 过渡，小程序由宿主控制、无法自定义。详见[平台兼容性](./compatibility#导航动画仅-app-支持)。
 :::
 
 ## 类型扩展

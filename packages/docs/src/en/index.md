@@ -46,7 +46,7 @@ features:
     details: RouterError / NavigationFailure / UniApiError complete system, onError global capture, isNavigationFailure() discrimination
   - icon: 🎬
     title: Navigation Animation
-    details: Inline animation params and route-level meta.animation defaults, App only
+    details: Inline animation params and route-level meta.animation defaults; native window animation on App, CSS transition on H5 for push/back
   - icon: 💪
     title: TypeScript First
     details: Complete type definitions and composables, useRouter / useRoute / usePageChannel / onBeforeRouteLeave / useLink, seamlessly integrate with Vue 3

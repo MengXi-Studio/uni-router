@@ -196,7 +196,7 @@ const router = createRouter({
 
 **vue-router**: params are passed via URL or memory, may be lost on refresh (depending on mode).
 
-**Uni Router**: params are passed via memory + URL key, lost on H5 refresh.
+**Uni Router**: params are passed via memory + URL key, and the `__params_key` is kept in the URL. Stored in memory by default (lost on H5 refresh); with `persistent: true` or `paramsPersistent: true` they're persisted to storage and survive refresh.
 
 ```ts
 // vue-router

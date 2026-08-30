@@ -98,7 +98,7 @@ await router.push({ name: 'user', query: { tab: 'profile' } })
 `replace` 替换当前页面，不增加栈深度。常用于登录后替换登录页、表单提交后替换表单页。
 
 ```ts
-router.replace(location: RouteLocationRaw): Promise<RouteLocation>
+router.replace(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 ```ts
@@ -121,7 +121,7 @@ await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
 `relaunch` 关闭所有页面后打开目标页面，常用于退出登录、返回首页、重置整个流程。
 
 ```ts
-router.relaunch(location: RouteLocationRaw): Promise<RouteLocation>
+router.relaunch(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 ```ts
@@ -449,27 +449,30 @@ const routes = [
 
 ```ts
 await router.push({ name: 'about', animation: { type: 'slide-in-bottom', duration: 500 } })
-await router.back(1, { type: 'slide-out-right', duration: 500 })
+await router.back(1, { animation: { type: 'slide-out-right', duration: 500 } })
 ```
 
 ### 动画类型
 
-`type` 对应 `uni.navigateTo` 的 `animationType`，App 端可选值：
+`type` 对应 `uni.navigateTo` 的 `animationType`，常用可选值：
 
 | 值 | 说明 |
 | --- | --- |
-| `'auto'` | 自动选择 |
-| `'none'` | 无动画 |
-| `'slide-in-right'` | 从右滑入（默认） |
+| `'slide-in-right'` | 从右滑入 |
 | `'slide-in-left'` | 从左滑入 |
 | `'slide-in-top'` | 从顶部滑入 |
 | `'slide-in-bottom'` | 从底部滑入 |
+| `'pop-in'` | 弹出 |
 | `'fade-in'` | 淡入 |
-| `'zoom-fade-in'` | 缩放淡入 |
 | `'zoom-out'` | 缩出 |
+| `'zoom-fade-out'` | 缩放淡出 |
+| `'none'` | 无动画 |
+| `'auto'` | 自动选择 |
+
+> 返回动画（如 `'slide-out-right'`）以及 `'pop-out'` / `'fade-out'` / `'zoom-in'` / `'zoom-fade-in'` 等关闭动画同样可用，完整 `UniAnimationType` 列表见[路由元信息 API](../api/type-route-meta#animation)。
 
 ::: warning 平台限制
-动画**仅 App 端生效**。小程序和 H5 的导航动画由系统控制，无法自定义。`reLaunch` 即使在 App 端也不支持动画。
+动画在 **App 端**为原生窗口动画，**H5 端**通过 CSS 过渡实现（仅 `push` / `back` 生效，`replace` / `relaunch` 无动画），**小程序端**由宿主控制、无法自定义。`reLaunch` 即使在 App 端也不支持动画。
 :::
 
 ## 并发导航处理

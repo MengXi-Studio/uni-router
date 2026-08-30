@@ -85,7 +85,7 @@ router.beforeEach((to, from) => {
 
 ### animation
 
-Default navigation animation (App only):
+Default navigation animation (native window animation on App, CSS transition on H5 for `push` / `back`):
 
 ```ts
 interface NavigationAnimation {
@@ -117,7 +117,7 @@ Inline param > meta.animation > uni default
 ```
 
 ::: info Platform Limitation
-Animation is only supported on App, has no effect on H5 and mini-programs. See [Platform Compatibility](./compatibility#navigation-animation-app-only).
+Animation is native window animation on App, CSS transition on H5 for `push` / `back`, and system-controlled on mini-programs. See [Platform Compatibility](./compatibility#navigation-animation-app-only).
 :::
 
 ## Type Extension

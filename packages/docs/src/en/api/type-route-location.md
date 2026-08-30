@@ -187,7 +187,7 @@ const tags = route.value.params.tags  // ['a', 'b', 'c']
 ### animation
 
 - **Type**: `NavigationAnimation`
-- **Description**: Animation config for this navigation (App only), overrides `meta.animation`
+- **Description**: Animation config for this navigation, overrides `meta.animation`. Native window animation on App, CSS transition on H5 (only `push` / `back`)
 
 ```ts
 await router.push({

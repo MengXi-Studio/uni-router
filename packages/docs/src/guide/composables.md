@@ -167,9 +167,9 @@ const enabled = route.value.queryBool('enabled', false) // true
 
 | 方法 | 返回类型 | 说明 |
 | --- | --- | --- |
-| `queryInt(key, default?)` | `number` | 解析为整数 |
-| `queryNumber(key, default?)` | `number` | 解析为浮点数 |
-| `queryBool(key, default?)` | `boolean` | 解析为布尔值 |
+| `queryInt(key, default?)` | `number \| undefined` | 解析为整数 |
+| `queryNumber(key, default?)` | `number \| undefined` | 解析为浮点数 |
+| `queryBool(key, default?)` | `boolean \| undefined` | 解析为布尔值 |
 
 ::: tip 默认值
 所有便捷方法都接受默认值参数，当 query 不存在或解析失败时返回默认值。
@@ -189,8 +189,8 @@ const list = route.value.params.list as Item[]
 `params` 功能需要注册 `ParamsPlugin`。未注册时使用将抛出 `PLUGIN_REQUIRED` 错误。
 
 其余限制：
-- params 通过内存存储，H5 刷新后丢失
-- params 仅在 `push` 时可用，`replace` / `relaunch` 后可能丢失
+- params 默认存于内存，H5 刷新后丢失；设置 `persistent: true`（或全局 `paramsPersistent: true`）后持久化到 storage，刷新不丢失
+- params 在 `push` / `replace` / `relaunch` 中均可传递；仅目标为 TabBar 页面（`switchTab` 不支持 query，`__params_key` 无法传递）时无法接收
 - 详见[导航 - params 传递复杂数据](./navigation#params-传递复杂数据)
 :::
 

@@ -82,7 +82,7 @@ router.beforeEach((to, from) => {
 ### animation
 
 - **类型**: `NavigationAnimation | undefined`
-- **说明**: 默认导航动画（仅 App 端生效），可被 `push` / `replace` / `back` 调用时传入的 `animation` 参数覆盖
+- **说明**: 默认导航动画，可被 `push` / `replace` / `back` 调用时传入的 `animation` 参数覆盖。App 端为原生窗口动画，H5 端由本库通过 CSS 过渡实现（仅 `push` / `back` 生效），小程序自动忽略
 
 ```ts
 interface NavigationAnimation {
@@ -115,18 +115,14 @@ await router.push({ name: 'about', animation: { type: 'slide-in-right' } }) // s
 ```
 
 ::: warning 平台限制
-动画**仅 App 端生效**。小程序和 H5 的导航动画由系统控制，无法自定义。
+动画在 **App 端**为原生窗口动画（所有导航方式生效），**H5 端**通过 CSS 过渡实现（仅 `push` / `back` 生效，`replace` / `relaunch` 无动画），**小程序端**由宿主控制、无法自定义。
 
-`UniAnimationType` 可选值：
-- `'auto'` — 自动选择
-- `'none'` — 无动画
-- `'slide-in-right'` — 从右滑入（默认）
-- `'slide-in-left'` — 从左滑入
-- `'slide-in-top'` — 从顶部滑入
-- `'slide-in-bottom'` — 从底部滑入
-- `'fade-in'` — 淡入
-- `'zoom-fade-in'` — 缩放淡入
-- `'zoom-out'` — 缩出
+`UniAnimationType` 可选值（显示动画 `navigateTo` 与关闭动画 `navigateBack`）：
+- 显示动画：`'slide-in-right'` / `'slide-in-left'` / `'slide-in-top'` / `'slide-in-bottom'` / `'pop-in'` / `'fade-in'` / `'zoom-out'` / `'zoom-fade-out'`
+- 关闭动画：`'slide-out-right'` / `'slide-out-left'` / `'slide-out-top'` / `'slide-out-bottom'` / `'pop-out'` / `'fade-out'` / `'zoom-in'` / `'zoom-fade-in'`
+- 通用：`'none'`（无动画）/ `'auto'`（自动选择）
+
+> 动画类型本身没有"默认值"，仅 `duration` 默认 `300ms`；如未指定 `type`，`push` / `back` 使用 uni 的默认过渡。
 :::
 
 ## 自定义扩展

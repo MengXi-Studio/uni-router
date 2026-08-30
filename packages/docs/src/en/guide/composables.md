@@ -167,9 +167,9 @@ const enabled = route.value.queryBool('enabled', false)  // true
 
 | Method                   | Return Type | Description                       |
 | ------------------------ | ----------- | --------------------------------- |
-| `queryInt(key, default?)`    | `number`    | Parse as integer                  |
-| `queryNumber(key, default?)` | `number`    | Parse as floating-point number    |
-| `queryBool(key, default?)`   | `boolean`   | Parse as boolean                  |
+| `queryInt(key, default?)`    | `number \| undefined`    | Parse as integer                  |
+| `queryNumber(key, default?)` | `number \| undefined`    | Parse as floating-point number    |
+| `queryBool(key, default?)`   | `boolean \| undefined`   | Parse as boolean                  |
 
 ::: tip Default Values
 All convenience methods accept a default value parameter. When the query doesn't exist or parsing fails, the default value is returned.
@@ -189,8 +189,8 @@ const list = route.value.params.list as Item[]
 `params` functionality requires registering `ParamsPlugin`. Using it without registration throws a `PLUGIN_REQUIRED` error.
 
 Other limitations:
-- params is stored in memory and lost on H5 refresh
-- params is only available with `push`; may be lost after `replace` / `relaunch`
+- params is stored in memory by default and lost on H5 refresh; set `persistent: true` (or global `paramsPersistent: true`) to persist to storage, surviving refresh
+- params can be passed with `push` / `replace` / `relaunch`; only when the target is a TabBar page (`switchTab` doesn't support query, so `__params_key` can't be passed) can params not be received
 - See [Navigation - Passing Complex Data with params](./navigation#passing-complex-data-with-params)
 :::
 
