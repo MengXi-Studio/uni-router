@@ -1,4 +1,4 @@
-import type { RouterErrorCode } from '@/types/error'
+import type { RouterErrorCode } from '@/enums'
 
 /**
  * 路由错误类，表示路由过程中产生的错误

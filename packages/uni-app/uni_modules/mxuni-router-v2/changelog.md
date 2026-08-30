@@ -1,3 +1,24 @@
+## 2.7.0（2026-08-30）
+
+### 新增
+
+- **H5 端导航动画（CSS 过渡）** - 导航动画能力从 App 端扩展到 H5 平台，通过注入的关键帧 CSS 实现与 App 端 `animationType` 命名对齐的过渡效果（基于 `transform` / `opacity`）
+  - `push`（`uni.navigateTo`）成功后对目标页播放**进入动画**（`animatePageEnter`），经 `requestAnimationFrame` 延后到下一帧以等待页面完成渲染
+  - `back`（`uni.navigateBack`）先对当前页播放**退出动画**（`animatePageExit`），动画结束后再执行真正的返回，使滑出效果与 App 端一致
+  - 支持 `slide-in/out-*`、`fade-in/out`、`zoom`、`pop` 等方向键帧；动画结束（`animationend`）后自动清理样式，并带定时兜底避免页面快速切换时残留
+  - 动画时长默认 `300ms`（`DEFAULT_ANIMATION_DURATION`），可通过 `duration` 覆盖
+- **`plugins/animation/h5.ts` 模块** - H5 动画样式注入（幂等）与进入/退出动画播放逻辑。npm 发布产物由 tsup 构建、不处理 `#ifdef H5` 条件编译，故采用运行时 `getPlatform().isH5` 平台判断
+
+### 优化
+
+- **导航动画有效值统一在 router 层计算** - `meta.animation` 仅在注册 `AnimationPlugin` 时注入导航选项，未注册时即使配置 `meta.animation` 也不生效；`navigate.ts` 不再内部回退读取 `meta.animation`，与调用时传入 `animation`
+  的 `PLUGIN_REQUIRED` 门控保持一致
+- **动画平台能力统一** - App 端为原生窗口动画（`animationType`），H5 端 `push` / `back` 走 CSS 过渡，小程序端由宿主控制
+
+### 重构
+
+- 抽出 `navigation/helpers/uni-api.ts`、`plugins/animation/helpers`、`plugins/interceptor/helpers/parse.ts` 等助手模块，收敛导航 API 的 uni 调用与平台判断逻辑
+
 ## 2.6.0（2026-08-27）
 
 ### 新增

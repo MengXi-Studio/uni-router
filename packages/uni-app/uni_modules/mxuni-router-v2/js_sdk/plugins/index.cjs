@@ -6,15 +6,16 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
-// src/utils/general.ts
-function warn(message) {
-  if (typeof console !== "undefined") {
-    console.warn(`[uni-router] ${message}`);
-  }
-}
-
-// src/plugins/params/params-manager.ts
+// src/constants/keys.ts
+var NAV_ID_KEY = "__nav_id";
 var PARAMS_KEY = "__params_key";
+var NAV_EVENT_PREFIX = "uni-router";
+
+// src/constants/router.ts
+var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
+
+// src/constants/interceptor.ts
+var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
 
 // src/utils/path.ts
 function parseQuery(queryString) {
@@ -41,55 +42,68 @@ function normalizePath(path) {
 }
 
 // src/utils/route.ts
-function injectQueryKey(location2, key, value) {
-  if (typeof location2 === "string") {
-    const queryIndex = location2.indexOf("?");
+function injectQueryKey(location, key, value) {
+  if (typeof location === "string") {
+    const queryIndex = location.indexOf("?");
     if (queryIndex === -1) {
-      return { path: location2, query: { [key]: value } };
+      return { path: location, query: { [key]: value } };
     }
-    const path = location2.slice(0, queryIndex);
-    const existingQuery = parseQuery(location2.slice(queryIndex + 1));
+    const path = location.slice(0, queryIndex);
+    const existingQuery = parseQuery(location.slice(queryIndex + 1));
     return { path, query: { ...existingQuery, [key]: value } };
   }
-  if ("path" in location2) {
-    const pathLoc = location2;
+  if ("path" in location) {
+    const pathLoc = location;
     return {
       ...pathLoc,
       query: { ...pathLoc.query, [key]: value }
     };
   }
-  if ("name" in location2) {
-    const namedLoc = location2;
+  if ("name" in location) {
+    const namedLoc = location;
     return {
       ...namedLoc,
       query: { ...namedLoc.query, [key]: value }
     };
   }
-  return location2;
+  return location;
 }
-function extractQueryKey(location2, key) {
-  if (typeof location2 === "string") return void 0;
-  if (typeof location2 === "object" && "query" in location2) {
-    const query = location2.query;
+function extractQueryKey(location, key) {
+  if (typeof location === "string") return void 0;
+  if (typeof location === "object" && "query" in location) {
+    const query = location.query;
     return query?.[key];
   }
   return void 0;
 }
 
+// src/utils/general.ts
+function warn(message) {
+  if (typeof console !== "undefined") {
+    console.warn(`[uni-router] ${message}`);
+  }
+}
+
+// src/utils/id.ts
+var seq = 0;
+function generateUniqueId(prefix) {
+  return `${prefix}${Date.now()}-${++seq}`;
+}
+
 // src/plugins/params/index.ts
 var PLUGIN_DATA_KEY = "params";
-function enrichLocationWithParams(location2, paramsManager) {
-  if (typeof location2 === "string") return location2;
-  const loc = location2;
+function enrichLocationWithParams(location, paramsManager) {
+  if (typeof location === "string") return location;
+  const loc = location;
   const hasParams = "params" in loc && loc.params;
-  if (!hasParams || Object.keys(loc.params).length === 0) return location2;
+  if (!hasParams || Object.keys(loc.params).length === 0) return location;
   const params = loc.params;
   const persistent = "persistent" in loc ? loc.persistent : void 0;
   const key = paramsManager.set(params, persistent);
-  return injectQueryKey(location2, PARAMS_KEY, key);
+  return injectQueryKey(location, PARAMS_KEY, key);
 }
-function extractParamsKey(location2) {
-  return extractQueryKey(location2, PARAMS_KEY);
+function extractParamsKey(location) {
+  return extractQueryKey(location, PARAMS_KEY);
 }
 var ParamsPlugin = {
   name: "params",
@@ -99,8 +113,8 @@ var ParamsPlugin = {
     if (persistent) {
       paramsManager.setDefaultPersistent(persistent);
     }
-    context.onEnrichLocation((location2) => {
-      return enrichLocationWithParams(location2, paramsManager);
+    context.onEnrichLocation((location) => {
+      return enrichLocationWithParams(location, paramsManager);
     });
     context.onAfterResolve((enrichedLocation, pluginData) => {
       const paramsKey = extractParamsKey(enrichedLocation);
@@ -129,9 +143,9 @@ var ParamsPlugin = {
 
 // src/plugins/animation/index.ts
 var PLUGIN_DATA_KEY2 = "animation";
-function extractAnimation(location2) {
-  if (typeof location2 === "string") return void 0;
-  if (typeof location2 === "object" && "animation" in location2) return location2.animation;
+function extractAnimation(location) {
+  if (typeof location === "string") return void 0;
+  if (typeof location === "object" && "animation" in location) return location.animation;
   return void 0;
 }
 var AnimationPlugin = {
@@ -153,12 +167,6 @@ var AnimationPlugin = {
 };
 
 // src/plugins/channel/uni-event-channel.ts
-var NAV_ID_KEY = "__nav_id";
-var navIdSeq = 0;
-function generateNavId() {
-  return `nav-${Date.now()}-${++navIdSeq}`;
-}
-var NAV_EVENT_PREFIX = "uni-router";
 function wrapEventName(navId, event) {
   return `${NAV_EVENT_PREFIX}:${navId}:${event}`;
 }
@@ -295,6 +303,113 @@ var RouterError = class extends Error {
   }
 };
 
+// src/composables/router.ts
+function useRouter() {
+  let router;
+  try {
+    router = vue.inject(ROUTER_SYMBOL);
+  } catch {
+    throw new RouterError("SETUP_ERROR" /* SETUP_ERROR */, "useRouter() must be called inside setup() of a Vue component");
+  }
+  if (!router) {
+    throw new RouterError("SETUP_ERROR" /* SETUP_ERROR */, "useRouter() requires router.install(app) to be called first");
+  }
+  return router;
+}
+var reactiveRouteMap = /* @__PURE__ */ new WeakMap();
+function getReactiveRoute(router) {
+  let routeRef = reactiveRouteMap.get(router);
+  if (routeRef) return routeRef;
+  routeRef = vue.ref(router.currentRoute);
+  reactiveRouteMap.set(router, routeRef);
+  router.onRouteChange((to) => {
+    routeRef.value = to;
+  });
+  return routeRef;
+}
+var PLUGIN_DATA_KEY3 = "channel";
+function extractEvents(location) {
+  if (typeof location === "string") return void 0;
+  if (typeof location === "object" && "events" in location) return location.events;
+  return void 0;
+}
+function enrichLocationWithNavId(location, navId) {
+  return injectQueryKey(location, NAV_ID_KEY, navId);
+}
+function extractNavId(location) {
+  return extractQueryKey(location, NAV_ID_KEY);
+}
+var ChannelPlugin = {
+  name: "channel",
+  install(context, options) {
+    const useUniEventChannel = options.useUniEventChannel ?? false;
+    if (useUniEventChannel) {
+      context.onEnrichLocation((location) => {
+        const navId = generateUniqueId("nav-");
+        return enrichLocationWithNavId(location, navId);
+      });
+    }
+    context.onAfterResolve((enrichedLocation, pluginData) => {
+      if (!useUniEventChannel) return;
+      const navId = extractNavId(enrichedLocation);
+      if (!navId) return;
+      const events = extractEvents(enrichedLocation);
+      const internalChannel = new UniEventChannel(navId);
+      if (events) {
+        for (const [event, handler] of Object.entries(events)) {
+          internalChannel.on(event, handler);
+        }
+      }
+      registerChannel(navId, internalChannel);
+      pluginData[PLUGIN_DATA_KEY3] = { navId, internalChannel, events };
+    });
+    context.onPrepareNavigation((ctx) => {
+      const data = ctx.pluginData[PLUGIN_DATA_KEY3];
+      if (!data) return;
+      if (data.navId) {
+        ctx.query[NAV_ID_KEY] = data.navId;
+      }
+      if (useUniEventChannel) {
+        ctx.options.events = void 0;
+      }
+      if (data.events && ctx.mode !== "push" && !useUniEventChannel) {
+        warn(`uni.${ctx.mode === "replace" ? "redirectTo" : "reLaunch"} does not support events. The events option will be ignored.`);
+      }
+    });
+    context.onCompleteNavigation((ctx) => {
+      const data = ctx.pluginData[PLUGIN_DATA_KEY3];
+      if (!data) return;
+      if (useUniEventChannel && data.internalChannel) {
+        ctx.result.eventChannel = data.internalChannel;
+      }
+    });
+    context.onNavigationAbort((pluginData) => {
+      const data = pluginData[PLUGIN_DATA_KEY3];
+      if (data?.navId) {
+        destroyChannel(data.navId);
+      }
+    });
+    context.onRouteSync((query, params) => {
+      const navId = query[NAV_ID_KEY];
+      if (navId) {
+        params.__navId = decodeURIComponent(navId);
+        delete query[NAV_ID_KEY];
+      }
+    });
+  }
+};
+function usePageChannel() {
+  const router = useRouter();
+  const route = getReactiveRoute(router);
+  const navId = route.value.params?.__navId;
+  if (!navId) return noopChannel;
+  const channel = getOrCreateChannel(navId);
+  vue.onUnmounted(() => {
+    destroyChannel(navId);
+  });
+  return channel;
+}
+
 // src/utils/platform.ts
 var cached = null;
 function getPlatform() {
@@ -321,49 +436,7 @@ function getPlatform() {
   return cached;
 }
 
-// src/utils/query.ts
-function createRouteLocation(base) {
-  const query = Object.freeze(base.query);
-  const params = base.params ? Object.freeze({ ...base.params }) : Object.freeze({});
-  return {
-    path: base.path,
-    name: base.name,
-    meta: Object.freeze({ ...base.meta }),
-    query,
-    params,
-    fullPath: base.fullPath,
-    ...base._synced !== void 0 && { _synced: base._synced },
-    queryInt(key, defaultValue) {
-      const val = query[key];
-      if (val === void 0 || val === "") return defaultValue;
-      const parsed = parseInt(val, 10);
-      return isNaN(parsed) ? defaultValue : parsed;
-    },
-    queryNumber(key, defaultValue) {
-      const val = query[key];
-      if (val === void 0 || val === "") return defaultValue;
-      const parsed = Number(val);
-      return isNaN(parsed) ? defaultValue : parsed;
-    },
-    queryBool(key, defaultValue) {
-      const val = query[key];
-      if (val === void 0) return defaultValue;
-      if (val === "true" || val === "1") return true;
-      if (val === "false" || val === "0") return false;
-      return defaultValue;
-    }
-  };
-}
-function createStartLocation() {
-  return createRouteLocation({
-    path: "/",
-    meta: {},
-    query: {},
-    fullPath: "/"
-  });
-}
-
-// src/plugins/interceptor/install.ts
+// src/plugins/interceptor/helpers/parse.ts
 function parseUniUrl(url) {
   if (!url) return { path: "", query: {} };
   const queryIndex = url.indexOf("?");
@@ -382,7 +455,8 @@ function buildLocation(path, query, animation, events) {
   if (!hasQuery && !animation && !events) return path;
   return { path, ...hasQuery && { query }, ...animation && { animation }, ...events && { events } };
 }
-var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
+
+// src/plugins/interceptor/install.ts
 function isWebPlatform() {
   return getPlatform().isH5;
 }
@@ -522,119 +596,6 @@ function removeInterceptors() {
     activeManager.reset();
     activeManager = null;
   }
-}
-
-// src/state/index.ts
-createStartLocation();
-
-// src/router/index.ts
-var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
-
-// src/composables/router.ts
-function useRouter() {
-  let router;
-  try {
-    router = vue.inject(ROUTER_SYMBOL);
-  } catch {
-    throw new RouterError("SETUP_ERROR" /* SETUP_ERROR */, "useRouter() must be called inside setup() of a Vue component");
-  }
-  if (!router) {
-    throw new RouterError("SETUP_ERROR" /* SETUP_ERROR */, "useRouter() requires router.install(app) to be called first");
-  }
-  return router;
-}
-var reactiveRouteMap = /* @__PURE__ */ new WeakMap();
-function getReactiveRoute(router) {
-  let routeRef = reactiveRouteMap.get(router);
-  if (routeRef) return routeRef;
-  routeRef = vue.ref(router.currentRoute);
-  reactiveRouteMap.set(router, routeRef);
-  router.onRouteChange((to) => {
-    routeRef.value = to;
-  });
-  return routeRef;
-}
-var PLUGIN_DATA_KEY3 = "channel";
-function extractEvents(location2) {
-  if (typeof location2 === "string") return void 0;
-  if (typeof location2 === "object" && "events" in location2) return location2.events;
-  return void 0;
-}
-function enrichLocationWithNavId(location2, navId) {
-  return injectQueryKey(location2, NAV_ID_KEY, navId);
-}
-function extractNavId(location2) {
-  return extractQueryKey(location2, NAV_ID_KEY);
-}
-var ChannelPlugin = {
-  name: "channel",
-  install(context, options) {
-    const useUniEventChannel = options.useUniEventChannel ?? false;
-    if (useUniEventChannel) {
-      context.onEnrichLocation((location2) => {
-        const navId = generateNavId();
-        return enrichLocationWithNavId(location2, navId);
-      });
-    }
-    context.onAfterResolve((enrichedLocation, pluginData) => {
-      if (!useUniEventChannel) return;
-      const navId = extractNavId(enrichedLocation);
-      if (!navId) return;
-      const events = extractEvents(enrichedLocation);
-      const internalChannel = new UniEventChannel(navId);
-      if (events) {
-        for (const [event, handler] of Object.entries(events)) {
-          internalChannel.on(event, handler);
-        }
-      }
-      registerChannel(navId, internalChannel);
-      pluginData[PLUGIN_DATA_KEY3] = { navId, internalChannel, events };
-    });
-    context.onPrepareNavigation((ctx) => {
-      const data = ctx.pluginData[PLUGIN_DATA_KEY3];
-      if (!data) return;
-      if (data.navId) {
-        ctx.query[NAV_ID_KEY] = data.navId;
-      }
-      if (useUniEventChannel) {
-        ctx.options.events = void 0;
-      }
-      if (data.events && ctx.mode !== "push" && !useUniEventChannel) {
-        warn(`uni.${ctx.mode === "replace" ? "redirectTo" : "reLaunch"} does not support events. The events option will be ignored.`);
-      }
-    });
-    context.onCompleteNavigation((ctx) => {
-      const data = ctx.pluginData[PLUGIN_DATA_KEY3];
-      if (!data) return;
-      if (useUniEventChannel && data.internalChannel) {
-        ctx.result.eventChannel = data.internalChannel;
-      }
-    });
-    context.onNavigationAbort((pluginData) => {
-      const data = pluginData[PLUGIN_DATA_KEY3];
-      if (data?.navId) {
-        destroyChannel(data.navId);
-      }
-    });
-    context.onRouteSync((query, params) => {
-      const navId = query[NAV_ID_KEY];
-      if (navId) {
-        params.__navId = decodeURIComponent(navId);
-        delete query[NAV_ID_KEY];
-      }
-    });
-  }
-};
-function usePageChannel() {
-  const router = useRouter();
-  const route = getReactiveRoute(router);
-  const navId = route.value.params?.__navId;
-  if (!navId) return noopChannel;
-  const channel = getOrCreateChannel(navId);
-  vue.onUnmounted(() => {
-    destroyChannel(navId);
-  });
-  return channel;
 }
 
 // src/plugins/interceptor/index.ts

@@ -692,7 +692,7 @@ uni-app 要求所有页面在 `pages.json` 中注册。未注册的页面无法�
 
 ### 原因
 
-动画仅 App 端支持，H5 和小程序不支持。
+App 端为原生窗口动画；H5 端 `push` / `back` 有 CSS 过渡，但 `replace` / `relaunch` 无动画；小程序端由宿主控制、无法自定义。若目标是 `replace` / `relaunch`，或运行在小程序端，则不会看到自定义动画。
 
 ### 解决方案
 
@@ -703,7 +703,7 @@ await router.push({ name: 'about', animation: { type: 'fade-in', duration: 300 }
 // #endif
 
 // #ifndef APP-PLUS
-await router.push({ name: 'about' }) // 其他平台无动画
+await router.push({ name: 'about' }) // H5 push 有 CSS 过渡，其他平台无动画
 // #endif
 ```
 

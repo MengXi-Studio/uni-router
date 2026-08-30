@@ -1,4 +1,5 @@
-export { createRouter, ROUTER_SYMBOL } from '@/router'
+export { createRouter } from '@/router'
+export { ROUTER_SYMBOL } from '@/constants'
 export { useRouter, useRoute, onBeforeRouteLeave, useLink } from '@/composables'
 
 // 插件导出（用户需要引入并注册）
@@ -45,10 +46,11 @@ export type {
 } from '@/types'
 
 // 组合式 API 类型
-export type { UseLinkOptions, UseLinkReturn } from '@/composables/link'
+export type { UseLinkOptions, UseLinkReturn } from '@/types'
 
 // 插件增强的类型（通过模块增强添加到核心类型）
 export type { NavigationAnimation, UniAnimationType } from '@/types'
 
 export { RouterError, NavigationFailure, UniApiError, isNavigationFailure } from '@/errors'
-export { RouterErrorCode, DEFAULT_ANIMATION_DURATION } from '@/types'
+export { RouterErrorCode } from '@/enums'
+export { DEFAULT_ANIMATION_DURATION } from '@/constants'

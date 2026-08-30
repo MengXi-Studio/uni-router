@@ -1,7 +1,8 @@
-import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, NavigationResult, EventChannel, Router, RouterOnError, RouterOptions, GuardRouteOptions } from '@/types'
-import type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from '@/plugin'
+import type { RouteConfig, RouteLocation, RouteLocationRaw, RouteMeta, NavigationAnimation, NavigationResult, EventChannel, Router, RouterOnError, RouterOptions, GuardRouteOptions, UniApiError } from '@/types'
+import type { NavigationPrepareContext, NavigationCompleteContext } from '@/types/plugin'
 import type { App } from 'vue'
-import { RouterErrorCode } from '@/types/error'
+import { RouterErrorCode } from '@/enums'
+import { MAX_REDIRECT_DEPTH, ROUTER_SYMBOL } from '@/constants'
 import { NavigationFailure, RouterError, isUniApiError } from '@/errors'
 import { createGuardManager, type GuardResult } from '@/guard'
 import { navigateTo, replaceTo, relaunchTo, goBack } from '@/navigation'
@@ -10,27 +11,13 @@ import { getPageStackLength, getCurrentPagePath, getCurrentPageQuery } from '@/n
 import { createRouteState } from '@/state'
 import { createRouteMatcher } from '@/matcher'
 import { createParamsManager } from '@/plugins/params/params-manager'
-import type { ParamsManager } from '@/plugins/params/params-manager'
-import { warn } from '@/utils/general'
+import type { ParamsManager } from '@/plugins/params/type'
 import { buildFullPath, createRouteLocation, getPlatform } from '@/utils'
 import { isSameRouteLocation } from './location'
-import { createRouteSync, type RouteSync } from './sync'
-
-/**
- * 最大重定向深度，超过此值将取消导航以防止无限循环
- */
-const MAX_REDIRECT_DEPTH = 10
-
-/**
- * Hook 类型定义
- */
-type EnrichLocationHook = (location: RouteLocationRaw) => RouteLocationRaw
-type AfterResolveHook = (enrichedLocation: RouteLocationRaw, pluginData: Record<string, any>) => void
-type PrepareNavigationHook = (ctx: NavigationPrepareContext) => void
-type CompleteNavigationHook = (ctx: NavigationCompleteContext) => void
-type NavigationAbortHook = (pluginData: Record<string, any>) => void
-type RouteSyncHook = (query: Record<string, string>, params: Record<string, any>) => void
-type AppInstallHook = (app: App) => void
+import { createRouteSync } from './sync'
+import { PluginHookManager } from './plugin-hooks'
+import { BackGuardManager } from './back-guard'
+import type { RouteSync } from './type'
 
 /**
  * uni-app 路由器实现类
@@ -42,7 +29,6 @@ type AppInstallHook = (app: App) => void
  * 核心仅提供基础导航能力，所有扩展功能通过插件注册的 hook 实现。
  */
 class UniRouter implements Router {
-	private options: RouterOptions
 	private routeState = createRouteState()
 	private guardManager = createGuardManager()
 	private paramsManager: ParamsManager = createParamsManager(false)
@@ -50,111 +36,50 @@ class UniRouter implements Router {
 	private routeSync!: RouteSync
 	private errorHandlers: RouterOnError[] = []
 	private pendingNavigation: Promise<NavigationResult | RouteLocation | void> | null = null
-	private installedPlugins: Set<string> = new Set()
-
-	/** 返回守卫执行中标记：onBackPress 手动返回时置位，避免递归 */
-	private backGuardRunning = false
-
-	/** H5 平台返回守卫：当前页面 URL，用于判断 popstate 是否为后退 */
-	private h5BackUrl = ''
-
-	// 插件 hook 数组
-	private enrichLocationHooks: EnrichLocationHook[] = []
-	private afterResolveHooks: AfterResolveHook[] = []
-	private prepareNavigationHooks: PrepareNavigationHook[] = []
-	private completeNavigationHooks: CompleteNavigationHook[] = []
-	private navigationAbortHooks: NavigationAbortHook[] = []
-	private routeSyncHooks: RouteSyncHook[] = []
-	private appInstallHooks: AppInstallHook[] = []
+	private pluginHooks: PluginHookManager
+	private backGuard: BackGuardManager
 
 	/**
 	 * @param options - 路由器初始化选项
 	 */
 	constructor(options: RouterOptions) {
-		this.options = options
 		this.guardManager = createGuardManager(options.guardTimeout)
 		this.paramsManager = createParamsManager(false)
 		this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager)
 		this.routeState = createRouteState(options.readyTimeout)
 
-		// 安装插件：插件通过 PluginContext 注册 hook
-		this.installPlugins(options.plugins ?? [], options)
+		// 插件 hook 管理器：安装插件，插件通过 PluginContext 注册 hook
+		this.pluginHooks = new PluginHookManager({
+			getCurrentRoute: () => this.routeState.getCurrentRoute(),
+			resolve: location => this.matcher.resolve(location),
+			router: this,
+			paramsManager: this.paramsManager
+		})
+		this.pluginHooks.install(options.plugins ?? [], options)
 
 		// 路由同步模块需要在插件安装后创建（routeSyncHooks 已填充）
 		this.routeSync = createRouteSync(
 			this.routeState,
 			this.matcher,
 			() => this.paramsManager.cleanupStale(),
-			(query, params) => {
-				for (const hook of this.routeSyncHooks) {
-					hook(query, params)
-				}
-			}
+			(query, params) => this.pluginHooks.runRouteSyncHooks(query, params)
 		)
+
+		// 返回守卫管理器：拦截 App 原生返回 / H5 popstate / iOS 侧滑
+		this.backGuard = new BackGuardManager({
+			guardManager: this.guardManager,
+			options,
+			getCurrentRoute: () => this.routeState.getCurrentRoute(),
+			resolve: path => this.matcher.resolve(path),
+			syncCurrentRoute: () => this.routeSync.syncCurrentRoute(),
+			handleGuardResult: (result, to, from) => this.handleGuardResult(result, to, from, 'back', 0, {}),
+			onNavigationFailure: (failure, to, from) => this.triggerErrorHandlers(failure, to, from)
+		})
 
 		// 路由器初始化时清理所有残留 params（上次运行可能残留 storage 数据）
 		this.paramsManager.cleanupAll()
 
 		this.initRoute()
-	}
-
-	/**
-	 * 安装插件并注册 hook
-	 */
-	private installPlugins(plugins: RouterPlugin[], options: RouterOptions): void {
-		const self = this
-		const context: PluginContext = {
-			onEnrichLocation: hook => {
-				this.enrichLocationHooks.push(hook)
-			},
-			onAfterResolve: hook => {
-				this.afterResolveHooks.push(hook)
-			},
-			onPrepareNavigation: hook => {
-				this.prepareNavigationHooks.push(hook)
-			},
-			onCompleteNavigation: hook => {
-				this.completeNavigationHooks.push(hook)
-			},
-			onNavigationAbort: hook => {
-				this.navigationAbortHooks.push(hook)
-			},
-			onRouteSync: hook => {
-				this.routeSyncHooks.push(hook)
-			},
-			onAppInstall: hook => {
-				this.appInstallHooks.push(hook)
-			},
-			get currentRoute() {
-				return self.routeState.getCurrentRoute()
-			},
-			resolve: location => self.matcher.resolve(location),
-			get router() {
-				return self as unknown as Router
-			},
-			get paramsManager() {
-				return self.paramsManager
-			},
-			hasPlugin(name: string) {
-				return self.installedPlugins.has(name)
-			}
-		}
-
-		for (const plugin of plugins) {
-			this.installedPlugins.add(plugin.name)
-			plugin.install(context, options)
-		}
-
-		// 检查设置了插件选项但未注册对应插件的情况
-		if (options.paramsPersistent && !this.installedPlugins.has('params')) {
-			warn('options.paramsPersistent is set but ParamsPlugin is not registered. The option will be ignored.')
-		}
-		if (options.useUniEventChannel && !this.installedPlugins.has('channel')) {
-			warn('options.useUniEventChannel is set but ChannelPlugin is not registered. The option will be ignored.')
-		}
-		if (options.interceptUniApi && !this.installedPlugins.has('interceptor')) {
-			warn('options.interceptUniApi is set but InterceptorPlugin is not registered. The option will be ignored.')
-		}
 	}
 
 	/**
@@ -231,7 +156,7 @@ class UniRouter implements Router {
 		}
 
 		// 检查用户是否使用了动画但未安装 AnimationPlugin
-		if (options && 'animation' in options && !this.installedPlugins.has('animation')) {
+		if (options && 'animation' in options && !this.pluginHooks.hasPlugin('animation')) {
 			throw new RouterError(RouterErrorCode.PLUGIN_REQUIRED, 'AnimationPlugin is required to use animation in back(). Add AnimationPlugin to createRouter({ plugins: [AnimationPlugin] }).')
 		}
 
@@ -256,10 +181,7 @@ class UniRouter implements Router {
 		// 执行返回守卫（onBeforeBack），任一返回 false 则阻止返回
 		const backPass = await this.guardManager.runBeforeBackGuards(to, from)
 		if (!backPass) {
-			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_ABORTED)
-			this.guardManager.runAfterGuards(to, from, failure)
-			this.triggerErrorHandlers(failure, to, from)
-			return Promise.reject(failure)
+			return this.failNavigation(to, from, RouterErrorCode.NAVIGATION_ABORTED)
 		}
 
 		// 执行守卫链
@@ -276,7 +198,8 @@ class UniRouter implements Router {
 			path: to.path,
 			meta: to.meta,
 			query: { ...to.query },
-			animation: to.meta.animation
+			// meta.animation 需要 AnimationPlugin（未注册时不生效，与 location.animation 门控一致）
+			animation: this.pluginHooks.hasPlugin('animation') ? to.meta.animation : undefined
 		}
 
 		// 将 back() 的 options 中的 animation 注入 pluginData，供 AnimationPlugin 读取
@@ -292,30 +215,23 @@ class UniRouter implements Router {
 			query: navOptions.query!,
 			options: navOptions
 		}
-		for (const hook of this.prepareNavigationHooks) {
-			hook(prepareCtx)
-		}
+		this.pluginHooks.prepareNavigation(prepareCtx)
 
 		const animation = navOptions.animation
 
 		// 守卫通过，执行返回
 		// 置位 backGuardRunning：执行 goBack 时会再次触发 onBackPress，据此放行避免递归
-		this.backGuardRunning = true
+		this.backGuard.setRouterBackRunning(true)
 		try {
 			await goBack(delta, animation)
 			this.routeSync.syncCurrentRoute()
 			this.guardManager.runAfterGuards(to, from)
 			return this.routeState.getCurrentRoute()
 		} catch (error) {
-			this.runAbortHooks(pluginData)
-			const code = RouterErrorCode.NAVIGATION_API_ERROR
-			const cause = isUniApiError(error) ? error : undefined
-			const failure = new NavigationFailure(to, from, code, undefined, cause)
-			this.guardManager.runAfterGuards(to, from, failure)
-			this.triggerErrorHandlers(failure, to, from)
-			return Promise.reject(failure)
+			this.pluginHooks.runAbortHooks(pluginData)
+			return this.failNavigation(to, from, RouterErrorCode.NAVIGATION_API_ERROR, undefined, isUniApiError(error) ? error : undefined)
 		} finally {
-			this.backGuardRunning = false
+			this.backGuard.setRouterBackRunning(false)
 		}
 	}
 
@@ -387,7 +303,7 @@ class UniRouter implements Router {
 	 * @returns 已注册时返回 true
 	 */
 	hasPlugin(name: string): boolean {
-		return this.installedPlugins.has(name)
+		return this.pluginHooks.hasPlugin(name)
 	}
 
 	/**
@@ -451,159 +367,21 @@ class UniRouter implements Router {
 	/**
 	 * 处理页面 onBackPress 生命周期（由全局 mixin 注入到每个页面）
 	 *
-	 * 覆盖 App 端物理返回键、顶部导航栏返回按钮、外部 `uni.navigateBack` 调用。
-	 * 返回 `true` 阻止默认返回并异步执行返回守卫链；返回 `false` / `undefined` 放行默认返回。
-	 *
-	 * **递归保护**：路由器发起的返回（`router.back()` 或本方法守卫放行后的手动返回）会再次触发
-	 * `onBackPress`，通过 `backGuardRunning` 标记放行，避免守卫重复执行与死循环。
-	 *
-	 * **平台限制**：仅 App 平台接入。iOS 侧滑返回不触发 `onBackPress`，
-	 * 需配合 `app.setSideSlipGesture` 禁用手势后由本方法接管；
-	 * H5 浏览器后退由 popstate 事件接入（见 {@link handleH5PopState}），
-	 * 小程序返回不支持拦截。
+	 * 委托给 {@link BackGuardManager}，覆盖 App 端物理返回键 / 导航栏返回 / navigateBack。
 	 *
 	 * @returns 返回 true 阻止默认返回，返回 false / undefined 放行
 	 */
 	handleBackPress(): boolean | undefined {
-		// 仅 App 平台拦截；H5 / 小程序保持默认返回行为
-		if (!getPlatform().isApp) return undefined
-
-		// 路由器发起的返回（守卫已通过）→ 放行，避免递归
-		if (this.backGuardRunning) return false
-
-		// 根页面（无上级页面）→ 放行默认行为（如 Android 物理键退出应用）
-		const pages = getCurrentPages()
-		if (pages.length < 2) return false
-
-		// 阻止默认返回，异步执行返回守卫链，放行后手动返回
-		this.runBackGuardFromBackPress().catch(() => {
-			// 守卫异常已由 onError 处理
-		})
-		return true
-	}
-
-	/**
-	 * 由 onBackPress 触发的返回守卫流程（异步执行，App 端）
-	 *
-	 * 执行顺序：onBeforeBack → beforeEach → beforeResolve，全部放行后执行 `uni.navigateBack`。
-	 * 由于 `onBackPress` 必须同步返回，本方法以 fire-and-forget 方式运行；
-	 * 守卫放行后手动返回时会再次触发 `onBackPress`，由 `backGuardRunning` 放行。
-	 */
-	private async runBackGuardFromBackPress(): Promise<void> {
-		const from = this.routeState.getCurrentRoute()
-		const pages = getCurrentPages()
-		const targetPage = pages[pages.length - 2]
-		if (!targetPage) return
-		const to = this.matcher.resolve(`/${targetPage.route}`)
-		await this.runBackGuardChain(to, from, () => this.executeBack())
-	}
-
-	/**
-	 * H5 平台返回守卫入口（由浏览器 popstate 事件触发，注册见 {@link install}）
-	 *
-	 * 覆盖浏览器后退按钮 / 后退手势。popstate 触发时浏览器已完成后退，
-	 * 采用「撤销后退 → 执行返回守卫 → 守卫放行后重新后退」策略：
-	 * 1. 记录当前页 URL（`h5BackUrl`），popstate 后 URL 已变化说明发生了后退；
-	 * 2. `history.go(1)` 恢复当前页（触发二次 popstate，命中「回到当前页」分支放行）；
-	 * 3. 同步捕获 to/from 执行返回守卫链（避免依赖 uni-app 处理 popstate 后的页面栈时序）；
-	 * 4. 守卫放行后经 {@link executeBack} 重新后退（再次触发 popstate，由 `backGuardRunning` 放行）。
-	 *
-	 * 根页面（无上级页面）不拦截，保留浏览器默认行为（离开站点 / 回上一站点）。
-	 */
-	private handleH5PopState(): void {
-		// 路由器发起的返回（守卫已通过）→ 放行，并更新当前页 URL
-		if (this.backGuardRunning) {
-			this.h5BackUrl = location.href
-			return
-		}
-
-		// 恢复当前页的二次 popstate / 前进回当前页 → 放行
-		if (location.href === this.h5BackUrl) return
-
-		// 根页面（无上级页面）→ 放行浏览器默认行为
-		const pages = getCurrentPages()
-		if (pages.length < 2) return
-
-		// 撤销浏览器后退，恢复当前页
-		history.go(1)
-
-		// 同步捕获 to/from 后执行返回守卫链
-		const from = this.routeState.getCurrentRoute()
-		const targetPage = pages[pages.length - 2]
-		if (!targetPage) return
-		const to = this.matcher.resolve(`/${targetPage.route}`)
-		this.runBackGuardChain(to, from, () => this.executeBack()).catch(() => {
-			// 守卫异常已由 onError 处理
-		})
-	}
-
-	/**
-	 * 执行返回守卫链（onBeforeBack → beforeEach → beforeResolve）
-	 *
-	 * 全部放行后调用 onPass 执行真正的返回，随后同步路由状态并触发后置钩子。
-	 * 任一守卫返回 false 时中止（NAVIGATION_ABORTED）；重定向 / 异常行为与完整导航一致。
-	 *
-	 * @param to - 返回目标路由（上一页）
-	 * @param from - 当前正要离开的路由
-	 * @param onPass - 守卫全部放行后执行返回的回调
-	 */
-	private async runBackGuardChain(to: RouteLocation, from: RouteLocation, onPass: () => Promise<void>): Promise<void> {
-		// 返回守卫（onBeforeBack）
-		const backPass = await this.guardManager.runBeforeBackGuards(to, from)
-		if (!backPass) {
-			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_ABORTED)
-			this.guardManager.runAfterGuards(to, from, failure)
-			this.triggerErrorHandlers(failure, to, from)
-			return
-		}
-
-		// 前置守卫与解析守卫（复用完整导航的守卫结果处理，支持中止/重定向）
-		const beforeResult = await this.guardManager.runBeforeGuards(to, from)
-		const handled = this.handleGuardResult(beforeResult, to, from, 'back', 0, {})
-		if (handled) return
-
-		const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from)
-		const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, 'back', 0, {})
-		if (handledResolve) return
-
-		// 守卫通过，执行返回
-		await onPass()
-		this.routeSync.syncCurrentRoute()
-		this.guardManager.runAfterGuards(to, from)
-	}
-
-	/**
-	 * 守卫放行后执行真正的返回（uni.navigateBack）
-	 *
-	 * 置位 `backGuardRunning`：App 端再次触发 onBackPress、H5 端再次触发 popstate 时据此放行，
-	 * 避免守卫重复执行与死循环。
-	 */
-	private async executeBack(): Promise<void> {
-		this.backGuardRunning = true
-		try {
-			await goBack(1)
-		} finally {
-			this.backGuardRunning = false
-		}
+		return this.backGuard.handleBackPress()
 	}
 
 	/**
 	 * 按当前路由动态设置 iOS 侧滑返回手势（由全局 mixin 在页面 onShow 时调用）
 	 *
-	 * 通过 `app.setSideSlipGesture` 回调决定当前页面的 popGesture：
-	 * - `'none'`：禁用侧滑返回，使侧滑返回无法绕过守卫（配合 onBackPress 拦截）
-	 * - `'close'`：开启原生侧滑返回，保留原生手势体验（侧滑不经过守卫）
-	 *
-	 * 仅 iOS 平台生效；未配置 `app.setSideSlipGesture` 时不干预手势。
+	 * 委托给 {@link BackGuardManager}，需配置 `app.setSideSlipGesture`，仅 iOS 生效。
 	 */
-	private applySideSlipGesture(): void {
-		const config = this.options?.app?.setSideSlipGesture
-		// 仅 iOS 平台存在侧滑返回手势；Android 使用物理返回键，由 onBackPress 拦截
-		if (typeof config !== 'function' || !getPlatform().isIOS) return
-		const value = config(this.routeState.getCurrentRoute())
-		if (value === 'none' || value === 'close') {
-			plus.webview.currentWebview()?.setStyle({ popGesture: value })
-		}
+	applySideSlipGesture(): void {
+		this.backGuard.applySideSlipGesture()
 	}
 
 	/**
@@ -693,9 +471,7 @@ class UniRouter implements Router {
 		}
 
 		// 调用插件的 appInstall hook
-		for (const hook of this.appInstallHooks) {
-			hook(app)
-		}
+		this.pluginHooks.runAppInstallHooks(app)
 
 		// 通过全局 mixin 在页面 onShow 时自动同步路由状态，
 		// 并通过 onBackPress 接入返回守卫（App 端物理返回键 / 导航栏返回 / navigateBack）
@@ -714,8 +490,8 @@ class UniRouter implements Router {
 
 		// H5 平台通过浏览器 popstate 事件接入返回守卫（后退按钮 / 后退手势）
 		if (getPlatform().isH5) {
-			this.h5BackUrl = location.href
-			window.addEventListener('popstate', () => this.handleH5PopState())
+			this.backGuard.setH5BackUrl(location.href)
+			window.addEventListener('popstate', () => this.backGuard.handleH5PopState())
 		}
 
 		// 在 install 时标记路由器就绪
@@ -758,10 +534,7 @@ class UniRouter implements Router {
 		this.requirePluginForLocation(location)
 
 		// 1. 调用 enrichLocation hooks（插件注入内部 key 到 query）
-		let enrichedLocation = location
-		for (const hook of this.enrichLocationHooks) {
-			enrichedLocation = hook(enrichedLocation)
-		}
+		const enrichedLocation = this.pluginHooks.enrichLocation(location)
 
 		// 2. resolve 路由位置
 		const to = this.matcher.resolve(enrichedLocation)
@@ -769,14 +542,12 @@ class UniRouter implements Router {
 
 		// 3. 调用 afterResolve hooks（从 enrichedLocation 提取插件数据）
 		const pluginData: Record<string, any> = {}
-		for (const hook of this.afterResolveHooks) {
-			hook(enrichedLocation, pluginData)
-		}
+		this.pluginHooks.afterResolve(enrichedLocation, pluginData)
 
 		// 4. 重复导航检测
 		if (mode === 'push' && isSameRouteLocation(to, from)) {
 			// 调用 abort hooks 清理插件资源
-			this.runAbortHooks(pluginData)
+			this.pluginHooks.runAbortHooks(pluginData)
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_DUPLICATED, `Avoided redundant navigation to current location: "${to.fullPath}"`)
 			this.triggerErrorHandlers(failure, to, from)
 			return Promise.reject(failure)
@@ -811,10 +582,8 @@ class UniRouter implements Router {
 	 */
 	private async executeNavigation(to: RouteLocation, from: RouteLocation, mode: 'push' | 'replace' | 'relaunch' | 'back', redirectDepth: number, pluginData: Record<string, any>): Promise<NavigationResult> {
 		if (redirectDepth > MAX_REDIRECT_DEPTH) {
-			this.runAbortHooks(pluginData)
-			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
-			this.triggerErrorHandlers(failure, to, from)
-			return Promise.reject(failure)
+			this.pluginHooks.runAbortHooks(pluginData)
+			return this.failNavigation(to, from, RouterErrorCode.NAVIGATION_CANCELLED, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`)
 		}
 
 		const config = this.matcher.getRouteConfig(to.path)
@@ -844,7 +613,8 @@ class UniRouter implements Router {
 				path: to.path,
 				meta: to.meta,
 				query: queryWithKeys,
-				animation: to.meta.animation
+				// meta.animation 需要 AnimationPlugin（与 location.animation 的 PLUGIN_REQUIRED 门控保持一致），未注册时不生效
+				animation: this.pluginHooks.hasPlugin('animation') ? to.meta.animation : undefined
 			}
 
 			// 调用 prepareNavigation hooks（插件修改 query 和 navOptions）
@@ -856,9 +626,7 @@ class UniRouter implements Router {
 				query: queryWithKeys,
 				options: navOptions
 			}
-			for (const hook of this.prepareNavigationHooks) {
-				hook(prepareCtx)
-			}
+			this.pluginHooks.prepareNavigation(prepareCtx)
 
 			let nativeEventChannel: EventChannel | undefined
 			if (mode === 'push') {
@@ -885,21 +653,14 @@ class UniRouter implements Router {
 				nativeEventChannel,
 				result
 			}
-			for (const hook of this.completeNavigationHooks) {
-				hook(completeCtx)
-			}
+			this.pluginHooks.completeNavigation(completeCtx)
 
 			return result as NavigationResult
 		} catch (error) {
 			// 导航 API 失败，回退 currentRoute 到来源路由，并调用 abort hooks 清理插件资源
 			this.routeState.setCurrentRoute(from)
-			this.runAbortHooks(pluginData)
-			const code = RouterErrorCode.NAVIGATION_API_ERROR
-			const cause = isUniApiError(error) ? error : undefined
-			const failure = new NavigationFailure(to, from, code, undefined, cause)
-			this.guardManager.runAfterGuards(to, from, failure)
-			this.triggerErrorHandlers(failure, to, from)
-			return Promise.reject(failure)
+			this.pluginHooks.runAbortHooks(pluginData)
+			return this.failNavigation(to, from, RouterErrorCode.NAVIGATION_API_ERROR, undefined, isUniApiError(error) ? error : undefined)
 		}
 	}
 
@@ -921,27 +682,19 @@ class UniRouter implements Router {
 	): Promise<NavigationResult> | null {
 		if (result.type === 'abort') {
 			// 中止时调用 abort hooks 清理插件资源，并触发 afterEach 通知失败
-			this.runAbortHooks(pluginData)
-			const failure = new NavigationFailure(to, from, result.code)
-			this.guardManager.runAfterGuards(to, from, failure)
-			this.triggerErrorHandlers(failure, to, from)
-			return Promise.reject(failure)
+			this.pluginHooks.runAbortHooks(pluginData)
+			return this.failNavigation(to, from, result.code)
 		}
 
 		if (result.redirect) {
 			// 重定向时对新的 location 执行 enrichLocation hooks
-			let enrichedRedirect = result.redirect
-			for (const hook of this.enrichLocationHooks) {
-				enrichedRedirect = hook(enrichedRedirect)
-			}
+			const enrichedRedirect = this.pluginHooks.enrichLocation(result.redirect)
 
 			const redirectTarget = this.matcher.resolve(enrichedRedirect)
 
 			// 对重定向的 enrichedLocation 执行 afterResolve hooks
 			const redirectPluginData = { ...pluginData }
-			for (const hook of this.afterResolveHooks) {
-				hook(enrichedRedirect, redirectPluginData)
-			}
+			this.pluginHooks.afterResolve(enrichedRedirect, redirectPluginData)
 
 			// 重定向方式：守卫指定优先，否则沿用原始导航方式
 			const redirectMode = result.mode ?? (mode === 'back' ? 'relaunch' : mode)
@@ -949,19 +702,6 @@ class UniRouter implements Router {
 		}
 
 		return null
-	}
-
-	/**
-	 * 执行所有 abort hooks
-	 */
-	private runAbortHooks(pluginData: Record<string, any>): void {
-		for (const hook of this.navigationAbortHooks) {
-			try {
-				hook(pluginData)
-			} catch {
-				// abort hooks should not throw
-			}
-		}
 	}
 
 	/**
@@ -973,9 +713,7 @@ class UniRouter implements Router {
 	private applySyncHooks(to: RouteLocation): RouteLocation {
 		const query = { ...to.query }
 		const params: Record<string, any> = { ...to.params }
-		for (const hook of this.routeSyncHooks) {
-			hook(query, params)
-		}
+		this.pluginHooks.runRouteSyncHooks(query, params)
 		// 如果 hooks 修改了 query，需要重建 fullPath
 		const fullPath = buildFullPath(to.path, query)
 		return createRouteLocation({ ...to, query, fullPath, params: Object.keys(params).length > 0 ? params : undefined })
@@ -991,17 +729,36 @@ class UniRouter implements Router {
 		if (typeof location === 'string') return
 		const loc = location as Record<string, any>
 
-		if ('params' in loc && loc.params && !this.installedPlugins.has('params')) {
+		if ('params' in loc && loc.params && !this.pluginHooks.hasPlugin('params')) {
 			throw new RouterError(RouterErrorCode.PLUGIN_REQUIRED, 'ParamsPlugin is required to use params. Add ParamsPlugin to createRouter({ plugins: [ParamsPlugin] }).')
 		}
 
-		if ('events' in loc && loc.events && !this.installedPlugins.has('channel')) {
+		if ('events' in loc && loc.events && !this.pluginHooks.hasPlugin('channel')) {
 			throw new RouterError(RouterErrorCode.PLUGIN_REQUIRED, 'ChannelPlugin is required to use events. Add ChannelPlugin to createRouter({ plugins: [ChannelPlugin] }).')
 		}
 
-		if ('animation' in loc && loc.animation && !this.installedPlugins.has('animation')) {
+		if ('animation' in loc && loc.animation && !this.pluginHooks.hasPlugin('animation')) {
 			throw new RouterError(RouterErrorCode.PLUGIN_REQUIRED, 'AnimationPlugin is required to use animation. Add AnimationPlugin to createRouter({ plugins: [AnimationPlugin] }).')
 		}
+	}
+
+	/**
+	 * 构造导航失败并统一处理：触发 afterEach + 错误处理器，然后 reject
+	 *
+	 * 复用统一错误处理样板，避免各导航分支重复构造 NavigationFailure。
+	 *
+	 * @param to - 目标路由
+	 * @param from - 来源路由
+	 * @param code - 错误码
+	 * @param message - 错误信息（可选）
+	 * @param cause - uni API 失败原因（可选，仅 NAVIGATION_API_ERROR 时存在）
+	 * @returns 始终 reject 的 Promise
+	 */
+	private failNavigation(to: RouteLocation, from: RouteLocation, code: RouterErrorCode, message?: string, cause?: UniApiError): Promise<never> {
+		const failure = new NavigationFailure(to, from, code, message, cause)
+		this.guardManager.runAfterGuards(to, from, failure)
+		this.triggerErrorHandlers(failure, to, from)
+		return Promise.reject(failure)
 	}
 
 	/**
@@ -1017,13 +774,6 @@ class UniRouter implements Router {
 		}
 	}
 }
-
-/**
- * 路由器注入键，用于 Vue 的 provide/inject 机制
- *
- * @internal 内部使用，不应在应用代码中直接引用
- */
-export const ROUTER_SYMBOL = Symbol('uni-router')
 
 /**
  * 创建 uni-app 路由器实例

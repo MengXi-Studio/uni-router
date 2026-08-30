@@ -144,11 +144,12 @@ await router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' }
 返回上一页或多级页面，是唯一执行完整守卫链的"后退"操作。
 
 ```ts
-back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
+back(delta?: number, options?: { animation: NavigationAnimation }): Promise<RouteLocation>
 ```
 
 - **delta**: 返回的页面数，默认为 `1`
-- **animation**: 导航动画（仅 App 端生效），覆盖 `meta.animation`。未指定时使用目标页面的 `meta.animation`
+- **options**: 额外选项
+  - `options.animation`: 导航动画，覆盖 `meta.animation`。App 端为原生窗口动画，H5 端返回时通过 CSS 过渡实现；未指定时使用目标页面的 `meta.animation`
 - 执行 `beforeEach` → `beforeResolve` 守卫链，守卫可中止或重定向返回操作
 - 页面栈不足时抛出 `NavigationFailure`（`NAVIGATION_CANCELLED`）
 - 守卫中止时抛出 `NavigationFailure`
@@ -161,8 +162,8 @@ await router.back()
 // 返回两级
 await router.back(2)
 
-// 自定义动画
-await router.back(1, { type: 'slide-out-right', duration: 500 })
+// 自定义动画（options.animation 需要 AnimationPlugin）
+await router.back(1, { animation: { type: 'slide-out-right', duration: 500 } })
 ```
 
 ::: tip 返回守卫

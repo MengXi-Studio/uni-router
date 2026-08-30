@@ -9,18 +9,18 @@
 
 ## 特性
 
-- **vue-router 风格 API** - `push` / `replace` / `relaunch` / `back`
-- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave` / `onBeforeBack`，`guardRoute` 冷启动补执行，支持可控重定向
-- **返回拦截** - App 物理返回键 / 导航栏返回 / `navigateBack`、H5 浏览器后退 / 后退手势均可被守卫拦截；`setSideSlipGesture` 控制 iOS 侧滑手势
-- **命名路由 & 路由元信息** - 通过 `name` 导航，`meta` 携带自定义数据
+- **vue-router 风格 API** - `push` / `replace` / `relaunch` / `back`，自动根据 `meta.isTab` 切换 `switchTab`，重复导航自动拒绝，并发导航自动排队
+- **路由守卫** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave` / `onBeforeBack`，`guardRoute` 冷启动补执行，支持可控重定向与守卫超时保护（`guardTimeout`）
+- **返回拦截** - App 物理返回键 / 导航栏返回 / `navigateBack`、H5 浏览器后退 / 后退手势均可被守卫拦截；`app.setSideSlipGesture` 控制 iOS 侧滑手势
+- **命名路由 & 路由元信息** - 通过 `name` 导航，`meta` 携带自定义数据（含 `isTab`、默认动画）
 - **TypeScript 类型提示** - 路由名称和路径自动补全与类型检查
-- **插件架构** - ParamsPlugin / ChannelPlugin / InterceptorPlugin / AnimationPlugin 按需注册
-- **页面间通信** - `useUniEventChannel` 内置通信管理器，所有导航方式支持 `eventChannel`
-- **声明式导航** - `RouterLink`（H5 端渲染原生 `<a>` 标签）+ `TabBar` / `TabBarItem` 组件，easycom 自动注册，支持 SCSS 主题定制
-- **页面参数传递** - `params` 传递复杂数据不暴露 URL，`back()` 后自动保留
+- **插件架构** - ParamsPlugin / ChannelPlugin / InterceptorPlugin / AnimationPlugin 按需注册；未注册时使用对应功能会抛出 `PLUGIN_REQUIRED` 明确提示
+- **页面间通信** - `usePageChannel()` 内置通信管理器；默认 `push` 使用原生 `EventChannel`，开启 `useUniEventChannel` 后所有导航方式均支持
+- **声明式导航** - `RouterLink`（H5 端渲染原生 `<a>` 标签）+ `TabBar` / `TabBarItem` 组件，easycom 自动注册，支持徽标/小红点/切换前拦截与 SCSS 主题定制
+- **页面参数传递** - `params` 传递复杂数据不暴露 URL，支持 storage 持久化（`persistent`），`back()` 后自动保留
 - **查询参数增强** - `queryInt()` / `queryNumber()` / `queryBool()`
-- **导航动画** - `push` / `replace` / `back` 支持动画参数，仅 App 端
-- **路由状态自动同步** - 全局 Mixin 自动 `syncRoute()`，无需手动同步
+- **导航动画** - `push` / `replace` / `back` 支持动画参数（App 原生窗口动画，H5 端 `push` / `back` 有 CSS 过渡），可通过 `meta.animation` 设置默认
+- **路由状态自动同步** - 全局 Mixin 自动 `syncRoute()`，支持严格模式（`strict`）
 - **错误处理** - `RouterError` / `NavigationFailure` / `UniApiError`，`RouterErrorCode` 错误码，`isNavigationFailure()` 精准判断
 - **组合式 API** - `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()` / `useLink()`
 

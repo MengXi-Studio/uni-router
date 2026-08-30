@@ -6,7 +6,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
-// src/types/error.ts
+// src/enums/router-error-code.ts
 var RouterErrorCode = /* @__PURE__ */ ((RouterErrorCode2) => {
   RouterErrorCode2["NAVIGATION_ABORTED"] = "NAVIGATION_ABORTED";
   RouterErrorCode2["NAVIGATION_CANCELLED"] = "NAVIGATION_CANCELLED";
@@ -17,6 +17,24 @@ var RouterErrorCode = /* @__PURE__ */ ((RouterErrorCode2) => {
   RouterErrorCode2["SETUP_ERROR"] = "SETUP_ERROR";
   return RouterErrorCode2;
 })(RouterErrorCode || {});
+
+// src/constants/defaults.ts
+var DEFAULT_ANIMATION_DURATION = 300;
+var DEFAULT_GUARD_TIMEOUT = 1e4;
+var DEFAULT_READY_TIMEOUT = 0;
+var MAX_REDIRECT_DEPTH = 10;
+
+// src/constants/keys.ts
+var NAV_ID_KEY = "__nav_id";
+var PARAMS_KEY = "__params_key";
+var PARAMS_STORAGE_PREFIX = "__uni_router_params__";
+var NAV_EVENT_PREFIX = "uni-router";
+
+// src/constants/router.ts
+var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
+
+// src/constants/interceptor.ts
+var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
 
 // src/errors/router-error.ts
 var RouterError = class extends Error {
@@ -83,22 +101,7 @@ function isNavigationFailure(error, code) {
   return error instanceof NavigationFailure && (code ? error.code === code : true);
 }
 
-// src/utils/general.ts
-function warn(message) {
-  if (typeof console !== "undefined") {
-    console.warn(`[uni-router] ${message}`);
-  }
-}
-function isObject(value) {
-  return value !== null && typeof value === "object";
-}
-function safeGetCurrentPages() {
-  if (typeof getCurrentPages !== "function") return [];
-  return getCurrentPages();
-}
-
-// src/guard/index.ts
-var DEFAULT_GUARD_TIMEOUT = 1e4;
+// src/guard/helpers/resolve.ts
 function isRedirect(value) {
   return typeof value === "object" && value !== null && "location" in value;
 }
@@ -117,6 +120,22 @@ function resolveGuardReturn(value) {
   }
   return { type: "next", redirect: value };
 }
+
+// src/utils/general.ts
+function warn(message) {
+  if (typeof console !== "undefined") {
+    console.warn(`[uni-router] ${message}`);
+  }
+}
+function isObject(value) {
+  return value !== null && typeof value === "object";
+}
+function safeGetCurrentPages() {
+  if (typeof getCurrentPages !== "function") return [];
+  return getCurrentPages();
+}
+
+// src/guard/helpers/run.ts
 async function runGuard(guard, to, from, timeout) {
   let resolved = false;
   let timer;
@@ -159,6 +178,8 @@ async function runGuardQueue(guards, to, from, timeout) {
   }
   return { type: "next" };
 }
+
+// src/guard/index.ts
 function createGuardManager(guardTimeout = DEFAULT_GUARD_TIMEOUT) {
   const beforeGuards = [];
   const beforeResolveGuards = [];
@@ -231,6 +252,42 @@ function createGuardManager(guardTimeout = DEFAULT_GUARD_TIMEOUT) {
   };
 }
 
+// src/utils/platform.ts
+var cached = null;
+function getPlatform() {
+  if (cached) return cached;
+  let uniPlatform = "";
+  let osName = "";
+  try {
+    const info = uni.getSystemInfoSync();
+    uniPlatform = info.uniPlatform ?? "";
+    osName = info.osName ?? info.platform ?? "";
+  } catch {
+  }
+  const isApp = uniPlatform === "app" || uniPlatform === "app-harmony" || uniPlatform === "" && typeof plus !== "undefined";
+  const isH5 = uniPlatform === "web" || uniPlatform === "" && typeof window !== "undefined" && typeof document !== "undefined";
+  cached = {
+    isApp,
+    isH5,
+    isMp: uniPlatform.startsWith("mp-"),
+    isIOS: osName === "ios",
+    isAndroid: osName === "android",
+    uniPlatform,
+    osName
+  };
+  return cached;
+}
+
+// src/utils/id.ts
+function generateRandomId(prefix) {
+  const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+  return `${prefix}${hex}`;
+}
+var seq = 0;
+function generateUniqueId(prefix) {
+  return `${prefix}${Date.now()}-${++seq}`;
+}
+
 // src/utils/path.ts
 function buildFullPath(path, query) {
   const keys = Object.keys(query);
@@ -260,32 +317,6 @@ function parseQuery(queryString) {
 }
 function normalizePath(path) {
   return path.startsWith("/") ? path : `/${path}`;
-}
-
-// src/utils/platform.ts
-var cached = null;
-function getPlatform() {
-  if (cached) return cached;
-  let uniPlatform = "";
-  let osName = "";
-  try {
-    const info = uni.getSystemInfoSync();
-    uniPlatform = info.uniPlatform ?? "";
-    osName = info.osName ?? info.platform ?? "";
-  } catch {
-  }
-  const isApp = uniPlatform === "app" || uniPlatform === "app-harmony" || uniPlatform === "" && typeof plus !== "undefined";
-  const isH5 = uniPlatform === "web" || uniPlatform === "" && typeof window !== "undefined" && typeof document !== "undefined";
-  cached = {
-    isApp,
-    isH5,
-    isMp: uniPlatform.startsWith("mp-"),
-    isIOS: osName === "ios",
-    isAndroid: osName === "android",
-    uniPlatform,
-    osName
-  };
-  return cached;
 }
 
 // src/utils/query.ts
@@ -391,7 +422,106 @@ function extractQueryKey(location2, key) {
   return void 0;
 }
 
-// src/plugins/interceptor/install.ts
+// src/plugins/animation/helpers/index.ts
+function getTopPageElement() {
+  if (typeof document === "undefined") return null;
+  const pages = document.querySelectorAll("uni-page");
+  if (!pages.length) return null;
+  return pages[pages.length - 1];
+}
+
+// src/plugins/animation/h5.ts
+var ANIMATION_CSS = `
+@keyframes mxuni-slide-in-right { from { transform: translate3d(100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
+@keyframes mxuni-slide-out-right { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(100%, 0, 0); } }
+@keyframes mxuni-slide-in-left { from { transform: translate3d(-100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
+@keyframes mxuni-slide-out-left { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-100%, 0, 0); } }
+@keyframes mxuni-slide-in-top { from { transform: translate3d(0, -100%, 0); } to { transform: translate3d(0, 0, 0); } }
+@keyframes mxuni-slide-out-top { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, -100%, 0); } }
+@keyframes mxuni-slide-in-bottom { from { transform: translate3d(0, 100%, 0); } to { transform: translate3d(0, 0, 0); } }
+@keyframes mxuni-slide-out-bottom { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, 100%, 0); } }
+@keyframes mxuni-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mxuni-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes mxuni-zoom-in { from { transform: scale(0.8); } to { transform: scale(1); } }
+@keyframes mxuni-zoom-out { from { transform: scale(1); } to { transform: scale(1.2); } }
+@keyframes mxuni-zoom-fade-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+@keyframes mxuni-zoom-fade-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.2); } }
+@keyframes mxuni-pop-in { from { transform: scale(0.8); } to { transform: scale(1); } }
+@keyframes mxuni-pop-out { from { transform: scale(1); } to { transform: scale(1.2); } }
+`;
+var stylesInjected = false;
+function ensureH5AnimationStyles() {
+  if (stylesInjected || !getPlatform().isH5 || typeof document === "undefined") return;
+  stylesInjected = true;
+  const style = document.createElement("style");
+  style.setAttribute("data-mxuni-animation", "");
+  style.textContent = ANIMATION_CSS;
+  (document.head || document.documentElement).appendChild(style);
+}
+var ENTER_KEYFRAMES = {
+  "slide-in-right": "mxuni-slide-in-right",
+  "slide-in-left": "mxuni-slide-in-left",
+  "slide-in-top": "mxuni-slide-in-top",
+  "slide-in-bottom": "mxuni-slide-in-bottom",
+  "fade-in": "mxuni-fade-in",
+  "zoom-in": "mxuni-zoom-in",
+  "zoom-fade-in": "mxuni-zoom-fade-in",
+  "pop-in": "mxuni-pop-in"
+};
+var EXIT_KEYFRAMES = {
+  "slide-out-right": "mxuni-slide-out-right",
+  "slide-out-left": "mxuni-slide-out-left",
+  "slide-out-top": "mxuni-slide-out-top",
+  "slide-out-bottom": "mxuni-slide-out-bottom",
+  "fade-out": "mxuni-fade-out",
+  "zoom-out": "mxuni-zoom-out",
+  "zoom-fade-out": "mxuni-zoom-fade-out",
+  "pop-out": "mxuni-pop-out"
+};
+function animatePageEnter(animation) {
+  if (!getPlatform().isH5) return;
+  ensureH5AnimationStyles();
+  const keyframe = ENTER_KEYFRAMES[animation.type];
+  if (!keyframe) return;
+  requestAnimationFrame(() => {
+    const el = getTopPageElement();
+    if (!el) return;
+    const duration = animation.duration ?? DEFAULT_ANIMATION_DURATION;
+    el.style.animation = `${keyframe} ${duration}ms ease both`;
+    const clear = () => {
+      el.style.animation = "";
+    };
+    el.addEventListener("animationend", clear, { once: true });
+    setTimeout(clear, duration + 100);
+  });
+}
+async function animatePageExit(animation) {
+  if (!getPlatform().isH5) return;
+  ensureH5AnimationStyles();
+  const keyframe = EXIT_KEYFRAMES[animation.type];
+  if (!keyframe) return;
+  const el = getTopPageElement();
+  if (!el) return;
+  const duration = animation.duration ?? DEFAULT_ANIMATION_DURATION;
+  el.style.animation = `${keyframe} ${duration}ms ease both`;
+  await new Promise((resolve) => {
+    const clear = () => {
+      el.style.animation = "";
+      resolve();
+    };
+    const timer = setTimeout(clear, duration + 50);
+    el.addEventListener(
+      "animationend",
+      () => {
+        clearTimeout(timer);
+        clear();
+      },
+      { once: true }
+    );
+  });
+}
+
+// src/plugins/interceptor/helpers/parse.ts
 function parseUniUrl(url) {
   if (!url) return { path: "", query: {} };
   const queryIndex = url.indexOf("?");
@@ -410,7 +540,8 @@ function buildLocation(path, query, animation, events) {
   if (!hasQuery && !animation && !events) return path;
   return { path, ...hasQuery && { query }, ...animation && { animation }, ...events && { events } };
 }
-var INTERCEPTED_APIS = ["navigateTo", "redirectTo", "switchTab", "reLaunch", "navigateBack"];
+
+// src/plugins/interceptor/install.ts
 function isWebPlatform() {
   return getPlatform().isH5;
 }
@@ -555,7 +686,7 @@ function removeInterceptors() {
   }
 }
 
-// src/navigation/navigate.ts
+// src/navigation/helpers/uni-api.ts
 function promisifyUniApi(api, executor) {
   return new Promise((resolve, reject) => {
     executor(resolve, (err) => reject(new UniApiError(api, err)));
@@ -570,7 +701,10 @@ function uniNavigateTo(path, query, animation, events) {
       events,
       ...animation?.type && { animationType: animation.type },
       ...animation?.duration != null && { animationDuration: animation.duration },
-      success: (res) => resolve(res.eventChannel),
+      success: (res) => {
+        if (getPlatform().isH5 && animation) animatePageEnter(animation);
+        resolve(res.eventChannel);
+      },
       fail: (err) => reject(new UniApiError("navigateTo", err))
     });
   });
@@ -610,14 +744,15 @@ function uniReLaunch(path, query) {
 function hasQueryParams(query) {
   return !!query && Object.keys(query).length > 0;
 }
+
+// src/navigation/navigate.ts
 function navigateTo(options) {
   const { path, meta, query, animation, events } = options;
-  const effectiveAnimation = animation ?? meta.animation;
   if (meta.isTab) {
     if (hasQueryParams(query)) {
       warn("uni.switchTab does not support query parameters. They will be ignored.");
     }
-    if (effectiveAnimation) {
+    if (animation) {
       warn("uni.switchTab does not support animation parameters. The animation option will be ignored.");
     }
     if (events) {
@@ -625,42 +760,43 @@ function navigateTo(options) {
     }
     return uniSwitchTab(path).then(() => void 0);
   }
-  return uniNavigateTo(path, query, effectiveAnimation, events);
+  return uniNavigateTo(path, query, animation, events);
 }
 function replaceTo(options) {
   const { path, meta, query, animation } = options;
-  const effectiveAnimation = animation ?? meta.animation;
   if (meta.isTab) {
     warn("router.replace() to a tab page will close all non-tab pages instead of replacing the current page only");
     if (hasQueryParams(query)) {
       warn("uni.switchTab does not support query parameters. They will be ignored.");
     }
-    if (effectiveAnimation) {
+    if (animation) {
       warn("uni.switchTab does not support animation parameters. The animation option will be ignored.");
     }
     return uniSwitchTab(path);
   }
-  if (effectiveAnimation) {
+  if (animation) {
     warn("uni.redirectTo does not support animation parameters. The animation option will be ignored.");
   }
   return uniRedirectTo(path, query);
 }
-function goBack(delta = 1, animation) {
+async function goBack(delta = 1, animation) {
+  if (getPlatform().isH5 && animation) {
+    await animatePageExit(animation);
+  }
   return uniNavigateBack(delta, animation);
 }
 function relaunchTo(options) {
   const { path, meta, query, animation } = options;
-  const effectiveAnimation = animation ?? meta.animation;
   if (meta.isTab) {
     if (hasQueryParams(query)) {
       warn("uni.switchTab does not support query parameters. They will be ignored.");
     }
-    if (effectiveAnimation) {
+    if (animation) {
       warn("uni.switchTab does not support animation parameters. The animation option will be ignored.");
     }
     return uniSwitchTab(path);
   }
-  if (effectiveAnimation) {
+  if (animation) {
     warn("uni.reLaunch does not support animation parameters. The animation option will be ignored.");
   }
   return uniReLaunch(path, query);
@@ -692,7 +828,6 @@ function getCurrentPageQuery() {
 
 // src/state/index.ts
 var START_LOCATION = createStartLocation();
-var DEFAULT_READY_TIMEOUT = 0;
 function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
   let currentRoute = START_LOCATION;
   let ready = false;
@@ -773,131 +908,6 @@ function createRouteState(readyTimeout = DEFAULT_READY_TIMEOUT) {
     onReady,
     onRouteChange
   };
-}
-
-// src/plugins/params/params-manager.ts
-var PARAMS_STORAGE_PREFIX = "__uni_router_params__";
-var PARAMS_KEY = "__params_key";
-function generateKey() {
-  const hex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
-  return `pk_${hex}`;
-}
-function isPageInStack(key) {
-  const pages = safeGetCurrentPages();
-  const encodedKey = encodeURIComponent(key);
-  return pages.some((page) => {
-    const fullPath = page.$page?.fullPath ?? "";
-    return fullPath.includes(`${PARAMS_KEY}=${encodedKey}`);
-  });
-}
-function createParamsManager(defaultPersistent) {
-  const memoryMap = /* @__PURE__ */ new Map();
-  let currentDefaultPersistent = defaultPersistent;
-  function setDefaultPersistent(persistent) {
-    currentDefaultPersistent = persistent;
-  }
-  function set(params, persistent) {
-    const useStorage = persistent ?? currentDefaultPersistent;
-    const key = generateKey();
-    try {
-      JSON.stringify(params);
-    } catch {
-      warn("params must be JSON-serializable. Non-serializable values will be lost.");
-    }
-    if (useStorage) {
-      try {
-        uni.setStorageSync(PARAMS_STORAGE_PREFIX + key, JSON.stringify(params));
-      } catch {
-        warn("Failed to write params to storage, falling back to memory storage.");
-        memoryMap.set(key, params);
-      }
-    } else {
-      memoryMap.set(key, params);
-    }
-    return key;
-  }
-  function get(key) {
-    if (memoryMap.has(key)) {
-      if (!isPageInStack(key)) {
-        memoryMap.delete(key);
-        return void 0;
-      }
-      return memoryMap.get(key);
-    }
-    try {
-      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
-      if (raw) {
-        if (!isPageInStack(key)) {
-          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
-          return void 0;
-        }
-        try {
-          return JSON.parse(raw);
-        } catch {
-          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
-          return void 0;
-        }
-      }
-    } catch {
-    }
-    return void 0;
-  }
-  function peek(key) {
-    if (memoryMap.has(key)) {
-      return memoryMap.get(key);
-    }
-    try {
-      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
-      if (raw) {
-        try {
-          return JSON.parse(raw);
-        } catch {
-          return void 0;
-        }
-      }
-    } catch {
-    }
-    return void 0;
-  }
-  function remove(key) {
-    memoryMap.delete(key);
-    try {
-      uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
-    } catch {
-    }
-  }
-  function cleanupStale() {
-    for (const key of memoryMap.keys()) {
-      if (!isPageInStack(key)) {
-        memoryMap.delete(key);
-      }
-    }
-    try {
-      const info = uni.getStorageInfoSync();
-      for (const k of info.keys) {
-        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
-          const paramsKey = k.slice(PARAMS_STORAGE_PREFIX.length);
-          if (!isPageInStack(paramsKey)) {
-            uni.removeStorageSync(k);
-          }
-        }
-      }
-    } catch {
-    }
-  }
-  function cleanupAll() {
-    memoryMap.clear();
-    try {
-      const info = uni.getStorageInfoSync();
-      for (const k of info.keys) {
-        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
-          uni.removeStorageSync(k);
-        }
-      }
-    } catch {
-    }
-  }
-  return { set, get, peek, remove, cleanupStale, cleanupAll, setDefaultPersistent };
 }
 
 // src/matcher/index.ts
@@ -1023,6 +1033,127 @@ function createRouteMatcher(routes, strict, paramsManager) {
   };
 }
 
+// src/plugins/params/helpers/index.ts
+function isPageInStack(key) {
+  const pages = safeGetCurrentPages();
+  const encodedKey = encodeURIComponent(key);
+  return pages.some((page) => {
+    const fullPath = page.$page?.fullPath ?? "";
+    return fullPath.includes(`${PARAMS_KEY}=${encodedKey}`);
+  });
+}
+
+// src/plugins/params/params-manager.ts
+function createParamsManager(defaultPersistent) {
+  const memoryMap = /* @__PURE__ */ new Map();
+  let currentDefaultPersistent = defaultPersistent;
+  function setDefaultPersistent(persistent) {
+    currentDefaultPersistent = persistent;
+  }
+  function set(params, persistent) {
+    const useStorage = persistent ?? currentDefaultPersistent;
+    const key = generateRandomId("pk_");
+    try {
+      JSON.stringify(params);
+    } catch {
+      warn("params must be JSON-serializable. Non-serializable values will be lost.");
+    }
+    if (useStorage) {
+      try {
+        uni.setStorageSync(PARAMS_STORAGE_PREFIX + key, JSON.stringify(params));
+      } catch {
+        warn("Failed to write params to storage, falling back to memory storage.");
+        memoryMap.set(key, params);
+      }
+    } else {
+      memoryMap.set(key, params);
+    }
+    return key;
+  }
+  function get(key) {
+    if (memoryMap.has(key)) {
+      if (!isPageInStack(key)) {
+        memoryMap.delete(key);
+        return void 0;
+      }
+      return memoryMap.get(key);
+    }
+    try {
+      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
+      if (raw) {
+        if (!isPageInStack(key)) {
+          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
+          return void 0;
+        }
+        try {
+          return JSON.parse(raw);
+        } catch {
+          uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
+          return void 0;
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
+  function peek(key) {
+    if (memoryMap.has(key)) {
+      return memoryMap.get(key);
+    }
+    try {
+      const raw = uni.getStorageSync(PARAMS_STORAGE_PREFIX + key);
+      if (raw) {
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return void 0;
+        }
+      }
+    } catch {
+    }
+    return void 0;
+  }
+  function remove(key) {
+    memoryMap.delete(key);
+    try {
+      uni.removeStorageSync(PARAMS_STORAGE_PREFIX + key);
+    } catch {
+    }
+  }
+  function cleanupStale() {
+    for (const key of memoryMap.keys()) {
+      if (!isPageInStack(key)) {
+        memoryMap.delete(key);
+      }
+    }
+    try {
+      const info = uni.getStorageInfoSync();
+      for (const k of info.keys) {
+        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
+          const paramsKey = k.slice(PARAMS_STORAGE_PREFIX.length);
+          if (!isPageInStack(paramsKey)) {
+            uni.removeStorageSync(k);
+          }
+        }
+      }
+    } catch {
+    }
+  }
+  function cleanupAll() {
+    memoryMap.clear();
+    try {
+      const info = uni.getStorageInfoSync();
+      for (const k of info.keys) {
+        if (k.startsWith(PARAMS_STORAGE_PREFIX)) {
+          uni.removeStorageSync(k);
+        }
+      }
+    } catch {
+    }
+  }
+  return { set, get, peek, remove, cleanupStale, cleanupAll, setDefaultPersistent };
+}
+
 // src/router/location.ts
 function isSameRouteLocation(a, b) {
   if (a.path !== b.path) return false;
@@ -1056,27 +1187,10 @@ function createRouteSync(routeState, matcher, onSyncCleanup, runSyncHooks) {
   return { syncRoute, syncCurrentRoute };
 }
 
-// src/router/index.ts
-var MAX_REDIRECT_DEPTH = 10;
-var UniRouter = class {
-  /**
-   * @param options - 路由器初始化选项
-   */
-  constructor(options) {
-    __publicField(this, "options");
-    __publicField(this, "routeState", createRouteState());
-    __publicField(this, "guardManager", createGuardManager());
-    __publicField(this, "paramsManager", createParamsManager(false));
-    __publicField(this, "matcher", createRouteMatcher([], true, this.paramsManager));
-    __publicField(this, "routeSync");
-    __publicField(this, "errorHandlers", []);
-    __publicField(this, "pendingNavigation", null);
-    __publicField(this, "installedPlugins", /* @__PURE__ */ new Set());
-    /** 返回守卫执行中标记：onBackPress 手动返回时置位，避免递归 */
-    __publicField(this, "backGuardRunning", false);
-    /** H5 平台返回守卫：当前页面 URL，用于判断 popstate 是否为后退 */
-    __publicField(this, "h5BackUrl", "");
-    // 插件 hook 数组
+// src/router/plugin-hooks.ts
+var PluginHookManager = class {
+  constructor(deps) {
+    __publicField(this, "deps", deps);
     __publicField(this, "enrichLocationHooks", []);
     __publicField(this, "afterResolveHooks", []);
     __publicField(this, "prepareNavigationHooks", []);
@@ -1084,30 +1198,13 @@ var UniRouter = class {
     __publicField(this, "navigationAbortHooks", []);
     __publicField(this, "routeSyncHooks", []);
     __publicField(this, "appInstallHooks", []);
-    this.options = options;
-    this.guardManager = createGuardManager(options.guardTimeout);
-    this.paramsManager = createParamsManager(false);
-    this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager);
-    this.routeState = createRouteState(options.readyTimeout);
-    this.installPlugins(options.plugins ?? [], options);
-    this.routeSync = createRouteSync(
-      this.routeState,
-      this.matcher,
-      () => this.paramsManager.cleanupStale(),
-      (query, params) => {
-        for (const hook of this.routeSyncHooks) {
-          hook(query, params);
-        }
-      }
-    );
-    this.paramsManager.cleanupAll();
-    this.initRoute();
+    __publicField(this, "installedPlugins", /* @__PURE__ */ new Set());
   }
   /**
    * 安装插件并注册 hook
    */
-  installPlugins(plugins, options) {
-    const self = this;
+  install(plugins, options) {
+    const deps = this.deps;
     const context = {
       onEnrichLocation: (hook) => {
         this.enrichLocationHooks.push(hook);
@@ -1131,18 +1228,16 @@ var UniRouter = class {
         this.appInstallHooks.push(hook);
       },
       get currentRoute() {
-        return self.routeState.getCurrentRoute();
+        return deps.getCurrentRoute();
       },
-      resolve: (location2) => self.matcher.resolve(location2),
+      resolve: (location2) => deps.resolve(location2),
       get router() {
-        return self;
+        return deps.router;
       },
       get paramsManager() {
-        return self.paramsManager;
+        return deps.paramsManager;
       },
-      hasPlugin(name) {
-        return self.installedPlugins.has(name);
-      }
+      hasPlugin: (name) => this.installedPlugins.has(name)
     };
     for (const plugin of plugins) {
       this.installedPlugins.add(plugin.name);
@@ -1157,6 +1252,265 @@ var UniRouter = class {
     if (options.interceptUniApi && !this.installedPlugins.has("interceptor")) {
       warn("options.interceptUniApi is set but InterceptorPlugin is not registered. The option will be ignored.");
     }
+  }
+  /**
+   * 检查指定插件是否已注册
+   */
+  hasPlugin(name) {
+    return this.installedPlugins.has(name);
+  }
+  /**
+   * 执行 enrichLocation hooks，返回增强后的路由位置
+   */
+  enrichLocation(location2) {
+    let result = location2;
+    for (const hook of this.enrichLocationHooks) result = hook(result);
+    return result;
+  }
+  /**
+   * 执行 afterResolve hooks，将插件数据提取到 pluginData
+   */
+  afterResolve(enrichedLocation, pluginData) {
+    for (const hook of this.afterResolveHooks) hook(enrichedLocation, pluginData);
+  }
+  /**
+   * 执行 prepareNavigation hooks，修改导航 query 与选项
+   */
+  prepareNavigation(ctx) {
+    for (const hook of this.prepareNavigationHooks) hook(ctx);
+  }
+  /**
+   * 执行 completeNavigation hooks，扩展导航结果
+   */
+  completeNavigation(ctx) {
+    for (const hook of this.completeNavigationHooks) hook(ctx);
+  }
+  /**
+   * 执行所有 abort hooks（导航中止或失败时清理插件资源）
+   */
+  runAbortHooks(pluginData) {
+    for (const hook of this.navigationAbortHooks) {
+      try {
+        hook(pluginData);
+      } catch {
+      }
+    }
+  }
+  /**
+   * 执行 routeSync hooks，从 URL query 提取插件数据到 params
+   */
+  runRouteSyncHooks(query, params) {
+    for (const hook of this.routeSyncHooks) hook(query, params);
+  }
+  /**
+   * 执行 appInstall hooks
+   */
+  runAppInstallHooks(app) {
+    for (const hook of this.appInstallHooks) hook(app);
+  }
+};
+
+// src/router/back-guard.ts
+var BackGuardManager = class {
+  constructor(deps) {
+    __publicField(this, "deps", deps);
+    /** 返回守卫执行中标记：路由器发起返回时置位，避免递归 */
+    __publicField(this, "backGuardRunning", false);
+    /** H5 平台返回守卫：当前页面 URL，用于判断 popstate 是否为后退 */
+    __publicField(this, "h5BackUrl", "");
+  }
+  /**
+   * 设置 H5 平台当前页面 URL（install 时初始化）
+   *
+   * 作为 popstate 后退判断的基准：URL 变化说明发生了后退。
+   *
+   * @param url - 当前页面 URL
+   */
+  setH5BackUrl(url) {
+    this.h5BackUrl = url;
+  }
+  /**
+   * 标记路由器发起的返回
+   *
+   * 供 `router.back()` 在执行 `uni.navigateBack` 前置位，避免再次触发返回守卫。
+   *
+   * @param running - 是否处于路由器发起的返回中
+   */
+  setRouterBackRunning(running) {
+    this.backGuardRunning = running;
+  }
+  /**
+   * 处理页面 onBackPress 生命周期（由全局 mixin 注入到每个页面）
+   *
+   * 覆盖 App 端物理返回键、顶部导航栏返回按钮、外部 `uni.navigateBack` 调用。
+   * 返回 `true` 阻止默认返回并异步执行返回守卫链；返回 `false` / `undefined` 放行默认返回。
+   *
+   * **递归保护**：路由器发起的返回（`router.back()` 或守卫放行后的手动返回）会再次触发
+   * `onBackPress`，通过 `backGuardRunning` 标记放行，避免守卫重复执行与死循环。
+   *
+   * **平台限制**：仅 App 平台接入。iOS 侧滑返回不触发 `onBackPress`，
+   * 需配合 `app.setSideSlipGesture` 禁用手势后由本方法接管；
+   * H5 浏览器后退由 popstate 事件接入（见 {@link handleH5PopState}），
+   * 小程序返回不支持拦截。
+   *
+   * @returns 返回 true 阻止默认返回，返回 false / undefined 放行
+   */
+  handleBackPress() {
+    if (!getPlatform().isApp) return void 0;
+    if (this.backGuardRunning) return false;
+    const pages = getCurrentPages();
+    if (pages.length < 2) return false;
+    this.runBackGuardFromBackPress().catch(() => {
+    });
+    return true;
+  }
+  /**
+   * 由 onBackPress 触发的返回守卫流程（异步执行，App 端）
+   *
+   * 执行顺序：onBeforeBack → beforeEach → beforeResolve，全部放行后执行 `uni.navigateBack`。
+   * 由于 `onBackPress` 必须同步返回，本方法以 fire-and-forget 方式运行；
+   * 守卫放行后手动返回时会再次触发 `onBackPress`，由 `backGuardRunning` 放行。
+   */
+  async runBackGuardFromBackPress() {
+    const from = this.deps.getCurrentRoute();
+    const pages = getCurrentPages();
+    const targetPage = pages[pages.length - 2];
+    if (!targetPage) return;
+    const to = this.deps.resolve(`/${targetPage.route}`);
+    await this.runBackGuardChain(to, from, () => this.executeBack());
+  }
+  /**
+   * H5 平台返回守卫入口（由浏览器 popstate 事件触发）
+   *
+   * 覆盖浏览器后退按钮 / 后退手势。popstate 触发时浏览器已完成后退，
+   * 采用「撤销后退 → 执行返回守卫 → 守卫放行后重新后退」策略：
+   * 1. 记录当前页 URL（`h5BackUrl`），popstate 后 URL 已变化说明发生了后退；
+   * 2. `history.go(1)` 恢复当前页（触发二次 popstate，命中「回到当前页」分支放行）；
+   * 3. 同步捕获 to/from 执行返回守卫链（避免依赖 uni-app 处理 popstate 后的页面栈时序）；
+   * 4. 守卫放行后经 {@link executeBack} 重新后退（再次触发 popstate，由 `backGuardRunning` 放行）。
+   *
+   * 根页面（无上级页面）不拦截，保留浏览器默认行为（离开站点 / 回上一站点）。
+   */
+  handleH5PopState() {
+    if (this.backGuardRunning) {
+      this.h5BackUrl = location.href;
+      return;
+    }
+    if (location.href === this.h5BackUrl) return;
+    const pages = getCurrentPages();
+    if (pages.length < 2) return;
+    history.go(1);
+    const from = this.deps.getCurrentRoute();
+    const targetPage = pages[pages.length - 2];
+    if (!targetPage) return;
+    const to = this.deps.resolve(`/${targetPage.route}`);
+    this.runBackGuardChain(to, from, () => this.executeBack()).catch(() => {
+    });
+  }
+  /**
+   * 执行返回守卫链（onBeforeBack → beforeEach → beforeResolve）
+   *
+   * 全部放行后调用 onPass 执行真正的返回，随后同步路由状态并触发后置钩子。
+   * 任一守卫返回 false 时中止（NAVIGATION_ABORTED）；重定向 / 异常行为与完整导航一致。
+   *
+   * @param to - 返回目标路由（上一页）
+   * @param from - 当前正要离开的路由
+   * @param onPass - 守卫全部放行后执行返回的回调
+   */
+  async runBackGuardChain(to, from, onPass) {
+    const backPass = await this.deps.guardManager.runBeforeBackGuards(to, from);
+    if (!backPass) {
+      const failure = new NavigationFailure(to, from, "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */);
+      this.deps.guardManager.runAfterGuards(to, from, failure);
+      this.deps.onNavigationFailure(failure, to, from);
+      return;
+    }
+    const beforeResult = await this.deps.guardManager.runBeforeGuards(to, from);
+    const handled = this.deps.handleGuardResult(beforeResult, to, from);
+    if (handled) return;
+    const beforeResolveResult = await this.deps.guardManager.runBeforeResolveGuards(to, from);
+    const handledResolve = this.deps.handleGuardResult(beforeResolveResult, to, from);
+    if (handledResolve) return;
+    await onPass();
+    this.deps.syncCurrentRoute();
+    this.deps.guardManager.runAfterGuards(to, from);
+  }
+  /**
+   * 守卫放行后执行真正的返回（uni.navigateBack）
+   *
+   * 置位 `backGuardRunning`：App 端再次触发 onBackPress、H5 端再次触发 popstate 时据此放行，
+   * 避免守卫重复执行与死循环。
+   */
+  async executeBack() {
+    this.backGuardRunning = true;
+    try {
+      await goBack(1);
+    } finally {
+      this.backGuardRunning = false;
+    }
+  }
+  /**
+   * 按当前路由动态设置 iOS 侧滑返回手势（由全局 mixin 在页面 onShow 时调用）
+   *
+   * 通过 `app.setSideSlipGesture` 回调决定当前页面的 popGesture：
+   * - `'none'`：禁用侧滑返回，使侧滑返回无法绕过守卫（配合 onBackPress 拦截）
+   * - `'close'`：开启原生侧滑返回，保留原生手势体验（侧滑不经过守卫）
+   *
+   * 仅 iOS 平台生效；未配置 `app.setSideSlipGesture` 时不干预手势。
+   */
+  applySideSlipGesture() {
+    const config = this.deps.options?.app?.setSideSlipGesture;
+    if (typeof config !== "function" || !getPlatform().isIOS) return;
+    const value = config(this.deps.getCurrentRoute());
+    if (value === "none" || value === "close") {
+      plus.webview.currentWebview()?.setStyle({ popGesture: value });
+    }
+  }
+};
+
+// src/router/index.ts
+var UniRouter = class {
+  /**
+   * @param options - 路由器初始化选项
+   */
+  constructor(options) {
+    __publicField(this, "routeState", createRouteState());
+    __publicField(this, "guardManager", createGuardManager());
+    __publicField(this, "paramsManager", createParamsManager(false));
+    __publicField(this, "matcher", createRouteMatcher([], true, this.paramsManager));
+    __publicField(this, "routeSync");
+    __publicField(this, "errorHandlers", []);
+    __publicField(this, "pendingNavigation", null);
+    __publicField(this, "pluginHooks");
+    __publicField(this, "backGuard");
+    this.guardManager = createGuardManager(options.guardTimeout);
+    this.paramsManager = createParamsManager(false);
+    this.matcher = createRouteMatcher(options.routes, options.strict ?? true, this.paramsManager);
+    this.routeState = createRouteState(options.readyTimeout);
+    this.pluginHooks = new PluginHookManager({
+      getCurrentRoute: () => this.routeState.getCurrentRoute(),
+      resolve: (location2) => this.matcher.resolve(location2),
+      router: this,
+      paramsManager: this.paramsManager
+    });
+    this.pluginHooks.install(options.plugins ?? [], options);
+    this.routeSync = createRouteSync(
+      this.routeState,
+      this.matcher,
+      () => this.paramsManager.cleanupStale(),
+      (query, params) => this.pluginHooks.runRouteSyncHooks(query, params)
+    );
+    this.backGuard = new BackGuardManager({
+      guardManager: this.guardManager,
+      options,
+      getCurrentRoute: () => this.routeState.getCurrentRoute(),
+      resolve: (path) => this.matcher.resolve(path),
+      syncCurrentRoute: () => this.routeSync.syncCurrentRoute(),
+      handleGuardResult: (result, to, from) => this.handleGuardResult(result, to, from, "back", 0, {}),
+      onNavigationFailure: (failure, to, from) => this.triggerErrorHandlers(failure, to, from)
+    });
+    this.paramsManager.cleanupAll();
+    this.initRoute();
   }
   /**
    * 获取当前路由位置
@@ -1226,7 +1580,7 @@ var UniRouter = class {
       await this.pendingNavigation.catch(() => {
       });
     }
-    if (options && "animation" in options && !this.installedPlugins.has("animation")) {
+    if (options && "animation" in options && !this.pluginHooks.hasPlugin("animation")) {
       throw new RouterError("PLUGIN_REQUIRED" /* PLUGIN_REQUIRED */, "AnimationPlugin is required to use animation in back(). Add AnimationPlugin to createRouter({ plugins: [AnimationPlugin] }).");
     }
     const from = this.routeState.getCurrentRoute();
@@ -1243,10 +1597,7 @@ var UniRouter = class {
     const pluginData = {};
     const backPass = await this.guardManager.runBeforeBackGuards(to, from);
     if (!backPass) {
-      const failure = new NavigationFailure(to, from, "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */);
-      this.guardManager.runAfterGuards(to, from, failure);
-      this.triggerErrorHandlers(failure, to, from);
-      return Promise.reject(failure);
+      return this.failNavigation(to, from, "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */);
     }
     const beforeResult = await this.guardManager.runBeforeGuards(to, from);
     const handled = this.handleGuardResult(beforeResult, to, from, "back", 0, pluginData);
@@ -1258,7 +1609,8 @@ var UniRouter = class {
       path: to.path,
       meta: to.meta,
       query: { ...to.query },
-      animation: to.meta.animation
+      // meta.animation 需要 AnimationPlugin（未注册时不生效，与 location.animation 门控一致）
+      animation: this.pluginHooks.hasPlugin("animation") ? to.meta.animation : void 0
     };
     if (options && "animation" in options) {
       pluginData["animation"] = { animation: options.animation };
@@ -1271,26 +1623,19 @@ var UniRouter = class {
       query: navOptions.query,
       options: navOptions
     };
-    for (const hook of this.prepareNavigationHooks) {
-      hook(prepareCtx);
-    }
+    this.pluginHooks.prepareNavigation(prepareCtx);
     const animation = navOptions.animation;
-    this.backGuardRunning = true;
+    this.backGuard.setRouterBackRunning(true);
     try {
       await goBack(delta, animation);
       this.routeSync.syncCurrentRoute();
       this.guardManager.runAfterGuards(to, from);
       return this.routeState.getCurrentRoute();
     } catch (error) {
-      this.runAbortHooks(pluginData);
-      const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
-      const cause = isUniApiError(error) ? error : void 0;
-      const failure = new NavigationFailure(to, from, code, void 0, cause);
-      this.guardManager.runAfterGuards(to, from, failure);
-      this.triggerErrorHandlers(failure, to, from);
-      return Promise.reject(failure);
+      this.pluginHooks.runAbortHooks(pluginData);
+      return this.failNavigation(to, from, "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */, void 0, isUniApiError(error) ? error : void 0);
     } finally {
-      this.backGuardRunning = false;
+      this.backGuard.setRouterBackRunning(false);
     }
   }
   /**
@@ -1355,7 +1700,7 @@ var UniRouter = class {
    * @returns 已注册时返回 true
    */
   hasPlugin(name) {
-    return this.installedPlugins.has(name);
+    return this.pluginHooks.hasPlugin(name);
   }
   /**
    * 解析路由位置为完整的 RouteLocation 对象，不执行导航
@@ -1413,129 +1758,20 @@ var UniRouter = class {
   /**
    * 处理页面 onBackPress 生命周期（由全局 mixin 注入到每个页面）
    *
-   * 覆盖 App 端物理返回键、顶部导航栏返回按钮、外部 `uni.navigateBack` 调用。
-   * 返回 `true` 阻止默认返回并异步执行返回守卫链；返回 `false` / `undefined` 放行默认返回。
-   *
-   * **递归保护**：路由器发起的返回（`router.back()` 或本方法守卫放行后的手动返回）会再次触发
-   * `onBackPress`，通过 `backGuardRunning` 标记放行，避免守卫重复执行与死循环。
-   *
-   * **平台限制**：仅 App 平台接入。iOS 侧滑返回不触发 `onBackPress`，
-   * 需配合 `app.setSideSlipGesture` 禁用手势后由本方法接管；
-   * H5 浏览器后退由 popstate 事件接入（见 {@link handleH5PopState}），
-   * 小程序返回不支持拦截。
+   * 委托给 {@link BackGuardManager}，覆盖 App 端物理返回键 / 导航栏返回 / navigateBack。
    *
    * @returns 返回 true 阻止默认返回，返回 false / undefined 放行
    */
   handleBackPress() {
-    if (!getPlatform().isApp) return void 0;
-    if (this.backGuardRunning) return false;
-    const pages = getCurrentPages();
-    if (pages.length < 2) return false;
-    this.runBackGuardFromBackPress().catch(() => {
-    });
-    return true;
-  }
-  /**
-   * 由 onBackPress 触发的返回守卫流程（异步执行，App 端）
-   *
-   * 执行顺序：onBeforeBack → beforeEach → beforeResolve，全部放行后执行 `uni.navigateBack`。
-   * 由于 `onBackPress` 必须同步返回，本方法以 fire-and-forget 方式运行；
-   * 守卫放行后手动返回时会再次触发 `onBackPress`，由 `backGuardRunning` 放行。
-   */
-  async runBackGuardFromBackPress() {
-    const from = this.routeState.getCurrentRoute();
-    const pages = getCurrentPages();
-    const targetPage = pages[pages.length - 2];
-    if (!targetPage) return;
-    const to = this.matcher.resolve(`/${targetPage.route}`);
-    await this.runBackGuardChain(to, from, () => this.executeBack());
-  }
-  /**
-   * H5 平台返回守卫入口（由浏览器 popstate 事件触发，注册见 {@link install}）
-   *
-   * 覆盖浏览器后退按钮 / 后退手势。popstate 触发时浏览器已完成后退，
-   * 采用「撤销后退 → 执行返回守卫 → 守卫放行后重新后退」策略：
-   * 1. 记录当前页 URL（`h5BackUrl`），popstate 后 URL 已变化说明发生了后退；
-   * 2. `history.go(1)` 恢复当前页（触发二次 popstate，命中「回到当前页」分支放行）；
-   * 3. 同步捕获 to/from 执行返回守卫链（避免依赖 uni-app 处理 popstate 后的页面栈时序）；
-   * 4. 守卫放行后经 {@link executeBack} 重新后退（再次触发 popstate，由 `backGuardRunning` 放行）。
-   *
-   * 根页面（无上级页面）不拦截，保留浏览器默认行为（离开站点 / 回上一站点）。
-   */
-  handleH5PopState() {
-    if (this.backGuardRunning) {
-      this.h5BackUrl = location.href;
-      return;
-    }
-    if (location.href === this.h5BackUrl) return;
-    const pages = getCurrentPages();
-    if (pages.length < 2) return;
-    history.go(1);
-    const from = this.routeState.getCurrentRoute();
-    const targetPage = pages[pages.length - 2];
-    if (!targetPage) return;
-    const to = this.matcher.resolve(`/${targetPage.route}`);
-    this.runBackGuardChain(to, from, () => this.executeBack()).catch(() => {
-    });
-  }
-  /**
-   * 执行返回守卫链（onBeforeBack → beforeEach → beforeResolve）
-   *
-   * 全部放行后调用 onPass 执行真正的返回，随后同步路由状态并触发后置钩子。
-   * 任一守卫返回 false 时中止（NAVIGATION_ABORTED）；重定向 / 异常行为与完整导航一致。
-   *
-   * @param to - 返回目标路由（上一页）
-   * @param from - 当前正要离开的路由
-   * @param onPass - 守卫全部放行后执行返回的回调
-   */
-  async runBackGuardChain(to, from, onPass) {
-    const backPass = await this.guardManager.runBeforeBackGuards(to, from);
-    if (!backPass) {
-      const failure = new NavigationFailure(to, from, "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */);
-      this.guardManager.runAfterGuards(to, from, failure);
-      this.triggerErrorHandlers(failure, to, from);
-      return;
-    }
-    const beforeResult = await this.guardManager.runBeforeGuards(to, from);
-    const handled = this.handleGuardResult(beforeResult, to, from, "back", 0, {});
-    if (handled) return;
-    const beforeResolveResult = await this.guardManager.runBeforeResolveGuards(to, from);
-    const handledResolve = this.handleGuardResult(beforeResolveResult, to, from, "back", 0, {});
-    if (handledResolve) return;
-    await onPass();
-    this.routeSync.syncCurrentRoute();
-    this.guardManager.runAfterGuards(to, from);
-  }
-  /**
-   * 守卫放行后执行真正的返回（uni.navigateBack）
-   *
-   * 置位 `backGuardRunning`：App 端再次触发 onBackPress、H5 端再次触发 popstate 时据此放行，
-   * 避免守卫重复执行与死循环。
-   */
-  async executeBack() {
-    this.backGuardRunning = true;
-    try {
-      await goBack(1);
-    } finally {
-      this.backGuardRunning = false;
-    }
+    return this.backGuard.handleBackPress();
   }
   /**
    * 按当前路由动态设置 iOS 侧滑返回手势（由全局 mixin 在页面 onShow 时调用）
    *
-   * 通过 `app.setSideSlipGesture` 回调决定当前页面的 popGesture：
-   * - `'none'`：禁用侧滑返回，使侧滑返回无法绕过守卫（配合 onBackPress 拦截）
-   * - `'close'`：开启原生侧滑返回，保留原生手势体验（侧滑不经过守卫）
-   *
-   * 仅 iOS 平台生效；未配置 `app.setSideSlipGesture` 时不干预手势。
+   * 委托给 {@link BackGuardManager}，需配置 `app.setSideSlipGesture`，仅 iOS 生效。
    */
   applySideSlipGesture() {
-    const config = this.options?.app?.setSideSlipGesture;
-    if (typeof config !== "function" || !getPlatform().isIOS) return;
-    const value = config(this.routeState.getCurrentRoute());
-    if (value === "none" || value === "close") {
-      plus.webview.currentWebview()?.setStyle({ popGesture: value });
-    }
+    this.backGuard.applySideSlipGesture();
   }
   /**
    * 对指定路由执行守卫链检查（不执行实际导航）
@@ -1607,9 +1843,7 @@ var UniRouter = class {
         get: () => this.currentRoute
       });
     }
-    for (const hook of this.appInstallHooks) {
-      hook(app);
-    }
+    this.pluginHooks.runAppInstallHooks(app);
     const router = this;
     app.mixin({
       onShow() {
@@ -1621,8 +1855,8 @@ var UniRouter = class {
       }
     });
     if (getPlatform().isH5) {
-      this.h5BackUrl = location.href;
-      window.addEventListener("popstate", () => this.handleH5PopState());
+      this.backGuard.setH5BackUrl(location.href);
+      window.addEventListener("popstate", () => this.backGuard.handleH5PopState());
     }
     this.routeState.markReady();
   }
@@ -1656,18 +1890,13 @@ var UniRouter = class {
       });
     }
     this.requirePluginForLocation(location2);
-    let enrichedLocation = location2;
-    for (const hook of this.enrichLocationHooks) {
-      enrichedLocation = hook(enrichedLocation);
-    }
+    const enrichedLocation = this.pluginHooks.enrichLocation(location2);
     const to = this.matcher.resolve(enrichedLocation);
     const from = this.routeState.getCurrentRoute();
     const pluginData = {};
-    for (const hook of this.afterResolveHooks) {
-      hook(enrichedLocation, pluginData);
-    }
+    this.pluginHooks.afterResolve(enrichedLocation, pluginData);
     if (mode === "push" && isSameRouteLocation(to, from)) {
-      this.runAbortHooks(pluginData);
+      this.pluginHooks.runAbortHooks(pluginData);
       const failure = new NavigationFailure(to, from, "NAVIGATION_DUPLICATED" /* NAVIGATION_DUPLICATED */, `Avoided redundant navigation to current location: "${to.fullPath}"`);
       this.triggerErrorHandlers(failure, to, from);
       return Promise.reject(failure);
@@ -1699,10 +1928,8 @@ var UniRouter = class {
    */
   async executeNavigation(to, from, mode, redirectDepth, pluginData) {
     if (redirectDepth > MAX_REDIRECT_DEPTH) {
-      this.runAbortHooks(pluginData);
-      const failure = new NavigationFailure(to, from, "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`);
-      this.triggerErrorHandlers(failure, to, from);
-      return Promise.reject(failure);
+      this.pluginHooks.runAbortHooks(pluginData);
+      return this.failNavigation(to, from, "NAVIGATION_CANCELLED" /* NAVIGATION_CANCELLED */, `Maximum redirect depth (${MAX_REDIRECT_DEPTH}) exceeded`);
     }
     const config = this.matcher.getRouteConfig(to.path);
     const beforeResult = await this.guardManager.runBeforeGuards(to, from);
@@ -1722,7 +1949,8 @@ var UniRouter = class {
         path: to.path,
         meta: to.meta,
         query: queryWithKeys,
-        animation: to.meta.animation
+        // meta.animation 需要 AnimationPlugin（与 location.animation 的 PLUGIN_REQUIRED 门控保持一致），未注册时不生效
+        animation: this.pluginHooks.hasPlugin("animation") ? to.meta.animation : void 0
       };
       const prepareCtx = {
         to,
@@ -1732,9 +1960,7 @@ var UniRouter = class {
         query: queryWithKeys,
         options: navOptions
       };
-      for (const hook of this.prepareNavigationHooks) {
-        hook(prepareCtx);
-      }
+      this.pluginHooks.prepareNavigation(prepareCtx);
       let nativeEventChannel;
       if (mode === "push") {
         nativeEventChannel = await navigateTo(navOptions);
@@ -1755,19 +1981,12 @@ var UniRouter = class {
         nativeEventChannel,
         result
       };
-      for (const hook of this.completeNavigationHooks) {
-        hook(completeCtx);
-      }
+      this.pluginHooks.completeNavigation(completeCtx);
       return result;
     } catch (error) {
       this.routeState.setCurrentRoute(from);
-      this.runAbortHooks(pluginData);
-      const code = "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */;
-      const cause = isUniApiError(error) ? error : void 0;
-      const failure = new NavigationFailure(to, from, code, void 0, cause);
-      this.guardManager.runAfterGuards(to, from, failure);
-      this.triggerErrorHandlers(failure, to, from);
-      return Promise.reject(failure);
+      this.pluginHooks.runAbortHooks(pluginData);
+      return this.failNavigation(to, from, "NAVIGATION_API_ERROR" /* NAVIGATION_API_ERROR */, void 0, isUniApiError(error) ? error : void 0);
     }
   }
   /**
@@ -1780,37 +1999,18 @@ var UniRouter = class {
    */
   handleGuardResult(result, to, from, mode, redirectDepth, pluginData) {
     if (result.type === "abort") {
-      this.runAbortHooks(pluginData);
-      const failure = new NavigationFailure(to, from, result.code);
-      this.guardManager.runAfterGuards(to, from, failure);
-      this.triggerErrorHandlers(failure, to, from);
-      return Promise.reject(failure);
+      this.pluginHooks.runAbortHooks(pluginData);
+      return this.failNavigation(to, from, result.code);
     }
     if (result.redirect) {
-      let enrichedRedirect = result.redirect;
-      for (const hook of this.enrichLocationHooks) {
-        enrichedRedirect = hook(enrichedRedirect);
-      }
+      const enrichedRedirect = this.pluginHooks.enrichLocation(result.redirect);
       const redirectTarget = this.matcher.resolve(enrichedRedirect);
       const redirectPluginData = { ...pluginData };
-      for (const hook of this.afterResolveHooks) {
-        hook(enrichedRedirect, redirectPluginData);
-      }
+      this.pluginHooks.afterResolve(enrichedRedirect, redirectPluginData);
       const redirectMode = result.mode ?? (mode === "back" ? "relaunch" : mode);
       return this.executeNavigation(redirectTarget, from, redirectMode, redirectDepth + 1, redirectPluginData);
     }
     return null;
-  }
-  /**
-   * 执行所有 abort hooks
-   */
-  runAbortHooks(pluginData) {
-    for (const hook of this.navigationAbortHooks) {
-      try {
-        hook(pluginData);
-      } catch {
-      }
-    }
   }
   /**
    * 对路由位置执行 routeSync hooks，将内部 key（如 __nav_id）从 query 提取到 params
@@ -1821,9 +2021,7 @@ var UniRouter = class {
   applySyncHooks(to) {
     const query = { ...to.query };
     const params = { ...to.params };
-    for (const hook of this.routeSyncHooks) {
-      hook(query, params);
-    }
+    this.pluginHooks.runRouteSyncHooks(query, params);
     const fullPath = buildFullPath(to.path, query);
     return createRouteLocation({ ...to, query, fullPath, params: Object.keys(params).length > 0 ? params : void 0 });
   }
@@ -1836,15 +2034,33 @@ var UniRouter = class {
   requirePluginForLocation(location2) {
     if (typeof location2 === "string") return;
     const loc = location2;
-    if ("params" in loc && loc.params && !this.installedPlugins.has("params")) {
+    if ("params" in loc && loc.params && !this.pluginHooks.hasPlugin("params")) {
       throw new RouterError("PLUGIN_REQUIRED" /* PLUGIN_REQUIRED */, "ParamsPlugin is required to use params. Add ParamsPlugin to createRouter({ plugins: [ParamsPlugin] }).");
     }
-    if ("events" in loc && loc.events && !this.installedPlugins.has("channel")) {
+    if ("events" in loc && loc.events && !this.pluginHooks.hasPlugin("channel")) {
       throw new RouterError("PLUGIN_REQUIRED" /* PLUGIN_REQUIRED */, "ChannelPlugin is required to use events. Add ChannelPlugin to createRouter({ plugins: [ChannelPlugin] }).");
     }
-    if ("animation" in loc && loc.animation && !this.installedPlugins.has("animation")) {
+    if ("animation" in loc && loc.animation && !this.pluginHooks.hasPlugin("animation")) {
       throw new RouterError("PLUGIN_REQUIRED" /* PLUGIN_REQUIRED */, "AnimationPlugin is required to use animation. Add AnimationPlugin to createRouter({ plugins: [AnimationPlugin] }).");
     }
+  }
+  /**
+   * 构造导航失败并统一处理：触发 afterEach + 错误处理器，然后 reject
+   *
+   * 复用统一错误处理样板，避免各导航分支重复构造 NavigationFailure。
+   *
+   * @param to - 目标路由
+   * @param from - 来源路由
+   * @param code - 错误码
+   * @param message - 错误信息（可选）
+   * @param cause - uni API 失败原因（可选，仅 NAVIGATION_API_ERROR 时存在）
+   * @returns 始终 reject 的 Promise
+   */
+  failNavigation(to, from, code, message, cause) {
+    const failure = new NavigationFailure(to, from, code, message, cause);
+    this.guardManager.runAfterGuards(to, from, failure);
+    this.triggerErrorHandlers(failure, to, from);
+    return Promise.reject(failure);
   }
   /**
    * 触发所有已注册的错误处理器
@@ -1858,7 +2074,6 @@ var UniRouter = class {
     }
   }
 };
-var ROUTER_SYMBOL = /* @__PURE__ */ Symbol("uni-router");
 function createRouter(options) {
   return new UniRouter(options);
 }
@@ -1994,12 +2209,6 @@ var AnimationPlugin = {
 };
 
 // src/plugins/channel/uni-event-channel.ts
-var NAV_ID_KEY = "__nav_id";
-var navIdSeq = 0;
-function generateNavId() {
-  return `nav-${Date.now()}-${++navIdSeq}`;
-}
-var NAV_EVENT_PREFIX = "uni-router";
 function wrapEventName(navId, event) {
   return `${NAV_EVENT_PREFIX}:${navId}:${event}`;
 }
@@ -2138,7 +2347,7 @@ var ChannelPlugin = {
     const useUniEventChannel = options.useUniEventChannel ?? false;
     if (useUniEventChannel) {
       context.onEnrichLocation((location2) => {
-        const navId = generateNavId();
+        const navId = generateUniqueId("nav-");
         return enrichLocationWithNavId(location2, navId);
       });
     }
@@ -2217,9 +2426,6 @@ var InterceptorPlugin = {
     });
   }
 };
-
-// src/types/route.ts
-var DEFAULT_ANIMATION_DURATION = 300;
 
 exports.AnimationPlugin = AnimationPlugin;
 exports.ChannelPlugin = ChannelPlugin;

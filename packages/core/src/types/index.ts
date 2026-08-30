@@ -18,7 +18,7 @@ export type {
 	ParamObject,
 	ParamsInput
 } from './route'
-export { DEFAULT_ANIMATION_DURATION } from './route'
+export { DEFAULT_ANIMATION_DURATION } from '@/constants'
 
 export type { NavigationGuardReturn, NavigationRedirectMode, NavigationRedirect, NavigationGuard, PostNavigationGuard, RouteLeaveGuard, BackGuardReturn, BackGuard } from './guard'
 
@@ -26,6 +26,8 @@ export type { RouterOnError, RouterOptions, Router, GuardRouteOptions, AppRouter
 
 export type { RouterError, UniApiCause, UniApiError, NavigationFailure } from './error'
 
-export { RouterErrorCode } from './error'
+export { RouterErrorCode } from '@/enums'
 
-export type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from '@/plugin'
+export type { RouterPlugin, PluginContext, NavigationPrepareContext, NavigationCompleteContext } from './plugin'
+
+export type { UseLinkOptions, UseLinkReturn } from './composables'

@@ -290,20 +290,20 @@ const router = createRouter({
 
 ### Problem
 
-`animation` param and `meta.animation` **only work on App**. Mini-program and H5 navigation animations are system-controlled:
+`animation` param and `meta.animation` are **native window animation on App**, **CSS transition on H5** (only `push` / `back`; `replace` / `relaunch` have no animation), and **system-controlled on mini-programs**:
 
-| Platform | Animation |
+| Platform | Navigation animation |
 | --- | --- |
 | App | ✅ Custom `animationType` |
-| H5 | ❌ Browser default transition (usually no animation) |
+| H5 | ✅ CSS transition on `push` / `back` (none for `replace` / `relaunch`) |
 | Mini-Program | ❌ System default slide animation |
 
 ### Solution
 
-No special handling needed. Passing `animation` on non-App is silently ignored (no warning), doesn't affect functionality.
+No special handling needed. App plays native animation, H5 plays CSS transition on `push` / `back`, mini-program uses its host-controlled transition.
 
 ```ts
-// Cross-platform safe, App has animation, others don't
+// Cross-platform safe: native on App, CSS on H5 push/back, default on mini-program
 await router.push({ name: 'about', animation: { type: 'slide-in-bottom' } })
 ```
 
@@ -568,7 +568,7 @@ if (supports.animation) {
 | Feature | App | H5 | WeChat MP | Alipay MP | ByteDance MP |
 | --- | --- | --- | --- | --- | --- |
 | Page stack limit | No hard limit | Unlimited | 10 | 10 | 10 |
-| Navigation animation | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Navigation animation | ✅ | ✅ push/back | ❌ | ❌ | ❌ |
 | Back interception | ✅ `onBeforeBack` | ✅ `onBeforeBack` | ⚠️ Programmatic | ⚠️ Programmatic | ⚠️ Programmatic |
 | `switchTab` query | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `reLaunch` animation | ❌ | ❌ | ❌ | ❌ | ❌ |

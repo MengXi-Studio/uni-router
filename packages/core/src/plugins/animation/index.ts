@@ -1,4 +1,4 @@
-import type { RouterPlugin, PluginContext } from '@/plugin'
+import type { RouterPlugin, PluginContext } from '@/types/plugin'
 import type { RouteLocationRaw, NavigationAnimation, RouterOptions } from '@/types'
 
 /**

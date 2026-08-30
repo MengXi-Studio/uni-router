@@ -1,6 +1,11 @@
-import { R as RouterOptions, a as Router, b as RouteLocation, c as RouteLeaveGuard, d as RouteLocationRaw, N as NavigationResult, E as EventChannel, e as RouterErrorCode, U as UniApiError$1, f as UniApiCause } from './index-BrbxXzIJ.cjs';
-export { A as AnimationPlugin, g as AppRouterOptions, B as BackGuard, h as BackGuardReturn, C as ChannelPlugin, D as DEFAULT_ANIMATION_DURATION, i as EventListeners, G as GuardRouteOptions, I as InterceptorPlugin, j as NavigationAnimation, k as NavigationCompleteContext, l as NavigationGuard, m as NavigationPrepareContext, n as NavigationRedirect, o as NavigationRedirectMode, P as ParamObject, p as ParamValue, q as ParamsInput, r as ParamsPlugin, s as PluginContext, t as PostNavigationGuard, Q as QueryValue, u as RouteConfig, v as RouteLocationNamedRaw, w as RouteLocationPathRaw, x as RouteMeta, y as RouteName, z as RouteNameMap, F as RoutePath, H as RouterOnError, J as RouterPlugin, S as SideSlipGesture, K as UniAnimationType, L as usePageChannel } from './index-BrbxXzIJ.cjs';
-import { Ref, ComputedRef } from 'vue';
+import { R as RouteLocationRaw, a as RouteLocation, N as NavigationResult, b as RouterOptions, c as Router, d as RouteLeaveGuard, E as EventChannel, e as RouterErrorCode, U as UniApiError$1, f as UniApiCause } from './index-f6f2rNDa.cjs';
+export { A as AnimationPlugin, g as AppRouterOptions, B as BackGuard, h as BackGuardReturn, C as ChannelPlugin, i as EventListeners, G as GuardRouteOptions, I as InterceptorPlugin, j as NavigationAnimation, k as NavigationCompleteContext, l as NavigationGuard, m as NavigationPrepareContext, n as NavigationRedirect, o as NavigationRedirectMode, P as ParamObject, p as ParamValue, q as ParamsInput, r as ParamsPlugin, s as PluginContext, t as PostNavigationGuard, Q as QueryValue, u as RouteConfig, v as RouteLocationNamedRaw, w as RouteLocationPathRaw, x as RouteMeta, y as RouteName, z as RouteNameMap, D as RoutePath, F as RouterOnError, H as RouterPlugin, S as SideSlipGesture, J as UniAnimationType, K as usePageChannel } from './index-f6f2rNDa.cjs';
+import { ComputedRef, Ref } from 'vue';
+
+/**
+ * 动画持续时间默认值（ms），与 uni-app 官方默认值一致
+ */
+declare const DEFAULT_ANIMATION_DURATION = 300;
 
 /**
  * 路由器注入键，用于 Vue 的 provide/inject 机制
@@ -8,6 +13,36 @@ import { Ref, ComputedRef } from 'vue';
  * @internal 内部使用，不应在应用代码中直接引用
  */
 declare const ROUTER_SYMBOL: unique symbol;
+
+/**
+ * useLink 的选项，与 RouterLink 组件的 props 对应
+ *
+ * 支持传入普通对象或 ref 包裹的值。
+ */
+interface UseLinkOptions {
+    /** 目标路由位置，支持路径字符串、路径对象或命名路由对象 */
+    to: RouteLocationRaw;
+    /** 是否使用 replace 模式导航 */
+    replace?: boolean;
+    /** 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面） */
+    relaunch?: boolean;
+}
+/**
+ * useLink 的返回值
+ */
+interface UseLinkReturn {
+    /** 解析后的路由对象 */
+    route: ComputedRef<RouteLocation>;
+    /** 目标路径字符串（fullPath，包含 query 参数） */
+    href: ComputedRef<string>;
+    /** 当前路由是否匹配此链接（比较 path，忽略 query 和 hash） */
+    isActive: ComputedRef<boolean>;
+    /** 当前路由是否完全匹配此链接（比较 fullPath，包含 query） */
+    isExactActive: ComputedRef<boolean>;
+    /** 执行导航到目标页面 */
+    navigate: () => Promise<NavigationResult>;
+}
+
 /**
  * 创建 uni-app 路由器实例
  *
@@ -117,34 +152,6 @@ declare function useRoute(): Ref<RouteLocation>;
  */
 declare function onBeforeRouteLeave(guard: RouteLeaveGuard): void;
 
-/**
- * useLink 的选项，与 RouterLink 组件的 props 对应
- *
- * 支持传入普通对象或 ref 包裹的值。
- */
-interface UseLinkOptions {
-    /** 目标路由位置，支持路径字符串、路径对象或命名路由对象 */
-    to: RouteLocationRaw;
-    /** 是否使用 replace 模式导航 */
-    replace?: boolean;
-    /** 是否使用 relaunch 模式导航（关闭所有页面并打开目标页面） */
-    relaunch?: boolean;
-}
-/**
- * useLink 的返回值
- */
-interface UseLinkReturn {
-    /** 解析后的路由对象 */
-    route: ComputedRef<RouteLocation>;
-    /** 目标路径字符串（fullPath，包含 query 参数） */
-    href: ComputedRef<string>;
-    /** 当前路由是否匹配此链接（比较 path，忽略 query 和 hash） */
-    isActive: ComputedRef<boolean>;
-    /** 当前路由是否完全匹配此链接（比较 fullPath，包含 query） */
-    isExactActive: ComputedRef<boolean>;
-    /** 执行导航到目标页面 */
-    navigate: () => Promise<NavigationResult>;
-}
 /**
  * 暴露 RouterLink 内部行为为组合式 API
  *
@@ -303,4 +310,4 @@ declare class UniApiError extends Error {
  */
 declare function isNavigationFailure(error: unknown, code?: RouterErrorCode): error is NavigationFailure;
 
-export { EventChannel, NavigationFailure, NavigationResult, ROUTER_SYMBOL, RouteLeaveGuard, RouteLocation, RouteLocationRaw, Router, RouterError, RouterErrorCode, RouterOptions, UniApiCause, UniApiError, UniEventChannel, type UseLinkOptions, type UseLinkReturn, createRouter, isNavigationFailure, noopChannel, onBeforeRouteLeave, useLink, useRoute, useRouter };
+export { DEFAULT_ANIMATION_DURATION, EventChannel, NavigationFailure, NavigationResult, ROUTER_SYMBOL, RouteLeaveGuard, RouteLocation, RouteLocationRaw, Router, RouterError, RouterErrorCode, RouterOptions, UniApiCause, UniApiError, UniEventChannel, type UseLinkOptions, type UseLinkReturn, createRouter, isNavigationFailure, noopChannel, onBeforeRouteLeave, useLink, useRoute, useRouter };

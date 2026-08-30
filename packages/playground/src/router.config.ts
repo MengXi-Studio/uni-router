@@ -4,7 +4,7 @@
  * @version 1.1.0
  */
 
-import type { RouteConfig } from '@meng-xi/uni-router'
+import type { RouteConfig, RouteLocation } from '@meng-xi/uni-router'
 
 /**
  * 路由配置列表
@@ -24,7 +24,13 @@ export const routes: RouteConfig[] = [
 	{
 		path: '/pages/guards/guards',
 		name: 'pagesGuardsGuards',
-		meta: { title: '路由守卫' }
+		meta: { title: '路由守卫' },
+		// 路由独享守卫（手写补充：generate-router 重新生成时会被覆盖，需重新添加）
+		// 仅对进入本路由时生效，配合 guards.vue 的演示文案
+		beforeEnter: (to: RouteLocation, from: RouteLocation) => {
+			console.log('[beforeEnter] 路由独享守卫：', from.fullPath, '->', to.fullPath)
+			// 不返回值表示放行
+		}
 	},
 	{
 		path: '/pages/detail/detail',

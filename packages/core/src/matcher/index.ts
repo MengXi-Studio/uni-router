@@ -1,24 +1,12 @@
 import type { RouteConfig, RouteLocation, RouteLocationNamedRaw, RouteLocationPathRaw, RouteLocationRaw, RouteMeta, ParamObject } from '@/types/route'
-import { RouterErrorCode } from '@/types/error'
+import { RouterErrorCode } from '@/enums'
 import { RouterError } from '@/errors'
 import { buildFullPath, parseQuery, normalizePath, createRouteLocation, serializeQuery } from '@/utils'
 import { warn, isObject } from '@/utils/general'
-import type { ParamsManager } from '@/plugins/params/params-manager'
-import { PARAMS_KEY } from '@/plugins/params/params-manager'
-
-/**
- * 路由匹配器接口，负责路由的查找和解析
- */
-export interface RouteMatcher {
-	/** 获取所有已注册的路由配置 */
-	getRoutes(): RouteConfig[]
-	/** 检查是否存在指定名称的路由 */
-	hasRoute(name: string): boolean
-	/** 将原始路由位置解析为完整的 RouteLocation */
-	resolve(location: RouteLocationRaw): RouteLocation
-	/** 根据路径获取路由配置 */
-	getRouteConfig(path: string): RouteConfig | undefined
-}
+import type { ParamsManager } from '@/plugins/params/type'
+import { PARAMS_KEY } from '@/constants'
+import type { RouteMatcher } from './type'
+export type { RouteMatcher } from './type'
 
 /**
  * 创建路由匹配器实例

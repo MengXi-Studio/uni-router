@@ -98,7 +98,7 @@ await router.push({ name: 'user', query: { tab: 'profile' } })
 `replace` replaces the current page without increasing stack depth. Commonly used to replace the login page after login, or replace the form page after form submission.
 
 ```ts
-router.replace(location: RouteLocationRaw): Promise<RouteLocation>
+router.replace(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 ```ts
@@ -121,7 +121,7 @@ await router.replace({ path: 'pages/detail/detail', query: { id: result.id } })
 `relaunch` closes all pages then opens the target page. Commonly used for logout, returning home, or resetting an entire flow.
 
 ```ts
-router.relaunch(location: RouteLocationRaw): Promise<RouteLocation>
+router.relaunch(location: RouteLocationRaw): Promise<NavigationResult>
 ```
 
 ```ts
@@ -157,7 +157,7 @@ So `relaunch` doesn't do duplicate checking to ensure these scenarios work norma
 `back` returns to the previous page or multiple pages. It's the only "back" operation that executes the full guard chain.
 
 ```ts
-router.back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
+router.back(delta?: number, options?: { animation: NavigationAnimation }): Promise<RouteLocation>
 ```
 
 ```ts
@@ -167,8 +167,8 @@ await router.back()
 // Return two pages
 await router.back(2)
 
-// Custom animation
-await router.back(1, { type: 'slide-out-right', duration: 500 })
+// Custom animation (options.animation requires AnimationPlugin)
+await router.back(1, { animation: { type: 'slide-out-right', duration: 500 } })
 ```
 
 ### How It Works
@@ -450,27 +450,30 @@ const routes = [
 
 ```ts
 await router.push({ name: 'about', animation: { type: 'slide-in-bottom', duration: 500 } })
-await router.back(1, { type: 'slide-out-right', duration: 500 })
+await router.back(1, { animation: { type: 'slide-out-right', duration: 500 } })
 ```
 
 ### Animation Types
 
-`type` corresponds to `uni.navigateTo`'s `animationType`. App options:
+`type` corresponds to `uni.navigateTo`'s `animationType`. Common options:
 
 | Value | Description |
 | --- | --- |
-| `'auto'` | Auto select |
-| `'none'` | No animation |
-| `'slide-in-right'` | Slide in from right (default) |
+| `'slide-in-right'` | Slide in from right |
 | `'slide-in-left'` | Slide in from left |
 | `'slide-in-top'` | Slide in from top |
 | `'slide-in-bottom'` | Slide in from bottom |
+| `'pop-in'` | Pop in |
 | `'fade-in'` | Fade in |
-| `'zoom-fade-in'` | Zoom fade in |
 | `'zoom-out'` | Zoom out |
+| `'zoom-fade-out'` | Zoom fade out |
+| `'none'` | No animation |
+| `'auto'` | Auto select |
+
+> Close animations for back (`'slide-out-right'` etc.) and the `pop-out` / `fade-out` / `zoom-in` / `zoom-fade-in` family are also available; see the full `UniAnimationType` list in the [meta API](../api/type-route-meta#animation).
 
 ::: warning Platform Limitation
-Animation **only works on App**. Mini-program and H5 navigation animations are system-controlled and cannot be customized. `reLaunch` doesn't support animation even on App.
+Animation is **native window animation on App**, **CSS transition on H5** (only `push` / `back`; no animation for `replace` / `relaunch`), and **system-controlled on mini-programs**. `reLaunch` doesn't support animation even on App.
 :::
 
 ## Concurrent Navigation Handling

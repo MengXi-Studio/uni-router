@@ -1,20 +1,12 @@
 import type { RouteLocation, RouteMeta } from '@/types/route'
 import { buildFullPath, createRouteLocation, createStartLocation } from '@/utils'
-
-/**
- * 路由变化监听器函数类型
- * @param to - 新的路由位置
- * @param from - 之前的路由位置
- */
-type RouteChangeListener = (to: RouteLocation, from: RouteLocation) => void
+import { DEFAULT_READY_TIMEOUT } from '@/constants'
+import type { RouteChangeListener } from './type'
 
 /**
  * 路由初始位置，表示路由器尚未初始化时的默认状态
  */
 const START_LOCATION: RouteLocation = createStartLocation()
-
-/** `onReady` 默认超时时间（毫秒），设为 0 表示永不超时 */
-const DEFAULT_READY_TIMEOUT = 0
 
 /**
  * 创建路由状态管理器

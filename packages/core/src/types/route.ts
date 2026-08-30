@@ -3,8 +3,8 @@ import type { NavigationGuard } from './guard'
 /**
  * 导航动画类型
  *
- * 用于 uni.navigateTo / uni.navigateBack 的 animationType 参数，
- * 仅 App 端生效，其他平台自动忽略。
+ * 用于 uni.navigateTo / uni.navigateBack 的 animationType 参数。
+ * App 端为原生窗口动画；H5 端由本库通过 CSS 过渡实现（仅 push / back 生效）；其他平台自动忽略。
  *
  * 显示动画（navigateTo）：slide-in-right / slide-in-left / slide-in-top / slide-in-bottom / pop-in / fade-in / zoom-out / zoom-fade-out / none / auto
  * 关闭动画（navigateBack）：slide-out-right / slide-out-left / slide-out-top / slide-out-bottom / pop-out / fade-out / zoom-in / zoom-fade-in / none / auto
@@ -32,14 +32,9 @@ export type UniAnimationType =
 	| 'pop-out'
 
 /**
- * 动画持续时间默认值（ms），与 uni-app 官方默认值一致
- */
-export const DEFAULT_ANIMATION_DURATION = 300
-
-/**
  * 导航动画配置
  *
- * 仅 App 端生效，其他平台自动忽略。
+ * App 端为原生窗口动画，H5 端为 CSS 过渡（仅 push / back 生效），其他平台自动忽略。
  * 优先级：push/replace 调用时传入 > meta.animation > uni 默认值
  */
 export interface NavigationAnimation {
@@ -138,7 +133,7 @@ export interface RouteMeta {
 	/** 是否需要登录认证 */
 	requireAuth?: boolean
 
-	/** 默认导航动画（仅 App 端生效），可被 push/replace 时的 animation 参数覆盖 */
+	/** 默认导航动画（App 端原生 / H5 端 CSS 过渡），可被 push/replace 时的 animation 参数覆盖 */
 	animation?: NavigationAnimation
 
 	/** 自定义扩展字段 */
@@ -293,7 +288,7 @@ export interface RouteLocationPathRaw {
 	/** 页面参数是否持久化到 storage（默认 false，仅内存存储）（需 ParamsPlugin） */
 	persistent?: boolean
 
-	/** 导航动画（仅 App 端生效），覆盖 meta.animation（需 AnimationPlugin） */
+	/** 导航动画（App 端原生 / H5 端 CSS 过渡），覆盖 meta.animation（需 AnimationPlugin） */
 	animation?: NavigationAnimation
 
 	/**
@@ -325,7 +320,7 @@ export interface RouteLocationNamedRaw {
 	/** 页面参数是否持久化到 storage（默认 false，仅内存存储）（需 ParamsPlugin） */
 	persistent?: boolean
 
-	/** 导航动画（仅 App 端生效），覆盖 meta.animation（需 AnimationPlugin） */
+	/** 导航动画（App 端原生 / H5 端 CSS 过渡），覆盖 meta.animation（需 AnimationPlugin） */
 	animation?: NavigationAnimation
 
 	/**

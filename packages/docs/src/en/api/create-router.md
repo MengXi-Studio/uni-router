@@ -24,6 +24,7 @@ interface RouterOptions {
   readyTimeout?: number
   paramsPersistent?: boolean
   useUniEventChannel?: boolean
+  app?: AppRouterOptions
 }
 ```
 

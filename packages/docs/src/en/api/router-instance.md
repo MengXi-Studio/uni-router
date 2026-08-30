@@ -144,11 +144,12 @@ await router.relaunch({ path: 'pages/login/login', query: { redirect: '/about' }
 Go back to the previous page or multiple pages. This is the only "back" operation that executes the full guard chain.
 
 ```ts
-back(delta?: number, animation?: NavigationAnimation): Promise<RouteLocation>
+back(delta?: number, options?: { animation: NavigationAnimation }): Promise<RouteLocation>
 ```
 
 - **delta**: Number of pages to go back, defaults to `1`
-- **animation**: Navigation animation (App only), overrides `meta.animation`. Falls back to the target page's `meta.animation` when not specified
+- **options**: Additional options
+  - `options.animation`: Navigation animation, overrides `meta.animation`. Native window animation on App, CSS transition on H5 back; falls back to the target page's `meta.animation` when not specified
 - Executes `beforeEach` → `beforeResolve` guard chain; guards can abort or redirect the back operation
 - Throws `NavigationFailure` (`NAVIGATION_CANCELLED`) when page stack is insufficient
 - Throws `NavigationFailure` when guards abort the navigation
@@ -161,8 +162,8 @@ await router.back()
 // Go back two pages
 await router.back(2)
 
-// Custom animation
-await router.back(1, { type: 'slide-out-right', duration: 500 })
+// Custom animation (options.animation requires AnimationPlugin)
+await router.back(1, { animation: { type: 'slide-out-right', duration: 500 } })
 ```
 
 ::: tip Back Guard

@@ -82,7 +82,7 @@ router.beforeEach((to, from) => {
 ### animation
 
 - **Type**: `NavigationAnimation | undefined`
-- **Description**: Default navigation animation (App only), can be overridden by the `animation` parameter passed to `push` / `replace` / `back`
+- **Description**: Default navigation animation, can be overridden by the `animation` parameter passed to `push` / `replace` / `back`. Native window animation on App, CSS transition implemented by this library on H5 (only `push` / `back`), ignored automatically on mini-programs
 
 ```ts
 interface NavigationAnimation {
@@ -115,18 +115,14 @@ await router.push({ name: 'about', animation: { type: 'slide-in-right' } }) // s
 ```
 
 ::: warning Platform limitations
-Animation **only works on App**. Navigation animations on mini-programs and H5 are system-controlled and cannot be customized.
+Animation is **native window animation on App** (all navigation methods), **CSS transition on H5** (only `push` / `back`; no animation for `replace` / `relaunch`), and **system-controlled on mini-programs** (cannot be customized).
 
-`UniAnimationType` optional values:
-- `'auto'` — Auto select
-- `'none'` — No animation
-- `'slide-in-right'` — Slide in from right (default)
-- `'slide-in-left'` — Slide in from left
-- `'slide-in-top'` — Slide in from top
-- `'slide-in-bottom'` — Slide in from bottom
-- `'fade-in'` — Fade in
-- `'zoom-fade-in'` — Zoom fade in
-- `'zoom-out'` — Zoom out
+`UniAnimationType` values (show animations for `navigateTo` and close animations for `navigateBack`):
+- Show animations: `'slide-in-right'` / `'slide-in-left'` / `'slide-in-top'` / `'slide-in-bottom'` / `'pop-in'` / `'fade-in'` / `'zoom-out'` / `'zoom-fade-out'`
+- Close animations: `'slide-out-right'` / `'slide-out-left'` / `'slide-out-top'` / `'slide-out-bottom'` / `'pop-out'` / `'fade-out'` / `'zoom-in'` / `'zoom-fade-in'`
+- Generic: `'none'` (no animation) / `'auto'` (auto select)
+
+> There is no "default" animation type — only `duration` defaults to `300ms`. If `type` is not specified, `push` / `back` use uni's default transition.
 :::
 
 ## Custom Extensions
