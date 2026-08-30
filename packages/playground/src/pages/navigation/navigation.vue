@@ -77,7 +77,7 @@
 			<view class="info-text">通过 animation 参数控制页面切换动画，优先级：调用时传入 > meta.animation > uni 默认值</view>
 			<view class="btn" @click="pushWithAnimation">push - 底部滑入动画</view>
 			<view class="btn btn-success" @click="backWithAnimation">back - 左侧滑出动画</view>
-			<view class="code-block"> router.push({ path: '/pages/detail/detail', animation: { type: 'slide-in-bottom' } })\nrouter.back(1, { type: 'slide-out-left', duration: 500 }) </view>
+			<view class="code-block"> router.push({ path: '/pages/detail/detail', animation: { type: 'slide-in-bottom' } })\nrouter.back(1, { animation: { type: 'slide-out-left', duration: 500 } }) </view>
 		</view>
 
 		<view class="section">
@@ -168,7 +168,10 @@
 
 		<view class="section">
 			<view class="section-title">NativeLink - 原生链接组件（useLink 封装）</view>
-			<view class="info-text">H5 端渲染为真实 <text style="color: #007aff">&lt;a&gt;</text> 标签（带 href），恢复链接原生能力：语义化、右键新标签页、无障碍识别、href 原生行为；点击仍经路由器导航，守卫链生效。非 H5 平台（App / 小程序）回退为 view 渲染。在 H5 端可右键下方链接体验"在新标签页打开"。</view>
+			<view class="info-text"
+				>H5 端渲染为真实 <text style="color: #007aff">&lt;a&gt;</text> 标签（带 href），恢复链接原生能力：语义化、右键新标签页、无障碍识别、href 原生行为；点击仍经路由器导航，守卫链生效。非 H5 平台（App / 小程序）回退为
+				view 渲染。在 H5 端可右键下方链接体验"在新标签页打开"。</view
+			>
 			<NativeLink to="/pages/detail/detail" @navigated="onNativeNavigated" @error="onNativeLinkError">
 				<view class="btn">NativeLink - 路径跳转</view>
 			</NativeLink>
@@ -226,6 +229,11 @@
 				return { name: 'login' }\n// })\n\nuni.navigateBack({ delta: 1 })\n// => 自动转为 router.back(1)，执行完整守卫链
 			</view>
 		</view>
+
+		<view class="section">
+			<view class="section-title">选项式 API - $router / $route 全局属性</view>
+			<OptionsApiDemo />
+		</view>
 	</view>
 </template>
 
@@ -237,6 +245,7 @@ import TabBar from '@meng-xi/uni-router/components/tab-bar/tab-bar.vue'
 import TabBarItem from '@meng-xi/uni-router/components/tab-bar-item/tab-bar-item.vue'
 import type { TabBarItemProps } from '@meng-xi/uni-router/components/tab-bar/context.ts'
 import NativeLink from '@/components/native-link/native-link.vue'
+import OptionsApiDemo from '@/components/options-api-demo.vue'
 
 const router = useRouter()
 const routerLinkLog = ref('')
@@ -354,7 +363,7 @@ function pushWithAnimation() {
 }
 
 function backWithAnimation() {
-	router.back(1, { type: 'slide-out-left', duration: 500 })
+	router.back(1, { animation: { type: 'slide-out-left', duration: 500 } })
 }
 
 function pushWithParams() {

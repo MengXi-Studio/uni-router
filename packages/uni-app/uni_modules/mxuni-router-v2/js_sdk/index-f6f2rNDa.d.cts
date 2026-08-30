@@ -1,6 +1,26 @@
 import { App } from 'vue';
 
 /**
+ * 路由错误码枚举
+ */
+declare enum RouterErrorCode {
+    /** 导航被守卫中止 */
+    NAVIGATION_ABORTED = "NAVIGATION_ABORTED",
+    /** 导航被取消（守卫抛出异常或重定向超限） */
+    NAVIGATION_CANCELLED = "NAVIGATION_CANCELLED",
+    /** 重复导航到当前位置 */
+    NAVIGATION_DUPLICATED = "NAVIGATION_DUPLICATED",
+    /** 未找到匹配的路由 */
+    ROUTE_NOT_FOUND = "ROUTE_NOT_FOUND",
+    /** uni 导航 API 调用失败 */
+    NAVIGATION_API_ERROR = "NAVIGATION_API_ERROR",
+    /** 使用了插件提供的功能但对应插件未注册 */
+    PLUGIN_REQUIRED = "PLUGIN_REQUIRED",
+    /** 路由器初始化或使用方式错误 */
+    SETUP_ERROR = "SETUP_ERROR"
+}
+
+/**
  * 路由错误接口，描述路由过程中产生的错误
  */
 interface RouterError {
@@ -43,25 +63,6 @@ interface NavigationFailure extends RouterError {
      * 仅当 `code` 为 `NAVIGATION_API_ERROR` 时存在，包含失败的 API 名称和原始错误信息。
      */
     readonly cause?: UniApiError;
-}
-/**
- * 路由错误码枚举
- */
-declare enum RouterErrorCode {
-    /** 导航被守卫中止 */
-    NAVIGATION_ABORTED = "NAVIGATION_ABORTED",
-    /** 导航被取消（守卫抛出异常或重定向超限） */
-    NAVIGATION_CANCELLED = "NAVIGATION_CANCELLED",
-    /** 重复导航到当前位置 */
-    NAVIGATION_DUPLICATED = "NAVIGATION_DUPLICATED",
-    /** 未找到匹配的路由 */
-    ROUTE_NOT_FOUND = "ROUTE_NOT_FOUND",
-    /** uni 导航 API 调用失败 */
-    NAVIGATION_API_ERROR = "NAVIGATION_API_ERROR",
-    /** 使用了插件提供的功能但对应插件未注册 */
-    PLUGIN_REQUIRED = "PLUGIN_REQUIRED",
-    /** 路由器初始化或使用方式错误 */
-    SETUP_ERROR = "SETUP_ERROR"
 }
 
 /**
@@ -179,8 +180,8 @@ type BackGuard = (to: RouteLocation, from: RouteLocation) => BackGuardReturn;
 /**
  * 导航动画类型
  *
- * 用于 uni.navigateTo / uni.navigateBack 的 animationType 参数，
- * 仅 App 端生效，其他平台自动忽略。
+ * 用于 uni.navigateTo / uni.navigateBack 的 animationType 参数。
+ * App 端为原生窗口动画；H5 端由本库通过 CSS 过渡实现（仅 push / back 生效）；其他平台自动忽略。
  *
  * 显示动画（navigateTo）：slide-in-right / slide-in-left / slide-in-top / slide-in-bottom / pop-in / fade-in / zoom-out / zoom-fade-out / none / auto
  * 关闭动画（navigateBack）：slide-out-right / slide-out-left / slide-out-top / slide-out-bottom / pop-out / fade-out / zoom-in / zoom-fade-in / none / auto
@@ -189,13 +190,9 @@ type BackGuard = (to: RouteLocation, from: RouteLocation) => BackGuardReturn;
  */
 type UniAnimationType = 'auto' | 'none' | 'slide-in-right' | 'slide-in-left' | 'slide-in-top' | 'slide-in-bottom' | 'slide-out-right' | 'slide-out-left' | 'slide-out-top' | 'slide-out-bottom' | 'fade-in' | 'fade-out' | 'zoom-out' | 'zoom-in' | 'zoom-fade-out' | 'zoom-fade-in' | 'pop-in' | 'pop-out';
 /**
- * 动画持续时间默认值（ms），与 uni-app 官方默认值一致
- */
-declare const DEFAULT_ANIMATION_DURATION = 300;
-/**
  * 导航动画配置
  *
- * 仅 App 端生效，其他平台自动忽略。
+ * App 端为原生窗口动画，H5 端为 CSS 过渡（仅 push / back 生效），其他平台自动忽略。
  * 优先级：push/replace 调用时传入 > meta.animation > uni 默认值
  */
 interface NavigationAnimation {
@@ -283,7 +280,7 @@ interface RouteMeta {
     isTab?: boolean;
     /** 是否需要登录认证 */
     requireAuth?: boolean;
-    /** 默认导航动画（仅 App 端生效），可被 push/replace 时的 animation 参数覆盖 */
+    /** 默认导航动画（App 端原生 / H5 端 CSS 过渡），可被 push/replace 时的 animation 参数覆盖 */
     animation?: NavigationAnimation;
     /** 自定义扩展字段 */
     [key: string]: any;
@@ -415,7 +412,7 @@ interface RouteLocationPathRaw {
     params?: ParamsInput;
     /** 页面参数是否持久化到 storage（默认 false，仅内存存储）（需 ParamsPlugin） */
     persistent?: boolean;
-    /** 导航动画（仅 App 端生效），覆盖 meta.animation（需 AnimationPlugin） */
+    /** 导航动画（App 端原生 / H5 端 CSS 过渡），覆盖 meta.animation（需 AnimationPlugin） */
     animation?: NavigationAnimation;
     /**
      * 页面间通信事件监听器（仅 push 时生效）（需 ChannelPlugin）
@@ -441,7 +438,7 @@ interface RouteLocationNamedRaw {
     params?: ParamsInput;
     /** 页面参数是否持久化到 storage（默认 false，仅内存存储）（需 ParamsPlugin） */
     persistent?: boolean;
-    /** 导航动画（仅 App 端生效），覆盖 meta.animation（需 AnimationPlugin） */
+    /** 导航动画（App 端原生 / H5 端 CSS 过渡），覆盖 meta.animation（需 AnimationPlugin） */
     animation?: NavigationAnimation;
     /**
      * 页面间通信事件监听器（仅 push 时生效）（需 ChannelPlugin）
@@ -466,7 +463,7 @@ interface UniNavigationOptions {
     meta: RouteMeta;
     /** 查询参数 */
     query?: Record<string, string>;
-    /** 导航动画（仅 App 端生效），覆盖 meta.animation */
+    /** 导航动画（App 端由 animationType 原生处理，H5 端通过 CSS 过渡实现），覆盖 meta.animation */
     animation?: NavigationAnimation;
     /**
      * 页面间通信事件监听器（仅 push 时生效）
@@ -986,4 +983,4 @@ declare function usePageChannel(): EventChannel;
  */
 declare const InterceptorPlugin: RouterPlugin;
 
-export { AnimationPlugin as A, type BackGuard as B, ChannelPlugin as C, DEFAULT_ANIMATION_DURATION as D, type EventChannel as E, type RoutePath as F, type GuardRouteOptions as G, type RouterOnError as H, InterceptorPlugin as I, type RouterPlugin as J, type UniAnimationType as K, usePageChannel as L, type NavigationResult as N, type ParamObject as P, type QueryValue as Q, type RouterOptions as R, type SideSlipGesture as S, type UniApiError as U, type Router as a, type RouteLocation as b, type RouteLeaveGuard as c, type RouteLocationRaw as d, RouterErrorCode as e, type UniApiCause as f, type AppRouterOptions as g, type BackGuardReturn as h, type EventListeners as i, type NavigationAnimation as j, type NavigationCompleteContext as k, type NavigationGuard as l, type NavigationPrepareContext as m, type NavigationRedirect as n, type NavigationRedirectMode as o, type ParamValue as p, type ParamsInput as q, ParamsPlugin as r, type PluginContext as s, type PostNavigationGuard as t, type RouteConfig as u, type RouteLocationNamedRaw as v, type RouteLocationPathRaw as w, type RouteMeta as x, type RouteName as y, type RouteNameMap as z };
+export { AnimationPlugin as A, type BackGuard as B, ChannelPlugin as C, type RoutePath as D, type EventChannel as E, type RouterOnError as F, type GuardRouteOptions as G, type RouterPlugin as H, InterceptorPlugin as I, type UniAnimationType as J, usePageChannel as K, type NavigationResult as N, type ParamObject as P, type QueryValue as Q, type RouteLocationRaw as R, type SideSlipGesture as S, type UniApiError as U, type RouteLocation as a, type RouterOptions as b, type Router as c, type RouteLeaveGuard as d, RouterErrorCode as e, type UniApiCause as f, type AppRouterOptions as g, type BackGuardReturn as h, type EventListeners as i, type NavigationAnimation as j, type NavigationCompleteContext as k, type NavigationGuard as l, type NavigationPrepareContext as m, type NavigationRedirect as n, type NavigationRedirectMode as o, type ParamValue as p, type ParamsInput as q, ParamsPlugin as r, type PluginContext as s, type PostNavigationGuard as t, type RouteConfig as u, type RouteLocationNamedRaw as v, type RouteLocationPathRaw as w, type RouteMeta as x, type RouteName as y, type RouteNameMap as z };

@@ -365,7 +365,7 @@ export default {
 		},
 		async backWithAnimation() {
 			try {
-				await router.back(1, { type: 'slide-out-left', duration: 500 })
+				await router.back(1, { animation: { type: 'slide-out-left', duration: 500 } })
 			} catch (e) {
 				this.lastError = e.message || String(e)
 			}
