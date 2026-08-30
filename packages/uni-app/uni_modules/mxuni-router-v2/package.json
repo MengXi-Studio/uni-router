@@ -13,8 +13,8 @@
 	"repository": "https://github.com/MengXi-Studio/uni-router",
 	"engines": {
 		"HBuilderX": "^3.1.0",
-		"uni-app": "^3.8.2",
-		"uni-app-x": "^3.8.2"
+		"uni-app": "^3.8.3",
+		"uni-app-x": ""
 	},
 	"dcloudext": {
 		"type": "component-vue",
@@ -92,8 +92,8 @@
 				},
 				"uni-app-x": {
 					"web": {
-						"safari": "√",
-						"chrome": "√"
+						"safari": "x",
+						"chrome": "x"
 					},
 					"app": {
 						"android": "x",
@@ -101,7 +101,7 @@
 						"harmony": "x"
 					},
 					"mp": {
-						"weixin": "√"
+						"weixin": "x"
 					}
 				}
 			}
