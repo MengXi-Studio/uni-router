@@ -161,6 +161,10 @@ router.isReady().then(() => {
 
 📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
 
+## Changelog
+
+📝 **[https://mengxi-studio.github.io/uni-router/en/changelog.html](https://mengxi-studio.github.io/uni-router/en/changelog.html)**
+
 ## License
 
 [MIT](LICENSE)
