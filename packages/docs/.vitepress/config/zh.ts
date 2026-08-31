@@ -31,9 +31,22 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 
 		/** 网站主题配置 导航栏 */
 		nav: [
-			{ text: '指南', link: '/guide/getting-started' },
-			{ text: '组件', link: '/component/router-link' },
-			{ text: 'API', link: '/api/create-router' },
+			{
+				text: '指南',
+				link: '/guide/getting-started'
+			},
+			{
+				text: '组件',
+				link: '/component/router-link'
+			},
+			{
+				text: 'API',
+				link: '/api/create-router'
+			},
+			{
+				text: '更新日志',
+				link: '/changelog'
+			},
 			{
 				text: '相关链接',
 				items: [
@@ -42,7 +55,7 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						link: 'https://github.com/MengXi-Studio/uni-router/discussions'
 					},
 					{
-						text: '更新日志',
+						text: 'Releases',
 						link: 'https://github.com/MengXi-Studio/uni-router/releases'
 					}
 				]

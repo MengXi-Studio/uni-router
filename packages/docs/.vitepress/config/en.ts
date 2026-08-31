@@ -44,6 +44,10 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 				link: '/en/api/create-router'
 			},
 			{
+				text: 'Changelog',
+				link: '/en/changelog'
+			},
+			{
 				text: 'Links',
 				items: [
 					{
@@ -51,7 +55,7 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 						link: 'https://github.com/MengXi-Studio/uni-router/discussions'
 					},
 					{
-						text: 'Changelog',
+						text: 'Releases',
 						link: 'https://github.com/MengXi-Studio/uni-router/releases'
 					}
 				]
