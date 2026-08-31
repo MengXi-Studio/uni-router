@@ -7,7 +7,7 @@ uni-app is a cross-platform framework supporting App, H5, and various mini-progr
 | Platform | Routing Mode | Page Stack Limit | Animation | Back Interception |
 | --- | --- | --- | --- | --- |
 | App (iOS/Android) | Native page stack | No hard limit (recommend ≤10) | ✅ Custom | ✅ `onBeforeBack` |
-| H5 | History API | Unlimited | ❌ System controlled | ✅ `onBeforeBack` (popstate) |
+| H5 | History API | Unlimited | ✅ `push`/`back` | ✅ `onBeforeBack` (popstate) |
 | WeChat Mini-Program | Native page stack | **10** | ❌ System controlled | ⚠️ Programmatic only |
 | Alipay Mini-Program | Native page stack | **10** | ❌ System controlled | ⚠️ Programmatic only |
 | ByteDance Mini-Program | Native page stack | **10** | ❌ System controlled | ⚠️ Programmatic only |
@@ -286,7 +286,7 @@ const router = createRouter({
 })
 ```
 
-## Limitation 6: Navigation Animation App Only
+## Limitation 6: Navigation Animation Platform Differences
 
 ### Problem
 

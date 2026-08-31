@@ -222,6 +222,8 @@ class UniRouter implements Router {
 		// 守卫通过，执行返回
 		// 置位 backGuardRunning：执行 goBack 时会再次触发 onBackPress，据此放行避免递归
 		this.backGuard.setRouterBackRunning(true)
+		// H5：标记返回进行中（记录目标页），goBack 产生的 popstate 由返回守卫放行，避免死循环
+		this.backGuard.beginH5Back(to.path)
 		try {
 			await goBack(delta, animation)
 			this.routeSync.syncCurrentRoute()
