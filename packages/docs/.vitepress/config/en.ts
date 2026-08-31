@@ -137,6 +137,14 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 							link: '/en/guide/auto-generate'
 						},
 						{
+							text: 'Auto-Generating Page Config',
+							link: '/en/guide/generate-pages'
+						},
+						{
+							text: 'Pages + Routes in One Pipeline',
+							link: '/en/guide/generate-uni'
+						},
+						{
 							text: 'Platform Compatibility',
 							link: '/en/guide/compatibility'
 						},

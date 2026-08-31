@@ -128,6 +128,14 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> = {
 							link: '/guide/auto-generate'
 						},
 						{
+							text: '自动生成页面配置',
+							link: '/guide/generate-pages'
+						},
+						{
+							text: '页面 + 路由一条流水线',
+							link: '/guide/generate-uni'
+						},
+						{
 							text: '平台兼容性',
 							link: '/guide/compatibility'
 						},

@@ -2,6 +2,11 @@
 
 Writing route configurations manually is error-prone and difficult to keep in sync with `pages.json`. The `generateRouter` plugin from [`@meng-xi/vite-plugin`](https://github.com/MengXi-Studio/vite-plugin) can automatically generate route configuration files and type declarations from `pages.json`, significantly reducing manual maintenance effort.
 
+::: tip Related plugins
+- Need to generate `pages.json` **in the reverse direction** from Vue files? See [Auto-Generating Page Config](./generate-pages) (`generatePages`)
+- Want pages + routes generated in a **single pipeline** (in-memory pass)? See [Pages + Routes in One Pipeline](./generate-uni) (`generateUni`)
+:::
+
 ## Installation
 
 ::: code-group

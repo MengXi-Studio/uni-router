@@ -2,6 +2,11 @@
 
 手动编写路由配置容易出错且难以与 `pages.json` 保持同步。[`@meng-xi/vite-plugin`](https://github.com/MengXi-Studio/vite-plugin) 提供的 `generateRouter` 插件可根据 `pages.json` 自动生成路由配置文件和类型声明，大幅减少手动维护成本。
 
+::: tip 相关插件
+- 需要**反向**从 Vue 文件生成 `pages.json`？见[自动生成页面配置](./generate-pages)（`generatePages`）
+- 希望页面 + 路由配置**一条流水线**生成（内存直传）？见[页面 + 路由一条流水线](./generate-uni)（`generateUni`）
+:::
+
 ## 安装
 
 ::: code-group
