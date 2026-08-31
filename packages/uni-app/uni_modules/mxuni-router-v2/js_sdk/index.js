@@ -741,6 +741,9 @@ var PluginHookManager = class {
 };
 
 // src/router/back-guard.ts
+function getHashPath(hash) {
+  return hash.replace(/^#\/?/, "/").split("?")[0];
+}
 var BackGuardManager = class {
   constructor(deps) {
     __publicField(this, "deps", deps);
@@ -748,6 +751,12 @@ var BackGuardManager = class {
     __publicField(this, "backGuardRunning", false);
     /** H5 平台返回守卫：当前页面 URL，用于判断 popstate 是否为后退 */
     __publicField(this, "h5BackUrl", "");
+    /** H5 平台：路由器发起的返回进行中（时间窗口内放行所有 popstate，防止死循环） */
+    __publicField(this, "h5ReturningBack", false);
+    /** H5 平台：路由器发起的返回目标路径（如 '/pages/test/test'），命中即视为返回完成 */
+    __publicField(this, "h5ReturnTarget", null);
+    /** H5 平台：返回进行中标志的自动复位定时器（兜底） */
+    __publicField(this, "h5Timer", null);
   }
   /**
    * 设置 H5 平台当前页面 URL（install 时初始化）
@@ -768,6 +777,25 @@ var BackGuardManager = class {
    */
   setRouterBackRunning(running) {
     this.backGuardRunning = running;
+  }
+  /**
+   * 标记一次 H5 返回开始（router.back() / executeBack 发起 navigateBack 前调用）
+   *
+   * 在时间窗口内将 {@link handleH5PopState} 对 popstate 的「撤销 + 返回守卫」处理抑制
+   * 为「放行并更新基准 URL」，避免 navigateBack 产生的（可能多次的）popstate 被误判为
+   * 外部后退而反复「撤销 + 重放」，形成相邻页面死循环闪烁。窗口结束自动复位。
+   * 仅 H5 平台需要；App 端由 onBackPress + `backGuardRunning` 处理。
+   */
+  beginH5Back(targetPath) {
+    if (!getPlatform().isH5) return;
+    this.h5ReturningBack = true;
+    this.h5ReturnTarget = targetPath ?? null;
+    if (this.h5Timer) clearTimeout(this.h5Timer);
+    this.h5Timer = setTimeout(() => {
+      this.h5ReturningBack = false;
+      this.h5ReturnTarget = null;
+      this.h5Timer = null;
+    }, 500);
   }
   /**
    * 处理页面 onBackPress 生命周期（由全局 mixin 注入到每个页面）
@@ -807,7 +835,7 @@ var BackGuardManager = class {
     const targetPage = pages[pages.length - 2];
     if (!targetPage) return;
     const to = this.deps.resolve(`/${targetPage.route}`);
-    await this.runBackGuardChain(to, from, () => this.executeBack());
+    await this.runBackGuardChain(to, from, () => this.executeBack(to.path));
   }
   /**
    * H5 平台返回守卫入口（由浏览器 popstate 事件触发）
@@ -822,6 +850,18 @@ var BackGuardManager = class {
    * 根页面（无上级页面）不拦截，保留浏览器默认行为（离开站点 / 回上一站点）。
    */
   handleH5PopState() {
+    if (this.h5ReturningBack) {
+      this.h5BackUrl = location.href;
+      if (this.h5ReturnTarget && getHashPath(location.hash) === this.h5ReturnTarget) {
+        this.h5ReturningBack = false;
+        this.h5ReturnTarget = null;
+        if (this.h5Timer) {
+          clearTimeout(this.h5Timer);
+          this.h5Timer = null;
+        }
+      }
+      return;
+    }
     if (this.backGuardRunning) {
       this.h5BackUrl = location.href;
       return;
@@ -834,7 +874,7 @@ var BackGuardManager = class {
     const targetPage = pages[pages.length - 2];
     if (!targetPage) return;
     const to = this.deps.resolve(`/${targetPage.route}`);
-    this.runBackGuardChain(to, from, () => this.executeBack()).catch(() => {
+    this.runBackGuardChain(to, from, () => this.executeBack(to.path)).catch(() => {
     });
   }
   /**
@@ -871,8 +911,9 @@ var BackGuardManager = class {
    * 置位 `backGuardRunning`：App 端再次触发 onBackPress、H5 端再次触发 popstate 时据此放行，
    * 避免守卫重复执行与死循环。
    */
-  async executeBack() {
+  async executeBack(targetPath) {
     this.backGuardRunning = true;
+    this.beginH5Back(targetPath);
     try {
       await goBack(1);
     } finally {
@@ -1056,6 +1097,7 @@ var UniRouter = class {
     this.pluginHooks.prepareNavigation(prepareCtx);
     const animation = navOptions.animation;
     this.backGuard.setRouterBackRunning(true);
+    this.backGuard.beginH5Back(to.path);
     try {
       await goBack(delta, animation);
       this.routeSync.syncCurrentRoute();

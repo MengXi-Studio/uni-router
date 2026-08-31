@@ -117,7 +117,7 @@ Inline param > meta.animation > uni default
 ```
 
 ::: info Platform Limitation
-Animation is native window animation on App, CSS transition on H5 for `push` / `back`, and system-controlled on mini-programs. See [Platform Compatibility](./compatibility#navigation-animation-app-only).
+Animation is native window animation on App, CSS transition on H5 for `push` / `back`, and system-controlled on mini-programs. See [Platform Compatibility](./compatibility#limitation-6-navigation-animation-platform-differences).
 :::
 
 ## Type Extension

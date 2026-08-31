@@ -707,7 +707,7 @@ await router.push({ name: 'about' }) // H5 push 有 CSS 过渡，其他平台无
 // #endif
 ```
 
-详见[平台兼容性 - 导航动画](./compatibility#导航动画仅-app-支持)。
+详见[平台兼容性 - 导航动画](./compatibility#导航动画平台差异)。
 
 ## 路由懒加载
 

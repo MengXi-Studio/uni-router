@@ -116,7 +116,7 @@ await router.push({ name: 'about', animation: { type: 'slide-in-right' } })
 ```
 
 ::: info 平台限制
-动画在 App 端为原生窗口动画，H5 端 `push` / `back` 有 CSS 过渡，小程序由宿主控制、无法自定义。详见[平台兼容性](./compatibility#导航动画仅-app-支持)。
+动画在 App 端为原生窗口动画，H5 端 `push` / `back` 有 CSS 过渡，小程序由宿主控制、无法自定义。详见[平台兼容性](./compatibility#导航动画平台差异)。
 :::
 
 ## 类型扩展

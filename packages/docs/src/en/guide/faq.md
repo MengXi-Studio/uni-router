@@ -712,7 +712,7 @@ await router.push({ name: 'about' }) // No animation on other platforms
 // #endif
 ```
 
-See [Platform Compatibility - Navigation Animation](./compatibility#navigation-animation-app-only).
+See [Platform Compatibility - Navigation Animation](./compatibility#limitation-6-navigation-animation-platform-differences).
 
 ## Route Lazy Loading
 

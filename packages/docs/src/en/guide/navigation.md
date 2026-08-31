@@ -7,7 +7,7 @@ Route navigation is Uni Router's core capability. This chapter dives deep into t
 | Method | Stack Operation | uni API | Duplicate Check | Animation | events | Return Value |
 | --- | --- | --- | --- | --- | --- | --- |
 | `push()` | Push +1 | `navigateTo` / `switchTab` | ✅ | ✅ | ✅ | `NavigationResult` |
-| `replace()` | Replace top | `redirectTo` / `switchTab` | ❌ | ✅ | ⚠️¹ | `NavigationResult` |
+| `replace()` | Replace top | `redirectTo` / `switchTab` | ❌ | ❌ | ⚠️¹ | `NavigationResult` |
 | `relaunch()` | Clear then push | `reLaunch` / `switchTab` | ❌ | ❌ | ⚠️¹ | `NavigationResult` |
 | `back()` | Pop -n | `navigateBack` | ❌ | ✅ | ❌ | `RouteLocation` |
 
@@ -323,7 +323,7 @@ Uni Router provides two page communication modes: native EventChannel (default) 
 
 ### Mode 1: Native EventChannel (Default)
 
-In the default mode, `events` works with `push` only and does not require ChannelPlugin.
+In the default mode, `events` works with `push` only via the native EventChannel, but you still need to register **ChannelPlugin** to pass `events`; otherwise a `PLUGIN_REQUIRED` error is thrown.
 
 `push` supports `events` + `eventChannel` bidirectional communication, corresponding to `uni.navigateTo`'s EventChannel mechanism:
 

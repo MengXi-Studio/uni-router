@@ -7,7 +7,7 @@
 | 方法 | 栈操作 | 对应 uni API | 重复检测 | 动画 | events | 返回值 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `push()` | 入栈 +1 | `navigateTo` / `switchTab` | ✅ | ✅ | ✅ | `NavigationResult` |
-| `replace()` | 替换栈顶 | `redirectTo` / `switchTab` | ❌ | ✅ | ⚠️¹ | `NavigationResult` |
+| `replace()` | 替换栈顶 | `redirectTo` / `switchTab` | ❌ | ❌ | ⚠️¹ | `NavigationResult` |
 | `relaunch()` | 清栈后入栈 | `reLaunch` / `switchTab` | ❌ | ❌ | ⚠️¹ | `NavigationResult` |
 | `back()` | 出栈 -n | `navigateBack` | ❌ | ✅ | ❌ | `RouteLocation` |
 
@@ -322,7 +322,7 @@ Uni Router 提供两种页面间通信模式：原生 EventChannel（默认）�
 
 ### 模式一：原生 EventChannel（默认）
 
-默认模式下 `events` 仅需 `push` 即可使用，无需 ChannelPlugin。
+默认模式下 `events` 使用 `uni.navigateTo` 的原生 EventChannel（仅 `push` 生效），但**仍需注册 ChannelPlugin** 才能传递 `events`；未注册时使用会抛出 `PLUGIN_REQUIRED`。
 
 `push` 支持 `events` + `eventChannel` 双向通信，对应 `uni.navigateTo` 的 EventChannel 机制：
 
