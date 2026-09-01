@@ -24,9 +24,11 @@ jobs:
     runs-on: ubuntu-latest # 运行环境：最新版 Ubuntu（自带 gh CLI）
 
     steps:
-      # 步骤1：检出仓库代码
+      # 步骤1：检出仓库代码（fetch-depth:0 拉取全量提交与 tag，兜底正文需要对比历史）
       - name: Checkout
         uses: actions/checkout@v6 # 官方 checkout action
+        with:
+          fetch-depth: 0 # 拉取全部历史，便于生成自上一 tag 以来的提交列表
 
       # 步骤2：解析 changelog.md 中最新版本的版本号与正文
       - name: Parse changelog
@@ -37,16 +39,82 @@ jobs:
           # 取第一个版本标题行号（最新版本），格式：## [1.2.3] - 日期
           FIRST=$(grep -nE '^## \[' "$CHANGELOG" | head -n1 | cut -d: -f1)
 
-          # 从版本标题中提取版本号
-          VERSION=$(sed -n "${FIRST}p" "$CHANGELOG" | sed -nE 's/^## \[([^]]+)\].*/\1/p')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT" # 版本号写入步骤输出
+          # 兜底标记：从 changelog 成功解析时置空，否则走 package.json
+          SOURCE="changelog.md"
 
-          # 提取正文：紧跟版本标题、到下一个版本标题（或文件末尾）为止，剔除首尾空行
-          awk -v start="$FIRST" 'NR > start && /^## \[/ { exit } NR > start { print }' \
-            "$CHANGELOG" > /tmp/release_body.md
+          # 从版本标题中提取版本号
+          if [ -n "$FIRST" ]; then
+            VERSION=$(sed -n "${FIRST}p" "$CHANGELOG" | sed -nE 's/^## \[([^]]+)\].*/\1/p')
+          else
+            VERSION=""
+          fi
+
+          # 兜底：changelog 中无版本标题时，从 packages/core/package.json 读取版本号
+          if [ -z "$VERSION" ]; then
+            VERSION=$(node -p "require('./packages/core/package.json').version")
+            SOURCE="packages/core/package.json"
+
+            # 读取包名与描述，用于生成更完整的兜底正文
+            PKG_NAME=$(node -p "require('./packages/core/package.json').name || ''")
+            PKG_DESC=$(node -p "require('./packages/core/package.json').description || ''")
+
+            # 找最近一个已发布的 tag，作为提交对比起点；无 tag 时对比全部提交
+            PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              RANGE="$PREV_TAG..HEAD"
+            else
+              RANGE="HEAD"
+            fi
+
+            # 收集该区间内的提交（至多 50 条），每行前缀 "- " 转为列表
+            COMMITS=$(git log --oneline --no-decorate "$RANGE" 2>/dev/null | head -n 50 | sed 's/^/- /')
+            COMMIT_COUNT=$(git rev-list --count "$RANGE" 2>/dev/null || echo 0)
+
+            # 组装兜底正文
+            {
+              echo "### $PKG_NAME"
+              if [ -n "$PKG_DESC" ]; then
+                echo ""
+                echo "$PKG_DESC"
+              fi
+              echo ""
+              echo "## What's Changed"
+              echo ""
+              if [ -n "$COMMITS" ]; then
+                if [ -n "$PREV_TAG" ]; then
+                  echo "对比 \`$PREV_TAG\` 以来的变更（共 \`$COMMIT_COUNT\` 条提交）："
+                else
+                  echo "首发版本，包含全部提交（共 \`$COMMIT_COUNT\` 条）："
+                fi
+                echo ""
+                echo "$COMMITS"
+                if [ "$COMMIT_COUNT" -gt "50" ]; then
+                  echo ""
+                  echo "> 仅展示前 50 条，完整提交见下方链接。"
+                fi
+              else
+                echo "首个版本。"
+              fi
+              echo ""
+              echo "---"
+              echo ""
+              echo "版本号：\`$VERSION\`（来源：\`packages/core/package.json\`）"
+              echo "提交区间：\`$RANGE\`"
+            } > /tmp/release_body.md
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT" # 版本号写入步骤输出
+          echo "source=$SOURCE" >> "$GITHUB_OUTPUT" # 版本来源写入步骤输出
+
+          # 兜底情况已直接生成正文，无需再解析 changelog
+          if [ "$SOURCE" = "changelog.md" ]; then
+            # 提取正文：紧跟版本标题、到下一个版本标题（或文件末尾）为止，剔除首尾空行
+            awk -v start="$FIRST" 'NR > start && /^## \[/ { exit } NR > start { print }' \
+              "$CHANGELOG" > /tmp/release_body.md
+          fi
 
           # 打印解析结果，便于在 Actions 日志中核对
-          echo "Parsed latest version: v$VERSION"
+          echo "Parsed latest version: v$VERSION (source: $SOURCE)"
 
       # 步骤3：检查该版本是否已存在 release（已存在则跳过创建，幂等）
       - name: Check existing release
@@ -81,7 +149,7 @@ jobs:
           echo "## 🚀 Published Release v${{ steps.parse.outputs.version }}" >> $GITHUB_STEP_SUMMARY # 标题
           echo "" >> $GITHUB_STEP_SUMMARY # 空行
           echo "- **Tag**: \`v${{ steps.parse.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY # tag
-          echo "- **Source**: changelog.md" >> $GITHUB_STEP_SUMMARY # 数据来源
+          echo "- **Source**: \`${{ steps.parse.outputs.source }}\`" >> $GITHUB_STEP_SUMMARY # 数据来源
           echo "- **Auth**: temporary \`GITHUB_TOKEN\` (auto-generated)" >> $GITHUB_STEP_SUMMARY # 认证方式
           echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY # 关联的 commit SHA
 
