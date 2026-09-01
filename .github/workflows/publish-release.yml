@@ -1,0 +1,97 @@
+# 工作流名称，显示在 GitHub Actions 页面
+name: Publish GitHub Release
+
+# 触发条件
+on:
+  # 手动触发，仅在 Actions 页面点击 Run workflow 时执行
+  workflow_dispatch:
+    inputs:
+      # 自定义输入参数：是否仅预览（不创建 release）
+      dry_run:
+        description: 'Preview only (no release created)' # 参数描述
+        required: false # 非必填
+        default: false # 默认创建 release
+        type: boolean # 布尔类型
+
+# GITHUB_TOKEN 权限声明：GitHub 每次任务自动生成的临时 token
+# 最小权限原则，创建 tag / release 需要 contents: write
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Parse changelog & Publish release # Job 显示名称
+    runs-on: ubuntu-latest # 运行环境：最新版 Ubuntu（自带 gh CLI）
+
+    steps:
+      # 步骤1：检出仓库代码
+      - name: Checkout
+        uses: actions/checkout@v6 # 官方 checkout action
+
+      # 步骤2：解析 changelog.md 中最新版本的版本号与正文
+      - name: Parse changelog
+        id: parse # 步骤 ID，后续通过 steps.parse.outputs.version 引用版本号
+        run: |
+          CHANGELOG="packages/docs/src/changelog.md" # 中文 changelog 文件路径
+
+          # 取第一个版本标题行号（最新版本），格式：## [1.2.3] - 日期
+          FIRST=$(grep -nE '^## \[' "$CHANGELOG" | head -n1 | cut -d: -f1)
+
+          # 从版本标题中提取版本号
+          VERSION=$(sed -n "${FIRST}p" "$CHANGELOG" | sed -nE 's/^## \[([^]]+)\].*/\1/p')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT" # 版本号写入步骤输出
+
+          # 提取正文：紧跟版本标题、到下一个版本标题（或文件末尾）为止，剔除首尾空行
+          awk -v start="$FIRST" 'NR > start && /^## \[/ { exit } NR > start { print }' \
+            "$CHANGELOG" > /tmp/release_body.md
+
+          # 打印解析结果，便于在 Actions 日志中核对
+          echo "Parsed latest version: v$VERSION"
+
+      # 步骤3：检查该版本是否已存在 release（已存在则跳过创建，幂等）
+      - name: Check existing release
+        id: check # 步骤 ID，后续通过 steps.check.outputs.exists 引用
+        env:
+          GH_TOKEN: ${{ github.token }} # 使用临时 token
+        run: |
+          if gh release view "v${{ steps.parse.outputs.version }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT" # release 已存在
+            echo "Release v${{ steps.parse.outputs.version }} already exists."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT" # release 不存在，可创建
+            echo "Release v${{ steps.parse.outputs.version }} does not exist yet."
+          fi
+
+      # 步骤4：创建 GitHub release（tag 不存在时 gh 会自动在目标 commit 上创建）
+      - name: Create GitHub release
+        if: ${{ !inputs.dry_run && steps.check.outputs.exists == 'false' }} # 非预览且版本未发布时执行
+        env:
+          GH_TOKEN: ${{ github.token }} # 使用临时 token，任务结束即失效
+        run: |
+          gh release create "v${{ steps.parse.outputs.version }}" \
+            --repo "$GITHUB_REPOSITORY" \ # 仓库标识
+            --title "v${{ steps.parse.outputs.version }}" \ # release 标题
+            --notes-file /tmp/release_body.md \ # 从 changelog 提取的正文
+            --target "$GITHUB_SHA" # 在当前检出的 commit 上打 tag
+
+      # 步骤5：创建成功摘要，写入 GitHub Actions Summary 页面
+      - name: Release summary
+        if: ${{ !inputs.dry_run && steps.check.outputs.exists == 'false' }} # 创建成功时执行
+        run: |
+          echo "## 🚀 Published Release v${{ steps.parse.outputs.version }}" >> $GITHUB_STEP_SUMMARY # 标题
+          echo "" >> $GITHUB_STEP_SUMMARY # 空行
+          echo "- **Tag**: \`v${{ steps.parse.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY # tag
+          echo "- **Source**: changelog.md" >> $GITHUB_STEP_SUMMARY # 数据来源
+          echo "- **Auth**: temporary \`GITHUB_TOKEN\` (auto-generated)" >> $GITHUB_STEP_SUMMARY # 认证方式
+          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY # 关联的 commit SHA
+
+      # 步骤6：跳过/预览摘要，写入 GitHub Actions Summary 页面
+      - name: Skip/Preview summary
+        if: ${{ inputs.dry_run || steps.check.outputs.exists == 'true' }} # 预览或版本已存在时执行
+        run: |
+          echo "## ⏭️ Release Skipped" >> $GITHUB_STEP_SUMMARY # 标题
+          if [ "${{ inputs.dry_run }}" = "true" ]; then # 判断跳过原因
+            echo "- Reason: dry_run enabled" >> $GITHUB_STEP_SUMMARY # 手动预览
+          else
+            echo "- Reason: release v${{ steps.parse.outputs.version }} already exists" >> $GITHUB_STEP_SUMMARY # 版本已存在
+          fi
