@@ -1,0 +1,54 @@
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "首页",
+				"requireAuth": false
+			}
+		},
+		{ "path": "pages/detail/detail", "style": { "navigationBarTitleText": "详情" } },
+		{
+			"path": "pages/protected/protected",
+			"style": { "navigationBarTitleText": "受保护页", "requireAuth": true }
+		},
+		{ "path": "pages/login/login", "style": { "navigationBarTitleText": "登录" } },
+		{ "path": "pages/guards/guards", "style": { "navigationBarTitleText": "守卫演示" } },
+		{ "path": "pages/about/about", "style": { "navigationBarTitleText": "关于" } }
+	],
+	"subPackages": [
+		{
+			"root": "pages-sub",
+			"pages": [
+				{ "path": "profile/profile", "style": { "navigationBarTitleText": "个人中心" } },
+				{
+					"path": "settings/settings",
+					"style": { "navigationBarTitleText": "设置", "requireAuth": true }
+				}
+			]
+		}
+	],
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#007aff",
+		"borderStyle": "black",
+		"backgroundColor": "#ffffff",
+		"list": [
+			{ "pagePath": "pages/index/index", "text": "首页" },
+			{ "pagePath": "pages/about/about", "text": "关于" }
+		]
+	},
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-router",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"easycom": {
+		"custom": {
+			"^router-link$": "@meng-xi/uni-router/components/router-link/router-link.vue",
+			"^tab-bar$": "@meng-xi/uni-router/components/tab-bar/tab-bar.vue",
+			"^tab-bar-item$": "@meng-xi/uni-router/components/tab-bar-item/tab-bar-item.vue"
+		}
+	}
+}
