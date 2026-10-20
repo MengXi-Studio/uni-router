@@ -34,4 +34,4 @@
 
 ## 详细规范
 
-编写路由相关代码前，先阅读技能文档：`.trae/skills/uni-router-usage/SKILL.md`，其中包含四大导航方法差异表与 TabBar 切换细节、query/params 传参规范、events 通信两种模式（含目标页接收方式）、导航动画平台差异、守卫链顺序、H5 端限制与解决方案、冷启动恢复完整示例、分享链接与 params 恢复方案、错误码表及完整禁止清单。
+编写路由相关代码前，先阅读技能文档：`.trae/skills/uni-router-usage/SKILL.md`（含四大导航方法差异表与 TabBar 切换细节、query/params 传参规范、events 通信、守卫链顺序、平台硬限制、错误码表及完整禁止清单）。细节按需读取同目录 `references/`：`api-quickref.md`（完整选项表、动画类型、Router 方法、usePageChannel 注意事项）、`h5-guide.md`（H5 限制完整表、冷启动恢复完整示例、分享链接与 params 恢复方案）。
