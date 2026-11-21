@@ -18,6 +18,20 @@ function getHashPath(hash: string): string {
 }
 
 /**
+ * 从当前地址解析页面路径
+ *
+ * hash 模式（默认）：`'#/pages/test/test?x=1'` → `'/pages/test/test'`
+ * history 模式：`'/pages/test/test?x=1'` → `'/pages/test/test'`
+ *
+ * @returns 移除 query 后的页面路径，根路径为 `'/'`
+ */
+function getH5LocationPath(): string {
+	const { hash, pathname } = location
+	if (hash && hash.startsWith('#/')) return getHashPath(hash)
+	return pathname.split('?')[0] || '/'
+}
+
+/**
  * 返回守卫管理器
  *
  * 负责拦截返回操作并执行返回守卫链：
@@ -41,17 +55,19 @@ export class BackGuardManager {
 	/** H5 平台：返回进行中标志的自动复位定时器（兜底） */
 	private h5Timer: ReturnType<typeof setTimeout> | null = null
 
+	/** H5 平台：返回守卫执行中，避免并发 popstate 重复执行守卫链 */
+	private h5GuardRunning = false
+
 	constructor(private deps: BackGuardDeps) {}
 
 	/**
-	 * 设置 H5 平台当前页面 URL（install 时初始化）
+	 * 同步 H5 平台当前页面 URL（install 时初始化，每次导航成功后更新）
 	 *
-	 * 作为 popstate 后退判断的基准：URL 变化说明发生了后退。
-	 *
-	 * @param url - 当前页面 URL
+	 * 作为 popstate 前进 / 无变化事件的判断基准。
 	 */
-	setH5BackUrl(url: string): void {
-		this.h5BackUrl = url
+	syncH5BackUrl(): void {
+		if (!getPlatform().isH5) return
+		this.h5BackUrl = location.href
 	}
 
 	/**
@@ -139,19 +155,19 @@ export class BackGuardManager {
 	/**
 	 * H5 平台返回守卫入口（由浏览器 popstate 事件触发）
 	 *
-	 * 覆盖浏览器后退按钮 / 后退手势。popstate 触发时浏览器已完成后退，
-	 * 采用「撤销后退 → 执行返回守卫 → 守卫放行后重新后退」策略：
-	 * 1. 记录当前页 URL（`h5BackUrl`），popstate 后 URL 已变化说明发生了后退；
-	 * 2. `history.go(1)` 恢复当前页（触发二次 popstate，命中「回到当前页」分支放行）；
-	 * 3. 同步捕获 to/from 执行返回守卫链（避免依赖 uni-app 处理 popstate 后的页面栈时序）；
-	 * 4. 守卫放行后经 {@link executeBack} 重新后退（再次触发 popstate，由 `backGuardRunning` 放行）。
+	 * 覆盖浏览器后退按钮 / 后退手势。popstate 触发时浏览器**已完成后退**，因此直接
+	 * 以 URL 确定后退目标并执行返回守卫链，不再「撤销后退 → 重放 navigateBack」：
+	 * 1. 通过 {@link getH5LocationPath} 从当前地址解析后退目标（不依赖可能尚未更新的页面栈）；
+	 * 2. 更新基准 URL（`h5BackUrl`），保证后续 popstate 判断基于最新地址；
+	 * 3. 同步执行返回守卫链：守卫放行时无需任何额外操作（uni-app 自行完成切页，
+	 *    页面 `onShow` 时全局 mixin 会 `syncRoute`）；守卫中止时用 `history.go(1)` 恢复原页面。
 	 *
 	 * 根页面（无上级页面）不拦截，保留浏览器默认行为（离开站点 / 回上一站点）。
 	 */
 	handleH5PopState(): void {
-		// H5 返回进行中（时间窗口内）：此过程 navigateBack 可能触发多次 popstate，
+		// H5 返回进行中（时间窗口内）：此过程可能触发多次 popstate（navigateBack / 恢复原页面），
 		// 一律放行并持续更新基准 URL；一旦命中返回目标页即视为本次返回完成（确定性），
-		// 否则由时间窗口兜底复位。防止自身导航被误判为外部后退而反复「撤销+重放」死循环。
+		// 否则由时间窗口兜底复位。防止自身导航被误判为外部后退。
 		if (this.h5ReturningBack) {
 			this.h5BackUrl = location.href
 			if (this.h5ReturnTarget && getHashPath(location.hash) === this.h5ReturnTarget) {
@@ -171,24 +187,65 @@ export class BackGuardManager {
 			return
 		}
 
-		// 恢复当前页的二次 popstate / 前进回当前页 → 放行
+		// 前进 / URL 未变化 → 放行
 		if (location.href === this.h5BackUrl) return
 
-		// 根页面（无上级页面）→ 放行浏览器默认行为
-		const pages = getCurrentPages()
-		if (pages.length < 2) return
+		// 后退目标重复 popstate（守卫链执行中）→ 仅更新基准 URL，避免重复执行守卫
+		if (this.h5GuardRunning) {
+			this.h5BackUrl = location.href
+			return
+		}
 
-		// 撤销浏览器后退，恢复当前页
-		history.go(1)
-
-		// 同步捕获 to/from 后执行返回守卫链
 		const from = this.deps.getCurrentRoute()
-		const targetPage = pages[pages.length - 2]
-		if (!targetPage) return
-		const to = this.deps.resolve(`/${targetPage.route}`)
-		this.runBackGuardChain(to, from, () => this.executeBack(to.path)).catch(() => {
-			// 守卫异常已由 onError 处理
-		})
+		const to = this.resolveH5BackTarget()
+
+		// 浏览器已完成后退，先更新基准 URL
+		this.h5BackUrl = location.href
+
+		// 无法解析后退目标（外部页面 / 未配置的路径）或目标与当前路由一致 → 放行，交由 uni-app 处理
+		if (!to || to.fullPath === from.fullPath) return
+
+		this.h5GuardRunning = true
+		this.runBackGuardChain(to, from, async () => {}, () => this.restoreH5Back(from.path))
+			.catch(() => {
+				// 守卫异常已由 onError 处理
+			})
+			.finally(() => {
+				this.h5GuardRunning = false
+			})
+	}
+
+	/**
+	 * 解析 H5 浏览器后退目标
+	 *
+	 * 优先使用地址栏路径（后退已完成，URL 是最可靠的目标来源），根路径 `'/'`
+	 * 无法直接 resolve（严格模式下会抛错），映射为页面栈首个页面的路径。
+	 *
+	 * @returns 后退目标路由；无法解析时返回 null（放行浏览器默认行为）
+	 */
+	private resolveH5BackTarget(): RouteLocation | null {
+		const path = getH5LocationPath()
+		const pages = getCurrentPages()
+		// 根路径（首页地址可能为 '#/'）映射到页面栈首个页面
+		const targetPath = path === '/' && pages[0] ? `/${pages[0].route}` : path
+		try {
+			return this.deps.resolve(targetPath)
+		} catch {
+			return null
+		}
+	}
+
+	/**
+	 * 恢复 H5 被中止的后退：前进回原页面
+	 *
+	 * 浏览器后退已被执行且守卫中止，通过 `history.go(1)` 前进回原页面；
+	 * 置位 {@link beginH5Back} 标记，避免恢复产生的 popstate 被误判为新的外部后退。
+	 *
+	 * @param targetPath - 需要恢复的原页面路径
+	 */
+	private restoreH5Back(targetPath: string): void {
+		this.beginH5Back(targetPath)
+		history.go(1)
 	}
 
 	/**
@@ -200,11 +257,13 @@ export class BackGuardManager {
 	 * @param to - 返回目标路由（上一页）
 	 * @param from - 当前正要离开的路由
 	 * @param onPass - 守卫全部放行后执行返回的回调
+	 * @param onAbort - 守卫中止后的回滚回调（H5 浏览器后退已生效时用于恢复原页面）
 	 */
-	private async runBackGuardChain(to: RouteLocation, from: RouteLocation, onPass: () => Promise<void>): Promise<void> {
+	private async runBackGuardChain(to: RouteLocation, from: RouteLocation, onPass: () => Promise<void>, onAbort?: () => void): Promise<void> {
 		// 返回守卫（onBeforeBack）
 		const backPass = await this.deps.guardManager.runBeforeBackGuards(to, from)
 		if (!backPass) {
+			onAbort?.()
 			const failure = new NavigationFailure(to, from, RouterErrorCode.NAVIGATION_ABORTED)
 			this.deps.guardManager.runAfterGuards(to, from, failure)
 			this.deps.onNavigationFailure(failure, to, from)
@@ -214,15 +273,27 @@ export class BackGuardManager {
 		// 前置守卫与解析守卫（复用完整导航的守卫结果处理，支持中止/重定向）
 		const beforeResult = await this.deps.guardManager.runBeforeGuards(to, from)
 		const handled = this.deps.handleGuardResult(beforeResult, to, from)
-		if (handled) return
+		if (handled) {
+			if (beforeResult.type === 'abort') onAbort?.()
+			return
+		}
 
 		const beforeResolveResult = await this.deps.guardManager.runBeforeResolveGuards(to, from)
 		const handledResolve = this.deps.handleGuardResult(beforeResolveResult, to, from)
-		if (handledResolve) return
+		if (handledResolve) {
+			if (beforeResolveResult.type === 'abort') onAbort?.()
+			return
+		}
 
 		// 守卫通过，执行返回
 		await onPass()
-		this.deps.syncCurrentRoute()
+		// H5 浏览器后退由 uni-app 自行切页，守卫执行时页面栈可能尚未更新；
+		// 仅在页面栈已到达目标页时强制同步，避免把 currentRoute 回滚到来源页（目标页 onShow 会再同步）
+		const pages = getCurrentPages()
+		const currentPage = pages[pages.length - 1]
+		if (!currentPage || `/${currentPage.route}` === to.path) {
+			this.deps.syncCurrentRoute()
+		}
 		this.deps.guardManager.runAfterGuards(to, from)
 	}
 
