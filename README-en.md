@@ -9,32 +9,60 @@
 	</a>
 	<br>
 	<h1>@meng-xi/uni-router</h1>
-	<p>A vue-router-style routing management system for uni-app</p>
+	<p>A routing system for uni-app that feels like vue-router</p>
 
 [![license](https://img.shields.io/github/license/MengXi-Studio/uni-router.svg)](LICENSE) [![npm](https://img.shields.io/npm/v/@meng-xi/uni-router?color=blue)](https://www.npmjs.com/package/@meng-xi/uni-router)
 ![npm](https://img.shields.io/npm/dt/@meng-xi/uni-router?color=green)
 
+[Docs](https://mengxi-studio.github.io/uni-router/) · [Changelog](https://mengxi-studio.github.io/uni-router/en/changelog.html) · [npm](https://www.npmjs.com/package/@meng-xi/uni-router)
+
+<img alt="H5 demo: home → detail → browser back → home" width="320" src="https://github.com/MengXi-Studio/uni-router/blob/master/packages/docs/src/public/demo-h5-back.gif?raw=true">
+<p><sub>H5: home → detail → browser back, with the back guard in action</sub></p>
+
 </div>
 
-## Features
+---
 
-- **vue-router-style API** - `push` / `replace` / `relaunch` / `back`; automatically falls back to `switchTab` for TabBar routes via `meta.isTab`; rejects duplicate navigation and queues concurrent navigations
-- **Route Guards** - `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave` / `onBeforeBack`, with controllable redirect and guard timeout protection (`guardTimeout`)
-- **Back Interception** - Guards can intercept App hardware back / navigation-bar back / `navigateBack`, and H5 browser back / back gesture; `app.setSideSlipGesture` controls the iOS side-slip gesture
-- **Cold-Start Guard** - `guardRoute()` runs the guard chain for pages entered directly via H5 URL / Mini-Program scene / App deep link, supporting redirects and abort callbacks
-- **Named Routes & Route Meta** - Navigate by `name` and carry custom data via `meta` (including `isTab` and default animation)
-- **Plugin Architecture** - Params / Animation / Channel / Interceptor plugins registered on demand; using a feature without its plugin throws a clear `PLUGIN_REQUIRED` error
-- **TypeScript Type Hints** - Autocompletion and type checking for route names and paths (with [`@meng-xi/vite-plugin`](https://github.com/MengXi-Studio/vite-plugin))
-- **Page Communication** - `usePageChannel()` built-in manager; native `EventChannel` by default on `push`, and all navigation methods once `useUniEventChannel` is enabled
-- **Declarative Navigation** - `RouterLink` (renders a native `<a>` tag on H5) + `TabBar` / `TabBarItem` components with badges / red dot / safe-area / before-change interception, SCSS theming supported
-- **Page Params** - `params` passes complex data without URL exposure; storage persistence (`persistent`) supported so data survives an H5 refresh
-- **Query Enhancement** - `route.queryInt()` / `queryNumber()` / `queryBool()`
-- **Navigation Animation** - `push` / `replace` / `back` accept animation params (native window animation on App, exit animation on H5 back); default via `meta.animation`
-- **Auto Route State Sync** - `app.use(router)` injects a global mixin that auto-invokes `syncRoute()` on each page's `onShow`; strict mode (`strict`) supported
-- **Error Handling** - `RouterError` / `NavigationFailure` / `UniApiError`, `RouterErrorCode` error codes, `isNavigationFailure()` for precise discrimination
-- **Composables** - `useRouter()` / `useRoute()` / `usePageChannel()` / `onBeforeRouteLeave()` / `useLink()`
+## Why uni-router
 
-## Installation
+In uni-app, `navigateTo` / `redirectTo` / `reLaunch` / `switchTab` / `navigateBack` are scattered across call sites. Page params, authentication, unsaved-changes confirmation and back interception usually end up being re-implemented on every page — and any inconsistency leads to missed guards or broken navigation.
+
+uni-router unifies all of this behind a vue-router-style API:
+
+- **One definition, one behavior** - A single entry point for all navigation; TabBar routes automatically use `switchTab`, so business code no longer branches on page type
+- **Guards configured once, effective everywhere** - Auth, redirects and leave confirmation live in the guard chain; cold-start pages run the same guards
+- **Native back is covered too** - App hardware back and H5 browser back / back gesture plug into the same back guard
+- **Plugins on demand** - Params / Channel / Animation / Interceptor are registered only when needed, and unused features throw a clear error instead of silently doing nothing
+
+## Compared with native navigation APIs
+
+| Scenario | Native uni APIs | uni-router |
+| --- | --- | --- |
+| Page navigation | Pick `navigateTo` / `redirectTo` / `reLaunch` / `switchTab` manually per page type | One set of `push` / `replace` / `relaunch` / `back`; TabBar routes automatically use `switchTab` |
+| Repeated taps / concurrent navigation | Deduplicated in every page | Duplicate navigations rejected, concurrent navigations queued |
+| Auth | Checked in each page's `onLoad` / `onShow` | Configured once in `beforeEach`; cold-start pages covered by `guardRoute()` |
+| Leave confirmation / back interception | `onBackPress` returns synchronously, so it cannot await user confirmation | `onBeforeRouteLeave` / `onBeforeBack` support async confirmation and redirects |
+| H5 browser back | Must listen to `popstate` yourself and reconcile it with the page stack | `onBeforeBack` intercepts browser back / back gesture directly |
+| Complex params | Build URLs (with serialization) or use global variables | `params` passed implicitly, optionally persisted; URLs stay clean |
+| Page communication | Create / pass an `EventChannel` manually on `push` | `usePageChannel()` built-in manager, with an optional global event bus |
+| Route type hints | Hand-written path strings, easy to mistype | Route types generated by `@meng-xi/vite-plugin`, with name/path autocompletion |
+
+## Core Capabilities
+
+| Area | Capability |
+| --- | --- |
+| Navigation | Unified `push` / `replace` / `relaunch` / `back`; TabBar routes automatically switch to `switchTab`; duplicate navigations are rejected, concurrent navigations are queued |
+| Guards | `beforeEach` / `beforeResolve` / `afterEach` / `beforeEnter` / `onBeforeRouteLeave` / `onBeforeBack`, with async support, redirects, controllable redirect modes and timeout protection |
+| Back interception | Intercepts App hardware back / navigation-bar back / `navigateBack`, and H5 browser back / back gesture; `app.setSideSlipGesture` controls the iOS side-slip gesture |
+| Cold start | `guardRoute()` re-runs the guard chain for pages opened directly via H5 URL, Mini-Program scene or App deep link, with redirect and abort callbacks |
+| Page params | `params` passes complex data without exposing it in the URL, optionally persisted to storage; `query` offers `queryInt()` / `queryNumber()` / `queryBool()` |
+| Page communication | `usePageChannel()` built-in manager; `push` uses the native `EventChannel` by default, and every navigation method supports it once `useUniEventChannel` is enabled |
+| Declarative navigation | `RouterLink` (renders a native `<a>` tag on H5) + `TabBar` / `TabBarItem` (badges, red dot, safe area, before-change interception, SCSS theming) |
+| Navigation animation | `push` / `replace` / `back` accept animation params with `meta.animation` defaults; native window animations on App, back exit animation on H5 |
+| State & types | `app.use(router)` injects a global mixin that auto-invokes `syncRoute()` on each page's `onShow`; `@meng-xi/vite-plugin` generates route types with name/path autocompletion |
+| Error handling | `RouterError` / `NavigationFailure` / `UniApiError` with `RouterErrorCode`; `isNavigationFailure()` for precise discrimination |
+
+## Quick Start
 
 ```bash
 pnpm add @meng-xi/uni-router
@@ -45,8 +73,6 @@ Optionally use [`@meng-xi/vite-plugin`](https://github.com/MengXi-Studio/vite-pl
 ```bash
 pnpm add @meng-xi/vite-plugin -D
 ```
-
-## Quick Start
 
 ### 1. Create Router
 
@@ -60,12 +86,12 @@ import App from './App.vue'
 const router = createRouter({
 	routes,
 	plugins: [ParamsPlugin, ChannelPlugin, InterceptorPlugin], // Register plugins on demand
-	interceptUniApi: true // Requires InterceptorPlugin, intercept native APIs to ensure guards work
+	interceptUniApi: true // Requires InterceptorPlugin; intercept native APIs so guards always run
 })
 
 export function createApp() {
 	const app = createSSRApp(App)
-	app.use(router) // Injects global mixin that auto-invokes syncRoute() on each page's onShow
+	app.use(router) // Injects a global mixin that auto-invokes syncRoute() on each page's onShow
 	return { app }
 }
 ```
@@ -75,12 +101,12 @@ export function createApp() {
 ```typescript
 const router = useRouter()
 
-// Resolve to a NavigationResult (eventChannel available on push by default, for page communication)
+// Resolves to a NavigationResult (eventChannel available on push by default, for page communication)
 await router.push({ path: '/pages/about/about', query: { id: '1' } })
 await router.push({ name: 'about' })
 await router.push({ path: '/pages/detail/detail', params: { info: { name: 'Tom' } } })
 
-// Resolve to the updated target RouteLocation
+// Resolves to the updated target RouteLocation
 await router.back()
 ```
 
@@ -96,16 +122,7 @@ router.beforeEach((to, from) => {
 	// return undefined or true to proceed
 })
 
-// Component-level leave guard (onBeforeRouteLeave)
-import { onBeforeRouteLeave } from '@meng-xi/uni-router'
-
-onBeforeRouteLeave((to, from) => {
-	if (hasUnsavedChanges) {
-		return false // abort navigation
-	}
-})
-
-// Back guard (onBeforeBack): intercepts App hardware back / navigation-bar back / navigateBack, H5 back
+// Back guard (onBeforeBack): intercepts App hardware back / navigation-bar back / navigateBack, and H5 back
 router.onBeforeBack((to, from) => {
 	if (from.meta.requireConfirm) {
 		// return false to block, true / undefined to allow; a redirect route may also be returned
@@ -157,13 +174,26 @@ router.isReady().then(() => {
 | `interceptUniApi`    | `boolean`          | `false` | Intercept native uni navigation APIs so guards always run (requires InterceptorPlugin)     |
 | `app`                | `AppRouterOptions` | -       | App-specific config, e.g. `setSideSlipGesture` for the iOS side-slip gesture               |
 
+## Platform Support
+
+| Platform    | Navigation                                              | Back interception                                         | Animation                  |
+| ----------- | ------------------------------------------------------- | --------------------------------------------------------- | -------------------------- |
+| App         | `push` / `replace` / `relaunch` / `back` / `switchTab`  | Hardware back / navigation-bar back / `navigateBack`      | Native window animation    |
+| H5          | Same as above                                           | Browser back / back gesture                               | Back exit animation (CSS)  |
+| Mini Program| Same as above                                           | Native back button cannot be intercepted (platform limit) | Controlled by the host     |
+
+## More
+
+- **uni_modules build** - The repo ships `uni_modules/mxuni-router-v2`; HBuilderX projects can drop it into `uni_modules` directly. Its API matches the npm package
+- **Error handling** - Navigation failures throw `NavigationFailure`; use `isNavigationFailure(error, RouterErrorCode.XXX)` instead of comparing strings
+
 ## Documentation
 
-📖 **[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)**
+[https://mengxi-studio.github.io/uni-router/](https://mengxi-studio.github.io/uni-router/)
 
 ## Changelog
 
-📝 **[https://mengxi-studio.github.io/uni-router/en/changelog.html](https://mengxi-studio.github.io/uni-router/en/changelog.html)**
+[https://mengxi-studio.github.io/uni-router/en/changelog.html](https://mengxi-studio.github.io/uni-router/en/changelog.html)
 
 ## License
 
