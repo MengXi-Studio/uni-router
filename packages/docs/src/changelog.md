@@ -2,6 +2,17 @@
 
 本项目的变更记录遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.7.2] - 2026-11-21
+
+### 修复
+
+- **H5 端浏览器后退无响应（"进入二级页面后没法返回了"）** - 修复 H5 平台通过非 `#/` 地址（如直接访问站点根路径）进入应用后，在二级页面点击浏览器后退无任何反应的问题（issue #43）
+  - **现象**：H5 端首页进入二级页面后，点击浏览器后退按钮，URL 与页面均停留在二级页面，控制台无 JS 报错
+  - **根因**：`h5BackUrl` 仅在 `install` 时记录，此时 uni-app 尚未把地址规范化为 `#/`；后退时 URL 与基准不一致，误入「撤销后退 → `navigateBack` 重放」分支。`history.go(1)` 撤销后退与 uni-app 异步的 popstate 切页存在竞态，重放时页面栈已被弹到首页导致 `navigateBack` 失败（异常被静默吞掉），随后撤销生效，净效果为后退无效
+  - **修复方案**：移除「撤销后退 + 重放 `navigateBack`」，改为直接守卫浏览器**已完成**的后退：由地址栏解析后退目标（兼容 hash / history 模式，`#/` 映射到页面栈首屏），守卫放行后交由 uni-app 自行切页（页面 `onShow` 时同步路由），仅守卫中止时才 `history.go(1)` 恢复原页面
+  - **基准 URL 同步**：`install` 及每次导航成功后同步 `h5BackUrl`（`syncH5BackUrl`），消除过期判断；并用并发标记避免重复 popstate 重复执行守卫链
+  - 涉及文件：`router/back-guard.ts`（popstate 处理重写、`onAbort` 回滚恢复）、`router/index.ts`（导航成功后同步基准 URL）
+
 ## [2.7.1] - 2026-08-31
 
 ### 修复

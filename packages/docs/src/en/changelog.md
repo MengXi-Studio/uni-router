@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.7.2] - 2026-11-21
+
+### Fixed
+
+- **Unresponsive browser back on H5 ("cannot go back after entering a second-level page")** - Fixed the issue where, after entering the app via a non-`#/` URL (e.g. opening the site root directly), clicking the browser back button on a second-level page did nothing (issue #43)
+  - **Symptom**: After navigating from the home page to a second-level page on H5, clicking the browser back button left both the URL and the page on the second-level page, with no JS errors in the console
+  - **Root cause**: `h5BackUrl` was only recorded during `install`, at which point uni-app had not yet normalized the address to `#/`; on back, the URL no longer matched the baseline, so the code wrongly entered the "undo the back → replay `navigateBack`" branch. `history.go(1)` (undo) raced with uni-app's asynchronous popstate page switching: by the time the replay ran, the page stack had already been popped to the home page, so `navigateBack` failed (the error was silently swallowed) and the undo took effect, making the back appear to do nothing
+  - **Fix**: Removed "undo the back + replay `navigateBack`" and now guard the back the browser has **already performed**: the back target is parsed from the address bar (hash and history modes, with `#/` mapped to the first page in the stack), and once the guards pass uni-app completes the page switch on its own (route is synced in the page's `onShow`); only when a guard aborts does `history.go(1)` restore the original page
+  - **Baseline URL sync**: `h5BackUrl` is now synced during `install` and after every successful navigation (`syncH5BackUrl`), removing stale comparisons; a concurrency flag prevents duplicate popstate events from re-running the guard chain
+  - Affected files: `router/back-guard.ts` (rewritten popstate handling, `onAbort` rollback), `router/index.ts` (baseline URL sync after navigation)
+
 ## [2.7.1] - 2026-08-31
 
 ### Fixed

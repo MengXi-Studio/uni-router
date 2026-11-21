@@ -1314,6 +1314,11 @@ var PluginHookManager = class {
 function getHashPath(hash) {
   return hash.replace(/^#\/?/, "/").split("?")[0];
 }
+function getH5LocationPath() {
+  const { hash, pathname } = location;
+  if (hash && hash.startsWith("#/")) return getHashPath(hash);
+  return pathname.split("?")[0] || "/";
+}
 var BackGuardManager = class {
   constructor(deps) {
     __publicField(this, "deps", deps);
@@ -1327,16 +1332,17 @@ var BackGuardManager = class {
     __publicField(this, "h5ReturnTarget", null);
     /** H5 平台：返回进行中标志的自动复位定时器（兜底） */
     __publicField(this, "h5Timer", null);
+    /** H5 平台：返回守卫执行中，避免并发 popstate 重复执行守卫链 */
+    __publicField(this, "h5GuardRunning", false);
   }
   /**
-   * 设置 H5 平台当前页面 URL（install 时初始化）
+   * 同步 H5 平台当前页面 URL（install 时初始化，每次导航成功后更新）
    *
-   * 作为 popstate 后退判断的基准：URL 变化说明发生了后退。
-   *
-   * @param url - 当前页面 URL
+   * 作为 popstate 前进 / 无变化事件的判断基准。
    */
-  setH5BackUrl(url) {
-    this.h5BackUrl = url;
+  syncH5BackUrl() {
+    if (!getPlatform().isH5) return;
+    this.h5BackUrl = location.href;
   }
   /**
    * 标记路由器发起的返回
@@ -1410,12 +1416,12 @@ var BackGuardManager = class {
   /**
    * H5 平台返回守卫入口（由浏览器 popstate 事件触发）
    *
-   * 覆盖浏览器后退按钮 / 后退手势。popstate 触发时浏览器已完成后退，
-   * 采用「撤销后退 → 执行返回守卫 → 守卫放行后重新后退」策略：
-   * 1. 记录当前页 URL（`h5BackUrl`），popstate 后 URL 已变化说明发生了后退；
-   * 2. `history.go(1)` 恢复当前页（触发二次 popstate，命中「回到当前页」分支放行）；
-   * 3. 同步捕获 to/from 执行返回守卫链（避免依赖 uni-app 处理 popstate 后的页面栈时序）；
-   * 4. 守卫放行后经 {@link executeBack} 重新后退（再次触发 popstate，由 `backGuardRunning` 放行）。
+   * 覆盖浏览器后退按钮 / 后退手势。popstate 触发时浏览器**已完成后退**，因此直接
+   * 以 URL 确定后退目标并执行返回守卫链，不再「撤销后退 → 重放 navigateBack」：
+   * 1. 通过 {@link getH5LocationPath} 从当前地址解析后退目标（不依赖可能尚未更新的页面栈）；
+   * 2. 更新基准 URL（`h5BackUrl`），保证后续 popstate 判断基于最新地址；
+   * 3. 同步执行返回守卫链：守卫放行时无需任何额外操作（uni-app 自行完成切页，
+   *    页面 `onShow` 时全局 mixin 会 `syncRoute`）；守卫中止时用 `history.go(1)` 恢复原页面。
    *
    * 根页面（无上级页面）不拦截，保留浏览器默认行为（离开站点 / 回上一站点）。
    */
@@ -1437,15 +1443,50 @@ var BackGuardManager = class {
       return;
     }
     if (location.href === this.h5BackUrl) return;
-    const pages = getCurrentPages();
-    if (pages.length < 2) return;
-    history.go(1);
+    if (this.h5GuardRunning) {
+      this.h5BackUrl = location.href;
+      return;
+    }
     const from = this.deps.getCurrentRoute();
-    const targetPage = pages[pages.length - 2];
-    if (!targetPage) return;
-    const to = this.deps.resolve(`/${targetPage.route}`);
-    this.runBackGuardChain(to, from, () => this.executeBack(to.path)).catch(() => {
+    const to = this.resolveH5BackTarget();
+    this.h5BackUrl = location.href;
+    if (!to || to.fullPath === from.fullPath) return;
+    this.h5GuardRunning = true;
+    this.runBackGuardChain(to, from, async () => {
+    }, () => this.restoreH5Back(from.path)).catch(() => {
+    }).finally(() => {
+      this.h5GuardRunning = false;
     });
+  }
+  /**
+   * 解析 H5 浏览器后退目标
+   *
+   * 优先使用地址栏路径（后退已完成，URL 是最可靠的目标来源），根路径 `'/'`
+   * 无法直接 resolve（严格模式下会抛错），映射为页面栈首个页面的路径。
+   *
+   * @returns 后退目标路由；无法解析时返回 null（放行浏览器默认行为）
+   */
+  resolveH5BackTarget() {
+    const path = getH5LocationPath();
+    const pages = getCurrentPages();
+    const targetPath = path === "/" && pages[0] ? `/${pages[0].route}` : path;
+    try {
+      return this.deps.resolve(targetPath);
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * 恢复 H5 被中止的后退：前进回原页面
+   *
+   * 浏览器后退已被执行且守卫中止，通过 `history.go(1)` 前进回原页面；
+   * 置位 {@link beginH5Back} 标记，避免恢复产生的 popstate 被误判为新的外部后退。
+   *
+   * @param targetPath - 需要恢复的原页面路径
+   */
+  restoreH5Back(targetPath) {
+    this.beginH5Back(targetPath);
+    history.go(1);
   }
   /**
    * 执行返回守卫链（onBeforeBack → beforeEach → beforeResolve）
@@ -1456,10 +1497,12 @@ var BackGuardManager = class {
    * @param to - 返回目标路由（上一页）
    * @param from - 当前正要离开的路由
    * @param onPass - 守卫全部放行后执行返回的回调
+   * @param onAbort - 守卫中止后的回滚回调（H5 浏览器后退已生效时用于恢复原页面）
    */
-  async runBackGuardChain(to, from, onPass) {
+  async runBackGuardChain(to, from, onPass, onAbort) {
     const backPass = await this.deps.guardManager.runBeforeBackGuards(to, from);
     if (!backPass) {
+      onAbort?.();
       const failure = new NavigationFailure(to, from, "NAVIGATION_ABORTED" /* NAVIGATION_ABORTED */);
       this.deps.guardManager.runAfterGuards(to, from, failure);
       this.deps.onNavigationFailure(failure, to, from);
@@ -1467,12 +1510,22 @@ var BackGuardManager = class {
     }
     const beforeResult = await this.deps.guardManager.runBeforeGuards(to, from);
     const handled = this.deps.handleGuardResult(beforeResult, to, from);
-    if (handled) return;
+    if (handled) {
+      if (beforeResult.type === "abort") onAbort?.();
+      return;
+    }
     const beforeResolveResult = await this.deps.guardManager.runBeforeResolveGuards(to, from);
     const handledResolve = this.deps.handleGuardResult(beforeResolveResult, to, from);
-    if (handledResolve) return;
+    if (handledResolve) {
+      if (beforeResolveResult.type === "abort") onAbort?.();
+      return;
+    }
     await onPass();
-    this.deps.syncCurrentRoute();
+    const pages = getCurrentPages();
+    const currentPage = pages[pages.length - 1];
+    if (!currentPage || `/${currentPage.route}` === to.path) {
+      this.deps.syncCurrentRoute();
+    }
     this.deps.guardManager.runAfterGuards(to, from);
   }
   /**
@@ -1897,7 +1950,7 @@ var UniRouter = class {
       }
     });
     if (getPlatform().isH5) {
-      this.backGuard.setH5BackUrl(location.href);
+      this.backGuard.syncH5BackUrl();
       window.addEventListener("popstate", () => this.backGuard.handleH5PopState());
     }
     this.routeState.markReady();
@@ -2011,6 +2064,7 @@ var UniRouter = class {
       } else {
         await relaunchTo(navOptions);
       }
+      this.backGuard.syncH5BackUrl();
       this.guardManager.runAfterGuards(to, from);
       const result = { ...to };
       if (mode === "push") {

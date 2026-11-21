@@ -492,7 +492,7 @@ class UniRouter implements Router {
 
 		// H5 平台通过浏览器 popstate 事件接入返回守卫（后退按钮 / 后退手势）
 		if (getPlatform().isH5) {
-			this.backGuard.setH5BackUrl(location.href)
+			this.backGuard.syncH5BackUrl()
 			window.addEventListener('popstate', () => this.backGuard.handleH5PopState())
 		}
 
@@ -638,6 +638,9 @@ class UniRouter implements Router {
 			} else {
 				await relaunchTo(navOptions)
 			}
+
+			// 导航成功后同步 H5 基准 URL，作为后续 popstate 前进/后退判断的依据
+			this.backGuard.syncH5BackUrl()
 
 			this.guardManager.runAfterGuards(to, from)
 
