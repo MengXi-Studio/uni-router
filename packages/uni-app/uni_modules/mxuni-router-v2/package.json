@@ -13,7 +13,7 @@
 	"repository": "https://github.com/MengXi-Studio/uni-router",
 	"engines": {
 		"HBuilderX": "^3.1.0",
-		"uni-app": "^3.8.3",
+		"uni-app": "^3.8.12",
 		"uni-app-x": ""
 	},
 	"dcloudext": {
@@ -37,7 +37,8 @@
 		"npmurl": "https://www.npmjs.com/package/@meng-xi/uni-router",
 		"darkmode": "√",
 		"i18n": "√",
-		"widescreen": "√"
+		"widescreen": "√",
+		"vapor": "x"
 	},
 	"uni_modules": {
 		"dependencies": [],
